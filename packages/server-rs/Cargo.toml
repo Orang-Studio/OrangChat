@@ -1,0 +1,81 @@
+[package]
+name = "orangchat-server"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "orangchat-server"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+axum = { version = "0.7", features = ["macros", "multipart"] }
+image = { version = "0.25", default-features = false, features = [
+    "gif",
+    "jpeg",
+    "png",
+    "webp",
+] }
+# Soundboard duration probing only — no playback, no resampling. Pure Rust, so
+# it adds no ffmpeg/native dependency to the deploy.
+symphonia = { version = "0.5", default-features = false, features = [
+    "mp3",
+    "ogg",
+    "vorbis",
+    "wav",
+    "pcm",
+    "flac",
+    "isomp4",
+    "aac",
+] }
+axum-extra = { version = "0.9", features = ["cookie"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors"] }
+socketioxide = { version = "0.15", features = ["state", "extensions"] }
+
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio-rustls",
+    "postgres",
+    "chrono",
+    "json",
+    "macros",
+] }
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
+
+jsonwebtoken = "9"
+argon2 = "0.5"
+password-hash = "0.5"
+aes-gcm = "0.10"
+
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream", "multipart"] }
+# Web Push (RFC 8030/8291/8292): payload encryption and VAPID signing only. The
+# bundled HTTP clients are cut deliberately — isahc drags in libcurl and
+# hyper-tls drags in native-tls, and the reqwest above already speaks rustls, so
+# the built message is POSTed with that instead. See services::push.
+web-push = { version = "0.11", default-features = false }
+scraper = "0.27"
+url = "2"
+
+cuid = "1"
+uuid = { version = "1", features = ["v4"] }
+sha1 = "0.10"
+hex = "0.4"
+time = "0.3"
+rand = "0.8"
+base64 = "0.22"
+
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+dotenvy = "0.15"
+thiserror = "2"
+futures = "0.3"
+totp-rs = { version = "5.7.2", features = ["qr", "gen_secret"] }
+
+[profile.release]
+opt-level = 3
+lto = "thin"

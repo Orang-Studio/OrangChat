@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Rust
+target/
+
+# Android
+.gradle/
+local.properties
+.cxx/
+captures/
+
+# Env & secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Prisma
+packages/server/prisma/*.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Uploads (local dev)
+uploads/

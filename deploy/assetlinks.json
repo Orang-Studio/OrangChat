@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "lt.oranges.orangchat",
+      "sha256_cert_fingerprints": [
+        "D7:25:35:7E:07:C4:E5:7F:E5:40:38:1E:5E:DC:AA:A3:E1:B1:C7:30:C5:5D:18:C2:35:15:05:CA:D6:F9:41:45"
+      ]
+    }
+  }
+]

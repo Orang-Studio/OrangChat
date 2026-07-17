@@ -1,0 +1,30 @@
+[Unit]
+Description=OrangChat realtime chat backend (Rust: axum + socketioxide)
+After=network.target postgresql.service redis-server.service
+
+[Service]
+Type=simple
+User=adasjusk
+Group=adasjusk
+WorkingDirectory=/home/adasjusk/orangchat/packages/server-rs
+ExecStart=/home/adasjusk/orangchat/packages/server-rs/target/release/orangchat-server
+EnvironmentFile=/etc/orangchat/orangchat.env
+
+Restart=on-failure
+RestartSec=3
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+ReadWritePaths=/var/lib/orangchat
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_NETLINK
+RestrictNamespaces=true
+LockPersonality=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

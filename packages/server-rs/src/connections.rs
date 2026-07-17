@@ -1,0 +1,543 @@
+//! Profile connections: linking external accounts (GitHub, Steam, Spotify, …)
+//! for display on a user's profile card.
+//!
+//! Deliberately separate from `oauth.rs`, which logs people in. The two never
+//! share a code path: a connection grants no access to the OrangChat account,
+//! stores no long-lived token, and asks for the narrowest read-only scope each
+//! platform offers. We exchange the code, read the handle once, and drop the
+//! access token on the floor — nothing here can act on the user's behalf later.
+//!
+//! Most platforms are plain OAuth 2.0 authorization-code. Steam is the odd one
+//! out (OpenID 2.0, no token at all) and lives in its own section below.
+
+use serde_json::Value;
+
+use crate::config::Config;
+use crate::error::{AppError, AppResult};
+
+/// What a provider tells us about the account that just authorized us.
+pub struct ConnectionProfile {
+    pub provider: String,
+    pub provider_id: String,
+    pub name: String,
+    pub profile_url: Option<String>,
+}
+
+/// Everything that varies per platform. Adding a provider means adding one row
+/// here plus one arm in `fetch_profile` — nothing else in the stack changes.
+pub struct Provider {
+    pub key: &'static str,
+    pub label: &'static str,
+    pub auth_url: &'static str,
+    pub token_url: &'static str,
+    pub scopes: &'static str,
+    /// Reddit and X reject client creds in the form body and want HTTP Basic.
+    pub basic_auth: bool,
+    /// X requires PKCE; nobody else here objects to it being present.
+    pub pkce: bool,
+}
+
+pub const PROVIDERS: &[Provider] = &[
+    Provider {
+        key: "github",
+        label: "GitHub",
+        auth_url: "https://github.com/login/oauth/authorize",
+        token_url: "https://github.com/login/oauth/access_token",
+        scopes: "read:user",
+        basic_auth: false,
+        pkce: false,
+    },
+    Provider {
+        key: "gitlab",
+        label: "GitLab",
+        auth_url: "https://gitlab.com/oauth/authorize",
+        token_url: "https://gitlab.com/oauth/token",
+        scopes: "read_user",
+        basic_auth: false,
+        pkce: false,
+    },
+    Provider {
+        key: "spotify",
+        label: "Spotify",
+        auth_url: "https://accounts.spotify.com/authorize",
+        token_url: "https://accounts.spotify.com/api/token",
+        scopes: "user-read-private",
+        basic_auth: true,
+        pkce: false,
+    },
+    Provider {
+        key: "twitch",
+        label: "Twitch",
+        auth_url: "https://id.twitch.tv/oauth2/authorize",
+        token_url: "https://id.twitch.tv/oauth2/token",
+        scopes: "user:read:email",
+        basic_auth: false,
+        pkce: false,
+    },
+    Provider {
+        key: "youtube",
+        label: "YouTube",
+        auth_url: "https://accounts.google.com/o/oauth2/v2/auth",
+        token_url: "https://oauth2.googleapis.com/token",
+        scopes: "https://www.googleapis.com/auth/youtube.readonly",
+        basic_auth: false,
+        pkce: false,
+    },
+    Provider {
+        key: "reddit",
+        label: "Reddit",
+        auth_url: "https://www.reddit.com/api/v1/authorize",
+        token_url: "https://www.reddit.com/api/v1/access_token",
+        scopes: "identity",
+        basic_auth: true,
+        pkce: false,
+    },
+    Provider {
+        key: "x",
+        label: "X",
+        auth_url: "https://twitter.com/i/oauth2/authorize",
+        token_url: "https://api.twitter.com/2/oauth2/token",
+        scopes: "users.read tweet.read",
+        basic_auth: true,
+        pkce: true,
+    },
+    Provider {
+        key: "steam",
+        label: "Steam",
+        // OpenID 2.0, not OAuth — the url fields are unused, see steam_* below.
+        auth_url: "https://steamcommunity.com/openid/login",
+        token_url: "",
+        scopes: "",
+        basic_auth: false,
+        pkce: false,
+    },
+];
+
+/// Provider key for hand-entered links. Never reaches an OAuth code path.
+pub const CUSTOM: &str = "custom";
+
+pub fn find(key: &str) -> Option<&'static Provider> {
+    PROVIDERS.iter().find(|p| p.key == key)
+}
+
+pub fn creds<'a>(cfg: &'a Config, provider: &str) -> (Option<&'a String>, Option<&'a String>) {
+    match provider {
+        "github" => (
+            cfg.github_client_id.as_ref(),
+            cfg.github_client_secret.as_ref(),
+        ),
+        "gitlab" => (
+            cfg.gitlab_client_id.as_ref(),
+            cfg.gitlab_client_secret.as_ref(),
+        ),
+        "spotify" => (
+            cfg.spotify_client_id.as_ref(),
+            cfg.spotify_client_secret.as_ref(),
+        ),
+        "twitch" => (
+            cfg.twitch_client_id.as_ref(),
+            cfg.twitch_client_secret.as_ref(),
+        ),
+        // YouTube can reuse the Google login app's credentials, but only if they
+        // are set here explicitly: that app needs this callback added to its
+        // authorized redirect URIs and the YouTube Data API enabled. Inheriting
+        // GOOGLE_* silently would surface a button that dies at consent with
+        // redirect_uri_mismatch.
+        "youtube" => (
+            cfg.youtube_client_id.as_ref(),
+            cfg.youtube_client_secret.as_ref(),
+        ),
+        "reddit" => (
+            cfg.reddit_client_id.as_ref(),
+            cfg.reddit_client_secret.as_ref(),
+        ),
+        "x" => (cfg.x_client_id.as_ref(), cfg.x_client_secret.as_ref()),
+        _ => (None, None),
+    }
+}
+
+/// Steam needs no client secret — only a Web API key, and even that is optional
+/// (without it we fall back to the numeric id instead of the persona name).
+pub fn is_configured(cfg: &Config, provider: &str) -> bool {
+    if provider == "steam" {
+        return true;
+    }
+    let (id, secret) = creds(cfg, provider);
+    id.is_some() && secret.is_some()
+}
+
+pub fn redirect_uri(cfg: &Config, provider: &str) -> String {
+    format!(
+        "{}/api/connections/{}/callback",
+        cfg.oauth_redirect_base, provider
+    )
+}
+
+pub fn authorization_url(
+    cfg: &Config,
+    provider: &Provider,
+    state: &str,
+    challenge: &str,
+) -> String {
+    let (id, _) = creds(cfg, provider.key);
+    let mut params: Vec<(&str, String)> = vec![
+        ("client_id", id.cloned().unwrap_or_default()),
+        ("redirect_uri", redirect_uri(cfg, provider.key)),
+        ("response_type", "code".into()),
+        ("scope", provider.scopes.into()),
+        ("state", state.to_string()),
+    ];
+    match provider.key {
+        // Without these Google hands back a token with no refresh and, worse,
+        // silently reuses a prior grant — the account picker never appears.
+        "youtube" => params.push(("prompt", "select_account".into())),
+        // Reddit defaults to a one-hour grant unless asked otherwise; we only
+        // need the identity read once, so temporary is correct.
+        "reddit" => params.push(("duration", "temporary".into())),
+        _ => {}
+    }
+    if provider.pkce {
+        params.push(("code_challenge", challenge.to_string()));
+        params.push(("code_challenge_method", "plain".into()));
+    }
+    format!("{}?{}", provider.auth_url, encode_params(&params))
+}
+
+pub async fn exchange_code_for_profile(
+    cfg: &Config,
+    provider: &Provider,
+    code: &str,
+    verifier: &str,
+) -> AppResult<ConnectionProfile> {
+    let (id, secret) = creds(cfg, provider.key);
+    let client_id = id.cloned().unwrap_or_default();
+    let client_secret = secret.cloned().unwrap_or_default();
+    let client = reqwest::Client::new();
+
+    let mut form: Vec<(&str, String)> = vec![
+        ("grant_type", "authorization_code".into()),
+        ("code", code.to_string()),
+        ("redirect_uri", redirect_uri(cfg, provider.key)),
+    ];
+    if provider.pkce {
+        form.push(("code_verifier", verifier.to_string()));
+    }
+    if !provider.basic_auth {
+        form.push(("client_id", client_id.clone()));
+        form.push(("client_secret", client_secret.clone()));
+    } else {
+        // X wants client_id in the body *as well as* the Basic header.
+        form.push(("client_id", client_id.clone()));
+    }
+
+    let mut req = client
+        .post(provider.token_url)
+        .header("Accept", "application/json")
+        // Reddit 429s anything with a default UA, and asks for this format.
+        .header("User-Agent", "orangchat/1.0 (+https://chat.oranges.lt)")
+        .form(&form);
+    if provider.basic_auth {
+        req = req.basic_auth(&client_id, Some(&client_secret));
+    }
+
+    let res = req
+        .send()
+        .await
+        .map_err(|e| AppError::Internal(format!("{} token exchange failed: {e}", provider.key)))?;
+    if !res.status().is_success() {
+        return Err(AppError::Internal(format!(
+            "{} token exchange failed: {}",
+            provider.key,
+            res.status()
+        )));
+    }
+    let token: Value = res
+        .json()
+        .await
+        .map_err(|e| AppError::Internal(format!("{} token parse: {e}", provider.key)))?;
+    let access_token = token
+        .get("access_token")
+        .and_then(Value::as_str)
+        .ok_or_else(|| AppError::Internal(format!("{}: missing access_token", provider.key)))?;
+
+    fetch_profile(cfg, provider.key, access_token).await
+}
+
+/// Read the account handle. One arm per platform because every one of these
+/// APIs disagrees about where the id, the name, and the public URL live.
+async fn fetch_profile(cfg: &Config, provider: &str, token: &str) -> AppResult<ConnectionProfile> {
+    let client = reqwest::Client::new();
+    let get = |url: &str| {
+        client
+            .get(url)
+            .bearer_auth(token)
+            .header("User-Agent", "orangchat/1.0 (+https://chat.oranges.lt)")
+    };
+    let fail = |e: String| AppError::Internal(format!("{provider} profile fetch failed: {e}"));
+
+    match provider {
+        "github" => {
+            let p: Value = json(get("https://api.github.com/user"))
+                .await
+                .map_err(fail)?;
+            let login = str_at(&p, "login").unwrap_or_else(|| "user".into());
+            Ok(ConnectionProfile {
+                provider: provider.into(),
+                provider_id: num_or_str(&p, "id"),
+                profile_url: Some(
+                    str_at(&p, "html_url").unwrap_or(format!("https://github.com/{login}")),
+                ),
+                name: login,
+            })
+        }
+        "gitlab" => {
+            let p: Value = json(get("https://gitlab.com/api/v4/user"))
+                .await
+                .map_err(fail)?;
+            let username = str_at(&p, "username").unwrap_or_else(|| "user".into());
+            Ok(ConnectionProfile {
+                provider: provider.into(),
+                provider_id: num_or_str(&p, "id"),
+                profile_url: Some(
+                    str_at(&p, "web_url").unwrap_or(format!("https://gitlab.com/{username}")),
+                ),
+                name: username,
+            })
+        }
+        "spotify" => {
+            let p: Value = json(get("https://api.spotify.com/v1/me"))
+                .await
+                .map_err(fail)?;
+            let id = str_at(&p, "id").unwrap_or_default();
+            Ok(ConnectionProfile {
+                provider: provider.into(),
+                name: str_at(&p, "display_name").unwrap_or_else(|| id.clone()),
+                profile_url: p
+                    .pointer("/external_urls/spotify")
+                    .and_then(Value::as_str)
+                    .map(String::from)
+                    .or(Some(format!("https://open.spotify.com/user/{id}"))),
+                provider_id: id,
+            })
+        }
+        "twitch" => {
+            // Helix rejects a bearer token without the app's client id alongside.
+            let (id, _) = creds(cfg, provider);
+            let p: Value = json(
+                get("https://api.twitch.tv/helix/users")
+                    .header("Client-Id", id.cloned().unwrap_or_default()),
+            )
+            .await
+            .map_err(fail)?;
+            let u = p
+                .pointer("/data/0")
+                .ok_or_else(|| AppError::Internal("twitch: empty user list".into()))?;
+            let login = str_at(u, "login").unwrap_or_else(|| "user".into());
+            Ok(ConnectionProfile {
+                provider: provider.into(),
+                provider_id: str_at(u, "id").unwrap_or_default(),
+                name: str_at(u, "display_name").unwrap_or_else(|| login.clone()),
+                profile_url: Some(format!("https://twitch.tv/{login}")),
+            })
+        }
+        "youtube" => {
+            let p: Value = json(get(
+                "https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true",
+            ))
+            .await
+            .map_err(fail)?;
+            // An authorized Google account with no channel yields an empty list.
+            let c = p.pointer("/items/0").ok_or_else(|| {
+                AppError::BadRequest("That Google account has no YouTube channel".into())
+            })?;
+            let id = str_at(c, "id").unwrap_or_default();
+            let handle = c.pointer("/snippet/customUrl").and_then(Value::as_str);
+            Ok(ConnectionProfile {
+                provider: provider.into(),
+                name: c
+                    .pointer("/snippet/title")
+                    .and_then(Value::as_str)
+                    .unwrap_or("channel")
+                    .to_string(),
+                profile_url: Some(match handle {
+                    Some(h) => format!("https://youtube.com/{h}"),
+                    None => format!("https://youtube.com/channel/{id}"),
+                }),
+                provider_id: id,
+            })
+        }
+        "reddit" => {
+            let p: Value = json(get("https://oauth.reddit.com/api/v1/me"))
+                .await
+                .map_err(fail)?;
+            let name = str_at(&p, "name").unwrap_or_else(|| "user".into());
+            Ok(ConnectionProfile {
+                provider: provider.into(),
+                provider_id: str_at(&p, "id").unwrap_or_else(|| name.clone()),
+                profile_url: Some(format!("https://reddit.com/user/{name}")),
+                name,
+            })
+        }
+        "x" => {
+            let p: Value = json(get("https://api.twitter.com/2/users/me"))
+                .await
+                .map_err(fail)?;
+            let u = p
+                .pointer("/data")
+                .ok_or_else(|| AppError::Internal("x: missing user data".into()))?;
+            let username = str_at(u, "username").unwrap_or_else(|| "user".into());
+            Ok(ConnectionProfile {
+                provider: provider.into(),
+                provider_id: str_at(u, "id").unwrap_or_default(),
+                profile_url: Some(format!("https://x.com/{username}")),
+                name: str_at(u, "name").unwrap_or_else(|| username.clone()),
+            })
+        }
+        _ => Err(AppError::NotFound("Unknown provider".into())),
+    }
+}
+
+// ── Steam (OpenID 2.0) ──────────────────────────────────
+//
+// Steam never adopted OAuth. The flow is: bounce the user to steamcommunity
+// with a return_to, then hand every openid.* param they come back with straight
+// back to Steam with mode=check_authentication. Steam answers is_valid:true and
+// only then may we trust the claimed_id. Verifying the signature ourselves is
+// possible but pointless — the round trip is the documented path.
+
+const STEAM_LOGIN: &str = "https://steamcommunity.com/openid/login";
+const STEAM_NS: &str = "http://specs.openid.net/auth/2.0";
+
+pub fn steam_authorization_url(cfg: &Config, state: &str) -> String {
+    // Our CSRF state has nowhere to ride except return_to — OpenID 2.0 has no
+    // state param, and Steam echoes return_to back to us untouched.
+    let return_to = format!("{}?state={}", redirect_uri(cfg, "steam"), urlencode(state));
+    let realm = cfg.oauth_redirect_base.clone();
+    let params = [
+        ("openid.ns", STEAM_NS.to_string()),
+        ("openid.mode", "checkid_setup".into()),
+        ("openid.return_to", return_to),
+        ("openid.realm", realm),
+        ("openid.identity", format!("{STEAM_NS}/identifier_select")),
+        ("openid.claimed_id", format!("{STEAM_NS}/identifier_select")),
+    ];
+    format!("{}?{}", STEAM_LOGIN, encode_params(&params))
+}
+
+pub async fn verify_steam_callback(
+    cfg: &Config,
+    params: &std::collections::HashMap<String, String>,
+) -> AppResult<ConnectionProfile> {
+    let mut form: Vec<(String, String)> = params
+        .iter()
+        .filter(|(k, _)| k.starts_with("openid."))
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    // Swap the mode; every other param must go back byte-identical or the
+    // signature check fails.
+    form.retain(|(k, _)| k != "openid.mode");
+    form.push(("openid.mode".into(), "check_authentication".into()));
+
+    let res = reqwest::Client::new()
+        .post(STEAM_LOGIN)
+        .form(&form)
+        .send()
+        .await
+        .map_err(|e| AppError::Internal(format!("steam verify failed: {e}")))?
+        .text()
+        .await
+        .map_err(|e| AppError::Internal(format!("steam verify parse: {e}")))?;
+
+    if !res.lines().any(|l| l.trim() == "is_valid:true") {
+        return Err(AppError::BadRequest(
+            "Steam sign-in could not be verified".into(),
+        ));
+    }
+
+    let claimed = params
+        .get("openid.claimed_id")
+        .ok_or_else(|| AppError::BadRequest("Steam returned no identity".into()))?;
+    // is_valid only says the assertion is authentic, not *who* it is about —
+    // pin the host so a valid assertion from elsewhere can't mint a steamid.
+    let steam_id = claimed
+        .strip_prefix("https://steamcommunity.com/openid/id/")
+        .filter(|id| !id.is_empty() && id.chars().all(|c| c.is_ascii_digit()))
+        .ok_or_else(|| AppError::BadRequest("Unexpected Steam identity".into()))?
+        .to_string();
+
+    let fallback = ConnectionProfile {
+        provider: "steam".into(),
+        name: steam_id.clone(),
+        profile_url: Some(format!("https://steamcommunity.com/profiles/{steam_id}")),
+        provider_id: steam_id.clone(),
+    };
+
+    // The persona name needs a Web API key. It's a nice-to-have: without one the
+    // connection still works, it just shows the raw id.
+    let Some(key) = cfg.steam_api_key.as_ref() else {
+        return Ok(fallback);
+    };
+    let url = format!(
+        "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key={}&steamids={}",
+        urlencode(key),
+        steam_id
+    );
+    let Ok(p) = json(reqwest::Client::new().get(&url)).await else {
+        return Ok(fallback);
+    };
+    let Some(player) = p.pointer("/response/players/0") else {
+        return Ok(fallback);
+    };
+    Ok(ConnectionProfile {
+        provider: "steam".into(),
+        provider_id: steam_id.clone(),
+        name: str_at(player, "personaname").unwrap_or(steam_id),
+        profile_url: str_at(player, "profileurl").or(fallback.profile_url),
+    })
+}
+
+// ── helpers ─────────────────────────────────────────────
+
+async fn json(req: reqwest::RequestBuilder) -> Result<Value, String> {
+    req.send()
+        .await
+        .and_then(|r| r.error_for_status())
+        .map_err(|e| e.to_string())?
+        .json()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+fn str_at(v: &Value, key: &str) -> Option<String> {
+    v.get(key).and_then(Value::as_str).map(String::from)
+}
+
+/// GitHub and GitLab return numeric ids; everyone else returns strings.
+fn num_or_str(v: &Value, key: &str) -> String {
+    match v.get(key) {
+        Some(Value::Number(n)) => n.to_string(),
+        Some(Value::String(s)) => s.clone(),
+        _ => String::new(),
+    }
+}
+
+fn encode_params<K: AsRef<str>>(params: &[(K, String)]) -> String {
+    params
+        .iter()
+        .map(|(k, v)| format!("{}={}", urlencode(k.as_ref()), urlencode(v)))
+        .collect::<Vec<_>>()
+        .join("&")
+}
+
+fn urlencode(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(b as char)
+            }
+            _ => out.push_str(&format!("%{b:02X}")),
+        }
+    }
+    out
+}

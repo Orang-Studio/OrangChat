@@ -1,0 +1,32 @@
+# Production LiveKit configuration for OrangChat.
+# Replace the three CHANGE_ME values when installing to /etc/livekit/livekit.yaml.
+port: 7880
+log_level: info
+
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 50100
+  use_external_ip: true
+  turn_servers:
+    - host: turn.oranges.lt
+      port: 3478
+      protocol: udp
+      secret: CHANGE_ME_COTURN_SHARED_SECRET
+      ttl: 14400
+    - host: turn.oranges.lt
+      port: 3478
+      protocol: tcp
+      secret: CHANGE_ME_COTURN_SHARED_SECRET
+      ttl: 14400
+    - host: turn.oranges.lt
+      port: 5349
+      protocol: tls
+      secret: CHANGE_ME_COTURN_SHARED_SECRET
+      ttl: 14400
+
+redis:
+  address: 127.0.0.1:6379
+
+keys:
+  CHANGE_ME_LIVEKIT_API_KEY: CHANGE_ME_LIVEKIT_API_SECRET

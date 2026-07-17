@@ -1,0 +1,12 @@
+-- Email case is not meaningful: no mail provider treats Vakaris@x.com and
+-- vakaris@x.com as different mailboxes, so signup, login, and OAuth account
+-- linking all match on lower(email). The uniqueness they are matched against
+-- has to be case-insensitive too, or "Vakaris@x.com" could register alongside
+-- "vakaris@x.com" and every one of those lookups would match two rows.
+--
+-- The application lowercases on write and checks before inserting, but a check
+-- outside the database loses the race between two concurrent signups; this
+-- index does not.
+--
+-- Safe as-is: every existing row is already lowercase, with no collisions.
+CREATE UNIQUE INDEX IF NOT EXISTS "User_email_lower_key" ON "User" (lower(email));

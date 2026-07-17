@@ -1,0 +1,23 @@
+{
+  "name": "@orangchat/desktop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "OrangChat desktop shell for Windows",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/copy-assets.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "pnpm build && electron .",
+    "dist:win": "pnpm build && electron-builder --win nsis zip",
+    "dist:win:docker": "pnpm build && node scripts/docker-build.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.10",
+    "electron": "^33.3.1",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  }
+}

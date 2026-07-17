@@ -1,0 +1,27 @@
+{
+  "name": "orangchat",
+  "private": true,
+  "version": "0.0.0",
+  "description": "OrangChat — a Discord-like real-time messaging platform",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"@orangchat/*\" dev",
+    "dev:server": "cargo run --manifest-path packages/server-rs/Cargo.toml",
+    "build:server": "cargo build --release --manifest-path packages/server-rs/Cargo.toml",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "format": "prettier --write \"packages/**/src/**/*.{ts,tsx,json}\"",
+    "db:up": "docker compose up -d postgres redis",
+    "db:down": "docker compose down",
+    "db:migrate": "pnpm dlx prisma migrate deploy --schema ./prisma/schema.prisma",
+    "db:studio": "pnpm dlx prisma studio --schema ./prisma/schema.prisma"
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2"
+  }
+}

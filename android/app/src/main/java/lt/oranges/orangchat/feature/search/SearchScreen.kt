@@ -1,0 +1,167 @@
+package lt.oranges.orangchat.feature.search
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import lt.oranges.orangchat.data.model.Message
+import lt.oranges.orangchat.feature.chat.MessageText
+import lt.oranges.orangchat.ui.components.Avatar
+import lt.oranges.orangchat.ui.components.OrangTextField
+import lt.oranges.orangchat.ui.theme.OrangRadius
+import lt.oranges.orangchat.ui.theme.OrangTheme
+import lt.oranges.orangchat.util.formatTime
+
+/**
+ * Server-scoped message search. Port of the web client's features/search —
+ * debounced, offset-paginated, tapping a hit jumps to its channel.
+ */
+@Composable
+fun SearchScreen(
+    serverId: String,
+    channelNames: Map<String, String>,
+    onBack: () -> Unit,
+    onJumpToChannel: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    vm: SearchViewModel = hiltViewModel(),
+) {
+    val c = OrangTheme.colors
+    val state by vm.state.collectAsStateWithLifecycle()
+
+    Column(modifier = modifier.fillMaxSize().background(c.surface2)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back",
+                tint = c.inkSecondary,
+                modifier = Modifier.clickable(onClick = onBack).padding(4.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            OrangTextField(
+                value = state.query,
+                onValueChange = { vm.onQueryChange(serverId, it) },
+                label = "",
+                placeholder = "Search messages",
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(c.border))
+
+        when {
+            state.loading && state.results.isEmpty() -> Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) { CircularProgressIndicator(color = c.primary) }
+
+            state.error != null -> Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) { Text(state.error!!, color = c.danger, fontSize = 13.sp) }
+
+            state.query.isBlank() -> Hint("Type to search this server's messages.")
+
+            state.results.isEmpty() -> Hint("No messages matched \"${state.query}\".")
+
+            else -> LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                items(state.results, key = { it.id }) { message ->
+                    SearchHit(
+                        message = message,
+                        channelName = channelNames[message.channelId],
+                        onClick = { onJumpToChannel(message.channelId) },
+                    )
+                }
+                // Offset pagination: ask for the next page at the bottom.
+                if (state.hasMore) {
+                    item {
+                        Text(
+                            text = if (state.loading) "Loading…" else "Load more",
+                            color = c.primary,
+                            fontSize = 13.sp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(enabled = !state.loading) { vm.loadMore(serverId) }
+                                .padding(16.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun Hint(text: String) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(text, color = OrangTheme.colors.inkMuted, fontSize = 13.sp)
+    }
+}
+
+@Composable
+private fun SearchHit(message: Message, channelName: String?, onClick: () -> Unit) {
+    val c = OrangTheme.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp)
+            .clip(RoundedCornerShape(OrangRadius.md))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Avatar(message.author, size = 32.dp)
+        Spacer(Modifier.width(10.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    message.author.displayName,
+                    color = c.ink,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = channelName?.let { "#$it" } ?: "",
+                    color = c.inkMuted,
+                    fontSize = 11.sp,
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(formatTime(message.createdAt), color = c.inkMuted, fontSize = 11.sp)
+            }
+            MessageText(content = message.content, fontSize = 14.sp)
+        }
+    }
+}

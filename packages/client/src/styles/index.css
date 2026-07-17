@@ -1,0 +1,172 @@
+@import "tailwindcss";
+
+/*
+ * OrangChat design tokens.
+ *
+ * Runtime CSS variables (--oc-*) carry the actual values and flip with
+ * [data-theme]; Tailwind utilities reference them via @theme inline, so
+ * `bg-surface-1`, `text-ink`, `bg-primary` etc. are theme-aware for free.
+ *
+ * Direction: cool graphite neutrals so the single warm tangerine accent reads
+ * as the hero, plus a tight, architectural corner scale (edges are crisp, not
+ * bubbly). Change the feel of the whole app from the two blocks below.
+ */
+
+/* Dark - the default. Cool graphite base, vivid tangerine accent. */
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Surfaces, deepest (server rail) → highest (popovers) */
+  --oc-surface-0: #08090c;
+  --oc-surface-1: #0e0f13;
+  --oc-surface-2: #14151b;
+  --oc-surface-3: #1c1e26;
+  --oc-surface-4: #24262f;
+
+  --oc-border: #21232c;
+  --oc-border-strong: #353845;
+
+  /* Text */
+  --oc-ink: #f3f4f7;
+  --oc-ink-secondary: #b0b3bf;
+  --oc-ink-muted: #71747f;
+  --oc-ink-on-primary: #1c0e02;
+
+  /* Brand - Oranges.LT family orange (matches icon.svg / OrangMate / OrangMove) */
+  --oc-primary: #ff6a1a;
+  --oc-primary-hover: #ff8340;
+  --oc-primary-active: #ee5d0e;
+  --oc-primary-soft: rgba(255, 106, 26, 0.16);
+
+  /* Status */
+  --oc-success: #3fbd6e;
+  --oc-warning: #e2ab35;
+  --oc-danger: #f0554c;
+  --oc-info: #4f9ff2;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --oc-surface-0: #e6e7ec;
+  --oc-surface-1: #eef0f4;
+  --oc-surface-2: #f5f6f9;
+  --oc-surface-3: #fbfbfd;
+  --oc-surface-4: #ffffff;
+
+  --oc-border: #e2e4ea;
+  --oc-border-strong: #c7cad4;
+
+  --oc-ink: #14161c;
+  --oc-ink-secondary: #51535f;
+  --oc-ink-muted: #82848f;
+  --oc-ink-on-primary: #ffffff;
+
+  --oc-primary: #e85d04;
+  --oc-primary-hover: #f56c12;
+  --oc-primary-active: #cf5203;
+  --oc-primary-soft: rgba(232, 93, 4, 0.11);
+
+  --oc-success: #2e9e4f;
+  --oc-warning: #b3821d;
+  --oc-danger: #d13b32;
+  --oc-info: #2f7fc2;
+}
+
+@theme inline {
+  --color-surface-0: var(--oc-surface-0);
+  --color-surface-1: var(--oc-surface-1);
+  --color-surface-2: var(--oc-surface-2);
+  --color-surface-3: var(--oc-surface-3);
+  --color-surface-4: var(--oc-surface-4);
+
+  --color-border: var(--oc-border);
+  --color-border-strong: var(--oc-border-strong);
+
+  --color-ink: var(--oc-ink);
+  --color-ink-secondary: var(--oc-ink-secondary);
+  --color-ink-muted: var(--oc-ink-muted);
+  --color-ink-on-primary: var(--oc-ink-on-primary);
+
+  --color-primary: var(--oc-primary);
+  --color-primary-hover: var(--oc-primary-hover);
+  --color-primary-active: var(--oc-primary-active);
+  --color-primary-soft: var(--oc-primary-soft);
+
+  --color-success: var(--oc-success);
+  --color-warning: var(--oc-warning);
+  --color-danger: var(--oc-danger);
+  --color-info: var(--oc-info);
+
+  --font-sans:
+    "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    sans-serif;
+
+  /* Tight, architectural corner scale - overrides Tailwind's soft defaults so
+   * every rounded-* utility across the app reads crisp instead of bubbly. */
+  --radius-xs: 0.125rem;
+  --radius-sm: 0.1875rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.3125rem;
+  --radius-xl: 0.4375rem;
+  --radius-2xl: 0.625rem;
+  --radius-3xl: 0.875rem;
+  /* Crisp rounded-square for server icons - not a circle-morph. */
+  --radius-squircle: 0.5rem;
+}
+
+/* Dark-variant utilities keyed off data-theme rather than media query */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+body {
+  @apply bg-surface-1 font-sans text-ink antialiased;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Visible keyboard focus everywhere, brand-colored */
+:focus-visible {
+  outline: 2px solid var(--oc-primary);
+  outline-offset: 2px;
+}
+
+/* ── Accessibility preferences (see lib/prefs.ts) ────────
+ * Set on <html> so they cascade over everything, including portalled
+ * dialogs. Font scale rides on the root font-size, not a variable here.
+ */
+
+:root[data-reduce-motion="true"],
+:root[data-reduce-motion="true"] *,
+:root[data-reduce-motion="true"] *::before,
+:root[data-reduce-motion="true"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+:root[data-contrast="high"] {
+  --oc-border: var(--oc-border-strong);
+  --oc-ink-secondary: var(--oc-ink);
+  --oc-ink-muted: var(--oc-ink-secondary);
+}
+
+:root[data-contrast="high"] :focus-visible {
+  outline-width: 3px;
+}
+
+:root[data-underline-links="true"] a,
+:root[data-underline-links="true"] .oc-link {
+  text-decoration: underline;
+}
+
+/* Compact density tightens the gaps only; nothing reflows or disappears. */
+:root[data-density="compact"] .oc-message {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+:root[data-density="compact"] .oc-message-lead {
+  margin-top: 0.375rem;
+}

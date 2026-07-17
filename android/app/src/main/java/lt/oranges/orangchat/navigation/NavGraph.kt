@@ -1,0 +1,46 @@
+package lt.oranges.orangchat.navigation
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import lt.oranges.orangchat.data.repository.SessionState
+import lt.oranges.orangchat.feature.auth.AuthScreens
+import lt.oranges.orangchat.feature.home.AppViewModel
+import lt.oranges.orangchat.feature.home.HomeScreen
+import lt.oranges.orangchat.ui.theme.OrangTheme
+
+/**
+ * Root gate: SessionState drives whether we show the loading splash, the
+ * auth flow, or the authenticated home shell. The AppViewModel is created here
+ * and shared with descendants via its activity-scoped Hilt instance.
+ */
+@Composable
+fun OrangChatNavHost() {
+    val appViewModel: AppViewModel = hiltViewModel()
+    val session by appViewModel.session.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) { appViewModel.bootstrap() }
+
+    when (val s = session) {
+        is SessionState.Loading -> LoadingSplash()
+        is SessionState.Unauthenticated -> AuthScreens()
+        is SessionState.Authenticated -> {
+            LaunchedEffect(s.user.id) { appViewModel.loadInitialData() }
+            HomeScreen(appViewModel = appViewModel, self = s.user)
+        }
+    }
+}
+
+@Composable
+private fun LoadingSplash() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator(color = OrangTheme.colors.primary)
+    }
+}

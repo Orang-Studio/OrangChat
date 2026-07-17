@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline';" />
+    <title>Choose what to share</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background: #16171b;
+        color: #f3f0ec;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+      header { padding: 18px 20px 10px; }
+      h1 { margin: 0; font-size: 16px; font-weight: 600; }
+      .tabs { display: flex; gap: 6px; margin-top: 14px; }
+      .tab {
+        background: none; border: 0; color: #a3a0a0; cursor: pointer;
+        padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 500;
+      }
+      .tab:hover { background: #22242a; color: #f3f0ec; }
+      .tab[aria-selected="true"] { background: #ff7a18; color: #1a1207; }
+      main { flex: 1; overflow-y: auto; padding: 6px 20px 20px; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+      .card {
+        background: #1d1f24; border: 2px solid transparent; border-radius: 10px;
+        padding: 8px; cursor: pointer; text-align: left; color: inherit; font: inherit;
+        display: flex; flex-direction: column; gap: 8px;
+      }
+      .card:hover { border-color: #3a3d45; background: #23262c; }
+      .card[aria-pressed="true"] { border-color: #ff7a18; background: #2a2119; }
+      .card:focus-visible { outline: 2px solid #ffc46b; outline-offset: 2px; }
+      .thumb {
+        width: 100%; aspect-ratio: 16 / 9; object-fit: contain;
+        background: #0e0f12; border-radius: 5px;
+      }
+      .label { display: flex; align-items: center; gap: 6px; min-width: 0; }
+      .label img { width: 16px; height: 16px; flex: none; }
+      .label span {
+        font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .empty { color: #a3a0a0; font-size: 13px; padding: 40px 0; text-align: center; }
+      footer {
+        display: flex; justify-content: flex-end; gap: 10px;
+        padding: 14px 20px; border-top: 1px solid #26282e;
+      }
+      button.action {
+        border: 0; border-radius: 6px; padding: 8px 18px;
+        font-size: 13px; font-weight: 600; cursor: pointer;
+      }
+      .ghost { background: #2a2d34; color: #f3f0ec; }
+      .ghost:hover { background: #343841; }
+      .primary { background: #ff7a18; color: #1a1207; }
+      .primary:hover { background: #ff8c3a; }
+      .primary:disabled { background: #3a3d45; color: #75767b; cursor: default; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Choose what to share</h1>
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" data-kind="screen" aria-selected="true">Entire screen</button>
+        <button class="tab" role="tab" data-kind="window" aria-selected="false">Window</button>
+      </div>
+    </header>
+    <main><div class="grid" id="grid"></div></main>
+    <footer>
+      <button class="action ghost" id="cancel">Cancel</button>
+      <button class="action primary" id="share" disabled>Share</button>
+    </footer>
+
+    <script>
+      const grid = document.getElementById("grid");
+      const shareBtn = document.getElementById("share");
+      let sources = [];
+      let kind = "screen";
+      let selected = null;
+
+      function render() {
+        const shown = sources.filter((s) => (kind === "screen" ? s.isScreen : !s.isScreen));
+        grid.innerHTML = "";
+        if (shown.length === 0) {
+          const p = document.createElement("p");
+          p.className = "empty";
+          p.textContent = kind === "screen" ? "No screens detected." : "No open windows to share.";
+          grid.append(p);
+          return;
+        }
+        for (const source of shown) {
+          const card = document.createElement("button");
+          card.className = "card";
+          card.type = "button";
+          card.setAttribute("aria-pressed", String(selected === source.id));
+
+          const img = document.createElement("img");
+          img.className = "thumb";
+          img.src = source.thumbnail;
+          img.alt = "";
+
+          const label = document.createElement("div");
+          label.className = "label";
+          if (source.appIcon) {
+            const icon = document.createElement("img");
+            icon.src = source.appIcon;
+            icon.alt = "";
+            label.append(icon);
+          }
+          const name = document.createElement("span");
+          name.textContent = source.name;
+          name.title = source.name;
+          label.append(name);
+
+          card.append(img, label);
+          card.addEventListener("click", () => {
+            selected = source.id;
+            shareBtn.disabled = false;
+            render();
+          });
+          card.addEventListener("dblclick", () => window.picker.choose(source.id));
+          grid.append(card);
+        }
+      }
+
+      for (const tab of document.querySelectorAll(".tab")) {
+        tab.addEventListener("click", () => {
+          kind = tab.dataset.kind;
+          selected = null;
+          shareBtn.disabled = true;
+          for (const t of document.querySelectorAll(".tab")) {
+            t.setAttribute("aria-selected", String(t === tab));
+          }
+          render();
+        });
+      }
+
+      shareBtn.addEventListener("click", () => selected && window.picker.choose(selected));
+      document.getElementById("cancel").addEventListener("click", () => window.picker.cancel());
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") window.picker.cancel();
+        if (e.key === "Enter" && selected) window.picker.choose(selected);
+      });
+
+      window.picker.sources().then((list) => {
+        sources = list;
+        if (!sources.some((s) => s.isScreen)) {
+          kind = "window";
+          document.querySelector('[data-kind="screen"]').setAttribute("aria-selected", "false");
+          document.querySelector('[data-kind="window"]').setAttribute("aria-selected", "true");
+        }
+        render();
+      });
+    </script>
+  </body>
+</html>

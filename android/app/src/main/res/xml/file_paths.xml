@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Only the update APK is ever shared out, and only with the installer.
+         Scoped to this one subdirectory of the cache rather than the whole of
+         it, so nothing else the app caches is reachable through the provider. -->
+    <cache-path name="updates" path="updates/" />
+</paths>

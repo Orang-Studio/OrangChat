@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="OrangChat">
+  <!-- Orange-slice mark in the Oranges.LT brand palette (shared with OrangMate/OrangMove) -->
+  <circle cx="32" cy="32" r="30" fill="#ff7a18"/>
+  <circle cx="32" cy="32" r="26" fill="#ffc46b"/>
+  <g stroke="#ffe9c7" stroke-width="2" stroke-linecap="round">
+    <line x1="32" y1="32" x2="32" y2="8"/>
+    <line x1="32" y1="32" x2="49" y2="15"/>
+    <line x1="32" y1="32" x2="56" y2="32"/>
+    <line x1="32" y1="32" x2="49" y2="49"/>
+    <line x1="32" y1="32" x2="32" y2="56"/>
+    <line x1="32" y1="32" x2="15" y2="49"/>
+    <line x1="32" y1="32" x2="8" y2="32"/>
+    <line x1="32" y1="32" x2="15" y2="15"/>
+  </g>
+  <g fill="#ffb347">
+    <path d="M32 11 a21 21 0 0 1 14.85 6.15 L32 32 Z"/>
+    <path d="M53 32 a21 21 0 0 1 -6.15 14.85 L32 32 Z"/>
+    <path d="M32 53 a21 21 0 0 1 -14.85 -6.15 L32 32 Z"/>
+    <path d="M11 32 a21 21 0 0 1 6.15 -14.85 L32 32 Z"/>
+  </g>
+  <!-- OrangChat overlay: chat bubble -->
+  <path d="M21 20 h22 a5 5 0 0 1 5 5 v12 a5 5 0 0 1 -5 5 H30 l-7 6 v-6 h-2 a5 5 0 0 1 -5 -5 V25 a5 5 0 0 1 5 -5 Z" fill="#fff4e0"/>
+  <g fill="#ff7a18">
+    <circle cx="26" cy="31" r="2.2"/>
+    <circle cx="32" cy="31" r="2.2"/>
+    <circle cx="38" cy="31" r="2.2"/>
+  </g>
+</svg>

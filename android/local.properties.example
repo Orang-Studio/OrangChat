@@ -1,0 +1,6 @@
+# Copy to local.properties and point at your Android SDK install.
+# Android Studio writes this automatically on first open.
+sdk.dir=/home/youruser/Android/Sdk
+
+# Public Android integration key issued by KLIPY.
+klipy.apiKey=your-klipy-android-key

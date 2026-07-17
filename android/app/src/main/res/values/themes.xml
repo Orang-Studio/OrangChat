@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base theme is a Material3 no-action-bar shell; the actual colors are
+         driven by Compose (see ui/theme/Theme.kt). Splash background matches the
+         dark surface-0 so cold start has no white flash. -->
+    <style name="Theme.OrangChat" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#08090c</item>
+        <item name="android:navigationBarColor">#08090c</item>
+        <item name="android:windowBackground">#0e0f13</item>
+    </style>
+</resources>
