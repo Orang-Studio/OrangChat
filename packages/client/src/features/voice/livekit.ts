@@ -63,7 +63,7 @@ export function setTileSink(sink: ((tiles: VideoTile[]) => void) | null): void {
  * Who is speaking, from two different clocks.
  *
  * Other people come from `ActiveSpeakersChanged`, which the SFU computes and
- * broadcasts — a few hundred ms behind the audio, which nobody notices for a
+ * broadcasts - a few hundred ms behind the audio, which nobody notices for a
  * voice they are only hearing. Our own glow cannot use it: you hear yourself
  * with zero latency, so a server-timed ring visibly trails your own voice. So
  * the local half is measured straight off the mic track instead, and the two
@@ -105,7 +105,7 @@ function startLocalSpeaking(current: Room): void {
   if (!(track instanceof LocalAudioTrack)) return;
 
   // cloneTrack would hold a second, independent capture of the mic open purely
-  // to measure it — and would keep reading after a mute, which is exactly when
+  // to measure it - and would keep reading after a mute, which is exactly when
   // it must read silence.
   const { calculateVolume, cleanup } = createAudioAnalyser(track, { cloneTrack: false });
   analyserCleanup = () => void cleanup();

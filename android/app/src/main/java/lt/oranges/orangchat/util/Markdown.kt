@@ -5,7 +5,7 @@ package lt.oranges.orangchat.util
  * the web client's lib/markdown.tsx — same subset, same precedence:
  *   **bold**  *italic* / _italic_  __underline__  ~~strike~~  `code`
  *   ```fenced code```  > blockquote  [label](url)  bare http(s) links
- *   <@userId> mentions  @everyone / @here
+ *   @username and <@userId> mentions  @everyone / @here
  *
  * Parsing is kept free of Compose types so it stays unit-testable; MessageText
  * turns these nodes into an AnnotatedString.
@@ -32,6 +32,9 @@ sealed interface MdBlock {
     data class CodeBlock(val lang: String, val body: String) : MdBlock
 }
 
+/** A mentionable user, keyed by handle: the stable id plus the label to show. */
+data class MentionUser(val id: String, val name: String)
+
 /** Just enough of a custom emoji to draw it; mirrors the shared `Emoji` type. */
 data class EmojiRef(
     val id: String,
@@ -40,9 +43,17 @@ data class EmojiRef(
     val animated: Boolean = false,
 )
 
-/** Names for `<@id>` resolution plus the viewer, so self-mentions stand out. */
+/**
+ * Names for mention resolution plus the viewer, so self-mentions stand out.
+ *
+ * Two encodings are live at once: composers write plain `@username` so the raw
+ * text stays readable, while `<@id>` predates it and still sits in older
+ * messages. [names] resolves the latter, [usernames] the former.
+ */
 data class MentionContext(
     val names: Map<String, String> = emptyMap(),
+    /** username (lowercased) -> (userId, label), for resolving `@username`. */
+    val usernames: Map<String, MentionUser> = emptyMap(),
     val selfId: String? = null,
     /** emojiId -> emoji, for resolving `<:name:id>` tokens. */
     val emojis: Map<String, EmojiRef> = emptyMap(),
@@ -64,6 +75,34 @@ private val AUTOLINK = Regex("^(https?://[^\\s<]+[^\\s<.,:;\"')\\]}])")
 private val CUSTOM_EMOJI = Regex("^<(a?):([a-z0-9_-]{2,32}):([a-z0-9]+)>", RegexOption.IGNORE_CASE)
 private val MENTION = Regex("^<@([a-zA-Z0-9]+)>")
 private val EVERYONE = Regex("^@(everyone|here)\\b")
+// Dot-separated segments rather than a greedy [a-z0-9_.] run, so "@alice." at
+// the end of a sentence keeps its full stop as punctuation.
+private val HANDLE = Regex("^@([a-zA-Z0-9_]+(?:\\.[a-zA-Z0-9_]+)*)")
+
+/** True when the message pings the viewer: a self mention or an @everyone/@here. */
+fun mentionsSelf(content: String, ctx: MentionContext): Boolean {
+    if (ctx.selfId == null) return false
+    return parseMarkdown(content, ctx).any { block ->
+        when (block) {
+            is MdBlock.Paragraph -> nodesMentionSelf(block.children)
+            is MdBlock.Quote -> nodesMentionSelf(block.children)
+            is MdBlock.CodeBlock -> false
+        }
+    }
+}
+
+private fun nodesMentionSelf(nodes: List<MdNode>): Boolean = nodes.any { node ->
+    when (node) {
+        is MdNode.Mention -> node.isSelf
+        is MdNode.Everyone -> true
+        is MdNode.Bold -> nodesMentionSelf(node.children)
+        is MdNode.Italic -> nodesMentionSelf(node.children)
+        is MdNode.Underline -> nodesMentionSelf(node.children)
+        is MdNode.Strike -> nodesMentionSelf(node.children)
+        is MdNode.Link -> nodesMentionSelf(node.label)
+        else -> false
+    }
+}
 
 fun parseMarkdown(source: String, ctx: MentionContext = MentionContext()): List<MdBlock> {
     val blocks = mutableListOf<MdBlock>()
@@ -175,5 +214,16 @@ private fun matchInline(slice: String, ctx: MentionContext): Pair<MdNode, Int>? 
         ) to it.value.length
     }
     EVERYONE.find(slice)?.let { return MdNode.Everyone(it.groupValues[1]) to it.value.length }
+    HANDLE.find(slice)?.let {
+        // Unresolved handles are ordinary words (and the tail of every email
+        // address) - leave them as literal text so nothing lights up by accident.
+        val user = ctx.usernames[it.groupValues[1].lowercase()]
+            ?: return MdNode.Text(it.value) to it.value.length
+        return MdNode.Mention(
+            userId = user.id,
+            name = user.name,
+            isSelf = ctx.selfId == user.id,
+        ) to it.value.length
+    }
     return null
 }

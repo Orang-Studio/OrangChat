@@ -86,6 +86,12 @@ export function AccessibilityTab() {
         />
       </div>
 
+      {/* The "Brand name" section that toggled `iHateAdas` lived here. It is out
+          of the UI for now, not gone: the pref, its reset below, and the rename
+          machinery in lib/brandReplacement.ts are all intact and inert behind
+          BRAND_REPLACEMENT_ENABLED. Restore the Toggle and flip that flag to
+          bring it back. */}
+
       <div className="border-t border-border pt-5">
         <Button
           type="button"
@@ -98,6 +104,7 @@ export function AccessibilityTab() {
             setPref("highContrast", DEFAULT_PREFS.highContrast);
             setPref("underlineLinks", DEFAULT_PREFS.underlineLinks);
             setPref("sendOnEnter", DEFAULT_PREFS.sendOnEnter);
+            setPref("iHateAdas", DEFAULT_PREFS.iHateAdas);
           }}
         >
           Reset to defaults

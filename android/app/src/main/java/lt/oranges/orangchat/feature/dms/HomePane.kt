@@ -20,7 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,7 +32,9 @@ import lt.oranges.orangchat.data.model.Conversation
 import lt.oranges.orangchat.data.model.PresenceStatus
 import lt.oranges.orangchat.data.model.SelfUser
 import lt.oranges.orangchat.data.model.UnreadState
+import lt.oranges.orangchat.data.model.UserActivity
 import lt.oranges.orangchat.feature.unread.UnreadCountBadge
+import lt.oranges.orangchat.ui.components.ActivityStatus
 import lt.oranges.orangchat.ui.components.Avatar
 import lt.oranges.orangchat.ui.components.UserFooter
 import lt.oranges.orangchat.ui.theme.OrangRadius
@@ -44,6 +46,7 @@ fun HomePane(
     self: SelfUser,
     conversations: List<Conversation>,
     presence: Map<String, PresenceStatus>,
+    presenceActivities: Map<String, List<UserActivity>>,
     onOpenFriends: () -> Unit,
     onOpenConversation: (Conversation) -> Unit,
     onOpenSettings: () -> Unit,
@@ -80,6 +83,7 @@ fun HomePane(
                     convo = convo,
                     selfId = self.id,
                     presence = presence,
+                    presenceActivities = presenceActivities,
                     unread = unreads[convo.id]?.unread == true,
                     unreadCount = unreads[convo.id]?.unreadCount ?: 0,
                     onClick = onOpenConversation,
@@ -96,6 +100,7 @@ private fun ConversationRow(
     convo: Conversation,
     selfId: String,
     presence: Map<String, PresenceStatus>,
+    presenceActivities: Map<String, List<UserActivity>>,
     unread: Boolean,
     unreadCount: Int,
     onClick: (Conversation) -> Unit,
@@ -144,15 +149,21 @@ private fun ConversationRow(
             )
         }
         Spacer(Modifier.width(12.dp))
-        Text(
-            text = title,
-            color = c.ink,
-            // Unread conversations read bolder, as on the web.
-            fontWeight = if (unread) FontWeight.Bold else FontWeight.Medium,
-            fontSize = 15.sp,
-            maxLines = 1,
-            modifier = Modifier.weight(1f),
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = c.ink,
+                // Unread conversations read bolder, as on the web.
+                fontWeight = if (unread) FontWeight.Bold else FontWeight.Medium,
+                fontSize = 15.sp,
+                maxLines = 1,
+            )
+            if (others.size == 1 && lead != null) {
+                ActivityStatus(
+                    activities = presenceActivities[lead.id] ?: lead.activities,
+                )
+            }
+        }
         UnreadCountBadge(unreadCount)
     }
 }

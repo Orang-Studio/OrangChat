@@ -16,6 +16,11 @@ export const socket: AppSocket = io({
   path: "/socket.io",
   autoConnect: false,
   withCredentials: true,
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 1_000,
+  reconnectionDelayMax: 5_000,
+  timeout: 20_000,
 });
 
 socket.on("connect", () => connectionActions.connected(socket.id ?? ""));

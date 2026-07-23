@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
+import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +30,8 @@ import coil.compose.AsyncImage
 import lt.oranges.orangchat.data.model.PresenceStatus
 import lt.oranges.orangchat.data.model.User
 import lt.oranges.orangchat.ui.components.Avatar
+import lt.oranges.orangchat.ui.components.ActivityStatus
+import lt.oranges.orangchat.ui.components.DeviceIndicators
 import lt.oranges.orangchat.ui.components.ButtonVariant
 import lt.oranges.orangchat.ui.components.OrangButton
 import lt.oranges.orangchat.ui.components.OrangDialog
@@ -123,13 +125,22 @@ private fun ProfileCardNative(
                             Text(pronouns, color = c.inkMuted, fontSize = 12.sp, maxLines = 1)
                         }
                     }
-                    Text(
-                        text = "@${user.username.ifBlank { "username" }}",
-                        color = c.inkSecondary,
-                        fontSize = 14.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "@${user.username.ifBlank { "username" }}",
+                            color = c.inkSecondary,
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Spacer(Modifier.width(5.dp))
+                        DeviceIndicators(
+                            status = presence ?: user.status,
+                            devices = user.devices.toSet(),
+                            modifier = Modifier.height(14.dp),
+                        )
+                    }
+                    ActivityStatus(activities = user.activities, modifier = Modifier.padding(top = 3.dp))
 
                     user.bio?.takeIf { it.isNotBlank() }?.let { bio ->
                         ProfileDivider()
@@ -157,7 +168,6 @@ private fun ProfileCardNative(
             Avatar(
                 user = user,
                 size = 56.dp,
-                status = presence ?: user.status,
                 shape = avatarShape,
             )
         }

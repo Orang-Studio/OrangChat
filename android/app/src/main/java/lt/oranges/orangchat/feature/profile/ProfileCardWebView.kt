@@ -46,7 +46,9 @@ fun ProfileCardWebView(
     presence: PresenceStatus? = null,
 ) {
     val colors = OrangTheme.colors
-    val card = remember(user, presence, colors) { buildProfileCardHtml(user, colors, presence) }
+    val card = remember(user, presence, colors) {
+        buildProfileCardHtml(user, colors, presence)
+    }
     var heightDp by remember(user.id) { mutableIntStateOf(0) }
 
     AndroidView(

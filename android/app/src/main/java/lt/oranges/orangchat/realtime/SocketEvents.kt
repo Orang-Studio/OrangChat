@@ -11,6 +11,7 @@ import lt.oranges.orangchat.data.model.Server
 import lt.oranges.orangchat.data.model.ServerMember
 import lt.oranges.orangchat.data.model.UnreadActivity
 import lt.oranges.orangchat.data.model.User
+import lt.oranges.orangchat.data.model.UserActivity
 import lt.oranges.orangchat.data.model.VoiceState
 
 /**
@@ -22,7 +23,12 @@ sealed interface SocketEvent {
     data class MessageUpdated(val message: Message) : SocketEvent
     data class MessageDeleted(val channelId: String, val messageId: String) : SocketEvent
     data class Typing(val channelId: String, val userId: String) : SocketEvent
-    data class Presence(val userId: String, val status: String) : SocketEvent
+    data class Presence(
+        val userId: String,
+        val status: String,
+        val devices: List<String>,
+        val activities: List<UserActivity>,
+    ) : SocketEvent
     data class ReactionEvent(
         val channelId: String,
         val messageId: String,

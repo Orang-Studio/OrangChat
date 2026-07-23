@@ -37,6 +37,8 @@ pub struct UserRow {
     pub totp_secret: Option<String>,
     #[sqlx(rename = "totpEnabled")]
     pub totp_enabled: bool,
+    /// Awarded badge slugs; see services::badge for the catalog.
+    pub badges: Vec<String>,
     #[sqlx(rename = "createdAt")]
     pub created_at: NaiveDateTime,
 }

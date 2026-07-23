@@ -5,7 +5,7 @@
 //! share a code path: a connection grants no access to the OrangChat account,
 //! stores no long-lived token, and asks for the narrowest read-only scope each
 //! platform offers. We exchange the code, read the handle once, and drop the
-//! access token on the floor — nothing here can act on the user's behalf later.
+//! access token on the floor - nothing here can act on the user's behalf later.
 //!
 //! Most platforms are plain OAuth 2.0 authorization-code. Steam is the odd one
 //! out (OpenID 2.0, no token at all) and lives in its own section below.
@@ -23,8 +23,20 @@ pub struct ConnectionProfile {
     pub profile_url: Option<String>,
 }
 
+pub struct OAuthGrant {
+    pub access_token: String,
+    pub refresh_token: Option<String>,
+    pub expires_in: i64,
+    pub scope: Option<String>,
+}
+
+pub struct AuthorizedConnection {
+    pub profile: ConnectionProfile,
+    pub grant: OAuthGrant,
+}
+
 /// Everything that varies per platform. Adding a provider means adding one row
-/// here plus one arm in `fetch_profile` — nothing else in the stack changes.
+/// here plus one arm in `fetch_profile` - nothing else in the stack changes.
 pub struct Provider {
     pub key: &'static str,
     pub label: &'static str,
@@ -61,7 +73,7 @@ pub const PROVIDERS: &[Provider] = &[
         label: "Spotify",
         auth_url: "https://accounts.spotify.com/authorize",
         token_url: "https://accounts.spotify.com/api/token",
-        scopes: "user-read-private",
+        scopes: "user-read-private user-read-currently-playing",
         basic_auth: true,
         pkce: false,
     },
@@ -104,7 +116,7 @@ pub const PROVIDERS: &[Provider] = &[
     Provider {
         key: "steam",
         label: "Steam",
-        // OpenID 2.0, not OAuth — the url fields are unused, see steam_* below.
+        // OpenID 2.0, not OAuth - the url fields are unused, see steam_* below.
         auth_url: "https://steamcommunity.com/openid/login",
         token_url: "",
         scopes: "",
@@ -156,7 +168,7 @@ pub fn creds<'a>(cfg: &'a Config, provider: &str) -> (Option<&'a String>, Option
     }
 }
 
-/// Steam needs no client secret — only a Web API key, and even that is optional
+/// Steam needs no client secret - only a Web API key, and even that is optional
 /// (without it we fall back to the numeric id instead of the persona name).
 pub fn is_configured(cfg: &Config, provider: &str) -> bool {
     if provider == "steam" {
@@ -189,7 +201,7 @@ pub fn authorization_url(
     ];
     match provider.key {
         // Without these Google hands back a token with no refresh and, worse,
-        // silently reuses a prior grant — the account picker never appears.
+        // silently reuses a prior grant - the account picker never appears.
         "youtube" => params.push(("prompt", "select_account".into())),
         // Reddit defaults to a one-hour grant unless asked otherwise; we only
         // need the identity read once, so temporary is correct.
@@ -208,7 +220,7 @@ pub async fn exchange_code_for_profile(
     provider: &Provider,
     code: &str,
     verifier: &str,
-) -> AppResult<ConnectionProfile> {
+) -> AppResult<AuthorizedConnection> {
     let (id, secret) = creds(cfg, provider.key);
     let client_id = id.cloned().unwrap_or_default();
     let client_secret = secret.cloned().unwrap_or_default();
@@ -258,9 +270,19 @@ pub async fn exchange_code_for_profile(
     let access_token = token
         .get("access_token")
         .and_then(Value::as_str)
-        .ok_or_else(|| AppError::Internal(format!("{}: missing access_token", provider.key)))?;
+        .ok_or_else(|| AppError::Internal(format!("{}: missing access_token", provider.key)))?
+        .to_string();
 
-    fetch_profile(cfg, provider.key, access_token).await
+    let profile = fetch_profile(cfg, provider.key, &access_token).await?;
+    Ok(AuthorizedConnection {
+        profile,
+        grant: OAuthGrant {
+            access_token,
+            refresh_token: token.get("refresh_token").and_then(Value::as_str).map(str::to_string),
+            expires_in: token.get("expires_in").and_then(Value::as_i64).unwrap_or(3600),
+            scope: token.get("scope").and_then(Value::as_str).map(str::to_string),
+        },
+    })
 }
 
 /// Read the account handle. One arm per platform because every one of these
@@ -308,7 +330,11 @@ async fn fetch_profile(cfg: &Config, provider: &str, token: &str) -> AppResult<C
             let p: Value = json(get("https://api.spotify.com/v1/me"))
                 .await
                 .map_err(fail)?;
-            let id = str_at(&p, "id").unwrap_or_default();
+            // account_id superseded id as Spotify's stable account-linking key
+            // in May 2026. Keep the fallback for older response shapes.
+            let id = str_at(&p, "account_id")
+                .or_else(|| str_at(&p, "id"))
+                .unwrap_or_default();
             Ok(ConnectionProfile {
                 provider: provider.into(),
                 name: str_at(&p, "display_name").unwrap_or_else(|| id.clone()),
@@ -403,13 +429,13 @@ async fn fetch_profile(cfg: &Config, provider: &str, token: &str) -> AppResult<C
 // with a return_to, then hand every openid.* param they come back with straight
 // back to Steam with mode=check_authentication. Steam answers is_valid:true and
 // only then may we trust the claimed_id. Verifying the signature ourselves is
-// possible but pointless — the round trip is the documented path.
+// possible but pointless - the round trip is the documented path.
 
 const STEAM_LOGIN: &str = "https://steamcommunity.com/openid/login";
 const STEAM_NS: &str = "http://specs.openid.net/auth/2.0";
 
 pub fn steam_authorization_url(cfg: &Config, state: &str) -> String {
-    // Our CSRF state has nowhere to ride except return_to — OpenID 2.0 has no
+    // Our CSRF state has nowhere to ride except return_to - OpenID 2.0 has no
     // state param, and Steam echoes return_to back to us untouched.
     let return_to = format!("{}?state={}", redirect_uri(cfg, "steam"), urlencode(state));
     let realm = cfg.oauth_redirect_base.clone();
@@ -457,7 +483,7 @@ pub async fn verify_steam_callback(
     let claimed = params
         .get("openid.claimed_id")
         .ok_or_else(|| AppError::BadRequest("Steam returned no identity".into()))?;
-    // is_valid only says the assertion is authentic, not *who* it is about —
+    // is_valid only says the assertion is authentic, not *who* it is about -
     // pin the host so a valid assertion from elsewhere can't mint a steamid.
     let steam_id = claimed
         .strip_prefix("https://steamcommunity.com/openid/id/")

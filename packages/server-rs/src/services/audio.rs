@@ -1,4 +1,4 @@
-//! Audio probing for soundboard uploads. No TS equivalent — new for the Rust port.
+//! Audio probing for soundboard uploads. No TS equivalent - new for the Rust port.
 //!
 //! Only measures; never decodes to play. The duration limit is enforced here and
 //! not in the browser because the abuse case is precisely a client that lies: a

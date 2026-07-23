@@ -3,6 +3,9 @@ import { Settings } from "lucide-react";
 import { useAuthStore } from "../stores/auth";
 import { UserSettingsDialog } from "../features/settings/UserSettingsDialog";
 import { Avatar } from "./Avatar";
+import { DeviceIndicators } from "./DeviceIndicators";
+import { ActivityStatus } from "./ActivityStatus";
+import { clientDevice } from "../features/auth/session";
 
 /** A connection callback bounces the browser back to `/?connection=…`; reopen
  * settings where the user left off. Read once at mount - ConnectionsTab strips
@@ -19,10 +22,14 @@ export function UserFooter() {
 
   return (
     <div className="flex items-center gap-2 border-t border-border bg-surface-0/40 p-2">
-      <Avatar user={user} status="online" className="size-8" />
+      <Avatar user={user} className="size-8" />
       <div className="min-w-0 flex-1 leading-tight">
         <p className="truncate text-sm font-semibold">{user.displayName}</p>
-        <p className="truncate text-xs text-ink-muted">@{user.username}</p>
+        <div className="flex items-center gap-1.5 text-xs text-ink-muted">
+          <p className="truncate">@{user.username}</p>
+          <DeviceIndicators status="online" devices={[clientDevice]} />
+        </div>
+        <ActivityStatus activities={user.activities} />
       </div>
       <button
         type="button"

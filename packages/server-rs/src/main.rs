@@ -22,7 +22,7 @@ use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 
 use crate::config::Config;
-use crate::services::presence;
+use crate::services::{badge, presence, spotify};
 use crate::state::AppState;
 
 static START: OnceLock<Instant> = OnceLock::new();
@@ -91,6 +91,16 @@ async fn main() {
         }
     }
 
+    // Hand-awarded badges are declared in the env, so reconcile them here rather
+    // than leaving the database as the only record of who has one.
+    match badge::sync_configured(&state).await {
+        Ok((0, 0)) => {}
+        Ok((granted, revoked)) => {
+            tracing::info!("badges reconciled: {granted} granted, {revoked} revoked")
+        }
+        Err(e) => tracing::warn!("badge reconciliation failed: {e}"),
+    }
+
     // Files get picked and never sent. Nothing else deletes those, so sweep them
     // hourly rather than letting them pile up on disk.
     {
@@ -111,6 +121,13 @@ async fn main() {
     let (layer, io) = SocketIo::builder().build_layer();
     state.set_io(io.clone());
     socket::setup(io, state.clone());
+
+    // Spotify has no push event for track changes. Poll only currently-online
+    // linked users, then publish changes through the normal presence event.
+    {
+        let state = state.clone();
+        tokio::spawn(async move { spotify::run_poll_loop(state).await });
+    }
 
     // CORS must be outermost so it also covers Socket.IO polling requests.
     let cors = http::cors_layer(&state);

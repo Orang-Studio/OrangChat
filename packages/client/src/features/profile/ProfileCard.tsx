@@ -1,10 +1,13 @@
 import { useId, useMemo } from "react";
-import type { Connection, PresenceStatus } from "@orangchat/shared";
+import type { Connection, PresenceDevice, PresenceStatus, UserActivity } from "@orangchat/shared";
 import { Avatar } from "../../components/Avatar";
+import { DeviceIndicators } from "../../components/DeviceIndicators";
+import { ActivityStatus } from "../../components/ActivityStatus";
 import { cn } from "../../lib/cn";
 import { formatFullTime } from "../../lib/time";
 import { sanitizeProfileCss } from "../../lib/profileCss";
 import { ConnectionCards } from "../connections/ConnectionCards";
+import { ProfileBadges } from "./ProfileBadges";
 
 export interface ProfileCardData {
   displayName: string;
@@ -15,7 +18,11 @@ export interface ProfileCardData {
   pronouns: string | null;
   bio: string | null;
   status?: PresenceStatus;
+  devices?: PresenceDevice[];
+  activities?: UserActivity[];
   createdAt?: string;
+  /** Awarded badge slugs; unknown ones are dropped at render. */
+  badges?: readonly string[];
   /** Public user CSS; sanitized + scoped to this card before it's applied. */
   profileCss?: string | null;
   /** Linked external accounts. Already filtered to the visible ones. */
@@ -62,7 +69,6 @@ export function ProfileCard({ data }: { data: ProfileCardData }) {
           <span className="inline-block rounded-md bg-surface-2 p-1.5">
             <Avatar
               user={{ displayName: data.displayName, avatarUrl: data.avatarUrl }}
-              status={data.status}
               className="size-14 [&_img]:rounded-md [&>span:first-child]:rounded-md"
             />
           </span>
@@ -77,9 +83,17 @@ export function ProfileCard({ data }: { data: ProfileCardData }) {
               <span className="oc-pf-pronouns text-xs text-ink-muted">{data.pronouns}</span>
             )}
           </div>
-          <p className="oc-pf-username truncate text-sm text-ink-secondary">
-            @{data.username || "username"}
-          </p>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <p className="oc-pf-username truncate text-sm text-ink-secondary">
+              @{data.username || "username"}
+            </p>
+            {data.status && (
+              <DeviceIndicators status={data.status} devices={data.devices ?? []} />
+            )}
+          </div>
+          <ActivityStatus activities={data.activities ?? []} className="mt-1" />
+
+          <ProfileBadges badges={data.badges ?? []} className="mt-2" />
 
           {data.bio && (
             <div className="oc-pf-bio mt-2.5 border-t border-border pt-2.5">

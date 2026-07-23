@@ -23,7 +23,7 @@ interface ListenerSession {
 type SinkAudio = HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> };
 
 /**
- * Clips still playing. Held only so leaving voice can cut them off — otherwise a
+ * Clips still playing. Held only so leaving voice can cut them off - otherwise a
  * sound fired as you hang up would follow you out of the channel.
  */
 const playing = new Set<HTMLAudioElement>();
@@ -44,7 +44,7 @@ export function playSoundboardClip(
 
   const prefs = getPrefs();
   if (prefs.speakerDeviceId && prefs.speakerDeviceId !== "default") {
-    // Unsupported on Firefox/Safari — a rejected switch must not mute the clip.
+    // Unsupported on Firefox/Safari - a rejected switch must not mute the clip.
     void audio.setSinkId?.(prefs.speakerDeviceId).catch(() => {});
   }
 

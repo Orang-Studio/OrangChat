@@ -12,12 +12,12 @@ use crate::dto::{to_channel, to_channel_overwrite};
 use crate::error::{AppError, AppResult};
 use crate::http::{bad_request, AuthUser};
 use crate::permissions::{MANAGE_CHANNELS, MANAGE_MESSAGES, MANAGE_ROLES};
-use crate::services::{audit, channel, membership, message, read_state, voice};
+use crate::services::{audit, channel, membership, message, rate_limit, read_state, voice};
 use crate::state::AppState;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/channels/:channelId/messages", get(history))
+        .route("/channels/:channelId/messages", get(history).post(post_message))
         .route("/channels/:channelId/read", post(mark_read))
         .route("/me/unreads", get(unreads))
         .route(
@@ -48,7 +48,57 @@ async fn mark_read(
         .io()
         .to(format!("user:{}", user.user_id))
         .emit("read:state", &json!({ "channelId": channel_id }));
+    // Take back any notification this channel left on the user's other devices.
+    crate::services::push::notify_read(&state, &user.user_id, &channel_id).await;
     Ok(Json(json!({ "ok": true })))
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SendMessageBody {
+    content: String,
+    #[serde(default)]
+    reply_to_id: Option<String>,
+    #[serde(default)]
+    attachment_ids: Vec<String>,
+    #[serde(default)]
+    spoiler_attachment_ids: Vec<String>,
+}
+
+/// REST twin of the socket `message:send`. Exists for callers with no live
+/// socket - chiefly the Android notification quick-reply, which posts here from
+/// a background broadcast rather than spinning up a connection. Runs the same
+/// guards and the same `deliver_message` fan-out, so a reply sent this way is
+/// indistinguishable from one typed in the app.
+async fn post_message(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Path(channel_id): Path<String>,
+    Json(body): Json<SendMessageBody>,
+) -> AppResult<Json<Value>> {
+    rate_limit::check(
+        &state,
+        "msg:send",
+        &user.user_id,
+        rate_limit::MESSAGE_SEND_PER_USER,
+    )
+    .await?;
+    let ch = channel::require_channel_access(&state, &channel_id, &user.user_id).await?;
+    channel::enforce_slowmode(&state, &ch, &user.user_id).await?;
+    membership::assert_not_timed_out(&state, &ch, &user.user_id).await?;
+    let msg = message::send_message(
+        &state,
+        &channel_id,
+        &user.user_id,
+        &body.content,
+        body.reply_to_id.as_deref(),
+        &body.attachment_ids,
+        &body.spoiler_attachment_ids,
+    )
+    .await?;
+    crate::socket::deliver_message(state.io(), &state, &ch, &msg, &user.user_id, &body.content)
+        .await;
+    Ok(Json(json!(msg)))
 }
 
 async fn unreads(State(state): State<AppState>, user: AuthUser) -> AppResult<Json<Value>> {
@@ -335,7 +385,7 @@ async fn delete_permission(
 }
 
 /// Anyone who can see a channel can read its pins; changing them needs
-/// MANAGE_MESSAGES. In a DM there is no such role, so any participant may pin —
+/// MANAGE_MESSAGES. In a DM there is no such role, so any participant may pin -
 /// require_channel_access has already established they are one.
 async fn require_pin_permission(
     state: &AppState,

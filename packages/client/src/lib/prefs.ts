@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { applyBrandReplacement } from "./brandReplacement";
 
 /**
  * Device-local preferences. These never reach the server: they describe this
@@ -11,6 +12,7 @@ export interface LocalPrefs {
   underlineLinks: boolean;
   messageDensity: "cozy" | "compact";
   sendOnEnter: boolean;
+  iHateAdas: boolean;
   micDeviceId: string;
   cameraDeviceId: string;
   speakerDeviceId: string;
@@ -27,6 +29,7 @@ export const DEFAULT_PREFS: LocalPrefs = {
   underlineLinks: false,
   messageDensity: "cozy",
   sendOnEnter: true,
+  iHateAdas: false,
   micDeviceId: "default",
   cameraDeviceId: "default",
   speakerDeviceId: "default",
@@ -71,6 +74,7 @@ export function applyPrefs(prefs: LocalPrefs): void {
   root.dataset.contrast = prefs.highContrast ? "high" : "normal";
   root.dataset.underlineLinks = prefs.underlineLinks ? "true" : "false";
   root.dataset.density = prefs.messageDensity;
+  applyBrandReplacement(prefs.iHateAdas);
 }
 
 export function setPref<K extends keyof LocalPrefs>(key: K, value: LocalPrefs[K]): void {

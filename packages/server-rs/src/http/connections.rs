@@ -32,7 +32,7 @@ pub fn routes() -> Router<AppState> {
         .route("/users/:userId/connections", get(list_for_user))
 }
 
-/// Which providers this deployment can actually offer — an unconfigured one is
+/// Which providers this deployment can actually offer - an unconfigured one is
 /// hidden rather than shown as a button that 500s.
 async fn list_providers(State(state): State<AppState>, _user: AuthUser) -> Json<Value> {
     let items: Vec<Value> = connections::PROVIDERS
@@ -49,7 +49,7 @@ async fn list_mine(State(state): State<AppState>, user: AuthUser) -> AppResult<J
     Ok(Json(json!({ "items": items })))
 }
 
-/// Someone else's card: visible rows only. Requires auth but no relationship —
+/// Someone else's card: visible rows only. Requires auth but no relationship -
 /// a profile card is already reachable by anyone who shares a server or DM.
 async fn list_for_user(
     State(state): State<AppState>,
@@ -84,7 +84,7 @@ async fn authorize(
     Ok(Json(json!({ "url": url })))
 }
 
-/// Terminal leg of the link. Always redirects back into the settings UI — the
+/// Terminal leg of the link. Always redirects back into the settings UI - the
 /// user is looking at a browser tab, so an error belongs in the page, not in a
 /// JSON body they'd see as raw text.
 async fn callback(
@@ -93,7 +93,7 @@ async fn callback(
     Query(params): Query<HashMap<String, String>>,
 ) -> impl IntoResponse {
     let origin = &state.config.client_origin;
-    // Settings is a dialog, not a route — land on the app root and let the
+    // Settings is a dialog, not a route - land on the app root and let the
     // client reopen settings on the Connections section from this query.
     let back = |q: &str| Redirect::to(&format!("{origin}/?{q}"));
 
@@ -168,6 +168,12 @@ async fn remove(
     Path(id): Path<String>,
     user: AuthUser,
 ) -> AppResult<Json<Value>> {
-    connection::remove(&state, &user.user_id, &id).await?;
+    let provider = connection::remove(&state, &user.user_id, &id).await?;
+    if provider == "spotify"
+        && crate::services::presence::set_activity(&state, &user.user_id, "spotify", None).await?
+    {
+        let status = crate::services::presence::get_status(&state, &user.user_id).await?;
+        crate::socket::broadcast_presence(state.io(), &state, &user.user_id, &status).await;
+    }
     Ok(Json(json!({ "ok": true })))
 }

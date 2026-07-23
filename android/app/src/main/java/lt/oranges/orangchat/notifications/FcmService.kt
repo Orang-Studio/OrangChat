@@ -14,8 +14,14 @@ class FcmService : FirebaseMessagingService() {
     override fun onNewToken(token: String) = tokenRegistrar.register(token).let { Unit }
 
     override fun onMessageReceived(message: RemoteMessage) {
-        if (AppForegroundState.isForeground) return
         val channelId = message.data["channelId"] ?: return
+        // A read elsewhere: dismiss this channel's notification even if the app
+        // is foreground or was asleep — the point is to clear a stale banner.
+        if (message.data["kind"] == "read") {
+            notificationHelper.clearConversationNotifications(channelId)
+            return
+        }
+        if (AppForegroundState.isForeground) return
         val title = message.data["title"] ?: "OrangChat"
         val body = message.data["body"].orEmpty()
         if (message.data["kind"] == "call") {

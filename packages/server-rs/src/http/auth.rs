@@ -15,7 +15,7 @@ use crate::http::{bad_request, valid_email, valid_username, AuthUser, ClientIp};
 use crate::ids::cuid;
 use crate::models::UserRow;
 use crate::oauth;
-use crate::services::{rate_limit, totp, user};
+use crate::services::{badge, rate_limit, totp, user};
 use crate::state::AppState;
 
 const OAUTH_STATE_COOKIE: &str = "oc_oauth_state";
@@ -100,15 +100,17 @@ async fn signup(
     }
 
     let hash = hash_password(password)?;
+    let badges = badge::initial_badges(&state).await?;
     let user: UserRow = sqlx::query_as(
-        r#"INSERT INTO "User" (id, email, username, "displayName", "passwordHash", "updatedAt")
-           VALUES ($1, $2, $3, $4, $5, now()) RETURNING *"#,
+        r#"INSERT INTO "User" (id, email, username, "displayName", "passwordHash", badges, "updatedAt")
+           VALUES ($1, $2, $3, $4, $5, $6, now()) RETURNING *"#,
     )
     .bind(cuid())
     .bind(&email)
     .bind(username)
     .bind(display_name.unwrap_or(username))
     .bind(&hash)
+    .bind(&badges)
     .fetch_one(&state.pool)
     .await?;
 
@@ -147,7 +149,7 @@ async fn login(
 
     // Budget guesses per account, keyed by id rather than the submitted email so
     // no address lands in a Redis key. An unknown address gets no bucket of its
-    // own — the per-IP quota above is what covers enumeration. Checked before
+    // own - the per-IP quota above is what covers enumeration. Checked before
     // verify_password because argon2 is deliberately expensive: unbounded
     // attempts are a CPU exhaustion vector, not just a guessing one.
     if let Some(u) = &user {
@@ -454,9 +456,25 @@ async fn oauth_callback(
         ));
     }
 
+    if !oauth::is_provider_configured(&state.config, &provider) {
+        return Err(AppError::NotFound("Unknown provider".into()));
+    }
+
     match oauth::exchange_code_for_profile(&state.config, &provider, code.unwrap()).await {
         Ok(profile) => match user::find_or_create_oauth_user(&state, &profile).await {
             Ok(user) => {
+                // The password path owes a second factor (see `login`), so this
+                // one does too - a provider redirect must not be a way around
+                // 2FA the account holder switched on. There is nowhere to prompt
+                // for a code mid-redirect, so 2FA accounts finish at the form.
+                // TODO: hand off a short-lived pending token to a /login/2fa
+                // step so OAuth + 2FA can coexist before OAuth is enabled.
+                if user.totp_enabled {
+                    return Ok((
+                        jar,
+                        Redirect::to(&format!("{origin}/login?error=totp_required")),
+                    ));
+                }
                 let (_result, cookie) = issue_session(&state, &user).await?;
                 Ok((
                     jar.add(cookie),

@@ -57,7 +57,7 @@ import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
+import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -73,7 +73,10 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerInputScope
@@ -83,9 +86,11 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -97,12 +102,15 @@ import lt.oranges.orangchat.data.model.Message
 import lt.oranges.orangchat.data.model.PresenceStatus
 import lt.oranges.orangchat.data.model.ServerMember
 import lt.oranges.orangchat.data.model.User
+import lt.oranges.orangchat.data.model.UserActivity
+import lt.oranges.orangchat.ui.components.ActivityStatus
 import lt.oranges.orangchat.ui.components.Avatar
 import lt.oranges.orangchat.ui.components.MenuItem
 import lt.oranges.orangchat.ui.components.OrangDropdownMenu
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.EmojiRef
+import lt.oranges.orangchat.util.MentionUser
 import lt.oranges.orangchat.util.Mentions
 import lt.oranges.orangchat.util.formatTime
 import lt.oranges.orangchat.util.parseInstant
@@ -207,6 +215,7 @@ fun ChatPane(
     /** Identifies the draft: switching channels drops any staged attachments. */
     channelId: String,
     messages: List<Message>,
+    pendingMessageIds: Set<String> = emptySet(),
     selfId: String,
     members: List<ServerMember>,
     presence: Map<String, PresenceStatus>,
@@ -231,6 +240,8 @@ fun ChatPane(
     onCall: Boolean = false,
     /** The other DM participant, shown beside the conversation title. */
     headerUser: User? = null,
+    /** Live activity for the other DM participant. */
+    headerActivities: List<UserActivity> = emptyList(),
     /** Open someone's profile card. Hoisted, because the actions it offers -
      *  message, add friend - are the host's to perform, not the chat's. */
     onOpenProfile: (User) -> Unit = {},
@@ -281,6 +292,14 @@ fun ChatPane(
     // <@id> resolution for the markdown renderer.
     val mentionNames = remember(members) {
         members.associate { it.userId to (it.nickname ?: it.user.displayName) }
+    }
+
+    // @username resolution for the markdown renderer.
+    val mentionUsers = remember(members) {
+        members.associate {
+            it.user.username.lowercase() to
+                MentionUser(it.userId, it.nickname ?: it.user.displayName)
+        }
     }
 
     // Swipe-to-reply target, cleared once the reply is sent or dismissed.
@@ -345,7 +364,9 @@ fun ChatPane(
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, color = c.ink, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                if (!topic.isNullOrBlank()) {
+                if (headerUser != null) {
+                    ActivityStatus(headerActivities)
+                } else if (!topic.isNullOrBlank()) {
                     Text(topic, color = c.inkMuted, fontSize = 12.sp, maxLines = 1)
                 }
             }
@@ -383,12 +404,15 @@ fun ChatPane(
                 val message = row.message
                 MessageRow(
                     message = message,
+                    pending = message.id in pendingMessageIds,
                     selfId = selfId,
                     presence = presence[message.author.id],
                     grouped = row.grouped,
                     compact = compact,
                     nameOf = nameOf,
                     mentionNames = mentionNames,
+                    mentionUsers = mentionUsers,
+                    members = members,
                     repliedTo = message.replyToId?.let { id -> messages.firstOrNull { it.id == id } },
                     highlighted = message.id == highlightedId,
                     onJumpToMessage = jumpToMessage,
@@ -467,6 +491,7 @@ fun ChatPane(
             onTyping = onTyping,
             channelId = channelId,
             customEmojis = customEmojis,
+            members = members,
         )
     }
 }
@@ -475,12 +500,16 @@ fun ChatPane(
 @Composable
 private fun MessageRow(
     message: Message,
+    pending: Boolean,
     selfId: String,
     presence: PresenceStatus?,
     grouped: Boolean,
     compact: Boolean,
     nameOf: (String) -> String?,
     mentionNames: Map<String, String>,
+    mentionUsers: Map<String, MentionUser>,
+    /** Members offered by @mention autocomplete while editing this message. */
+    members: List<ServerMember>,
     /** The message this one replies to, if it is loaded. */
     repliedTo: Message?,
     /** Briefly tinted, because someone just jumped here. */
@@ -500,6 +529,11 @@ private fun MessageRow(
     var emojiOpen by remember { mutableStateOf(false) }
     val isMine = message.author.id == selfId
     val clipboard = LocalClipboardManager.current
+    // Tint the whole row when the message pings us (never our own messages).
+    val pinged = !isMine && lt.oranges.orangchat.util.mentionsSelf(
+        message.content,
+        lt.oranges.orangchat.util.MentionContext(mentionNames, mentionUsers, selfId),
+    )
 
     // Swipe right-to-left to reply; on your own messages, keep going and it
     // becomes an edit instead. Springs back either way.
@@ -523,8 +557,9 @@ private fun MessageRow(
     // are not crossings the user made.
     // Fades back to the normal row color once the highlight lapses, so the jump
     // draws the eye without leaving the message looking permanently marked.
+    val restColor = if (pinged) c.primary.copy(alpha = 0.08f) else c.surface2
     val rowBackground by animateColorAsState(
-        targetValue = if (highlighted) c.primarySoft else c.surface2,
+        targetValue = if (highlighted) c.primarySoft else restColor,
         animationSpec = tween(durationMillis = if (highlighted) 0 else 600),
         label = "message-highlight",
     )
@@ -551,9 +586,10 @@ private fun MessageRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .alpha(if (pending) 0.5f else 1f)
             .offset { IntOffset(dragX.value.roundToInt(), 0) }
-            .pointerInput(message.id, isMine) {
-                detectSwipeToReply(
+            .pointerInput(message.id, isMine, pending) {
+                if (!pending) detectSwipeToReply(
                     onDelta = { amount ->
                         dragging = true
                         dragScope.launch {
@@ -587,6 +623,7 @@ private fun MessageRow(
             // Long-press, not tap: a tap lands on a message constantly while
             // reading, and every one of them used to open this menu.
             .combinedClickable(
+                enabled = !pending,
                 onClick = {},
                 onLongClick = {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -675,6 +712,7 @@ private fun MessageRow(
                     // channelId and no picker here.
                     onSend = { content, _ -> onEdit(message.id, content); editing = false },
                     onTyping = {},
+                    members = members,
                 )
             } else {
                 // Attachment-only messages have no text to draw.
@@ -682,6 +720,7 @@ private fun MessageRow(
                     MessageText(
                         content = message.content,
                         mentionNames = mentionNames,
+                        mentionUsers = mentionUsers,
                         selfId = selfId,
                         emojis = emojis,
                         fontSize = 15.sp,
@@ -770,6 +809,18 @@ private fun EmojiPicker(expanded: Boolean, onDismiss: () -> Unit, onPick: (Strin
     }
 }
 
+/** A `@query` fragment ending at the caret, at line start or after whitespace. */
+private data class MentionQuery(val start: Int, val query: String)
+
+private val MENTION_QUERY = Regex("(^|\\s)@([^\\s@]{0,32})$")
+
+private fun activeMentionQuery(text: String, caret: Int): MentionQuery? {
+    if (caret !in 0..text.length) return null
+    val m = MENTION_QUERY.find(text.substring(0, caret)) ?: return null
+    val q = m.groupValues[2]
+    return MentionQuery(caret - q.length - 1, q)
+}
+
 /**
  * The message box. [channelId] non-null turns on attachments — it's null when
  * this is reused to edit an existing message, which can only change text.
@@ -783,14 +834,37 @@ private fun Composer(
     submitLabel: String? = null,
     channelId: String? = null,
     customEmojis: List<EmojiRef> = emptyList(),
+    /** Members offered by @mention autocomplete (empty in DMs). */
+    members: List<ServerMember> = emptyList(),
     drafts: AttachmentDraftViewModel = hiltViewModel(),
+    textDrafts: MessageDraftViewModel = hiltViewModel(),
 ) {
     val c = OrangTheme.colors
     // TextFieldState rather than a plain String: keyboard content (GIFs,
     // stickers, pasted screenshots) arrives through commitContent, and only the
     // state-based BasicTextField wires that up — see contentReceiver below.
     val textState = rememberTextFieldState(initial)
+    val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
     var emojiOpen by remember { mutableStateOf(false) }
+
+    LaunchedEffect(channelId, initial) {
+        if (channelId == null) {
+            textState.setTextAndPlaceCursorAtEnd(initial)
+            focusRequester.requestFocus()
+            keyboard?.show()
+        }
+    }
+
+    // Hydrate the box with this channel's saved draft on open (edit mode has none).
+    LaunchedEffect(channelId) {
+        if (channelId != null) {
+            val saved = textDrafts.load(channelId)
+            if (saved.isNotEmpty() && textState.text.isEmpty()) {
+                textState.setTextAndPlaceCursorAtEnd(saved)
+            }
+        }
+    }
 
     // A sent message starts a new sentence, but the IME has no way to know that
     // and stays on whatever symbol or emoji page it was left on. restartInput is
@@ -798,6 +872,31 @@ private fun Composer(
     val view = LocalView.current
     val resetKeyboard: () -> Unit = {
         view.context.getSystemService(InputMethodManager::class.java)?.restartInput(view)
+    }
+
+    // @mention autocomplete. Derived straight from the field rather than kept in
+    // its own state, so it can never disagree with what is actually typed.
+    val mention = if (members.isEmpty()) null else {
+        activeMentionQuery(textState.text.toString(), textState.selection.end)
+    }
+    val matches = remember(mention?.query, members) {
+        val q = mention?.query?.lowercase() ?: return@remember emptyList()
+        members.filter {
+            (it.nickname ?: it.user.displayName).lowercase().contains(q) ||
+                it.user.username.lowercase().contains(q)
+        }.take(MENTION_LIMIT)
+    }
+
+    /** Swap the typed `@query` for the picked handle - that is the wire format. */
+    val pickMention: (ServerMember) -> Unit = { m ->
+        val q = mention
+        if (q != null) {
+            val handle = m.user.username
+            textState.edit {
+                replace(q.start, q.start + q.query.length + 1, "@$handle ")
+                selection = TextRange(q.start + handle.length + 2)
+            }
+        }
     }
 
     val uploads by drafts.uploads.collectAsState()
@@ -808,11 +907,16 @@ private fun Composer(
         ActivityResultContracts.GetMultipleContents(),
     ) { uris -> drafts.add(uris) }
 
-    // Was an onValueChange side effect before the state migration.
-    LaunchedEffect(textState) {
+    // Was an onValueChange side effect before the state migration. Also persists
+    // the draft as it's typed. Keyed on channelId so a channel switch routes
+    // saves to the right channel.
+    LaunchedEffect(channelId) {
         snapshotFlow { textState.text.toString() }
             .drop(1)
-            .collect { if (it.isNotEmpty()) onTyping() }
+            .collect { text ->
+                if (text.isNotEmpty()) onTyping()
+                if (channelId != null) textDrafts.save(channelId, text.trim())
+            }
     }
 
     /**
@@ -844,11 +948,18 @@ private fun Composer(
     // uploading rather than carrying it to wherever we land next.
     if (channelId != null) {
         DisposableEffect(channelId) {
-            onDispose { drafts.clear() }
+            onDispose {
+                // Persist whatever is in the box for the channel we're leaving.
+                textDrafts.saveNow(channelId, textState.text.toString().trim())
+                drafts.clear()
+            }
         }
     }
 
     Column {
+        if (matches.isNotEmpty()) {
+            MentionSuggestions(matches = matches, onPick = pickMention)
+        }
         if (channelId != null) {
             ComposerAttachments(uploads = uploads, onRemove = drafts::remove)
             draftError?.let {
@@ -927,6 +1038,7 @@ private fun Composer(
                     keyboardType = KeyboardType.Text,
                 ),
                 modifier = Modifier
+                    .focusRequester(focusRequester)
                     .fillMaxWidth()
                     // Editing a sent message can't gain attachments, so it has
                     // no receiver and the IME hides its image tabs there.
@@ -951,6 +1063,7 @@ private fun Composer(
                     onSend(textState.text.toString().trim(), ready)
                     textState.setTextAndPlaceCursorAtEnd("")
                     drafts.clear()
+                    channelId?.let { textDrafts.clear(it) }
                     resetKeyboard()
                 },
             contentAlignment = Alignment.Center,
@@ -963,5 +1076,59 @@ private fun Composer(
             )
         }
     }
+    }
+}
+
+/** How many members the @mention menu offers at once. Matches the web client. */
+private const val MENTION_LIMIT = 8
+
+/**
+ * The @mention picker, shown above the composer while a `@query` is being typed.
+ * Both the label and the handle are listed: the label is what people recognise,
+ * the handle is what actually gets inserted.
+ */
+@Composable
+private fun MentionSuggestions(
+    matches: List<ServerMember>,
+    onPick: (ServerMember) -> Unit,
+) {
+    val c = OrangTheme.colors
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .background(c.surface3, RoundedCornerShape(OrangRadius.lg))
+            .border(1.dp, c.border, RoundedCornerShape(OrangRadius.lg))
+            .padding(4.dp),
+    ) {
+        matches.forEach { m ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(OrangRadius.md))
+                    .clickable { onPick(m) }
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+            ) {
+                Avatar(user = m.user, size = 24.dp)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    m.nickname ?: m.user.displayName,
+                    color = c.ink,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "@${m.user.username}",
+                    color = c.inkMuted,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
     }
 }

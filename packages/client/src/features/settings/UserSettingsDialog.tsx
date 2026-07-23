@@ -17,7 +17,7 @@ import {
   Video,
   X,
 } from "lucide-react";
-import type { PresenceStatus } from "@orangchat/shared";
+import { BADGES, BADGE_ORDER, type PresenceStatus } from "@orangchat/shared";
 import { STATUS_LABEL } from "../../components/Avatar";
 import { Button } from "../../components/ui/Button";
 import {
@@ -32,6 +32,7 @@ import { socket } from "../../lib/socket";
 import defaultCss from "../../styles/index.css?raw";
 import { getMyConnections } from "../connections/api";
 import { ProfileCard } from "../profile/ProfileCard";
+import { BADGE_ICON } from "../profile/ProfileBadges";
 import { uploadImage, type UploadKind } from "../uploads/api";
 import { useAuthStore, authStoreActions } from "../../stores/auth";
 import { updateProfile } from "../auth/api";
@@ -43,6 +44,7 @@ import { SharingTab } from "./SharingTab";
 import { SecurityTab } from "./SecurityTab";
 import { AccessibilityTab } from "./AccessibilityTab";
 import { SystemTab } from "./SystemTab";
+import { DownloadTab } from "./DownloadTab";
 import { AboutTab } from "./AboutTab";
 
 interface UserSettingsDialogProps {
@@ -221,6 +223,51 @@ function ImageField({
   );
 }
 
+/**
+ * The full badge catalog, with the ones you hold lit up and the rest dimmed.
+ * Badges are awarded server-side and can't be changed from here, so this is
+ * read-only - it exists to explain what each badge is and how it's earned.
+ */
+function BadgesSection({ badges }: { badges: readonly string[] }) {
+  const owned = new Set(badges);
+
+  return (
+    <div className="space-y-2">
+      <SectionTitle>Badges</SectionTitle>
+      <div className="space-y-1.5">
+        {BADGE_ORDER.map((id) => {
+          const badge = BADGES[id];
+          const Icon = BADGE_ICON[id];
+          const has = owned.has(id);
+          const color = `#${badge.color.toString(16).padStart(6, "0")}`;
+          return (
+            <div
+              key={id}
+              className={cn(
+                "flex items-center gap-3 rounded-lg border border-border px-3 py-2",
+                !has && "opacity-50",
+              )}
+            >
+              <Icon
+                aria-hidden
+                className="size-5 shrink-0"
+                style={{ color: has ? color : undefined }}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">{badge.label}</p>
+                <p className="text-xs text-ink-muted">{badge.description}</p>
+              </div>
+              {has && (
+                <span className="shrink-0 text-xs font-medium text-success">Earned</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /** Everything about you: identity, status, info - with a live preview. */
 function ProfileTab() {
   const user = useAuthStore((s) => s.user);
@@ -304,6 +351,7 @@ function ProfileTab() {
             bio: bio.trim() || null,
             status,
             createdAt: user.createdAt,
+            badges: user.badges,
             profileCss: profileCss.length ? profileCss : null,
             connections: visibleConnections,
           }}
@@ -407,6 +455,8 @@ function ProfileTab() {
           </div>
         </div>
       </div>
+
+      <BadgesSection badges={user.badges} />
 
       <div className="space-y-2">
         <SectionTitle>Profile theme (CSS)</SectionTitle>
@@ -595,6 +645,7 @@ type SettingsSection =
   | "accessibility"
   | "appearance"
   | "system"
+  | "download"
   | "about";
 
 const NAV: { id: SettingsSection; label: string; icon: typeof UserIcon }[] = [
@@ -606,6 +657,7 @@ const NAV: { id: SettingsSection; label: string; icon: typeof UserIcon }[] = [
   { id: "accessibility", label: "Accessibility", icon: Accessibility },
   { id: "appearance", label: "Appearance", icon: Paintbrush },
   { id: "system", label: "System", icon: Monitor },
+  { id: "download", label: "Download app", icon: Download },
   { id: "about", label: "About", icon: Info },
 ];
 
@@ -618,6 +670,7 @@ const SECTION_TITLE: Record<SettingsSection, string> = {
   accessibility: "Accessibility",
   appearance: "Appearance",
   system: "System",
+  download: "Download app",
   about: "About",
 };
 
@@ -639,6 +692,8 @@ function SectionBody({ section }: { section: SettingsSection }) {
       return <AppearanceTab />;
     case "system":
       return <SystemTab />;
+    case "download":
+      return <DownloadTab />;
     case "about":
       return <AboutTab />;
   }

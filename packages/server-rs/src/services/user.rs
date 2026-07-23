@@ -6,6 +6,7 @@ use crate::error::{AppError, AppResult};
 use crate::ids::cuid;
 use crate::models::UserRow;
 use crate::oauth::OAuthProfile;
+use crate::services::badge;
 use crate::state::AppState;
 
 #[derive(Default)]
@@ -204,7 +205,12 @@ pub async fn find_or_create_oauth_user(
             .await?);
     }
 
-    if let Some(ref email) = profile.email {
+    // Matching on an address the provider has *not* verified would hand the
+    // account to whoever typed it in: sign up at the provider with the victim's
+    // email, leave it unconfirmed, and this lookup adopts their account -
+    // password and TOTP never consulted. Unverified means "no address": fall
+    // through and create a separate account instead.
+    if let Some(ref email) = profile.email.as_ref().filter(|_| profile.email_verified) {
         // Case-insensitively, or a provider that hands back a differently-cased
         // address silently forks a second account instead of linking to the one
         // the person already has.
@@ -249,16 +255,18 @@ pub async fn find_or_create_oauth_user(
         .to_lowercase();
 
     let user_id = cuid();
+    let badges = badge::initial_badges(state).await?;
     let mut tx = state.pool.begin().await?;
     let user: UserRow = sqlx::query_as(
-        r#"INSERT INTO "User" (id, email, username, "displayName", "avatarUrl", "passwordHash", "updatedAt")
-           VALUES ($1, $2, $3, $4, $5, NULL, now()) RETURNING *"#,
+        r#"INSERT INTO "User" (id, email, username, "displayName", "avatarUrl", "passwordHash", badges, "updatedAt")
+           VALUES ($1, $2, $3, $4, $5, NULL, $6, now()) RETURNING *"#,
     )
     .bind(&user_id)
     .bind(&email)
     .bind(&username)
     .bind(&profile.display_name)
     .bind(&profile.avatar_url)
+    .bind(&badges)
     .fetch_one(&mut *tx)
     .await?;
     sqlx::query(

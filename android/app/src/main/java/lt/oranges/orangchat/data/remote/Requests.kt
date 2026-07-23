@@ -6,6 +6,12 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 
 @Serializable
+data class DraftBody(val content: String)
+
+@Serializable
+data class DraftResponse(val content: String? = null)
+
+@Serializable
 data class SignupRequest(
     val email: String,
     val username: String,
@@ -113,6 +119,9 @@ data class CreateDmRequest(val userIds: List<String>)
 
 @Serializable
 data class SendFriendRequest(val username: String)
+
+@Serializable
+data class SendMessageRequest(val content: String)
 
 @Serializable
 data class CreateRoleRequest(

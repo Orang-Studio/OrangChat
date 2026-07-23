@@ -1,4 +1,4 @@
-//! Custom emoji REST, mounted under /api. No TS equivalent — new for the Rust port.
+//! Custom emoji REST, mounted under /api. No TS equivalent - new for the Rust port.
 
 use axum::extract::{DefaultBodyLimit, Multipart, Path, State};
 use axum::http::StatusCode;
@@ -93,7 +93,7 @@ async fn create(
     // Reject a bad name before spending CPU on the image.
     let name = emoji::normalize_name(&name)?;
 
-    // Image decode/encode is CPU-bound and blocking — keep it off the runtime.
+    // Image decode/encode is CPU-bound and blocking - keep it off the runtime.
     let (out, ext) = tokio::task::spawn_blocking(move || process_image(&bytes, "emoji"))
         .await
         .map_err(|_| AppError::Internal("Image processing failed".into()))??;
@@ -136,7 +136,7 @@ async fn remove(
 }
 
 /// The permission check is scoped to the server in the path, so the emoji has to
-/// actually live there — otherwise MANAGE_EXPRESSIONS on any one server would be
+/// actually live there - otherwise MANAGE_EXPRESSIONS on any one server would be
 /// MANAGE_EXPRESSIONS on all of them.
 async fn require_in_server(state: &AppState, emoji_id: &str, server_id: &str) -> AppResult<()> {
     let row = emoji::get_emoji(state, emoji_id).await?;

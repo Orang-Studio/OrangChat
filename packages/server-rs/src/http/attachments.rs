@@ -1,9 +1,9 @@
 //! Message attachments. Two ways in, one way out:
 //!
-//! * **≤ 10 MB** — the client posts the bytes here (`/uploads/attachment`) and
+//! * **≤ 10 MB** - the client posts the bytes here (`/uploads/attachment`) and
 //!   they go to Cloudinary, or to OrangChat's own disk when Cloudinary is
 //!   unconfigured. Either way they live as long as the message.
-//! * **> 10 MB** — the client uploads straight to OrangMove and posts only the
+//! * **> 10 MB** - the client uploads straight to OrangMove and posts only the
 //!   resulting token here (`/uploads/attachment/external`). The bytes never
 //!   transit this process; a 1 GB file would otherwise be paid for twice.
 //!   Cloudinary does not participate: it is not a general file host and its
@@ -13,7 +13,7 @@
 //! message yet: the id names a `PendingAttachment` row that `message:send`
 //! claims later (see services::message). That indirection is what keeps a client
 //! from inventing its own url/size or pointing an attachment at someone else's
-//! upload — the server only ever serializes rows it wrote itself.
+//! upload - the server only ever serializes rows it wrote itself.
 //!
 //! Caveat worth knowing: OrangMove reaps files within an hour, so attachments
 //! over 10 MB carry an `expiresAt` and will 404 afterwards. Clients surface it.
@@ -62,7 +62,7 @@ pub const MAX_LOCAL_ATTACHMENT: usize = 10 * 1024 * 1024 - ENVELOPE_OVERHEAD;
 /// Mirrors `attachmentIds.max(10)` in shared/schemas.ts.
 pub const MAX_PER_MESSAGE: usize = 10;
 
-/// An OrangMove token is 32 random bytes as base64url — see its token.rs. Check
+/// An OrangMove token is 32 random bytes as base64url - see its token.rs. Check
 /// the shape before spending a request on it.
 const ORANGMOVE_TOKEN_LEN: usize = 43;
 
@@ -203,7 +203,7 @@ fn content_type_for(filename: &str) -> &'static str {
 }
 
 /// Keep the real extension on disk so nginx serves images with a content type
-/// the browser will render — `nosniff` means a wrong one shows a broken image.
+/// the browser will render - `nosniff` means a wrong one shows a broken image.
 /// The rest of the stored name is a cuid, so the user's filename never reaches
 /// the filesystem and can't traverse out of the directory.
 fn safe_extension(filename: &str) -> Option<String> {
@@ -443,7 +443,7 @@ const PENDING_TTL_HOURS: i64 = 24;
 /// Delete staged uploads nobody ever sent, and the local bytes behind them.
 ///
 /// `send_message` removes the row it claims, so anything still here is an upload
-/// that was abandoned — a file picked and never sent, or a send that failed.
+/// that was abandoned - a file picked and never sent, or a send that failed.
 /// Without this they'd accumulate on disk forever, which is a slow leak any
 /// logged-in user could drive.
 ///
@@ -468,7 +468,7 @@ pub async fn sweep_pending(state: &AppState) -> AppResult<u64> {
         match storage.as_str() {
             "local" => {
                 // The row's url is one we built, but read the basename back out
-                // rather than trusting it to be one — a join with a "../" would
+                // rather than trusting it to be one - a join with a "../" would
                 // escape the dir.
                 if let Some(name) = url
                     .rsplit('/')

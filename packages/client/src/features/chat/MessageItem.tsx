@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { Pencil, Reply, SmilePlus, Trash2 } from "lucide-react";
 import type { Message } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
 import { formatFullTime, formatMessageTime } from "../../lib/time";
 import { Avatar } from "../../components/Avatar";
-import { RichText } from "../../lib/markdown";
+import { RichText, mentionsViewer } from "../../lib/markdown";
+import { useAuthStore } from "../../stores/auth";
 import { useEmojiMap } from "../emojis/queries";
 import { ProfileDialog } from "../profile/ProfileDialog";
 import { isDirectMediaMessage, LinkEmbeds } from "./LinkEmbeds";
@@ -15,6 +16,8 @@ import { QUICK_EMOJIS } from "./emoji-data";
 
 export interface MessageItemProps {
   message: Message;
+  /** Optimistic local row waiting for server confirmation. */
+  pending?: boolean;
   /** Render compact (no avatar/header) - same author, close in time. */
   compact: boolean;
   /** The message this one replies to, when loaded. */
@@ -25,6 +28,8 @@ export interface MessageItemProps {
   onReply: (message: Message) => void;
   /** userId → display name, for resolving `<@id>` mentions in content. */
   mentionNames?: Record<string, string>;
+  /** username → user, for resolving `@username` mentions in content. */
+  mentionUsers?: Record<string, { id: string; name: string }>;
   /** The viewer's id, so mentions of them highlight. */
   selfId?: string;
 }
@@ -76,6 +81,14 @@ function ReactionPicker({ message }: { message: Message }) {
 function EditForm({ message, onDone }: { message: Message; onDone: () => void }) {
   const [draft, setDraft] = useState(message.content);
   const [error, setError] = useState<string | null>(null);
+  const editor = useRef<HTMLTextAreaElement>(null);
+
+  useLayoutEffect(() => {
+    const field = editor.current;
+    if (!field) return;
+    field.focus();
+    field.setSelectionRange(field.value.length, field.value.length);
+  }, []);
 
   const save = async () => {
     const content = draft.trim();
@@ -91,6 +104,7 @@ function EditForm({ message, onDone }: { message: Message; onDone: () => void })
   return (
     <div className="mt-0.5">
       <textarea
+        ref={editor}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => {
@@ -114,18 +128,23 @@ function EditForm({ message, onDone }: { message: Message; onDone: () => void })
 
 export function MessageItem({
   message,
+  pending = false,
   compact,
   replyTo,
   isOwn,
   canManage,
   onReply,
   mentionNames,
+  mentionUsers,
   selfId,
 }: MessageItemProps) {
   const [editing, setEditing] = useState(false);
   const [touchActions, setTouchActions] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const emojis = useEmojiMap();
+  const selfUsername = useAuthStore((s) => s.user?.username);
+  // highlight the whole row when the message pings us (but never our own).
+  const pinged = !isOwn && !pending && mentionsViewer(message.content, selfId, selfUsername);
 
   // Touch screens have no hover - tapping the message toggles the action bar.
   const onTap = (e: React.MouseEvent) => {
@@ -136,11 +155,14 @@ export function MessageItem({
 
   return (
     <div
-      onClick={onTap}
+      onClick={pending ? undefined : onTap}
+      aria-label={pending ? "Sending message" : undefined}
       className={cn(
         "oc-message group relative px-4 py-0.5 hover:bg-surface-3/40",
         !compact && "oc-message-lead mt-3",
         touchActions && "bg-surface-3/40",
+        pending && "pointer-events-none opacity-50",
+        pinged && "border-l-2 border-primary bg-primary/[0.06] hover:bg-primary/10",
       )}
     >
       {/* Reply reference line */}
@@ -204,6 +226,7 @@ export function MessageItem({
                 <RichText
                   content={message.content}
                   mentions={mentionNames}
+                  mentionUsers={mentionUsers}
                   selfId={selfId}
                   emojis={emojis}
                 />
@@ -260,7 +283,7 @@ export function MessageItem({
       </div>
 
       {/* Hover actions (tap-toggled on touch) */}
-      {!editing && (
+      {!editing && !pending && (
         <div
           className={cn(
             "absolute -top-3 right-4 hidden items-center gap-0.5 rounded-lg border border-border bg-surface-2 p-0.5 shadow group-hover:flex",

@@ -6,6 +6,7 @@ import {
 import { useMemo } from "react";
 import type { Message, Page } from "@orangchat/shared";
 import { getMessages } from "./api";
+import { usePendingMessages } from "../chat/outbox";
 
 export const messageKeys = {
   channel: (channelId: string) => ["messages", channelId] as const,
@@ -18,6 +19,7 @@ type MessageData = InfiniteData<Page<Message>, string | undefined>;
  * hook exposes `messages` flattened to chronological order for rendering.
  */
 export function useMessages(channelId: string | undefined) {
+  const pending = usePendingMessages(channelId);
   const query = useInfiniteQuery({
     queryKey: messageKeys.channel(channelId!),
     queryFn: ({ pageParam }) => getMessages(channelId!, pageParam),
@@ -28,17 +30,18 @@ export function useMessages(channelId: string | undefined) {
   });
 
   const messages = useMemo(() => {
-    if (!query.data) return [];
+    if (!query.data) return pending;
     // Pages: newest → oldest; items within a page: newest → oldest.
     const all: Message[] = [];
     for (let p = query.data.pages.length - 1; p >= 0; p--) {
       const items = query.data.pages[p]?.items ?? [];
       for (let i = items.length - 1; i >= 0; i--) all.push(items[i]!);
     }
-    return all;
-  }, [query.data]);
+    return [...all, ...pending].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }, [query.data, pending]);
 
-  return { ...query, messages };
+  const pendingMessageIds = useMemo(() => new Set(pending.map((message) => message.id)), [pending]);
+  return { ...query, messages, pendingMessageIds };
 }
 
 // ── Cache mutators (used by realtime sync and optimistic sends) ──

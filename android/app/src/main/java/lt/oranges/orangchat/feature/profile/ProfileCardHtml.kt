@@ -29,12 +29,27 @@ fun buildProfileCardHtml(
         ?: colors.surface4.css()
     val themeCss = sanitizeProfileCss(user.profileCss)
     val status = presence ?: user.status
+    val displayName = user.displayName
+    val username = user.username
+    val deviceStatus = if (status == PresenceStatus.OFFLINE) "" else user.devices.joinToString("") { device ->
+        val (symbol, label) = when (device.name) {
+            "MOBILE" -> "&#128241;" to "Mobile"
+            "DESKTOP" -> "&#128421;" to "Desktop app"
+            else -> "&#127760;" to "Browser"
+        }
+        """<span class="oc-pf-device" title="$label">$symbol</span>"""
+    }
+    val activity = (user.activities.firstOrNull { it.kind == "spotify" } ?: user.activities.firstOrNull())?.let {
+        val prefix = if (it.kind == "spotify") "Listening to" else "Playing"
+        val detail = it.details?.let { text -> " — ${text.escapeHtml()}" } ?: ""
+        """<p class="oc-pf-activity">$prefix <strong>${it.name.escapeHtml()}</strong>$detail</p>"""
+    } ?: ""
 
     val bannerInner = banner?.let { """<img class="oc-pf-banner-img" src="${it.escapeAttr()}" alt="">""" } ?: ""
     val avatarInner = if (avatar != null) {
         """<img class="oc-pf-avatar-img" src="${avatar.escapeAttr()}" alt="">"""
     } else {
-        """<span class="oc-pf-avatar-fallback">${user.displayName.take(1).uppercase().escapeHtml()}</span>"""
+        """<span class="oc-pf-avatar-fallback">${displayName.take(1).uppercase().escapeHtml()}</span>"""
     }
     val pronouns = user.pronouns?.takeIf { it.isNotBlank() }
         ?.let { """<span class="oc-pf-pronouns">${it.escapeHtml()}</span>""" } ?: ""
@@ -68,10 +83,11 @@ fun buildProfileCardHtml(
 <div class="oc-profile-card">
   <div class="oc-pf-banner">$bannerInner</div>
   <div class="oc-pf-inner">
-    <div class="oc-pf-avatar"><span class="oc-pf-avatar-frame">$avatarInner<span class="oc-pf-status"></span></span></div>
+    <div class="oc-pf-avatar"><span class="oc-pf-avatar-frame">$avatarInner</span></div>
     <div class="oc-pf-body">
-      <div class="oc-pf-head"><h2 class="oc-pf-name">${user.displayName.ifBlank { "—" }.escapeHtml()}</h2>$pronouns</div>
-      <p class="oc-pf-username">@${user.username.ifBlank { "username" }.escapeHtml()}</p>
+      <div class="oc-pf-head"><h2 class="oc-pf-name">${displayName.ifBlank { "—" }.escapeHtml()}</h2>$pronouns</div>
+      <div class="oc-pf-identity"><p class="oc-pf-username">@${username.ifBlank { "username" }.escapeHtml()}</p>$deviceStatus</div>
+      $activity
       $bio
       $member
     </div>
@@ -140,13 +156,9 @@ body {
   color: ${c.primary.css()};
   font-size: 24px; font-weight: 600; line-height: 1;
 }
-.oc-pf-status {
-  position: absolute; right: 2px; bottom: 2px;
-  width: 18px; height: 18px; border-radius: 50%;
-  border: 2px solid ${c.surface2.css()};
-  background: ${statusDotColor(status ?: PresenceStatus.OFFLINE, c).css()};
-  display: ${if (status == null) "none" else "block"};
-}
+.oc-pf-identity { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.oc-pf-device { color: ${statusDotColor(status ?: PresenceStatus.OFFLINE, c).css()}; font-size: 13px; line-height: 1; }
+.oc-pf-activity { margin-top: 4px; color: ${c.inkMuted.css()}; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .oc-pf-body { border-radius: 7px; background: ${c.surface1.css()}; padding: 12px; }
 .oc-pf-head { display: flex; align-items: baseline; gap: 8px; }
 .oc-pf-name {

@@ -21,7 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -36,8 +36,12 @@ import androidx.compose.ui.unit.sp
 import lt.oranges.orangchat.data.model.Friend
 import lt.oranges.orangchat.data.model.FriendRequest
 import lt.oranges.orangchat.data.model.PresenceStatus
+import lt.oranges.orangchat.data.model.PresenceDevice
+import lt.oranges.orangchat.data.model.UserActivity
 import lt.oranges.orangchat.ui.components.Avatar
 import lt.oranges.orangchat.ui.components.ButtonSize
+import lt.oranges.orangchat.ui.components.DeviceIndicators
+import lt.oranges.orangchat.ui.components.ActivityStatus
 import lt.oranges.orangchat.ui.components.OrangButton
 import lt.oranges.orangchat.ui.components.OrangTabs
 import lt.oranges.orangchat.ui.components.OrangTextField
@@ -49,6 +53,8 @@ fun FriendsScreen(
     incoming: List<FriendRequest>,
     outgoing: List<FriendRequest>,
     presence: Map<String, PresenceStatus>,
+    presenceDevices: Map<String, Set<PresenceDevice>>,
+    presenceActivities: Map<String, List<UserActivity>>,
     onBack: () -> Unit,
     onAdd: (String) -> Unit,
     onAccept: (String) -> Unit,
@@ -88,6 +94,8 @@ fun FriendsScreen(
                         username = friend.user.username,
                         avatarUrl = friend.user.avatarUrl,
                         status = presence[friend.user.id] ?: friend.user.status,
+                        devices = presenceDevices[friend.user.id] ?: friend.user.devices.toSet(),
+                        activities = presenceActivities[friend.user.id] ?: friend.user.activities,
                         trailing = {
                             Icon(
                                 Icons.AutoMirrored.Filled.Message,
@@ -145,6 +153,8 @@ private fun FriendRow(
     username: String,
     avatarUrl: String?,
     status: PresenceStatus?,
+    devices: Set<PresenceDevice> = emptySet(),
+    activities: List<UserActivity> = emptyList(),
     trailing: @Composable () -> Unit,
 ) {
     val c = OrangTheme.colors
@@ -152,11 +162,18 @@ private fun FriendRow(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Avatar(displayName = name, avatarUrl = avatarUrl, size = 40.dp, status = status)
+        Avatar(displayName = name, avatarUrl = avatarUrl, size = 40.dp)
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(name, color = c.ink, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-            Text("@$username", color = c.inkMuted, fontSize = 12.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("@$username", color = c.inkMuted, fontSize = 12.sp)
+                if (status != null) {
+                    Spacer(Modifier.width(5.dp))
+                    DeviceIndicators(status = status, devices = devices, modifier = Modifier.height(14.dp))
+                }
+            }
+            ActivityStatus(activities = activities)
         }
         Row(verticalAlignment = Alignment.CenterVertically) { trailing() }
     }

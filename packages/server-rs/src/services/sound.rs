@@ -1,4 +1,4 @@
-//! Soundboard clips. No TS equivalent — new for the Rust port.
+//! Soundboard clips. No TS equivalent - new for the Rust port.
 
 use crate::error::{AppError, AppResult};
 use crate::ids::cuid;
@@ -10,8 +10,8 @@ const NAME_MIN: usize = 1;
 /// Bounded because the whole board is sent to every client that opens it.
 pub const PER_SERVER_LIMIT: i64 = 64;
 
-/// Unlike emoji, sound names are only ever shown as labels — never parsed out of
-/// message text — so they can hold spaces and punctuation.
+/// Unlike emoji, sound names are only ever shown as labels - never parsed out of
+/// message text - so they can hold spaces and punctuation.
 pub fn normalize_name(raw: &str) -> AppResult<String> {
     let name = raw.trim().to_string();
     if name.chars().count() < NAME_MIN || name.chars().count() > NAME_MAX {

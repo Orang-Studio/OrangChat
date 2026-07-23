@@ -11,6 +11,7 @@ import { useOtherDeviceIn, voiceActions } from "../voice/store";
 import { conversationName, useConversations } from "./queries";
 import { DmIntro } from "./DmIntro";
 import { NewDmDialog } from "./NewDmDialog";
+import { ActivityStatus } from "../../components/ActivityStatus";
 
 function HeaderButton({
   label,
@@ -116,13 +117,13 @@ export function DmView() {
       <HeaderButton
         label={
           otherDevice
-            ? "On this call on another device — click to disconnect it"
+            ? "On this call on another device - click to disconnect it"
             : onCall
               ? "Already on this call"
               : "Start voice call"
         }
         // Glowing means the call is up elsewhere on your account, and the button
-        // becomes the way to hang that device up — so it must stay clickable
+        // becomes the way to hang that device up - so it must stay clickable
         // even though `onCall` is false on this one.
         disabled={onCall && !otherDevice}
         glow={!!otherDevice}
@@ -160,6 +161,9 @@ export function DmView() {
           others[0] ? (
             <Avatar user={others[0]} status={others.length === 1 ? others[0].status : undefined} className="size-7" />
           ) : undefined
+        }
+        headerSubtitle={
+          others.length === 1 ? <ActivityStatus activities={others[0]?.activities} /> : undefined
         }
         intro={
           <DmIntro

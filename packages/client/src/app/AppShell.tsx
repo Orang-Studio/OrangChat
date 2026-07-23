@@ -9,6 +9,7 @@ import { takePendingInvite } from "../features/servers/invite-url";
 import { CallStage } from "../features/voice/CallStage";
 import { CallErrorToast } from "../features/voice/CallErrorToast";
 import { IncomingCallDialog } from "../features/voice/IncomingCallDialog";
+import { getActiveChannel } from "../features/unread/active";
 
 /** Authenticated frame: each layout renders its own PanelShell inside. */
 export function AppShell() {
@@ -22,11 +23,16 @@ export function AppShell() {
 
   // Seed unread + mention badges from the server on load.
   useEffect(() => {
-    getUnreads().then(unreadActions.hydrate).catch(() => {});
+    getUnreads()
+      .then((items) => {
+        const active = getActiveChannel();
+        unreadActions.hydrate(items.filter((item) => item.channelId !== active));
+      })
+      .catch(() => {});
     void restorePushNotifications().catch(() => {});
   }, []);
 
-  // Someone who signed in to accept an invite lands here first — OAuth in
+  // Someone who signed in to accept an invite lands here first - OAuth in
   // particular reloads the page and drops the router's own return-to. Take them
   // the last step to the invite they were actually after.
   useEffect(() => {

@@ -1,5 +1,5 @@
 //! Minimal OAuth 2.0 authorization-code clients for Google and Discord.
-//! Mirrors src/auth/oauth.ts — no SDK, plain HTTP via reqwest.
+//! Mirrors src/auth/oauth.ts - no SDK, plain HTTP via reqwest.
 
 use serde_json::Value;
 
@@ -10,6 +10,10 @@ pub struct OAuthProfile {
     pub provider: String,
     pub provider_id: String,
     pub email: Option<String>,
+    /// Whether the *provider* vouches for the address. An unverified address
+    /// proves nothing about who owns it, so it must never match an existing
+    /// account - see `find_or_create_oauth_user`.
+    pub email_verified: bool,
     pub display_name: String,
     pub avatar_url: Option<String>,
 }
@@ -154,6 +158,10 @@ async fn fetch_google(client: &reqwest::Client, access_token: &str) -> AppResult
             .unwrap_or_default()
             .into(),
         email,
+        email_verified: p
+            .get("email_verified")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false),
         display_name,
         avatar_url: p.get("picture").and_then(|v| v.as_str()).map(String::from),
     })
@@ -190,6 +198,7 @@ async fn fetch_discord(client: &reqwest::Client, access_token: &str) -> AppResul
         provider: "discord".into(),
         provider_id: id.clone(),
         email: p.get("email").and_then(|v| v.as_str()).map(String::from),
+        email_verified: p.get("verified").and_then(|v| v.as_bool()).unwrap_or(false),
         display_name: global_name.unwrap_or(username),
         avatar_url: avatar.map(|a| format!("https://cdn.discordapp.com/avatars/{id}/{a}.png")),
     })

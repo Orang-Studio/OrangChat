@@ -3,6 +3,7 @@ pub mod auth;
 pub mod channels;
 pub mod connections;
 pub mod dms;
+pub mod drafts;
 pub mod emojis;
 pub mod friends;
 pub mod link_previews;
@@ -59,7 +60,7 @@ impl FromRequestParts<AppState> for AuthUser {
 }
 
 /// The user, if there is one. For routes a signed-out visitor may reach but
-/// whose answer is richer once we know who is asking — an invite link lands on
+/// whose answer is richer once we know who is asking - an invite link lands on
 /// a logged-out browser as readily as an authenticated one.
 ///
 /// A bad or expired token reads as absent rather than failing the request: the
@@ -88,8 +89,8 @@ impl FromRequestParts<AppState> for OptionalAuthUser {
 ///
 /// `X-Real-IP` is what the nginx vhost in front of us sets from `$remote_addr`,
 /// overwriting anything the client sent, so it is the only header here a caller
-/// can't forge. `X-Forwarded-For` is a fallback for other deployments — its last
-/// entry is the nearest hop's observation — and the peer address covers running
+/// can't forge. `X-Forwarded-For` is a fallback for other deployments - its last
+/// entry is the nearest hop's observation - and the peer address covers running
 /// without a proxy at all.
 pub struct ClientIp(pub String);
 
@@ -176,6 +177,7 @@ pub fn router(state: AppState) -> Router {
         .merge(channels::routes())
         .merge(connections::routes())
         .merge(dms::routes())
+        .merge(drafts::routes())
         .merge(emojis::routes())
         .merge(friends::routes())
         .merge(link_previews::routes())

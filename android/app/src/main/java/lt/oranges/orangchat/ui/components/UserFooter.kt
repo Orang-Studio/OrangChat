@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,11 +37,19 @@ fun UserFooter(
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Avatar(self.asUser(), size = 34.dp, status = self.status)
+        Avatar(self.asUser(), size = 34.dp)
         Spacer(Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(self.displayName, color = c.ink, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            Text("@${self.username}", color = c.inkMuted, fontSize = 12.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("@${self.username}", color = c.inkMuted, fontSize = 12.sp)
+                Spacer(Modifier.width(5.dp))
+                DeviceIndicators(
+                    status = self.status,
+                    devices = setOf(lt.oranges.orangchat.data.model.PresenceDevice.MOBILE),
+                )
+            }
+            ActivityStatus(self.activities)
         }
         Icon(
             Icons.Default.Settings,

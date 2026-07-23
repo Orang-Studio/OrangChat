@@ -5,11 +5,18 @@ import {
   Menu,
   ipcMain,
   session,
-  shell,
   dialog,
 } from "electron";
 import { join } from "node:path";
-import { APP_URL, APP_ORIGIN, PROTOCOL, APP_USER_MODEL_ID, isAppUrl, deepLinkToAppUrl } from "./config";
+import {
+  APP_URL,
+  APP_ORIGIN,
+  PROTOCOL,
+  APP_USER_MODEL_ID,
+  isAppUrl,
+  deepLinkToAppUrl,
+  openExternalIfWeb,
+} from "./config";
 import { loadWindowState, saveWindowState, type WindowState } from "./windowState";
 import { getSettings, updateSettings, clampZoom } from "./settings";
 import { registerScreenPicker } from "./screenPicker";
@@ -40,14 +47,6 @@ if (process.defaultApp) {
 function deepLinkFrom(argv: string[]): string | null {
   const arg = argv.find((a) => a.startsWith(`${PROTOCOL}://`));
   return arg ? deepLinkToAppUrl(arg) : null;
-}
-
-function openExternalIfWeb(url: string): void {
-  try {
-    if (/^https?:$/.test(new URL(url).protocol)) void shell.openExternal(url);
-  } catch {
-    // Not a URL we can hand to the OS.
-  }
 }
 
 function showWindow(): void {

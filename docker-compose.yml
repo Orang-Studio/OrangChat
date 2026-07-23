@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: orangchat
       POSTGRES_DB: orangchat
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - orangchat_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -22,7 +22,7 @@ services:
     container_name: orangchat-redis
     restart: unless-stopped
     ports:
-      - "6380:6379"
+      - "127.0.0.1:6380:6379"
     volumes:
       - orangchat_redisdata:/data
     healthcheck:

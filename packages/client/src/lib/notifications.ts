@@ -77,14 +77,39 @@ export async function restorePushNotifications(): Promise<void> {
 }
 
 interface NotifyOptions { title: string; body: string; icon?: string; href?: string; tag?: string }
+const notificationGenerations = new Map<string, number>();
+
+function bumpNotificationGeneration(tag: string): number {
+  const generation = (notificationGenerations.get(tag) ?? 0) + 1;
+  notificationGenerations.set(tag, generation);
+  return generation;
+}
+
 export function canNotify(): boolean {
   return notificationPermission() === "granted" && notificationsPreferred();
 }
 export function notify({ title, body, icon, href, tag }: NotifyOptions): void {
   if (!canNotify()) return;
-  void navigator.serviceWorker.ready.then((registration) =>
-    registration.showNotification(title, { body, icon, tag, data: { href } }),
-  );
+  const generation = tag ? bumpNotificationGeneration(tag) : null;
+  void navigator.serviceWorker.ready.then(async (registration) => {
+    if (tag && notificationGenerations.get(tag) !== generation) return;
+    await registration.showNotification(title, { body, icon, tag, data: { href } });
+    // A read can race an in-flight showNotification call. If it did, close the
+    // notification after the browser finishes creating it.
+    if (tag && notificationGenerations.get(tag) !== generation) {
+      const stale = await registration.getNotifications({ tag });
+      stale.forEach((notification) => notification.close());
+    }
+  });
+}
+
+/** Dismiss message notifications collapsed under a channel/DM tag. */
+export async function clearConversationNotifications(channelId: string): Promise<void> {
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+  bumpNotificationGeneration(channelId);
+  const registration = await navigator.serviceWorker.getRegistration();
+  const notifications = await registration?.getNotifications({ tag: channelId });
+  notifications?.forEach((notification) => notification.close());
 }
 
 if (notificationsSupported()) {

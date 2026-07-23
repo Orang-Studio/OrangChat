@@ -1,7 +1,7 @@
 //! Image moderation via OpenAI's omni-moderation model. Optional: with
 //! `OPENAI_API_KEY` unset nothing is checked and everything comes back unflagged.
 //!
-//! A flagged image is still stored and still attached to its message — only the
+//! A flagged image is still stored and still attached to its message - only the
 //! pixels are withheld, and clients render a placeholder. Rejecting the upload
 //! would hand the uploader a free oracle for probing the classifier.
 //!
@@ -130,7 +130,7 @@ pub async fn flag_bytes(
 
 /// Only usable when `url` is reachable from the public internet, so callers build
 /// it from `CLIENT_ORIGIN`. On a dev box that's localhost, OpenAI's fetch fails,
-/// and this fails open — the same answer as having no key, which is correct there.
+/// and this fails open - the same answer as having no key, which is correct there.
 pub async fn flag_url(moderation: Option<&ImageModeration>, url: &str) -> bool {
     let Some(moderation) = moderation else {
         return false;

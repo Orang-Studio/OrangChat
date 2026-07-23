@@ -1,12 +1,18 @@
-/**
- * Domain DTOs — the shape of entities as serialized over REST/Socket.IO.
- * These are the *wire* types: dates are ISO strings, permission bitfields are
- * decimal strings (JSON has no Date or BigInt). Both client and server import
- * these so the contract can't drift.
- */
+import type { BadgeId } from './badges.js';
 
 export type ChannelType = 'text' | 'voice' | 'category' | 'dm' | 'group_dm';
 export type PresenceStatus = 'online' | 'idle' | 'dnd' | 'offline';
+export type PresenceDevice = 'mobile' | 'browser' | 'desktop';
+export type ActivityKind = 'game' | 'spotify';
+export interface UserActivity {
+  kind: ActivityKind;
+  name: string;
+  details: string | null;
+  url: string | null;
+  imageUrl: string | null;
+  startedAt: string | null;
+  endsAt: string | null;
+}
 export type OAuthProvider = 'google' | 'discord';
 
 /** Who may open a new DM with you. */
@@ -20,6 +26,10 @@ export interface User {
   displayName: string;
   avatarUrl: string | null;
   status: PresenceStatus;
+  /** Empty while offline; may contain more than one kind for concurrent sessions. */
+  devices: PresenceDevice[];
+  /** Live rich presence. Empty when the user has no shareable activity. */
+  activities: UserActivity[];
   /** Free-text "about me". */
   bio: string | null;
   /** Profile banner image URL. */
@@ -31,10 +41,12 @@ export interface User {
   /** Public, sandboxed CSS the user set to theme their profile card. Rendered
    * only through the client-side sanitizer + a scoped, contained container. */
   profileCss: string | null;
+  /** Awarded badge slugs; unknown ones are ignored by `resolveBadges`. */
+  badges: BadgeId[];
   createdAt: string;
 }
 
-/** The authenticated user's own profile — includes private fields. */
+/** The authenticated user's own profile - includes private fields. */
 export interface SelfUser extends User {
   email: string;
   /** The user's own client CSS override (private; only sent to the owner). */
@@ -79,7 +91,7 @@ export interface ConnectionProviderInfo {
   label: string;
 }
 
-/** POST /security/2fa/setup — the secret to scan, before enabling. */
+/** POST /security/2fa/setup - the secret to scan, before enabling. */
 export interface TwoFactorSetup {
   secret: string;
   otpauthUrl: string;
@@ -126,7 +138,7 @@ export interface Server {
 
 /**
  * A server's custom emoji. Written into message content as `<:name:id>`, or
- * `<a:name:id>` when animated — the id is what resolves, so a rename never
+ * `<a:name:id>` when animated - the id is what resolves, so a rename never
  * breaks messages that already used it.
  */
 export interface Emoji {
@@ -225,7 +237,7 @@ export interface Attachment {
   height?: number;
   /**
    * Where the bytes live. Files over 10MB go to OrangMove, which is an
-   * ephemeral store — see `expiresAt`. Everything else is `cloudinary`, or
+   * ephemeral store - see `expiresAt`. Everything else is `cloudinary`, or
    * `local` when Cloudinary is unconfigured or the row predates the switch.
    * Only `orangmove` expires; treat the other two as permanent.
    */
@@ -278,7 +290,7 @@ export interface AuditLogEntry {
   action: string;
   targetId: string | null;
   targetType: 'server' | 'channel' | 'role' | 'member' | null;
-  /** { field: { old?: unknown; new?: unknown } } — only fields that changed. */
+  /** { field: { old?: unknown; new?: unknown } } - only fields that changed. */
   changes: Record<string, { old?: unknown; new?: unknown }>;
   reason: string | null;
   createdAt: string;

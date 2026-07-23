@@ -51,7 +51,7 @@ pub struct Config {
     /// Profile images remain ordinary Cloudinary images so they can be resized.
     pub attachment_encryption_key: Option<[u8; 32]>,
     /// Enables omni-moderation on uploaded images. Unset means no image is ever
-    /// checked or flagged — see services::image_moderation.
+    /// checked or flagged - see services::image_moderation.
     pub openai_api_key: Option<String>,
     // ── Push notifications (see services::push) ──
     /// VAPID keypair identifying this server to the browser push services, and
@@ -70,6 +70,14 @@ pub struct Config {
     /// verification shouldn't depend on DNS or TLS, and the token is a bearer
     /// secret better kept off the public internet.
     pub orangmove_api_url: String,
+    /// How many accounts get the `early_member` badge at signup. 0 disables the
+    /// automatic award entirely (the badge can still be granted by hand).
+    pub early_member_limit: i64,
+    /// Lowercased emails awarded the `early_developer` / `bonfire` badges,
+    /// reconciled at boot. `None` (env var unset) leaves the badge alone; an
+    /// empty list revokes it from everyone. See services::badge.
+    pub early_developer_emails: Option<Vec<String>>,
+    pub bonfire_emails: Option<Vec<String>>,
 }
 
 impl Config {
@@ -145,6 +153,12 @@ impl Config {
                 .unwrap_or_else(|_| "http://127.0.0.1:8080/api".into())
                 .trim_end_matches('/')
                 .to_string(),
+            early_member_limit: env::var("EARLY_MEMBER_LIMIT")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(1000),
+            early_developer_emails: email_list("EARLY_DEVELOPER_EMAILS"),
+            bonfire_emails: email_list("BONFIRE_EMAILS"),
         })
     }
 }
@@ -175,6 +189,18 @@ fn req(key: &str) -> Result<String, String> {
 
 fn opt(key: &str) -> Option<String> {
     env::var(key).ok().filter(|v| !v.is_empty())
+}
+
+/// Comma-separated emails, lowercased to match the `lower(email)` index.
+/// Distinguishes unset (None) from set-but-empty (Some(vec![])) — the two mean
+/// opposite things to badge reconciliation.
+fn email_list(key: &str) -> Option<Vec<String>> {
+    env::var(key).ok().map(|raw| {
+        raw.split(',')
+            .map(|e| e.trim().to_lowercase())
+            .filter(|e| !e.is_empty())
+            .collect()
+    })
 }
 
 /// Returns (public_key, private_key, subject), or None when Web Push is simply
@@ -210,7 +236,7 @@ fn vapid_credentials() -> Result<Option<(String, String, String)>, String> {
 /// discrete vars still work and win if both are set.
 ///
 /// Returns (cloud_name, api_key, api_secret), or None when Cloudinary is simply
-/// unconfigured — callers then fall back to local disk. A CLOUDINARY_URL that is
+/// unconfigured - callers then fall back to local disk. A CLOUDINARY_URL that is
 /// present but unusable is a hard error instead: silently writing to disk because
 /// a credential was fat-fingered is the kind of thing you'd only notice much later.
 fn cloudinary_credentials() -> Result<Option<(String, String, String)>, String> {
@@ -262,7 +288,7 @@ fn parse_cloudinary_url(raw: &str) -> Result<(String, String, String), String> {
         // the single easiest way to get this wrong.
         if part.starts_with('<') || part.ends_with('>') {
             return Err(format!(
-                "CLOUDINARY_URL still contains the placeholder {part:?} — copy the real \
+                "CLOUDINARY_URL still contains the placeholder {part:?} - copy the real \
                  value from the Cloudinary dashboard's API Keys panel"
             ));
         }

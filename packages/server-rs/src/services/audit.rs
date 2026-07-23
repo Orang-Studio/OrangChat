@@ -1,4 +1,4 @@
-//! Server audit log — who changed what, and when.
+//! Server audit log - who changed what, and when.
 //!
 //! Recording is deliberately best-effort: `record` swallows its own errors and
 //! returns nothing. An audit write failing must never roll back or 500 the action
@@ -38,7 +38,7 @@ pub struct Entry<'a> {
     pub reason: Option<&'a str>,
 }
 
-/// Write one entry. Never fails the caller — see the module note.
+/// Write one entry. Never fails the caller - see the module note.
 pub async fn record(state: &AppState, entry: Entry<'_>) {
     let res = sqlx::query(
         r#"INSERT INTO "AuditLog" (id, "serverId", "actorId", action, "targetId", "targetType", changes, reason)

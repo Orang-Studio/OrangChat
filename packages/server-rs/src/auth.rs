@@ -21,7 +21,7 @@ const COOKIE_PATH: &str = "/api/auth";
 // ── Password (argon2id) ─────────────────────────────────
 
 fn argon2() -> Argon2<'static> {
-    // memoryCost 19456 KiB, timeCost 2, parallelism 1 — matches password.ts.
+    // memoryCost 19456 KiB, timeCost 2, parallelism 1 - matches password.ts.
     let params = Params::new(19_456, 2, 1, None).expect("valid argon2 params");
     Argon2::new(Algorithm::Argon2id, Version::V0x13, params)
 }
@@ -156,6 +156,31 @@ pub async fn revoke_refresh_token(state: &AppState, jti: &str, user_id: &str) ->
     let _: () = con.del(key(jti)).await?;
     let _: () = con.srem(user_set(user_id), jti).await?;
     Ok(())
+}
+
+/// Signs every session out, optionally sparing the one making the request.
+///
+/// Used when a credential changes: whoever knew the old password may still hold
+/// a live refresh token, and rotating the secret is pointless if their session
+/// survives it. Returns how many were revoked.
+pub async fn revoke_all_refresh_tokens(
+    state: &AppState,
+    user_id: &str,
+    except_jti: Option<&str>,
+) -> AppResult<usize> {
+    let mut con = state.rd();
+    let jtis: Vec<String> = con.smembers(user_set(user_id)).await?;
+
+    let mut revoked = 0;
+    for jti in jtis {
+        if Some(jti.as_str()) == except_jti {
+            continue;
+        }
+        let _: () = con.del(key(&jti)).await?;
+        let _: () = con.srem(user_set(user_id), &jti).await?;
+        revoked += 1;
+    }
+    Ok(revoked)
 }
 
 // ── Refresh cookie ──────────────────────────────────────

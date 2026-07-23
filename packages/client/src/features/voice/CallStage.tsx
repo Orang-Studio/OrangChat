@@ -56,7 +56,7 @@ function VideoSurface({ tile, contain = false }: { tile: VideoTile; contain?: bo
  * One camera filling the window.
  *
  * A livekit Track attaches to as many elements as you like, so this is a second
- * view of the same track rather than a handover — the grid tile underneath keeps
+ * view of the same track rather than a handover - the grid tile underneath keeps
  * playing and is still there when this closes.
  */
 function FocusedVideo({ tile, onClose }: { tile: VideoTile; onClose: () => void }) {
@@ -165,7 +165,7 @@ function ParticipantCard({
           <Avatar user={user} status={user.status} className="size-24" />
         )}
       </div>
-      {/* Only a camera is worth opening — an avatar looks the same at any size.
+      {/* Only a camera is worth opening - an avatar looks the same at any size.
           Above the wash and the badges so the whole tile is the hit target. */}
       {tile && onExpand && (
         <button

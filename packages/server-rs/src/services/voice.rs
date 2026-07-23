@@ -22,7 +22,7 @@ pub struct VoiceStatePayload {
     pub screen_sharing: bool,
 }
 
-/// Persisted subset (Omit channelId|joined) — camelCase to match the TS server.
+/// Persisted subset (Omit channelId|joined) - camelCase to match the TS server.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct StoredState {
@@ -53,7 +53,7 @@ fn state_key(channel_id: &str) -> String {
 }
 
 /// One user's voice connections, keyed by socket. The per-channel state above is
-/// keyed by user and so cannot answer "am I in this call somewhere else?" — which
+/// keyed by user and so cannot answer "am I in this call somewhere else?" - which
 /// is the whole question a second device needs answered.
 fn devices_key(user_id: &str) -> String {
     format!("voice:devices:{user_id}")
@@ -99,7 +99,7 @@ pub async fn list_devices(state: &AppState, user_id: &str) -> AppResult<Vec<Devi
         .collect())
 }
 
-/// True when this user has another socket sitting in the same channel — the one
+/// True when this user has another socket sitting in the same channel - the one
 /// thing a disconnect must check before wiping their presence from it.
 pub async fn has_other_device_in(
     state: &AppState,
@@ -138,7 +138,7 @@ struct LiveKitClaims {
     video: VideoGrant,
 }
 
-/// Which media a member may publish. `None` means unrestricted — a DM call,
+/// Which media a member may publish. `None` means unrestricted - a DM call,
 /// where there are no roles to grant anything.
 ///
 /// Enforced in the token rather than the client because the client is the one
@@ -171,8 +171,8 @@ pub fn mint_voice_token(
             "Voice is not configured on this server".into(),
         ));
     }
-    // A member with no publish permission at all still joins — listening is the
-    // whole point of a listen-only role — but publishes nothing.
+    // A member with no publish permission at all still joins - listening is the
+    // whole point of a listen-only role - but publishes nothing.
     let (can_publish, can_publish_sources) = match sources {
         None => (true, Vec::new()),
         Some(list) => (!list.is_empty(), list),
@@ -204,23 +204,53 @@ pub fn mint_voice_token(
     Ok((token, cfg.livekit_url.clone().unwrap()))
 }
 
+/// Upsert a member's voice state - this is the *join* path, so a missing entry
+/// is created. Callers must have already enforced CONNECT and capacity.
 pub async fn set_voice_state(
     state: &AppState,
     channel_id: &str,
     user_id: &str,
     patch: VoicePatch,
 ) -> AppResult<VoiceStatePayload> {
+    apply_voice_patch(state, channel_id, user_id, patch, false).await
+}
+
+/// Patch an *existing* voice state. Unlike [`set_voice_state`] this refuses to
+/// create the entry: joining is the only way onto a roster, and it is where
+/// CONNECT and `userLimit` are enforced. Creating here would let a member
+/// denied CONNECT forge presence and then pass the "are you in this channel?"
+/// check that soundboard playback relies on.
+pub async fn patch_voice_state(
+    state: &AppState,
+    channel_id: &str,
+    user_id: &str,
+    patch: VoicePatch,
+) -> AppResult<VoiceStatePayload> {
+    apply_voice_patch(state, channel_id, user_id, patch, true).await
+}
+
+async fn apply_voice_patch(
+    state: &AppState,
+    channel_id: &str,
+    user_id: &str,
+    patch: VoicePatch,
+    require_existing: bool,
+) -> AppResult<VoiceStatePayload> {
     let mut con = state.rd();
     let raw: Option<String> = con.hget(state_key(channel_id), user_id).await?;
-    let mut current: StoredState =
-        raw.and_then(|r| serde_json::from_str(&r).ok())
-            .unwrap_or(StoredState {
-                user_id: user_id.to_string(),
-                muted: false,
-                deafened: false,
-                video: false,
-                screen_sharing: false,
-            });
+    let existing: Option<StoredState> = raw.and_then(|r| serde_json::from_str(&r).ok());
+    if require_existing && existing.is_none() {
+        return Err(AppError::Permission(
+            "Not connected to this voice channel".into(),
+        ));
+    }
+    let mut current: StoredState = existing.unwrap_or(StoredState {
+        user_id: user_id.to_string(),
+        muted: false,
+        deafened: false,
+        video: false,
+        screen_sharing: false,
+    });
     if let Some(v) = patch.muted {
         current.muted = v;
     }
@@ -280,7 +310,7 @@ pub async fn list_voice_participants(
 
 /// Enforce a voice channel's `userLimit`.
 ///
-/// MANAGE_CHANNELS holders bypass it, as in Discord — a full channel must not be
+/// MANAGE_CHANNELS holders bypass it, as in Discord - a full channel must not be
 /// able to lock out the person who can change the limit. Someone already in the
 /// channel is let through so a reconnect can't be refused by their own ghost
 /// state.

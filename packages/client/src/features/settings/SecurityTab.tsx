@@ -7,6 +7,8 @@ import { TextField } from "../../components/ui/TextField";
 import { authStoreActions, useAuthStore } from "../../stores/auth";
 import { SectionTitle } from "./controls";
 import {
+  changeEmail,
+  changePassword,
   disableTwoFactor,
   enableTwoFactor,
   getTwoFactorStatus,
@@ -291,6 +293,181 @@ function ManageEnabled({ backupCodesRemaining }: { backupCodesRemaining: number 
   );
 }
 
+/**
+ * Change email / set-or-change password. Both are gated on the current password
+ * (except on OAuth-only accounts, which have none) plus a 2FA code when it's on,
+ * so the two forms share one credential block.
+ */
+function CredentialsSection() {
+  const user = useAuthStore((s) => s.user);
+  const hasPassword = user?.hasPassword ?? true;
+  const twoFactor = user?.twoFactorEnabled ?? false;
+
+  const [mode, setMode] = useState<"idle" | "email" | "password">("idle");
+  const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [email, setEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [done, setDone] = useState<string | null>(null);
+
+  const reset = () => {
+    setMode("idle");
+    setPassword("");
+    setCode("");
+    setEmail("");
+    setNewPassword("");
+    setConfirm("");
+  };
+
+  const emailMutation = useMutation({
+    mutationFn: () => changeEmail(password, email, code),
+    onSuccess: (res) => {
+      authStoreActions.patchUser({ email: res.email });
+      setDone(`Email changed to ${res.email}.`);
+      reset();
+    },
+  });
+
+  const passwordMutation = useMutation({
+    mutationFn: () => changePassword(password, newPassword, code),
+    onSuccess: (res) => {
+      authStoreActions.patchUser({ hasPassword: true });
+      setDone(
+        res.sessionsRevoked > 0
+          ? `Password changed. ${res.sessionsRevoked} other session${
+              res.sessionsRevoked === 1 ? " was" : "s were"
+            } signed out.`
+          : "Password changed.",
+      );
+      reset();
+    },
+  });
+
+  const active = mode === "email" ? emailMutation : passwordMutation;
+  const mismatch = newPassword.length > 0 && confirm.length > 0 && newPassword !== confirm;
+  const canSubmit =
+    mode === "email"
+      ? email.trim().length > 0
+      : newPassword.length >= 8 && newPassword === confirm;
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <SectionTitle>Email &amp; password</SectionTitle>
+        <p className="text-sm text-ink-secondary">
+          Signed in as <span className="text-ink">{user?.email}</span>.
+        </p>
+      </div>
+
+      {done && (
+        <p role="status" className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
+          {done}
+        </p>
+      )}
+
+      {mode === "idle" ? (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setDone(null);
+              setMode("email");
+            }}
+          >
+            Change email
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setDone(null);
+              setMode("password");
+            }}
+          >
+            {hasPassword ? "Change password" : "Set a password"}
+          </Button>
+        </div>
+      ) : (
+        <form
+          className="space-y-3 rounded-lg border border-border p-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (canSubmit) active.mutate();
+          }}
+        >
+          {mode === "email" ? (
+            <TextField
+              label="New email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              // No mail transport in this deployment, so nothing confirms the
+              // address afterwards - say so rather than implying a check email.
+              hint="Used to sign in. There's no confirmation email, so double-check it."
+            />
+          ) : (
+            <>
+              <PasswordField
+                label="New password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+                hint="At least 8 characters."
+              />
+              <PasswordField
+                label="Confirm new password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                autoComplete="new-password"
+              />
+              {mismatch && <p className="text-sm text-danger">Those don't match.</p>}
+            </>
+          )}
+
+          {hasPassword && (
+            <PasswordField
+              label="Your current password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+          )}
+          {twoFactor && (
+            <TextField
+              label="Code from your app (or a recovery code)"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              autoComplete="one-time-code"
+              placeholder="123456"
+            />
+          )}
+
+          {mode === "password" && (
+            <p className="text-xs text-ink-muted">
+              Changing your password signs out every other session.
+            </p>
+          )}
+          {active.isError && <p className="text-sm text-danger">{active.error.message}</p>}
+
+          <div className="flex gap-2">
+            <Button type="submit" size="sm" loading={active.isPending} disabled={!canSubmit}>
+              {mode === "email" ? "Change email" : hasPassword ? "Change password" : "Set password"}
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={reset}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
 export function SecurityTab() {
   const queryClient = useQueryClient();
   const { data, isPending } = useQuery({
@@ -305,7 +482,9 @@ export function SecurityTab() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <CredentialsSection />
+
+      <div className="border-t border-border pt-5">
         <SectionTitle>Two-factor authentication</SectionTitle>
         <p className="mb-4 text-sm text-ink-secondary">
           Ask for a code from your phone in addition to your password when you sign in.

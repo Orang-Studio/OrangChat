@@ -79,7 +79,7 @@ function cameraErrorMessage(err: unknown): string {
 
 /**
  * Dismissing the screen picker rejects with the same NotAllowedError as a real
- * refusal, and cancelling is by far the likelier one — so that case reverts the
+ * refusal, and cancelling is by far the likelier one - so that case reverts the
  * button quietly rather than accusing the user of blocking anything.
  */
 function screenErrorMessage(err: unknown): string | null {
@@ -343,7 +343,7 @@ export const voiceActions = {
  * is one. This is what the green glow on a call button means: the call is up, on
  * your account, somewhere else.
  *
- * Returns undefined while the socket id is unknown (a reconnect in flight) —
+ * Returns undefined while the socket id is unknown (a reconnect in flight) -
  * without that guard every device would briefly count as "another device" and
  * every call button would glow at once.
  */

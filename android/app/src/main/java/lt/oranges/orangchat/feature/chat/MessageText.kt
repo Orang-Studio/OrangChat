@@ -14,7 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
-import androidx.compose.material3.Text
+import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.AnnotatedString
@@ -39,6 +39,7 @@ import lt.oranges.orangchat.util.EmojiRef
 import lt.oranges.orangchat.util.MdBlock
 import lt.oranges.orangchat.util.MdNode
 import lt.oranges.orangchat.util.MentionContext
+import lt.oranges.orangchat.util.MentionUser
 import lt.oranges.orangchat.util.absoluteUrl
 import lt.oranges.orangchat.util.parseMarkdown
 
@@ -51,13 +52,14 @@ fun MessageText(
     content: String,
     modifier: Modifier = Modifier,
     mentionNames: Map<String, String> = emptyMap(),
+    mentionUsers: Map<String, MentionUser> = emptyMap(),
     selfId: String? = null,
     emojis: Map<String, EmojiRef> = emptyMap(),
     fontSize: androidx.compose.ui.unit.TextUnit = 14.sp,
 ) {
     val c = OrangTheme.colors
     val blocks = if (isDirectMediaMessage(content)) emptyList()
-    else parseMarkdown(content, MentionContext(mentionNames, selfId, emojis))
+    else parseMarkdown(content, MentionContext(mentionNames, mentionUsers, selfId, emojis))
 
     val inlineContent = rememberEmojiInlineContent(blocks, fontSize)
 
@@ -168,7 +170,9 @@ private fun rememberEmojiInlineContent(
 private fun List<MdNode>.toAnnotated(
     c: lt.oranges.orangchat.ui.theme.OrangColors,
     fontSize: androidx.compose.ui.unit.TextUnit,
-): AnnotatedString = buildAnnotatedString { appendNodes(this@toAnnotated, c, fontSize) }
+): AnnotatedString = buildAnnotatedString {
+    appendNodes(this@toAnnotated, c, fontSize)
+}
 
 private fun androidx.compose.ui.text.AnnotatedString.Builder.appendNodes(
     nodes: List<MdNode>,

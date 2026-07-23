@@ -1,12 +1,24 @@
 //! Wire DTOs (camelCase JSON) and mappers from DB rows. Mirrors mappers.ts.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value as Json;
 
 use crate::models::*;
 use crate::permissions;
 use crate::services::server;
 use crate::timefmt::{iso, iso_opt};
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivityDto {
+    pub kind: String,
+    pub name: String,
+    pub details: Option<String>,
+    pub url: Option<String>,
+    pub image_url: Option<String>,
+    pub started_at: Option<String>,
+    pub ends_at: Option<String>,
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -16,11 +28,14 @@ pub struct UserDto {
     pub display_name: String,
     pub avatar_url: Option<String>,
     pub status: String,
+    pub devices: Vec<String>,
+    pub activities: Vec<ActivityDto>,
     pub bio: Option<String>,
     pub banner_url: Option<String>,
     pub accent_color: Option<i32>,
     pub pronouns: Option<String>,
     pub profile_css: Option<String>,
+    pub badges: Vec<String>,
     pub created_at: String,
 }
 
@@ -32,11 +47,14 @@ pub struct SelfUserDto {
     pub display_name: String,
     pub avatar_url: Option<String>,
     pub status: String,
+    pub devices: Vec<String>,
+    pub activities: Vec<ActivityDto>,
     pub bio: Option<String>,
     pub banner_url: Option<String>,
     pub accent_color: Option<i32>,
     pub pronouns: Option<String>,
     pub profile_css: Option<String>,
+    pub badges: Vec<String>,
     pub created_at: String,
     pub email: String,
     pub custom_css: Option<String>,
@@ -258,11 +276,14 @@ pub fn to_user(u: &UserRow) -> UserDto {
         display_name: u.display_name.clone(),
         avatar_url: u.avatar_url.clone(),
         status: u.status.clone(),
+        devices: Vec::new(),
+        activities: Vec::new(),
         bio: u.bio.clone(),
         banner_url: u.banner_url.clone(),
         accent_color: u.accent_color,
         pronouns: u.pronouns.clone(),
         profile_css: u.profile_css.clone(),
+        badges: u.badges.clone(),
         created_at: iso(u.created_at),
     }
 }
@@ -274,11 +295,14 @@ pub fn to_self_user(u: &UserRow) -> SelfUserDto {
         display_name: u.display_name.clone(),
         avatar_url: u.avatar_url.clone(),
         status: u.status.clone(),
+        devices: Vec::new(),
+        activities: Vec::new(),
         bio: u.bio.clone(),
         banner_url: u.banner_url.clone(),
         accent_color: u.accent_color,
         pronouns: u.pronouns.clone(),
         profile_css: u.profile_css.clone(),
+        badges: u.badges.clone(),
         created_at: iso(u.created_at),
         email: u.email.clone(),
         custom_css: u.custom_css.clone(),

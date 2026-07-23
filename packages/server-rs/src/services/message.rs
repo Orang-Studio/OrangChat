@@ -89,7 +89,7 @@ struct PendingAttachmentRow {
 /// The delete *is* the claim: a row can only be taken once, so the same upload
 /// can't be stapled to two messages, and `uploaderId` in the predicate means ids
 /// belonging to someone else simply don't come back. Anything the caller asked
-/// for that didn't come back is an error rather than a silent omission —
+/// for that didn't come back is an error rather than a silent omission -
 /// quietly dropping an attachment would send a message the author didn't write.
 /// `spoiler_ids` is the author's own presentation choice, so it's taken at face
 /// value; ids in it that aren't being attached are simply ignored.
@@ -213,6 +213,9 @@ pub async fn send_message(
         .execute(&state.pool)
         .await?;
 
+    // Sending is what a draft was building toward, so drop it. best-effort.
+    let _ = super::draft::clear(state, author_id, channel_id).await;
+
     load_one(state, &id, author_id).await
 }
 
@@ -244,8 +247,14 @@ pub async fn edit_message(
     load_one(state, message_id, user_id).await
 }
 
+/// Delete a message. Returns the channel it lived in.
+///
+/// The message must live in `channel_id`: `can_manage` is decided against that
+/// channel's server, so without the check a moderator of any one server could
+/// name any message id in the database and delete it.
 pub async fn delete_message(
     state: &AppState,
+    channel_id: &str,
     message_id: &str,
     user_id: &str,
     can_manage: bool,
@@ -255,8 +264,9 @@ pub async fn delete_message(
             .bind(message_id)
             .fetch_optional(&state.pool)
             .await?;
-    let (author_id, channel_id) =
-        existing.ok_or_else(|| AppError::Permission("Message not found".into()))?;
+    let (author_id, channel_id) = existing
+        .filter(|(_, ch)| ch == channel_id)
+        .ok_or_else(|| AppError::NotFound("Message not found in this channel".into()))?;
     if author_id != user_id && !can_manage {
         return Err(AppError::Permission(
             "Not allowed to delete this message".into(),
@@ -480,18 +490,24 @@ pub async fn search_messages(
     Ok(Page { items, next_cursor })
 }
 
+/// React to a message. The message must live in `channel_id` - the caller's
+/// access is checked against that channel, so an unbound message id would let a
+/// reaction land on a message in any channel, including DMs they aren't in.
 pub async fn add_reaction(
     state: &AppState,
+    channel_id: &str,
     message_id: &str,
     user_id: &str,
     emoji: &str,
 ) -> AppResult<(String, bool)> {
-    let channel_id: Option<String> =
+    let found: Option<String> =
         sqlx::query_scalar(r#"SELECT "channelId" FROM "Message" WHERE id = $1"#)
             .bind(message_id)
             .fetch_optional(&state.pool)
             .await?;
-    let channel_id = channel_id.ok_or_else(|| AppError::Permission("Message not found".into()))?;
+    let channel_id = found
+        .filter(|ch| ch == channel_id)
+        .ok_or_else(|| AppError::NotFound("Message not found in this channel".into()))?;
 
     let result = sqlx::query(
         r#"INSERT INTO "Reaction" (id, "messageId", "userId", emoji)
@@ -509,16 +525,19 @@ pub async fn add_reaction(
 
 pub async fn remove_reaction(
     state: &AppState,
+    channel_id: &str,
     message_id: &str,
     user_id: &str,
     emoji: &str,
 ) -> AppResult<(String, bool)> {
-    let channel_id: Option<String> =
+    let found: Option<String> =
         sqlx::query_scalar(r#"SELECT "channelId" FROM "Message" WHERE id = $1"#)
             .bind(message_id)
             .fetch_optional(&state.pool)
             .await?;
-    let channel_id = channel_id.ok_or_else(|| AppError::Permission("Message not found".into()))?;
+    let channel_id = found
+        .filter(|ch| ch == channel_id)
+        .ok_or_else(|| AppError::NotFound("Message not found in this channel".into()))?;
 
     let result = sqlx::query(
         r#"DELETE FROM "Reaction" WHERE "messageId" = $1 AND "userId" = $2 AND emoji = $3"#,

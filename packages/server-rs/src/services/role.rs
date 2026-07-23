@@ -234,7 +234,7 @@ pub async fn reorder_roles(
 ///
 /// - Granting additionally requires the role's permissions to be a subset of the
 ///   actor's. Without it the escalation guard on update_role is trivially
-///   sidestepped — a moderator cannot *write* BAN_MEMBERS onto a role, but could
+///   sidestepped - a moderator cannot *write* BAN_MEMBERS onto a role, but could
 ///   hand out an existing role that already has it, to a friend or to
 ///   themselves, and gain it by proxy.
 /// - Revoking is not subject to that check. Taking a role away never grants
@@ -370,8 +370,8 @@ pub async fn set_nickname(
 /// Time a member out, or lift it with `until = None`.
 ///
 /// Gated on MODERATE_MEMBERS *and* hierarchy: the permission says you may time
-/// people out, the hierarchy says whom. Admins are exempt as targets — a timeout
-/// they could instantly lift is theatre — which also stops a moderator from
+/// people out, the hierarchy says whom. Admins are exempt as targets - a timeout
+/// they could instantly lift is theatre - which also stops a moderator from
 /// silencing the owner.
 pub async fn set_timeout(
     state: &AppState,

@@ -12,6 +12,7 @@ import { useChannelUnread } from "../../stores/unread";
 import { useFriendRequests } from "../friends/queries";
 import { conversationName, otherParticipants, useConversations } from "./queries";
 import { NewDmDialog } from "./NewDmDialog";
+import { ActivityStatus } from "../../components/ActivityStatus";
 
 function ConversationRow({
   conversation,
@@ -70,6 +71,9 @@ function ConversationRow({
             {conversation.participants.length} members
           </span>
         )}
+        {!isGroup && others[0] && (
+          <ActivityStatus activities={others[0].activities} linked={false} />
+        )}
       </span>
       <UnreadBadge count={active ? 0 : unreadCount} label="unread messages" />
     </Link>
@@ -84,6 +88,7 @@ export function DmSidebar() {
   const { data: conversations } = useConversations();
   const { data: requests } = useFriendRequests();
   const [newDmOpen, setNewDmOpen] = useState(false);
+  const [newGroupOpen, setNewGroupOpen] = useState(false);
   const incomingCount = requests?.incoming.length ?? 0;
 
   return (
@@ -118,15 +123,26 @@ export function DmSidebar() {
           <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
             Conversations
           </span>
-          <button
-            type="button"
-            onClick={() => setNewDmOpen(true)}
-            aria-label="New direct message"
-            title="New direct message"
-            className="rounded p-0.5 text-ink-muted transition-colors hover:text-ink"
-          >
-            <Plus aria-hidden className="size-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setNewGroupOpen(true)}
+              aria-label="New group"
+              title="New group"
+              className="rounded p-0.5 text-ink-muted transition-colors hover:text-ink"
+            >
+              <Users aria-hidden className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setNewDmOpen(true)}
+              aria-label="New direct message"
+              title="New direct message"
+              className="rounded p-0.5 text-ink-muted transition-colors hover:text-ink"
+            >
+              <Plus aria-hidden className="size-4" />
+            </button>
+          </div>
         </div>
 
         {conversations?.map((c) => (
@@ -142,6 +158,7 @@ export function DmSidebar() {
       <VoicePanel />
       <UserFooter />
       <NewDmDialog open={newDmOpen} onOpenChange={setNewDmOpen} />
+      <NewDmDialog open={newGroupOpen} onOpenChange={setNewGroupOpen} groupMode />
     </div>
   );
 }

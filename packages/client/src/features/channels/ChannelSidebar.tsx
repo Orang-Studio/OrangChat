@@ -100,7 +100,7 @@ function VoiceChannelRow({
         }
         title={
           otherDevice
-            ? `Connected on another device — click to disconnect it`
+            ? `Connected on another device - click to disconnect it`
             : canConnect
               ? `Join ${channel.name}`
               : "Missing Connect permission"

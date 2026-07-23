@@ -29,7 +29,7 @@ export function parseInviteUrl(url: URL): string | null {
 }
 
 /**
- * The code out of whatever the user pasted — a full invite link or the bare
+ * The code out of whatever the user pasted - a full invite link or the bare
  * code. People paste the thing they were given, and the thing they are given is
  * now a URL.
  */
@@ -39,7 +39,7 @@ export function parseInviteInput(input: string): string | null {
   try {
     return parseInviteUrl(new URL(trimmed));
   } catch {
-    // Not a URL, so treat it as a code — but only if it looks like one, so a
+    // Not a URL, so treat it as a code - but only if it looks like one, so a
     // stray sentence fails here rather than as a puzzling 404 from the API.
     return /^[A-Za-z0-9_-]{1,32}$/.test(trimmed) ? trimmed : null;
   }
@@ -65,7 +65,7 @@ export function setPendingInvite(code: string): void {
   }
 }
 
-/** Read and clear the parked invite — it should only ever redirect once. */
+/** Read and clear the parked invite - it should only ever redirect once. */
 export function takePendingInvite(): string | null {
   try {
     const code = sessionStorage.getItem(PENDING_KEY);

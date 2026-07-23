@@ -52,6 +52,12 @@ async fn with_presence(state: &AppState, mut dto: FriendDto) -> FriendDto {
     if let Ok(status) = presence::get_status(state, &dto.user.id).await {
         dto.user.status = status;
     }
+    if let Ok(devices) = presence::get_devices(state, &dto.user.id).await {
+        dto.user.devices = devices;
+    }
+    if let Ok(activities) = presence::get_activities(state, &dto.user.id).await {
+        dto.user.activities = activities;
+    }
     dto
 }
 
@@ -59,12 +65,20 @@ async fn list_friends(State(state): State<AppState>, user: AuthUser) -> AppResul
     let rows = friends::list_friends(&state, &user.user_id).await?;
     let ids: Vec<String> = rows.iter().map(|r| r.user.id.clone()).collect();
     let statuses = presence::get_statuses(&state, &ids).await?;
+    let devices = presence::get_device_sets(&state, &ids).await?;
+    let activities = presence::get_activity_sets(&state, &ids).await?;
     let out: Vec<FriendDto> = rows
         .iter()
         .map(|r| {
             let mut dto = to_friend(r);
             if let Some(s) = statuses.get(&dto.user.id) {
                 dto.user.status = s.clone();
+            }
+            if let Some(kinds) = devices.get(&dto.user.id) {
+                dto.user.devices = kinds.clone();
+            }
+            if let Some(items) = activities.get(&dto.user.id) {
+                dto.user.activities = items.clone();
             }
             dto
         })

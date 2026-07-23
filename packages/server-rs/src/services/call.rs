@@ -1,6 +1,6 @@
 //! DM / group-DM call signalling: who is ringing, who is connected, and when a
 //! call is over. Media itself rides the same LiveKit room voice channels use
-//! (`voice_<channelId>`, see voice.rs) — this module never touches media, it
+//! (`voice_<channelId>`, see voice.rs) - this module never touches media, it
 //! only decides whose device rings and mints nothing.
 //!
 //! State lives in Redis under two keys, both TTL'd so a dropped call cannot ring
@@ -192,7 +192,7 @@ pub async fn start(
             ringing.push(uid);
         }
     }
-    // Never open a call that rings nobody — it would strand the caller alone in
+    // Never open a call that rings nobody - it would strand the caller alone in
     // a room with no way for it to ever end except the TTL.
     if ringing.is_empty() {
         return Err(if busy.is_empty() {
@@ -259,7 +259,7 @@ pub async fn leave(state: &AppState, channel_id: &str, user_id: &str) -> AppResu
     call.participants.retain(|u| u != user_id);
     unbind_user(state, user_id).await?;
 
-    // A call with nobody connected is over even if someone is still ringing —
+    // A call with nobody connected is over even if someone is still ringing -
     // that is the caller hanging up before anyone answered.
     if call.participants.is_empty() {
         discard(state, &call).await?;

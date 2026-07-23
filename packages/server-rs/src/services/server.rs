@@ -53,7 +53,7 @@ pub enum InviteStatus {
     Expired,
     Exhausted,
     Banned,
-    /// Already in — the join is a no-op, so clients jump straight to the server.
+    /// Already in - the join is a no-op, so clients jump straight to the server.
     AlreadyMember,
 }
 
@@ -393,7 +393,7 @@ pub async fn update_server(
 /// Leave a server under your own steam.
 ///
 /// Distinct from kick_member, which refuses self-targeting and demands
-/// KICK_MEMBERS — leaving needs neither. The owner cannot leave, since that
+/// KICK_MEMBERS - leaving needs neither. The owner cannot leave, since that
 /// would strand the server without one; they delete it instead.
 pub async fn leave_server(state: &AppState, server_id: &str, user_id: &str) -> AppResult<()> {
     let owner: Option<String> =
@@ -404,7 +404,7 @@ pub async fn leave_server(state: &AppState, server_id: &str, user_id: &str) -> A
     let owner_id = owner.ok_or_else(|| AppError::NotFound("Server not found".into()))?;
     if owner_id == user_id {
         return Err(AppError::Permission(
-            "The owner cannot leave their own server — delete it instead".into(),
+            "The owner cannot leave their own server - delete it instead".into(),
         ));
     }
 

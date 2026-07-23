@@ -2,6 +2,13 @@ self.addEventListener("push", (event) => {
   event.waitUntil((async () => {
     const payload = event.data?.json();
     if (!payload) return;
+    // A read on another device: take back this channel's notification rather
+    // than showing anything new.
+    if (payload.kind === "read") {
+      const existing = await self.registration.getNotifications({ tag: payload.tag });
+      existing.forEach((n) => n.close());
+      return;
+    }
     const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     if (windows.some((client) => client.focused)) return;
     await self.registration.showNotification(payload.title, {

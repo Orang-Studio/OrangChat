@@ -3,25 +3,26 @@
 //! The socket path (see socket.rs `unread:activity`) can only reach a client
 //! that is currently connected, which by definition excludes the case people
 //! actually mean by "notify me": the tab shut, the phone asleep. This module is
-//! the other half. The transports — Web Push for browsers, FCM for Android —
+//! the other half. The transports - Web Push for browsers, FCM for Android -
 //! keep their own connection to the device and wake it on our behalf, so a send
 //! here lands whether or not OrangChat is running.
 //!
 //! Both transports are independent and optional, mirroring Cloudinary/OpenAI: an
 //! unconfigured one is simply never dispatched to, and the client is told not to
-//! offer subscribing. Sends also fail open — a push outage must never take the
+//! offer subscribing. Sends also fail open - a push outage must never take the
 //! message path down with it, since the message itself already committed.
 //!
 //! ## Payloads are data-only on purpose
 //!
 //! FCM will happily render a `notification` block itself, but only the app can
-//! decide what a message *means* — whether the channel is already on screen,
+//! decide what a message *means* - whether the channel is already on screen,
 //! which notification channel it belongs to, whether it's a call that needs a
 //! full-screen intent. So both transports carry data only, and each client
 //! renders it (NotificationHelper on Android, the service worker on web).
 
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::FromRow;
@@ -91,6 +92,10 @@ pub struct PushPayload {
 pub enum PushKind {
     Message,
     Call,
+    /// Not a notification to show but one to *take back*: the channel was read
+    /// on another device, so any lingering notification for it should be
+    /// dismissed. Carries no title/body - the client just cancels by channel.
+    Read,
 }
 
 // ── Web Push ─────────────────────────────────────────────
@@ -141,7 +146,7 @@ pub struct Push {
 }
 
 impl Push {
-    /// None when neither transport is configured — push is then entirely off and
+    /// None when neither transport is configured - push is then entirely off and
     /// nothing else in the process needs to know.
     pub fn from_config(config: &Config) -> Option<Push> {
         let web = match (&config.vapid_private_key, &config.vapid_subject) {
@@ -340,7 +345,7 @@ pub async fn send_to_user(state: &AppState, user_id: &str, payload: &PushPayload
 }
 
 /// Separates "this device is permanently gone, delete it" from "this send did
-/// not work, try again next time" — conflating them either leaks dead rows
+/// not work, try again next time" - conflating them either leaks dead rows
 /// forever or unsubscribes people over a transient 500.
 enum Delivery {
     Gone,
@@ -402,7 +407,7 @@ async fn send_web(push: &Push, sub: &Subscription, payload: &[u8]) -> Result<(),
     if status.is_success() {
         return Ok(());
     }
-    // 404/410 is the push service telling us the subscription was revoked —
+    // 404/410 is the push service telling us the subscription was revoked -
     // the tab's permission was withdrawn, or the browser profile is gone.
     if status == reqwest::StatusCode::NOT_FOUND || status == reqwest::StatusCode::GONE {
         return Err(Delivery::Gone);
@@ -435,7 +440,11 @@ async fn send_fcm(push: &Push, sub: &Subscription, payload: &PushPayload) -> Res
                 "senderName": payload.sender_name,
                 "isGroup": payload.is_group.to_string(),
                 "icon": payload.icon.clone().unwrap_or_default(),
-                "kind": if payload.kind == PushKind::Call { "call" } else { "message" },
+                "kind": match payload.kind {
+                    PushKind::Call => "call",
+                    PushKind::Read => "read",
+                    PushKind::Message => "message",
+                },
             },
             "android": {
                 // Anything less can be held until the device next wakes, which
@@ -537,6 +546,43 @@ async fn fcm_access_token(push: &Push, fcm: &Fcm) -> Result<String, String> {
     Ok(token.access_token)
 }
 
+// ── Pending-notification tracking ────────────────────────
+//
+// A notification, once delivered, lives on the device until something cancels
+// it - and only the app can, by running code. So a message read on another
+// device can't clear a phone's notification unless we wake that phone and tell
+// it to. We only ever want to do that for a channel that actually has a
+// notification outstanding, so we remember, per user, which channels we've
+// pushed for and haven't yet seen read. `notify_read` fires a dismissal only
+// when the channel is in that set, which keeps reads that clear nothing (every
+// channel switch, most sends) from waking a device for no reason.
+
+/// Channels we've pushed a message for and not yet seen read, per user. Expires
+/// with the push TTL: a notification the transport would no longer deliver is
+/// not one we still need to chase down.
+fn pending_key(user_id: &str) -> String {
+    format!("push:pending:{user_id}")
+}
+
+/// Remember that `user_id` now has an outstanding notification for `channel_id`.
+async fn mark_pending(state: &AppState, user_id: &str, channel_id: &str) {
+    let mut con = state.rd();
+    let key = pending_key(user_id);
+    let _: Result<(), _> = con.sadd(&key, channel_id).await;
+    let _: Result<(), _> = con.expire(&key, TTL_SECONDS as i64).await;
+}
+
+/// Drop a channel from the pending set, reporting whether it was there - i.e.
+/// whether a notification for it is plausibly still on a device.
+async fn clear_pending(state: &AppState, user_id: &str, channel_id: &str) -> bool {
+    let mut con = state.rd();
+    let removed: i64 = con
+        .srem(pending_key(user_id), channel_id)
+        .await
+        .unwrap_or(0);
+    removed > 0
+}
+
 // ── Fan-out helpers ──────────────────────────────────────
 
 /// Push a new message to everyone it should reach, skipping the author.
@@ -595,7 +641,38 @@ pub async fn notify_message(
             continue;
         }
         send_to_user(state, &target, &payload).await;
+        // Record the outstanding notification so a later read on any of this
+        // user's devices can reach out and dismiss it (see `notify_read`).
+        mark_pending(state, &target, channel_id).await;
     }
+}
+
+/// Dismiss a user's outstanding notification for a channel they just read
+/// elsewhere. A no-op unless we actually pushed for that channel, so ordinary
+/// channel opens don't wake the user's other devices. The payload carries only
+/// the channel and `PushKind::Read`; each client cancels by channel and shows
+/// nothing new (NotificationHelper on Android, the service worker on web).
+pub async fn notify_read(state: &AppState, user_id: &str, channel_id: &str) {
+    if state.push.is_none() {
+        return;
+    }
+    if !clear_pending(state, user_id, channel_id).await {
+        return;
+    }
+    let payload = PushPayload {
+        title: String::new(),
+        body: String::new(),
+        href: String::new(),
+        tag: channel_id.to_string(),
+        icon: None,
+        channel_id: channel_id.to_string(),
+        message_id: None,
+        sender_id: String::new(),
+        sender_name: String::new(),
+        is_group: false,
+        kind: PushKind::Read,
+    };
+    send_to_user(state, user_id, &payload).await;
 }
 
 /// Ring a callee's devices. Unlike a message this is worth interrupting for, so

@@ -42,7 +42,7 @@ export function InviteCard({ code, className }: { code: string; className?: stri
     );
   }
 
-  // A dead code is a dead link, not an error worth a red banner — the invite may
+  // A dead code is a dead link, not an error worth a red banner - the invite may
   // simply have been revoked since it was posted.
   if (preview.isError || !preview.data) {
     return (

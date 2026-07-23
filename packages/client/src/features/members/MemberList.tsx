@@ -11,6 +11,8 @@ import {
 } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
 import { Avatar } from "../../components/Avatar";
+import { DeviceIndicators } from "../../components/DeviceIndicators";
+import { ActivityStatus } from "../../components/ActivityStatus";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { TextField } from "../../components/ui/TextField";
 import {
@@ -114,12 +116,19 @@ function MemberRow({
             offline && "opacity-50",
           )}
         >
-          <Avatar user={member.user} status={member.user.status} className="size-8" />
-          <span
-            className="min-w-0 flex-1 truncate text-sm font-medium"
-            style={{ color: memberColor(member, roles) }}
-          >
-            {name}
+          <Avatar user={member.user} className="size-8" />
+          <span className="min-w-0 flex-1">
+            <span
+              className="block truncate text-sm font-medium"
+              style={{ color: memberColor(member, roles) }}
+            >
+              {name}
+            </span>
+            <span className="flex min-w-0 items-center gap-1.5 text-xs text-ink-muted">
+              <span className="truncate">@{member.user.username}</span>
+              <DeviceIndicators status={member.user.status} devices={member.user.devices} />
+            </span>
+            <ActivityStatus activities={member.user.activities} className="mt-0.5" />
           </span>
           {isOwner && (
             <Crown

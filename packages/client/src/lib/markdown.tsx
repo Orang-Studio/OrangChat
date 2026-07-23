@@ -6,9 +6,14 @@ import { cn } from "./cn";
  * injection by construction). Supports the subset people actually use:
  *   **bold**  *italic* / _italic_  __underline__  ~~strike~~  `code`
  *   ||spoiler||  ```fenced code```  > blockquote  [label](url)  bare http(s) links
- *   <@userId> mentions  @everyone / @here
+ *   @username and <@userId> mentions  @everyone / @here
  * Mentions resolve display names via `mentions` and highlight when they target
  * the current user (`selfId` or an @everyone/@here in a server context).
+ *
+ * Two mention encodings are live at once. The composer writes plain `@username`
+ * so the raw text stays readable, but `<@id>` predates it and still sits in
+ * every older message, so both resolve here. `<@id>` survives a rename and
+ * `@username` does not; that is the cost of readable text, not a bug to fix.
  */
 
 /** Just enough of a custom emoji to draw it; mirrors the shared `Emoji` type. */
@@ -20,6 +25,8 @@ export interface EmojiRef {
 export interface MentionContext {
   /** userId -> display name, for resolving <@id> tokens. */
   names?: Record<string, string>;
+  /** username (lowercased) -> user, for resolving @username tokens. */
+  usernames?: Record<string, { id: string; name: string }>;
   /** The viewer, so mentions of them render highlighted. */
   selfId?: string;
   /** Called when a mention is present so callers can theme @everyone/@here. */
@@ -30,6 +37,26 @@ export interface MentionContext {
 
 let keySeq = 0;
 const nextKey = () => `md${keySeq++}`;
+
+const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * True when `content` pings the viewer: a `<@id>` for them, their `@username`,
+ * or an `@everyone`/`@here`. Used to highlight the whole message row.
+ */
+export function mentionsViewer(
+  content: string,
+  selfId: string | undefined,
+  username: string | undefined,
+): boolean {
+  if (!selfId) return false;
+  if (content.includes(`<@${selfId}>`)) return true;
+  if (/(^|\s)@(everyone|here)\b/.test(content)) return true;
+  if (username && new RegExp(`(^|[^\\w])@${escapeRegex(username)}(?![\\w.])`, "i").test(content)) {
+    return true;
+  }
+  return false;
+}
 
 /**
  * Covered until clicked. The content stays mounted underneath rather than being
@@ -204,6 +231,33 @@ const INLINE_RULES: {
       </span>
     ),
   },
+  // @username mention. Dot-separated segments rather than a greedy [a-z0-9_.]
+  // run so "@alice." at the end of a sentence keeps its full stop as
+  // punctuation. A handle that ends in a dot therefore never resolves, which is
+  // legal but vanishingly rare, and losing the highlight beats eating the period
+  // of every sentence that ends in a mention.
+  {
+    re: /^@([a-z0-9_]+(?:\.[a-z0-9_]+)*)/i,
+    render: (m, ctx) => {
+      const user = ctx.usernames?.[(m[1] ?? "").toLowerCase()];
+      // Unresolved handles are ordinary words (and the tail of every email
+      // address) - render the literal text so nothing lights up by accident.
+      if (!user) return <Fragment key={nextKey()}>{m[0]}</Fragment>;
+      return (
+        <span
+          key={nextKey()}
+          className={cn(
+            "rounded px-1 font-medium",
+            ctx.selfId === user.id
+              ? "bg-primary/30 text-primary"
+              : "bg-primary-soft text-primary",
+          )}
+        >
+          @{user.name}
+        </span>
+      );
+    },
+  },
 ];
 
 function parseInline(text: string, ctx: MentionContext): ReactNode[] {
@@ -298,15 +352,17 @@ function parseBlocks(src: string): Block[] {
 export function RichText({
   content,
   mentions = {},
+  mentionUsers = {},
   selfId,
   emojis,
 }: {
   content: string;
   mentions?: Record<string, string>;
+  mentionUsers?: Record<string, { id: string; name: string }>;
   selfId?: string;
   emojis?: Record<string, EmojiRef>;
 }) {
-  const ctx: MentionContext = { names: mentions, selfId, emojis };
+  const ctx: MentionContext = { names: mentions, usernames: mentionUsers, selfId, emojis };
   const blocks = parseBlocks(content);
   return (
     <>

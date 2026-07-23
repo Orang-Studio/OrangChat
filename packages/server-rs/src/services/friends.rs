@@ -1,6 +1,6 @@
 //! Friendships & friend requests. A single `Friendship` row models both a
 //! pending request (status="pending", requester → addressee) and an accepted
-//! friendship (status="accepted"). No TS equivalent — new for the Rust backend.
+//! friendship (status="accepted"). No TS equivalent - new for the Rust backend.
 
 use crate::error::{AppError, AppResult};
 use crate::ids::cuid;

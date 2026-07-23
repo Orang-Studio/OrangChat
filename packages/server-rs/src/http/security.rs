@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 
 use crate::auth::verify_password;
 use crate::error::{AppError, AppResult};
-use crate::http::{bad_request, AuthUser};
+use crate::http::{bad_request, valid_email, AuthUser};
 use crate::models::UserRow;
 use crate::services::{rate_limit, totp};
 use crate::state::AppState;
@@ -19,6 +19,101 @@ pub fn routes() -> Router<AppState> {
         .route("/2fa/enable", post(enable))
         .route("/2fa/disable", post(disable))
         .route("/2fa/backup-codes", post(regenerate_backup_codes))
+        .route("/password", post(change_password))
+        .route("/email", post(change_email))
+}
+
+/// A live 6-digit code (or a backup code), required alongside the password on
+/// credential changes whenever 2FA is on. Without it, a stolen password alone
+/// would be enough to take the account over.
+async fn check_totp(state: &AppState, row: &UserRow, body: &Value) -> AppResult<()> {
+    if !row.totp_enabled {
+        return Ok(());
+    }
+    let code = field(body, "code").unwrap_or_default();
+    let secret = row.totp_secret.as_deref().unwrap_or_default();
+    let ok = totp::verify_code(secret, &row.email, code)?
+        || totp::consume_backup_code(state, &row.id, code).await?;
+    if !ok {
+        return Err(bad_request("That code isn't right. Try the current one."));
+    }
+    Ok(())
+}
+
+/// Sets or replaces the password. OAuth-only accounts have none to confirm, so
+/// for them this is "set a password" and the session is the only proof.
+async fn change_password(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Json(body): Json<Value>,
+) -> AppResult<Json<Value>> {
+    limit(&state, &user.user_id).await?;
+    let row = fetch_user(&state, &user.user_id).await?;
+
+    let new_password = field(&body, "newPassword").unwrap_or_default();
+    if new_password.len() < 8 || new_password.len() > 200 {
+        return Err(bad_request("Password must be 8-200 characters"));
+    }
+
+    check_password(&row, &body)?;
+    check_totp(&state, &row, &body).await?;
+
+    let hash = crate::auth::hash_password(new_password)?;
+    sqlx::query(r#"UPDATE "User" SET "passwordHash" = $2, "updatedAt" = now() WHERE id = $1"#)
+        .bind(&user.user_id)
+        .bind(&hash)
+        .execute(&state.pool)
+        .await?;
+
+    // Anyone signed in with the old password keeps a working refresh token
+    // otherwise, which would make the change cosmetic.
+    let revoked = crate::auth::revoke_all_refresh_tokens(&state, &user.user_id, None).await?;
+
+    Ok(Json(json!({ "ok": true, "sessionsRevoked": revoked })))
+}
+
+/// Changes the address on the account. There's no mail transport in this
+/// deployment, so the new address can't be proven by a confirmation link -
+/// password (plus 2FA when enabled) is the whole gate.
+async fn change_email(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Json(body): Json<Value>,
+) -> AppResult<Json<Value>> {
+    limit(&state, &user.user_id).await?;
+    let row = fetch_user(&state, &user.user_id).await?;
+
+    let email = field(&body, "email").unwrap_or_default();
+    if !valid_email(email) {
+        return Err(bad_request("That doesn't look like an email address"));
+    }
+    // Canonical lowercase, to agree with the lower(email) index - see signup.
+    let email = email.to_lowercase();
+
+    check_password(&row, &body)?;
+    check_totp(&state, &row, &body).await?;
+
+    if email == row.email.to_lowercase() {
+        return Ok(Json(json!({ "email": row.email })));
+    }
+
+    let taken: Option<String> =
+        sqlx::query_scalar(r#"SELECT id FROM "User" WHERE lower(email) = $1 AND id <> $2"#)
+            .bind(&email)
+            .bind(&user.user_id)
+            .fetch_optional(&state.pool)
+            .await?;
+    if taken.is_some() {
+        return Err(AppError::Conflict("Email already in use".into()));
+    }
+
+    sqlx::query(r#"UPDATE "User" SET email = $2, "updatedAt" = now() WHERE id = $1"#)
+        .bind(&user.user_id)
+        .bind(&email)
+        .execute(&state.pool)
+        .await?;
+
+    Ok(Json(json!({ "email": email })))
 }
 
 /// Every route here verifies a password or a 6-digit code, so they all share one
@@ -59,7 +154,7 @@ async fn status(State(state): State<AppState>, user: AuthUser) -> AppResult<Json
 }
 
 /// Stashes a secret but leaves 2FA off until `enable` proves the user can read
-/// codes from it — a mis-scanned QR must never lock someone out.
+/// codes from it - a mis-scanned QR must never lock someone out.
 async fn setup(
     State(state): State<AppState>,
     user: AuthUser,

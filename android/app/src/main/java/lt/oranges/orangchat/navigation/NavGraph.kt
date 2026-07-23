@@ -14,6 +14,7 @@ import lt.oranges.orangchat.data.repository.SessionState
 import lt.oranges.orangchat.feature.auth.AuthScreens
 import lt.oranges.orangchat.feature.home.AppViewModel
 import lt.oranges.orangchat.feature.home.HomeScreen
+import lt.oranges.orangchat.feature.share.ShareScreen
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
 /**
@@ -25,6 +26,7 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
 fun OrangChatNavHost() {
     val appViewModel: AppViewModel = hiltViewModel()
     val session by appViewModel.session.collectAsStateWithLifecycle()
+    val pendingShare by appViewModel.pendingShare.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { appViewModel.bootstrap() }
 
@@ -33,10 +35,15 @@ fun OrangChatNavHost() {
         is SessionState.Unauthenticated -> AuthScreens()
         is SessionState.Authenticated -> {
             LaunchedEffect(s.user.id) { appViewModel.loadInitialData() }
-            HomeScreen(appViewModel = appViewModel, self = s.user)
+            if (pendingShare != null) {
+                ShareScreen(share = pendingShare!!, onDismiss = appViewModel::clearPendingShare)
+            } else {
+                HomeScreen(appViewModel = appViewModel, self = s.user)
+            }
         }
     }
 }
+
 
 @Composable
 private fun LoadingSplash() {

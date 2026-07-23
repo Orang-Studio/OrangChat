@@ -142,6 +142,26 @@ interface ApiService {
     @POST("channels/{channelId}/read")
     suspend fun markChannelRead(@Path("channelId") channelId: String): Response<Unit>
 
+    @GET("channels/{channelId}/draft")
+    suspend fun getDraft(@Path("channelId") channelId: String): DraftResponse
+
+    @PUT("channels/{channelId}/draft")
+    suspend fun putDraft(
+        @Path("channelId") channelId: String,
+        @Body body: DraftBody,
+    ): Response<Unit>
+
+    @DELETE("channels/{channelId}/draft")
+    suspend fun deleteDraft(@Path("channelId") channelId: String): Response<Unit>
+
+    /** Send a message over REST. Used by the notification quick-reply, which has
+     *  no live socket to send over from a background broadcast. */
+    @POST("channels/{channelId}/messages")
+    suspend fun sendMessage(
+        @Path("channelId") channelId: String,
+        @Body body: SendMessageRequest,
+    ): Message
+
     @GET("me/unreads")
     suspend fun getUnreads(): List<UnreadState>
 

@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { Check, Menu, MessageSquare, UserPlus, UserX, X } from "lucide-react";
 import type { Friend, FriendRequest, User } from "@orangchat/shared";
 import { Avatar, STATUS_LABEL } from "../../components/Avatar";
+import { DeviceIndicators } from "../../components/DeviceIndicators";
+import { ActivityStatus } from "../../components/ActivityStatus";
 import { Button } from "../../components/ui/Button";
 import { TextField } from "../../components/ui/TextField";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/Tabs";
@@ -55,12 +57,14 @@ function RowShell({
         onClick={onOpenProfile}
         className="flex min-w-0 flex-1 items-center gap-3 text-left"
       >
-        <Avatar user={user} status={user.status} className="size-9" />
+        <Avatar user={user} className="size-9" />
         <span className="min-w-0">
           <span className="block truncate text-sm font-semibold">{user.displayName}</span>
-          <span className="block truncate text-xs text-ink-muted">
-            {STATUS_LABEL[user.status]}
+          <span className="flex min-w-0 items-center gap-1.5 text-xs text-ink-muted">
+            <span className="truncate">@{user.username} · {STATUS_LABEL[user.status]}</span>
+            <DeviceIndicators status={user.status} devices={user.devices} />
           </span>
+          <ActivityStatus activities={user.activities} className="mt-0.5" />
         </span>
       </button>
       <div className="flex shrink-0 items-center gap-1.5">{children}</div>

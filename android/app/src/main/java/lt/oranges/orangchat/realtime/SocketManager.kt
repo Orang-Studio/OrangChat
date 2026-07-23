@@ -1,15 +1,29 @@
 package lt.oranges.orangchat.realtime
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
+import dagger.hilt.android.qualifiers.ApplicationContext
 import io.socket.client.Ack
 import io.socket.client.IO
 import io.socket.client.Socket
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.json.Json
 import lt.oranges.orangchat.BuildConfig
 import lt.oranges.orangchat.data.local.TokenStore
+import lt.oranges.orangchat.data.model.AuthResult
 import lt.oranges.orangchat.data.model.Channel
 import lt.oranges.orangchat.data.model.DmCall
 import lt.oranges.orangchat.data.model.DmCallEnded
@@ -23,11 +37,16 @@ import lt.oranges.orangchat.data.model.UnreadActivity
 import lt.oranges.orangchat.data.model.User
 import lt.oranges.orangchat.data.model.VoiceCredentials
 import lt.oranges.orangchat.data.model.VoiceState
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import javax.inject.Inject
+import javax.inject.Named
+import javax.inject.Provider
 import javax.inject.Singleton
 
 /**
@@ -38,16 +57,22 @@ import javax.inject.Singleton
  */
 @Singleton
 class SocketManager @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val tokenStore: TokenStore,
     private val json: Json,
+    @Named("baseUrl") private val baseUrl: String,
+    @Named("refresh") private val refreshClient: Provider<OkHttpClient>,
 ) {
     private var socket: Socket? = null
     @Volatile private var activeChannelId: String? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @Volatile private var lastAuthRefresh = 0L
 
     init {
         tokenStore.addTokenListener { token ->
             if (token == null) disconnect() else reauthenticate()
         }
+        registerConnectivityNudges()
     }
 
     private val _events = MutableSharedFlow<SocketEvent>(
@@ -69,7 +94,7 @@ class SocketManager @Inject constructor(
             path = "/socket.io"
             transports = arrayOf("websocket")
             reconnection = true
-            auth = mapOf("token" to token)
+            auth = mapOf("token" to token, "device" to "mobile")
         }
         val s = IO.socket(BuildConfig.SOCKET_URL, opts)
         registerListeners(s)
@@ -95,6 +120,55 @@ class SocketManager @Inject constructor(
         connect()
     }
 
+    /** Nudge a reconnect after the network or the app comes back, when socket.io
+     *  hasn't recovered on its own. Idempotent. */
+    @Synchronized
+    fun reconnectIfNeeded() {
+        if (tokenStore.accessToken == null) return
+        val s = socket
+        if (s == null) connect() else if (!s.connected()) s.connect()
+    }
+
+    /** Mint a fresh access token off the refresh cooldown and hand it to the
+     *  token store, whose listener rebuilds the socket with it. */
+    private fun maybeRefreshAuth() {
+        val now = System.currentTimeMillis()
+        if (now - lastAuthRefresh < AUTH_REFRESH_COOLDOWN_MS) return
+        lastAuthRefresh = now
+        scope.launch {
+            refreshAccessTokenBlocking()?.let { tokenStore.setAccessToken(it) }
+        }
+    }
+
+    /** Blocking POST /auth/refresh, mirroring TokenAuthenticator. Null on any
+     *  failure, including a network that is simply still down. */
+    private fun refreshAccessTokenBlocking(): String? = try {
+        val url = baseUrl.trimEnd('/') + "/auth/refresh"
+        val req = Request.Builder().url(url).post(ByteArray(0).toRequestBody(null)).build()
+        refreshClient.get().newCall(req).execute().use { resp ->
+            if (!resp.isSuccessful) null
+            else resp.body?.string()?.let {
+                json.decodeFromString(AuthResult.serializer(), it).tokens.accessToken
+            }
+        }
+    } catch (_: Exception) {
+        null
+    }
+
+    private fun registerConnectivityNudges() {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        cm?.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) = reconnectIfNeeded()
+        })
+        // Coming back to the foreground is the other moment a dead socket needs a
+        // kick. Lifecycle observers must be added on the main thread.
+        Handler(Looper.getMainLooper()).post {
+            ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
+                override fun onStart(owner: LifecycleOwner) = reconnectIfNeeded()
+            })
+        }
+    }
+
     private fun registerListeners(s: Socket) {
         s.on(Socket.EVENT_CONNECT) { _ ->
             activeChannelId?.let { s.emit("channel:join", it) }
@@ -104,8 +178,17 @@ class SocketManager @Inject constructor(
             emit(SocketEvent.ConnectionState(false, args.firstOrNull()?.toString()))
         }
         s.on(Socket.EVENT_CONNECT_ERROR) { args ->
-            Log.w(TAG, "connect_error: ${args.firstOrNull()}")
+            val msg = args.firstOrNull()?.toString().orEmpty()
+            Log.w(TAG, "connect_error: $msg")
             emit(SocketEvent.ConnectionState(false, "connect_error"))
+            // an expired access token rejects the handshake as "unauthorized".
+            // mint a fresh one, which reauthenticates the socket via the token
+            // listener; without this the socket stays down until relaunch.
+            if (msg.contains("unauthorized", ignoreCase = true) ||
+                msg.contains("auth", ignoreCase = true)
+            ) {
+                maybeRefreshAuth()
+            }
         }
 
         s.on("message:new") { a -> obj(a)?.let { emit(SocketEvent.MessageNew(decode<Message>(it))) } }
@@ -117,7 +200,15 @@ class SocketManager @Inject constructor(
             obj(a)?.let { emit(SocketEvent.Typing(it.optString("channelId"), it.optString("userId"))) }
         }
         s.on("presence") { a ->
-            obj(a)?.let { emit(SocketEvent.Presence(it.optString("userId"), it.optString("status"))) }
+            obj(a)?.let {
+                val devices = it.optJSONArray("devices")?.let { array ->
+                    List(array.length()) { index -> array.optString(index) }
+                }.orEmpty()
+                val activities = it.optJSONArray("activities")
+                    ?.let { array -> json.decodeFromString<List<lt.oranges.orangchat.data.model.UserActivity>>(array.toString()) }
+                    .orEmpty()
+                emit(SocketEvent.Presence(it.optString("userId"), it.optString("status"), devices, activities))
+            }
         }
         s.on("reaction") { a ->
             obj(a)?.let {
@@ -358,5 +449,6 @@ class SocketManager @Inject constructor(
 
     companion object {
         private const val TAG = "SocketManager"
+        private const val AUTH_REFRESH_COOLDOWN_MS = 4_000L
     }
 }

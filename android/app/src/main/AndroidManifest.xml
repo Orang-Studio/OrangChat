@@ -54,12 +54,23 @@
             android:launchMode="singleTask"
             android:supportsPictureInPicture="true"
             android:windowSoftInputMode="adjustResize"
-            android:showWhenLocked="true"
-            android:turnScreenOn="true"
             android:theme="@style/Theme.OrangChat">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Receive text, links, and one or more attachments from Android's
+                 system share sheet. MIME filtering happens in the upload path. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
             </intent-filter>
 
             <!-- Invite links. autoVerify makes these open here instead of the
@@ -87,6 +98,12 @@
             android:name=".feature.voice.CallService"
             android:exported="false"
             android:foregroundServiceType="microphone|camera" />
+
+        <!-- Notification quick actions (reply / mark read / mute) are delivered
+             here so they resolve without launching the activity. -->
+        <receiver
+            android:name=".notifications.NotificationActionReceiver"
+            android:exported="false" />
 
         <!-- Hands the downloaded APK to the system installer: a file:// uri is
              rejected outright from API 24 on. -->

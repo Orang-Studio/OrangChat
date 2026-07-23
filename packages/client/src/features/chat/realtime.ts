@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { Channel, Conversation, Role, Server, ServerMember, User } from "@orangchat/shared";
+import type { Channel, Conversation, Friend, Role, Server, ServerMember, User } from "@orangchat/shared";
 import { socket } from "../../lib/socket";
 import { useAuthStore } from "../../stores/auth";
 import {
@@ -14,6 +14,7 @@ import { dmKeys, touchConversation } from "../dms/queries";
 import {
   addFriend,
   addRequest,
+  friendKeys,
   removeFriendFromCache,
   removeRequest,
   removeRequestByUser,
@@ -25,8 +26,9 @@ import { callActions } from "../voice/callStore";
 import { unreadActions } from "../../stores/unread";
 import { getActiveChannel } from "../unread/active";
 import { markChannelRead } from "../unread/api";
-import { notify } from "../../lib/notifications";
+import { clearConversationNotifications, notify } from "../../lib/notifications";
 import { bumpTyping, clearTyping } from "./typing";
+import { confirmPendingFromBroadcast, registerMessageOutbox } from "./outbox";
 
 let registered = false;
 
@@ -37,6 +39,7 @@ let registered = false;
 export function registerRealtime(client: QueryClient): void {
   if (registered) return;
   registered = true;
+  registerMessageOutbox((message) => appendMessage(client, message));
 
   const selfId = () => useAuthStore.getState().user?.id;
 
@@ -57,6 +60,7 @@ export function registerRealtime(client: QueryClient): void {
 
   // ── Messages ──────────────────────────────────────────
   socket.on("message:new", (message) => {
+    confirmPendingFromBroadcast(message);
     appendMessage(client, message);
     // Their message landed - stop showing them as typing.
     clearTyping(message.channelId, message.author.id);
@@ -96,6 +100,11 @@ export function registerRealtime(client: QueryClient): void {
     }
   });
 
+  socket.on("read:state", ({ channelId }) => {
+    unreadActions.clear(channelId);
+    void clearConversationNotifications(channelId).catch(() => {});
+  });
+
   socket.on("message:updated", (message) => replaceMessage(client, message));
 
   socket.on("message:deleted", ({ channelId, messageId }) =>
@@ -111,7 +120,12 @@ export function registerRealtime(client: QueryClient): void {
   });
 
   // ── Presence ──────────────────────────────────────────
-  socket.on("presence", ({ userId, status }) => {
+  socket.on("presence", ({ userId, status, devices, activities }) => {
+    if (userId === selfId()) {
+      useAuthStore.getState().user && useAuthStore.setState((state) => ({
+        user: state.user ? { ...state.user, status, devices, activities } : null,
+      }));
+    }
     // Update the member row in every cached server detail.
     const details = client.getQueriesData<ServerDetail>({ queryKey: ["server"] });
     for (const [key, detail] of details) {
@@ -119,7 +133,7 @@ export function registerRealtime(client: QueryClient): void {
       client.setQueryData<ServerDetail>(key, {
         ...detail,
         members: detail.members.map((m) =>
-          m.userId === userId ? { ...m, user: { ...m.user, status } } : m,
+          m.userId === userId ? { ...m, user: { ...m.user, status, devices, activities } } : m,
         ),
       });
     }
@@ -129,9 +143,17 @@ export function registerRealtime(client: QueryClient): void {
       list?.map((conversation) => ({
         ...conversation,
         participants: conversation.participants.map((participant) =>
-          participant.id === userId ? { ...participant, status } : participant,
+          participant.id === userId ? { ...participant, status, devices, activities } : participant,
         ),
       })),
+    );
+
+    client.setQueryData<Friend[]>(friendKeys.list, (list) =>
+      list?.map((friend) =>
+        friend.user.id === userId
+          ? { ...friend, user: { ...friend.user, status, devices, activities } }
+          : friend,
+      ),
     );
   });
 
@@ -171,7 +193,14 @@ export function registerRealtime(client: QueryClient): void {
   socket.on("member:updated", ({ serverId, member }) => {
     updateDetail(serverId, (detail) => ({
       ...detail,
-      members: detail.members.map((m) => (m.userId === member.userId ? member : m)),
+      members: detail.members.map((m) =>
+        m.userId === member.userId
+          ? {
+              ...member,
+              user: { ...member.user, status: m.user.status, devices: m.user.devices, activities: m.user.activities },
+            }
+          : m,
+      ),
     }));
     // Role changes on ourselves change what the UI may show.
     if (member.userId === selfId()) {
@@ -246,14 +275,23 @@ export function registerRealtime(client: QueryClient): void {
       client.setQueryData<ServerDetail>(key, {
         ...detail,
         members: detail.members.map((m) =>
-          m.userId === user.id ? { ...m, user: { ...user, status: m.user.status } } : m,
+          m.userId === user.id
+            ? {
+                ...m,
+                user: { ...user, status: m.user.status, devices: m.user.devices, activities: m.user.activities },
+              }
+            : m,
         ),
       });
     }
     client.setQueryData<Conversation[]>(dmKeys.list, (list) =>
       list?.map((c) => ({
         ...c,
-        participants: c.participants.map((p) => (p.id === user.id ? user : p)),
+        participants: c.participants.map((p) =>
+          p.id === user.id
+            ? { ...user, status: p.status, devices: p.devices, activities: p.activities }
+            : p,
+        ),
       })),
     );
     updateFriendUser(client, user);

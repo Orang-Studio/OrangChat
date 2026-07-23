@@ -1,4 +1,4 @@
-//! Custom per-server emoji. No TS equivalent — new for the Rust port.
+//! Custom per-server emoji. No TS equivalent - new for the Rust port.
 //!
 //! Messages store `<:name:id>`, so the id is the durable reference and the name
 //! is only a handle: renaming an emoji leaves old messages rendering correctly,
@@ -47,7 +47,7 @@ pub async fn list_emojis(state: &AppState, server_id: &str) -> AppResult<Vec<Emo
     Ok(rows)
 }
 
-/// Every emoji from every server the user is in — what the picker needs to show
+/// Every emoji from every server the user is in - what the picker needs to show
 /// them everything they can actually type, including in DMs.
 pub async fn list_usable_emojis(state: &AppState, user_id: &str) -> AppResult<Vec<EmojiRow>> {
     let rows = sqlx::query_as::<_, EmojiRow>(

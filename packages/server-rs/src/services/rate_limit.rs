@@ -2,7 +2,7 @@
 //! Socket.IO handlers.
 //!
 //! Counters are keyed by window index, so a key is only ever written during the
-//! window it belongs to and expires on its own afterwards — no sweeping, and no
+//! window it belongs to and expires on its own afterwards - no sweeping, and no
 //! risk of a refreshed TTL pinning someone at the limit forever.
 //!
 //! Every check fails **open**: if Redis is unreachable we log and allow. Redis
@@ -31,7 +31,7 @@ const MINUTE: u64 = 60;
 const HOUR: u64 = 3600;
 
 /// Backstop against a single address hammering the API. Well above what the app
-/// itself asks for — the realtime path is a socket, not polling.
+/// itself asks for - the realtime path is a socket, not polling.
 pub const API_PER_IP: Quota = Quota::new(600, MINUTE);
 
 pub const LOGIN_PER_IP: Quota = Quota::new(20, 5 * MINUTE);

@@ -1,4 +1,4 @@
-//! Soundboard REST, mounted under /api. No TS equivalent — new for the Rust port.
+//! Soundboard REST, mounted under /api. No TS equivalent - new for the Rust port.
 
 use axum::extract::{DefaultBodyLimit, Multipart, Path, State};
 use axum::http::StatusCode;
@@ -97,7 +97,7 @@ async fn create(
     let name = name.ok_or_else(|| AppError::BadRequest("No name provided".into()))?;
     let name = sound::normalize_name(&name)?;
 
-    // Decoding is CPU-bound and blocking — keep it off the runtime.
+    // Decoding is CPU-bound and blocking - keep it off the runtime.
     let probe_bytes = bytes.clone();
     let probe_ext = ext.clone();
     let duration = tokio::task::spawn_blocking(move || {

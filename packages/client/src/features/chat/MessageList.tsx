@@ -6,6 +6,7 @@ import { MessageItem } from "./MessageItem";
 
 interface MessageListProps {
   messages: Message[];
+  pendingMessageIds: Set<string>;
   channelName: string;
   hasOlder: boolean;
   isLoadingOlder: boolean;
@@ -15,6 +16,8 @@ interface MessageListProps {
   onReply: (message: Message) => void;
   /** userId → display name, for rendering `<@id>` mentions. */
   mentionNames?: Record<string, string>;
+  /** username → user, for rendering `@username` mentions. */
+  mentionUsers?: Record<string, { id: string; name: string }>;
   /** Start-of-history block, shown once there's nothing older to load.
    * Defaults to the channel welcome; DMs pass their own. */
   intro?: ReactNode;
@@ -27,6 +30,7 @@ interface MessageListProps {
  */
 export function MessageList({
   messages,
+  pendingMessageIds,
   channelName,
   hasOlder,
   isLoadingOlder,
@@ -35,6 +39,7 @@ export function MessageList({
   canManage,
   onReply,
   mentionNames,
+  mentionUsers,
   intro,
 }: MessageListProps) {
   const topSentinel = useRef<HTMLDivElement>(null);
@@ -87,12 +92,14 @@ export function MessageList({
         <MessageItem
           key={message.id}
           message={message}
+          pending={pendingMessageIds.has(message.id)}
           compact={compact}
           replyTo={message.replyToId ? byId.get(message.replyToId) : undefined}
           isOwn={message.author.id === selfId}
           canManage={canManage}
           onReply={onReply}
           mentionNames={mentionNames}
+          mentionUsers={mentionUsers}
           selfId={selfId}
         />
       ))}

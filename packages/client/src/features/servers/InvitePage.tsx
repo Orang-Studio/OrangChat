@@ -5,7 +5,7 @@ import { InviteCard } from "./InviteCard";
 /**
  * Landing page for `/invite/:code`, the far end of a shared invite link.
  *
- * Public on purpose — it is the first thing an invited stranger sees, and
+ * Public on purpose - it is the first thing an invited stranger sees, and
  * hiding it behind the login wall would mean asking someone to make an account
  * before telling them what for. The card handles the sign-in detour itself.
  */

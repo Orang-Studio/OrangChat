@@ -27,6 +27,24 @@ enum class PresenceStatus {
 }
 
 @Serializable
+enum class PresenceDevice {
+    @SerialName("mobile") MOBILE,
+    @SerialName("browser") BROWSER,
+    @SerialName("desktop") DESKTOP,
+}
+
+@Serializable
+data class UserActivity(
+    val kind: String,
+    val name: String,
+    val details: String? = null,
+    val url: String? = null,
+    val imageUrl: String? = null,
+    val startedAt: String? = null,
+    val endsAt: String? = null,
+)
+
+@Serializable
 enum class DmPrivacy {
     @SerialName("everyone") EVERYONE,
     @SerialName("friends") FRIENDS,
@@ -47,6 +65,8 @@ data class User(
     val displayName: String,
     val avatarUrl: String? = null,
     val status: PresenceStatus = PresenceStatus.OFFLINE,
+    val devices: List<PresenceDevice> = emptyList(),
+    val activities: List<UserActivity> = emptyList(),
     val bio: String? = null,
     val bannerUrl: String? = null,
     val accentColor: Int? = null,
@@ -62,6 +82,8 @@ data class SelfUser(
     val displayName: String,
     val avatarUrl: String? = null,
     val status: PresenceStatus = PresenceStatus.OFFLINE,
+    val devices: List<PresenceDevice> = emptyList(),
+    val activities: List<UserActivity> = emptyList(),
     val bio: String? = null,
     val bannerUrl: String? = null,
     val accentColor: Int? = null,
@@ -77,7 +99,7 @@ data class SelfUser(
     /** False for OAuth-only accounts, which have no password to re-confirm. */
     val hasPassword: Boolean = true,
 ) {
-    fun asUser() = User(id, username, displayName, avatarUrl, status, bio, bannerUrl, accentColor, pronouns, profileCss, createdAt)
+    fun asUser() = User(id, username, displayName, avatarUrl, status, devices, activities, bio, bannerUrl, accentColor, pronouns, profileCss, createdAt)
 }
 
 @Serializable

@@ -1,6 +1,6 @@
 //! Per-user, per-channel read state: what the user has seen and how many times
 //! they've been @mentioned in a channel they haven't opened. Drives unread dots
-//! and mention badges. No Prisma equivalent — new for the unread feature.
+//! and mention badges. No Prisma equivalent - new for the unread feature.
 
 use sqlx::FromRow;
 
@@ -8,21 +8,28 @@ use crate::error::AppResult;
 use crate::models::ChannelRow;
 use crate::state::AppState;
 
-/// Explicit user ids mentioned via `<@id>`, plus whether `@everyone`/`@here`
-/// was used.
+/// Explicit users mentioned by id (`<@id>`) or handle (`@username`), plus
+/// whether `@everyone`/`@here` was used.
 pub struct ParsedMentions {
     pub user_ids: Vec<String>,
+    /// Lowercased handles; usernames are stored lowercase-insensitively.
+    pub usernames: Vec<String>,
     pub everyone: bool,
 }
 
-/// Extract `<@userId>` targets (cuid-shaped, `[a-z0-9]`) and detect
-/// `@everyone`/`@here`. Hand-rolled to avoid a regex dependency.
+/// Extract mention targets and detect `@everyone`/`@here`. Hand-rolled to avoid
+/// a regex dependency.
+///
+/// Both encodings are accepted. Clients now write plain `@username` so the raw
+/// message text stays readable, but `<@id>` predates that and still sits in
+/// every older message, so it keeps resolving.
 pub fn parse_mentions(content: &str) -> ParsedMentions {
     let bytes = content.as_bytes();
     let mut user_ids: Vec<String> = Vec::new();
+    let mut usernames: Vec<String> = Vec::new();
     let mut i = 0;
-    while i + 1 < bytes.len() {
-        if bytes[i] == b'<' && bytes[i + 1] == b'@' {
+    while i < bytes.len() {
+        if bytes[i] == b'<' && i + 1 < bytes.len() && bytes[i + 1] == b'@' {
             let start = i + 2;
             let mut j = start;
             while j < bytes.len() && bytes[j].is_ascii_alphanumeric() {
@@ -34,13 +41,39 @@ pub fn parse_mentions(content: &str) -> ParsedMentions {
                 continue;
             }
         }
+        // An `@` glued to the end of a word is an email host, not a mention.
+        if bytes[i] == b'@' && !(i > 0 && bytes[i - 1].is_ascii_alphanumeric()) {
+            let start = i + 1;
+            let mut j = start;
+            while j < bytes.len()
+                && (bytes[j].is_ascii_alphanumeric() || bytes[j] == b'_' || bytes[j] == b'.')
+            {
+                j += 1;
+            }
+            // A trailing dot is the full stop of a sentence, not part of the
+            // handle. Only ASCII is consumed above, so these stay char bounds.
+            while j > start && bytes[j - 1] == b'.' {
+                j -= 1;
+            }
+            if j > start {
+                usernames.push(content[start..j].to_lowercase());
+                i = j;
+                continue;
+            }
+        }
         i += 1;
     }
     user_ids.sort();
     user_ids.dedup();
+    usernames.sort();
+    usernames.dedup();
 
     let everyone = content.contains("@everyone") || content.contains("@here");
-    ParsedMentions { user_ids, everyone }
+    ParsedMentions {
+        user_ids,
+        usernames,
+        everyone,
+    }
 }
 
 /// The user ids that belong to a channel (server members, or DM participants).
@@ -59,7 +92,36 @@ pub async fn channel_member_ids(state: &AppState, channel: &ChannelRow) -> AppRe
     Ok(rows.into_iter().map(|(id,)| id).collect())
 }
 
-/// Resolve who should get a mention badge for a message: explicit `<@id>`
+/// The (id, lowercased username) of everyone in a channel. Resolving handles
+/// needs the username alongside the id, which `channel_member_ids` does not
+/// carry.
+async fn channel_member_handles(
+    state: &AppState,
+    channel: &ChannelRow,
+) -> AppResult<Vec<(String, String)>> {
+    let rows: Vec<(String, String)> = if let Some(server_id) = &channel.server_id {
+        sqlx::query_as(
+            r#"SELECT u.id, lower(u.username) FROM "ServerMember" m
+               JOIN "User" u ON u.id = m."userId"
+               WHERE m."serverId" = $1"#,
+        )
+        .bind(server_id)
+        .fetch_all(&state.pool)
+        .await?
+    } else {
+        sqlx::query_as(
+            r#"SELECT u.id, lower(u.username) FROM "ChannelParticipant" p
+               JOIN "User" u ON u.id = p."userId"
+               WHERE p."channelId" = $1"#,
+        )
+        .bind(&channel.id)
+        .fetch_all(&state.pool)
+        .await?
+    };
+    Ok(rows)
+}
+
+/// Resolve who should get a mention badge for a message: `<@id>` or `@username`
 /// targets that are actually in the channel, or everyone (minus the author) for
 /// `@everyone`/`@here`. Returns deduped recipient ids, never including `author_id`.
 pub async fn resolve_mention_recipients(
@@ -68,13 +130,21 @@ pub async fn resolve_mention_recipients(
     author_id: &str,
     parsed: &ParsedMentions,
 ) -> AppResult<Vec<String>> {
-    let members = channel_member_ids(state, channel).await?;
+    let members = channel_member_handles(state, channel).await?;
     let recipients: Vec<String> = if parsed.everyone {
-        members.into_iter().filter(|id| id != author_id).collect()
+        members
+            .into_iter()
+            .map(|(id, _)| id)
+            .filter(|id| id != author_id)
+            .collect()
     } else {
         members
             .into_iter()
-            .filter(|id| id != author_id && parsed.user_ids.contains(id))
+            .filter(|(id, username)| {
+                id != author_id
+                    && (parsed.user_ids.contains(id) || parsed.usernames.contains(username))
+            })
+            .map(|(id, _)| id)
             .collect()
     };
     Ok(recipients)
@@ -208,4 +278,64 @@ pub async fn get_unreads(state: &AppState, user_id: &str) -> AppResult<Vec<Unrea
             mention_count: r.mention_count,
         })
         .collect())
+}
+
+#[cfg(test)]
+mod parse_mention_tests {
+    use super::parse_mentions;
+
+    fn names(content: &str) -> Vec<String> {
+        parse_mentions(content).usernames
+    }
+
+    #[test]
+    fn reads_plain_handles() {
+        assert_eq!(names("hey @alice and @bob_2"), vec!["alice", "bob_2"]);
+    }
+
+    #[test]
+    fn handles_are_case_insensitive() {
+        assert_eq!(names("@Alice @ALICE"), vec!["alice"]);
+    }
+
+    #[test]
+    fn a_sentence_final_dot_is_punctuation_not_part_of_the_handle() {
+        assert_eq!(names("ask @alice."), vec!["alice"]);
+        assert_eq!(names("ask @first.last."), vec!["first.last"]);
+    }
+
+    #[test]
+    fn punctuation_around_a_handle_does_not_break_it() {
+        assert_eq!(names("(@alice) @bob!"), vec!["alice", "bob"]);
+    }
+
+    #[test]
+    fn an_email_host_is_not_a_mention() {
+        assert!(names("mail me at bob@example.com").is_empty());
+    }
+
+    #[test]
+    fn legacy_id_tokens_still_resolve() {
+        let p = parse_mentions("hey <@ckx9f2abc> and @alice");
+        assert_eq!(p.user_ids, vec!["ckx9f2abc"]);
+        assert_eq!(p.usernames, vec!["alice"]);
+    }
+
+    #[test]
+    fn an_id_token_is_not_also_read_as_a_handle() {
+        assert!(parse_mentions("<@ckx9f2abc>").usernames.is_empty());
+    }
+
+    #[test]
+    fn broadcasts_are_flagged() {
+        assert!(parse_mentions("@everyone ship it").everyone);
+        assert!(parse_mentions("@here ship it").everyone);
+        assert!(!parse_mentions("@alice ship it").everyone);
+    }
+
+    #[test]
+    fn non_ascii_text_does_not_panic_or_match() {
+        assert_eq!(names("labas @alice, kaip sekasi? ąčęėįšųūž"), vec!["alice"]);
+        assert!(names("ačiū").is_empty());
+    }
 }

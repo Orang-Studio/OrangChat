@@ -8,6 +8,7 @@ import { emitTyping, sendMessage } from "./socket-actions";
 import { isEphemeral, MAX_PER_MESSAGE, uploadAttachment } from "./attachments";
 import { ComposerAttachments, isSettled, type PendingUpload } from "./ComposerAttachments";
 import { ExpressionPicker } from "./ExpressionPicker";
+import { clearDraft, loadDraft, saveDraft, saveDraftNow } from "./drafts";
 
 const TYPING_THROTTLE_MS = 2_500;
 const MAX_LENGTH = 4_000;
@@ -21,8 +22,6 @@ interface ComposerProps {
   /** Members for @mention autocomplete (empty for DMs). */
   members?: ServerMember[];
 }
-
-const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** Match a `@query` fragment ending at the caret (start-of-line or after space). */
 function activeMention(value: string, caret: number): { start: number; query: string } | null {
@@ -50,22 +49,31 @@ export function Composer({
   const lastTypingSent = useRef(0);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  // Display name (lowercased) → userId for mentions the user picked from the menu.
-  const picked = useRef<Map<string, string>>(new Map());
   // Uploads outlive the render that started them; a ref keeps cleanup honest
   // even when the component unmounts mid-flight.
   const live = useRef<PendingUpload[]>([]);
   live.current = uploads;
+  // Latest draft, so the channel-switch cleanup can persist what's in the box.
+  const draftRef = useRef("");
+  draftRef.current = draft;
 
   useEffect(() => {
     textarea.current?.focus();
   }, [replyTo, channelId]);
 
-  // Reset per-draft mention bookkeeping when switching channels.
+  // Load this channel's saved draft on open; persist it on the way out.
   useEffect(() => {
-    picked.current.clear();
     setMention(null);
     setDraft("");
+    let cancelled = false;
+    void loadDraft(channelId).then((text) => {
+      // don't clobber anything typed while the load was in flight.
+      if (!cancelled && draftRef.current === "") setDraft(text);
+    });
+    return () => {
+      cancelled = true;
+      saveDraftNow(channelId, draftRef.current.trim());
+    };
   }, [channelId]);
 
   // A draft belongs to its channel: switching away (or leaving) cancels uploads
@@ -106,6 +114,7 @@ export function Composer({
   const onChange = (value: string) => {
     setDraft(value);
     setError(null);
+    saveDraft(channelId, value.trim());
     const now = Date.now();
     if (value && now - lastTypingSent.current > TYPING_THROTTLE_MS) {
       lastTypingSent.current = now;
@@ -117,15 +126,14 @@ export function Composer({
 
   const pick = (m: ServerMember) => {
     if (!mention) return;
-    const label = labelOf(m);
+    const handle = m.user.username;
     const el = textarea.current;
     const caret = el?.selectionStart ?? draft.length;
-    const next = `${draft.slice(0, mention.start)}@${label} ${draft.slice(caret)}`;
-    picked.current.set(label.toLowerCase(), m.userId);
+    const next = `${draft.slice(0, mention.start)}@${handle} ${draft.slice(caret)}`;
     setDraft(next);
     setMention(null);
     requestAnimationFrame(() => {
-      const pos = mention.start + label.length + 2;
+      const pos = mention.start + handle.length + 2;
       el?.focus();
       el?.setSelectionRange(pos, pos);
     });
@@ -193,15 +201,6 @@ export function Composer({
     }
   };
 
-  /** Turn picked `@Display Name` tokens into `<@id>` wire mentions. */
-  const encodeMentions = (text: string) => {
-    let out = text;
-    for (const [label, id] of picked.current) {
-      out = out.replace(new RegExp(`@${escapeRegex(label)}(?=\\s|$)`, "gi"), `<@${id}>`);
-    }
-    return out;
-  };
-
   const uploading = uploads.some((u) => !isSettled(u));
   const failed = uploads.filter((u) => u.error !== undefined);
   const ready = uploads.filter((u) => u.attachment !== undefined);
@@ -215,7 +214,7 @@ export function Composer({
       setError("Remove the attachments that failed to upload first");
       return;
     }
-    const content = encodeMentions(draft.trim());
+    const content = draft.trim();
     setSending(true);
     try {
       await sendMessage({
@@ -224,9 +223,10 @@ export function Composer({
         replyToId: replyTo?.id,
         attachmentIds: ready.map((u) => u.attachment!.id),
         spoilerAttachmentIds: ready.filter((u) => u.spoiler).map((u) => u.attachment!.id),
+        optimisticAttachments: ready.map((u) => u.attachment!),
       });
       setDraft("");
-      picked.current.clear();
+      clearDraft(channelId);
       for (const u of ready) if (u.preview) URL.revokeObjectURL(u.preview);
       setUploads([]);
       onClearReply();

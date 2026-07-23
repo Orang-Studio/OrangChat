@@ -18,7 +18,7 @@ function nameFromFile(file: File): string {
 
 /**
  * Measure the clip in the browser so an over-long file is refused before it is
- * uploaded. The server measures it again and is the one that decides — this is
+ * uploaded. The server measures it again and is the one that decides - this is
  * only here to save the round trip.
  *
  * Resolves null when the browser cannot decode it: that is not a verdict, and

@@ -1,6 +1,6 @@
 //! Image upload + compression. Accepts a multipart image, re-encodes it
 //! smaller (resize + recompress; animated GIFs keep their animation), and
-//! returns the URL the client stores as an avatar/banner. No TS equivalent —
+//! returns the URL the client stores as an avatar/banner. No TS equivalent -
 //! new for the Rust port.
 //!
 //! Re-encoding happens here regardless of where the bytes land: it bounds what
@@ -10,7 +10,7 @@
 //! With Cloudinary configured the bytes go there and the client gets an absolute
 //! `https://res.cloudinary.com/...` url. Otherwise they land under UPLOAD_DIR and
 //! the url is a relative `/uploads/<file>` served by nginx. Both shapes are live
-//! at once in practice — rows written before the switch keep their old urls.
+//! at once in practice - rows written before the switch keep their old urls.
 
 use std::io::Cursor;
 use std::path::PathBuf;
@@ -103,7 +103,7 @@ async fn upload_image(
     }
     let bytes = bytes.ok_or_else(|| AppError::BadRequest("No file provided".into()))?;
 
-    // Image decode/encode is CPU-bound and blocking — keep it off the runtime.
+    // Image decode/encode is CPU-bound and blocking - keep it off the runtime.
     let (out, ext) = tokio::task::spawn_blocking(move || process_image(&bytes, &kind))
         .await
         .map_err(|_| AppError::Internal("Image processing failed".into()))??;
@@ -122,7 +122,7 @@ pub(crate) async fn store_image(
     store_media(state, out, ext, "images", "image").await
 }
 
-/// As `store_image`, for audio. Cloudinary files audio under `video` — that is
+/// As `store_image`, for audio. Cloudinary files audio under `video` - that is
 /// its own naming, not a mistake here.
 pub(crate) async fn store_audio(
     state: &AppState,

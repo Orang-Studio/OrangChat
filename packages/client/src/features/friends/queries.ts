@@ -40,7 +40,9 @@ export function updateFriendUser(client: QueryClient, user: User): void {
     if (!list?.some((f) => f.user.id === user.id)) return list;
     return sortFriends(
       list.map((f) =>
-        f.user.id === user.id ? { ...f, user: { ...user, status: f.user.status } } : f,
+        f.user.id === user.id
+          ? { ...f, user: { ...user, status: f.user.status, devices: f.user.devices, activities: f.user.activities } }
+          : f,
       ),
     );
   });

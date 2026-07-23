@@ -1,7 +1,8 @@
-import { clipboard, Menu, MenuItem, nativeImage, shell, type BrowserWindow } from "electron";
+import { clipboard, Menu, MenuItem, nativeImage, type BrowserWindow } from "electron";
 import { writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { app, dialog } from "electron";
+import { openExternalIfWeb } from "./config";
 
 const MAX_SUGGESTIONS = 5;
 
@@ -56,7 +57,7 @@ export function registerContextMenu(window: BrowserWindow): void {
       menu.append(
         new MenuItem({
           label: "Open link in browser",
-          click: () => void shell.openExternal(params.linkURL),
+          click: () => openExternalIfWeb(params.linkURL),
         }),
       );
       menu.append(

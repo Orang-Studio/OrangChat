@@ -176,6 +176,8 @@ async fn get_server(
         .map(|m| m.member.user_id.clone())
         .collect();
     let statuses = presence::get_statuses(&state, &user_ids).await?;
+    let devices = presence::get_device_sets(&state, &user_ids).await?;
+    let activities = presence::get_activity_sets(&state, &user_ids).await?;
     let members: Vec<ServerMemberDto> = detail
         .members
         .iter()
@@ -185,6 +187,8 @@ async fn get_server(
                 .get(&m.member.user_id)
                 .cloned()
                 .unwrap_or_else(|| "offline".into());
+            dto.user.devices = devices.get(&m.member.user_id).cloned().unwrap_or_default();
+            dto.user.activities = activities.get(&m.member.user_id).cloned().unwrap_or_default();
             dto
         })
         .collect();
@@ -508,7 +512,7 @@ async fn create_invite(
 /// Resolve an invite link. Open to signed-out visitors: the invite code is
 /// itself the secret, and a link that can only say what it leads to *after* you
 /// have an account is a link nobody follows. Signing in adds the viewer-specific
-/// part of the answer — banned, or already a member.
+/// part of the answer - banned, or already a member.
 async fn invite_preview(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
@@ -541,7 +545,10 @@ async fn join_invite(
             .iter()
             .find(|m| m.member.user_id == user.user_id)
         {
-            let dto = to_server_member(&me.member, &me.user, me.role_ids.clone());
+            let mut dto = to_server_member(&me.member, &me.user, me.role_ids.clone());
+            dto.user.status = presence::get_status(&state, &user.user_id).await?;
+            dto.user.devices = presence::get_devices(&state, &user.user_id).await?;
+            dto.user.activities = presence::get_activities(&state, &user.user_id).await?;
             let _ = state.io().to(format!("server:{}", srv.id)).emit(
                 "member:joined",
                 &json!({ "serverId": srv.id, "member": dto }),

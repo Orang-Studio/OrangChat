@@ -17,7 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
+import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,6 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import lt.oranges.orangchat.data.model.Hierarchy
 import lt.oranges.orangchat.data.model.PresenceStatus
+import lt.oranges.orangchat.data.model.PresenceDevice
+import lt.oranges.orangchat.data.model.UserActivity
 import lt.oranges.orangchat.data.model.Role
 import lt.oranges.orangchat.data.model.ServerDetail
 import lt.oranges.orangchat.data.model.ServerMember
@@ -40,6 +42,8 @@ import lt.oranges.orangchat.feature.roles.roleColor
 import lt.oranges.orangchat.ui.components.Avatar
 import lt.oranges.orangchat.ui.components.ButtonVariant
 import lt.oranges.orangchat.ui.components.ConfirmDialog
+import lt.oranges.orangchat.ui.components.DeviceIndicators
+import lt.oranges.orangchat.ui.components.ActivityStatus
 import lt.oranges.orangchat.ui.components.OrangButton
 import lt.oranges.orangchat.ui.components.OrangDialog
 import lt.oranges.orangchat.ui.components.OrangTextField
@@ -62,6 +66,8 @@ fun MembersScreen(
     detail: ServerDetail,
     selfId: String,
     presence: Map<String, PresenceStatus>,
+    presenceDevices: Map<String, Set<PresenceDevice>>,
+    presenceActivities: Map<String, List<UserActivity>>,
     onBack: () -> Unit,
     onSetNickname: (String, String?) -> Unit,
     onAssignRole: (String, String) -> Unit,
@@ -113,6 +119,8 @@ fun MembersScreen(
                     member = member,
                     detail = detail,
                     status = presence[member.userId] ?: member.user.status,
+                    devices = presenceDevices[member.userId] ?: member.user.devices.toSet(),
+                    activities = presenceActivities[member.userId] ?: member.user.activities,
                     isOwner = Hierarchy.isOwner(detail, member.userId),
                     onClick = { selectedId = member.userId },
                 )
@@ -142,6 +150,8 @@ private fun MemberRow(
     member: ServerMember,
     detail: ServerDetail,
     status: PresenceStatus,
+    devices: Set<PresenceDevice>,
+    activities: List<UserActivity>,
     isOwner: Boolean,
     onClick: () -> Unit,
 ) {
@@ -159,7 +169,7 @@ private fun MemberRow(
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Avatar(user = member.user, size = 34.dp, status = status)
+        Avatar(user = member.user, size = 34.dp)
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -178,7 +188,12 @@ private fun MemberRow(
                     Text("Timed out", color = c.danger, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
-            Text("@${member.user.username}", color = c.inkMuted, fontSize = 12.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("@${member.user.username}", color = c.inkMuted, fontSize = 12.sp)
+                Spacer(Modifier.width(5.dp))
+                DeviceIndicators(status = status, devices = devices, modifier = Modifier.height(14.dp))
+            }
+            ActivityStatus(activities = activities)
         }
         val roleCount = member.roleIds.size
         if (roleCount > 0) {

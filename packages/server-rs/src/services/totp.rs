@@ -10,7 +10,7 @@ use crate::state::AppState;
 
 const ISSUER: &str = "OrangChat";
 const BACKUP_CODE_COUNT: usize = 10;
-/// No 0/O or 1/I/L — these get read off a printout and retyped.
+/// No 0/O or 1/I/L - these get read off a printout and retyped.
 const BACKUP_ALPHABET: &[u8] = b"ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
 pub fn generate_secret() -> String {
@@ -59,7 +59,7 @@ fn random_backup_code() -> String {
     format!("{}-{}", block(&mut rng), block(&mut rng))
 }
 
-/// Returns the plaintext codes — the only moment they exist unhashed.
+/// Returns the plaintext codes - the only moment they exist unhashed.
 pub async fn regenerate_backup_codes(state: &AppState, user_id: &str) -> AppResult<Vec<String>> {
     let codes: Vec<String> = (0..BACKUP_CODE_COUNT)
         .map(|_| random_backup_code())

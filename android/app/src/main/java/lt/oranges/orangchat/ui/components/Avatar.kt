@@ -3,9 +3,15 @@ package lt.oranges.orangchat.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Computer
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material3.Icon
+import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import lt.oranges.orangchat.data.model.PresenceStatus
+import lt.oranges.orangchat.data.model.PresenceDevice
 import lt.oranges.orangchat.data.model.User
 import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.absoluteUrl
@@ -50,6 +57,7 @@ fun Avatar(
         modifier = modifier,
         size = size,
         status = status,
+        devices = user.devices,
         shape = shape,
     )
 }
@@ -61,6 +69,7 @@ fun Avatar(
     modifier: Modifier = Modifier,
     size: Dp = 36.dp,
     status: PresenceStatus? = null,
+    devices: List<PresenceDevice> = emptyList(),
     shape: Shape = CircleShape,
 ) {
     val c = OrangTheme.colors
@@ -85,7 +94,28 @@ fun Avatar(
                 )
             }
         }
-        if (status != null) {
+        if (status != null && devices.isNotEmpty()) {
+            val device = when {
+                PresenceDevice.MOBILE in devices -> PresenceDevice.MOBILE
+                PresenceDevice.DESKTOP in devices -> PresenceDevice.DESKTOP
+                else -> PresenceDevice.BROWSER
+            }
+            Icon(
+                imageVector = when (device) {
+                    PresenceDevice.MOBILE -> Icons.Default.Smartphone
+                    PresenceDevice.DESKTOP -> Icons.Default.Computer
+                    PresenceDevice.BROWSER -> Icons.Default.Language
+                },
+                contentDescription = device.name.lowercase(),
+                tint = statusColor(status),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size((size.value * 0.4f).coerceAtLeast(12f).dp)
+                    .clip(CircleShape)
+                    .background(c.surface2)
+                    .padding(2.dp),
+            )
+        } else if (status != null) {
             val dot = (size.value * 0.33f).coerceAtLeast(10f).dp
             Box(
                 modifier = Modifier

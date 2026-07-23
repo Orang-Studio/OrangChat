@@ -29,6 +29,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import lt.oranges.orangchat.data.model.ChannelType
 import lt.oranges.orangchat.data.model.SelfUser
+import lt.oranges.orangchat.data.model.ServerMember
 import lt.oranges.orangchat.data.model.User
 import lt.oranges.orangchat.feature.dms.HomePane
 import lt.oranges.orangchat.feature.friends.FriendsScreen
@@ -72,8 +73,11 @@ fun HomeScreen(
     val detail by appViewModel.serverDetail.collectAsStateWithLifecycle()
     val currentChannelId by appViewModel.currentChannelId.collectAsStateWithLifecycle()
     val messages by appViewModel.messages.collectAsStateWithLifecycle()
+    val pendingMessageIds by appViewModel.pendingMessageIds.collectAsStateWithLifecycle()
     val typing by appViewModel.typing.collectAsStateWithLifecycle()
     val presence by appViewModel.presence.collectAsStateWithLifecycle()
+    val presenceDevices by appViewModel.presenceDevices.collectAsStateWithLifecycle()
+    val presenceActivities by appViewModel.presenceActivities.collectAsStateWithLifecycle()
     val dms by appViewModel.dms.collectAsStateWithLifecycle()
     val friends by appViewModel.friends.collectAsStateWithLifecycle()
     val incoming by appViewModel.incomingRequests.collectAsStateWithLifecycle()
@@ -82,6 +86,14 @@ fun HomeScreen(
     val devicePrefs by settingsViewModel.prefs.collectAsStateWithLifecycle()
     val connected by appViewModel.connected.collectAsStateWithLifecycle()
     val pendingInvite by appViewModel.pendingInvite.collectAsStateWithLifecycle()
+
+    // The authenticated user object is a login-time snapshot. Presence events
+    // arrive separately, so fold their latest values into every self-facing UI.
+    val liveSelf = self.copy(
+        status = presence[self.id] ?: self.status,
+        devices = presenceDevices[self.id]?.toList() ?: self.devices,
+        activities = presenceActivities[self.id] ?: self.activities,
+    )
 
     // Ask for notification permission once on Android 13+ so live-socket message
     // notifications can be posted while backgrounded.
@@ -222,9 +234,10 @@ fun HomeScreen(
     val sidebar: @Composable () -> Unit = {
         when {
             homeSelected -> HomePane(
-                self = self,
+                self = liveSelf,
                 conversations = dms,
                 presence = presence,
+                presenceActivities = presenceActivities,
                 unreads = unreads,
                 onOpenFriends = { overlay = Overlay.FRIENDS; closeDrawer() },
                 onOpenConversation = { convo ->
@@ -237,7 +250,7 @@ fun HomeScreen(
 
             detail != null -> ChannelListPane(
                 detail = detail!!,
-                self = self,
+                self = liveSelf,
                 currentChannelId = currentChannelId,
                 unreads = unreads,
                 voiceParticipants = voiceParticipants,
@@ -328,7 +341,7 @@ fun HomeScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 SettingsScreen(
-                    self = self,
+                    self = liveSelf,
                     themePreference = themePref,
                     onThemeChange = themeViewModel::setPreference,
                     onStatusChange = appViewModel::updateStatus,
@@ -409,6 +422,8 @@ fun HomeScreen(
                                 detail = detail!!,
                                 selfId = self.id,
                                 presence = presence,
+                                presenceDevices = presenceDevices,
+                                presenceActivities = presenceActivities,
                                 onBack = { overlay = Overlay.SERVER_SETTINGS },
                                 onSetNickname = { userId, nick ->
                                     appViewModel.setNickname(detail!!.server.id, userId, nick)
@@ -467,6 +482,8 @@ fun HomeScreen(
                                 incoming = incoming,
                                 outgoing = outgoing,
                                 presence = presence,
+                                presenceDevices = presenceDevices,
+                                presenceActivities = presenceActivities,
                                 onBack = { overlay = Overlay.NONE },
                                 onAdd = { appViewModel.sendFriendRequest(it) },
                                 onAccept = appViewModel::acceptRequest,
@@ -489,8 +506,19 @@ fun HomeScreen(
                                     topic = chan?.topic,
                                     channelId = channelId,
                                     messages = messages[channelId].orEmpty(),
+                                    pendingMessageIds = pendingMessageIds,
                                     selfId = self.id,
-                                    members = detail?.members.orEmpty(),
+                                    // A DM's mentionable people are its
+                                    // participants, not the members of whatever
+                                    // server happens to be selected behind it.
+                                    members = convo?.participants?.map { u ->
+                                        ServerMember(
+                                            id = u.id,
+                                            serverId = "",
+                                            userId = u.id,
+                                            user = u,
+                                        )
+                                    } ?: detail?.members.orEmpty(),
                                     presence = presence,
                                     typingUserIds = (typing[channelId].orEmpty() - self.id),
                                     onBack = { openChat = false; appViewModel.clearActiveChannel() },
@@ -513,6 +541,10 @@ fun HomeScreen(
                                     },
                                     onCall = activeCall?.channelId == channelId,
                                     headerUser = convo?.participants?.firstOrNull { it.id != self.id },
+                                    headerActivities = convo?.participants
+                                        ?.firstOrNull { it.id != self.id }
+                                        ?.let { presenceActivities[it.id] ?: it.activities }
+                                        .orEmpty(),
                                     onOpenProfile = { profileUser = it },
                                     emojis = emojis,
                                 )
@@ -538,8 +570,13 @@ fun HomeScreen(
             outgoing.any { it.user.id == target.id } -> ProfileRelation.PENDING
             else -> ProfileRelation.STRANGER
         }
+        val liveTarget = target.copy(
+            status = presence[target.id] ?: target.status,
+            devices = presenceDevices[target.id]?.toList() ?: target.devices,
+            activities = presenceActivities[target.id] ?: target.activities,
+        )
         ProfileDialog(
-            user = target,
+            user = liveTarget,
             relation = relation,
             presence = presence[target.id],
             onDismiss = { profileUser = null },

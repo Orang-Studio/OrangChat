@@ -45,7 +45,7 @@ export function InviteDialog({ serverId, open, onOpenChange }: InviteDialogProps
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         title="Invite people"
-        description="Share this link — it unfurls into a join card when posted in chat, and opens the app on phones that have it. Expires in 7 days."
+        description="Share this link - it unfurls into a join card when posted in chat, and opens the app on phones that have it. Expires in 7 days."
       >
         {mutation.isError ? (
           <p role="alert" className="rounded-lg bg-primary-soft px-3 py-2 text-sm text-danger">

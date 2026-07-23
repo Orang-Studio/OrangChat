@@ -9,6 +9,7 @@ import {
 import { useConnectionStore } from "../../stores/connection";
 import { Button } from "../../components/ui/Button";
 import { SectionTitle, Toggle } from "./controls";
+import { desktop, type UpdateCheckResult } from "../../lib/desktop";
 
 function ConnectionRow() {
   const status = useConnectionStore((s) => s.status);
@@ -109,10 +110,63 @@ function StorageRow() {
   );
 }
 
+function UpdatesRow() {
+  const [state, setState] = useState<UpdateCheckResult | "checking" | null>(null);
+
+  const check = async () => {
+    setState("checking");
+    try {
+      setState((await desktop!.checkForUpdates()) ?? { status: "error" });
+    } catch {
+      setState({ status: "error" });
+    }
+  };
+
+  const message = (() => {
+    if (state === "checking") return "Checking for updates…";
+    if (!state || typeof state === "string") return null;
+    switch (state.status) {
+      case "available":
+        return `Update ${state.version ?? ""} found — downloading. You'll be asked to restart.`;
+      case "current":
+        return `You're on the latest version${state.version ? ` (${state.version})` : ""}.`;
+      case "error":
+        return "Couldn't check right now. Try again later.";
+      default:
+        return null;
+    }
+  })();
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm text-ink-secondary">
+        OrangChat {desktop?.version ? `${desktop.version} ` : ""}for {desktop?.platform}.
+      </p>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        loading={state === "checking"}
+        onClick={() => void check()}
+      >
+        Check for updates
+      </Button>
+      {message && <p className="text-sm text-ink-muted">{message}</p>}
+    </div>
+  );
+}
+
 export function SystemTab() {
   return (
     <div className="space-y-6">
-      <div>
+      {desktop && (
+        <div>
+          <SectionTitle>App updates</SectionTitle>
+          <UpdatesRow />
+        </div>
+      )}
+
+      <div className={desktop ? "border-t border-border pt-5" : undefined}>
         <SectionTitle>Notifications</SectionTitle>
         <NotificationsRow />
       </div>

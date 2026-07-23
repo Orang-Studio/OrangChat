@@ -1,40 +1,34 @@
-// OrangChat data model — Discord-mapped. See packages/shared for the wire DTOs
-// these entities serialize to. Permission bitfields are BigInt (see shared/permissions).
-
 generator client {
   provider = "prisma-client-js"
 }
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
 model User {
   id                   String   @id @default(cuid())
   email                String   @unique
-  passwordHash         String? // null for OAuth-only accounts
+  passwordHash         String?
   username             String   @unique
   displayName          String
   avatarUrl            String?
   status               String   @default("offline")
-  // ── Profile (Discord-style) ──
-  bio                  String? // free-text "about me"
-  bannerUrl            String? // profile banner image
-  accentColor          Int? // profile accent, 0xRRGGBB; null = derive from avatar
-  pronouns             String? // short free-text, e.g. "they/them"
-  customCss            String? // user's own client CSS override (private, self only)
-  profileCss           String? // public, sandboxed CSS that themes this user's profile card
-  // ── Privacy (self only; enforced server-side) ──
+  bio                  String?
+  bannerUrl            String?
+  accentColor          Int?
+  pronouns             String?
+  customCss            String?
+  profileCss           String?
   dmPrivacy            String   @default("everyone") // "everyone" | "friends" | "none"
   friendRequestPrivacy String   @default("everyone") // "everyone" | "mutual" | "none"
   typingIndicators     Boolean  @default(true)
-  // ── Two-factor (TOTP) ──
-  totpSecret           String? // base32 secret; present once setup starts, kept after enable
+  totpSecret           String? // base32 secret
   totpEnabled          Boolean  @default(false)
+  /// Awarded profile badges, as catalog slugs (see services::badge). Denormalized
+  /// onto the user so every `SELECT * FROM "User"` already carries them.
+  badges               String[] @default([])
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
-
   totpBackupCodes        TotpBackupCode[]
   oauthAccounts          OAuthAccount[]
   ownedServers           Server[]             @relation("ServerOwner")
@@ -47,6 +41,7 @@ model User {
   sentFriendRequests     Friendship[]         @relation("FriendRequester")
   receivedFriendRequests Friendship[]         @relation("FriendAddressee")
   readStates             ReadState[]
+  drafts                 Draft[]
   connections            Connection[]
   pendingAttachments     PendingAttachment[]
   pushSubscriptions      PushSubscription[]
@@ -55,81 +50,46 @@ model User {
   createdSounds          Sound[]              @relation("SoundCreator")
 }
 
-/// A browser or device registered to receive push while OrangChat is closed.
-/// This is what makes a notification arrive without a live socket: the transport
-/// (Web Push / FCM) holds the connection, wakes the client, and hands it a
-/// payload.
-///
-/// `kind` selects the transport and decides which columns are populated —
-/// "webpush" rows carry the two ECDH key halves the payload is sealed to, "fcm"
-/// rows carry only a registration token and leave both null.
-///
-/// `endpoint` is unique across users on purpose: a browser or device that gets
-/// handed to someone else re-registers the same endpoint, and the row must move
-/// to the new owner rather than fan a notification out to both.
 model PushSubscription {
   id     String @id @default(cuid())
   userId String
-  kind   String // "webpush" | "fcm"
-
-  /// The Web Push endpoint URL, or the FCM registration token.
+  kind   String
   endpoint String  @unique
-  /// Client public key (webpush only); base64url, uncompressed P-256 point.
   p256dh   String?
-  /// Client auth secret (webpush only); base64url, 16 bytes.
   auth     String?
-
-  /// Free-text device label, shown when listing a user's active devices.
   label String?
-
   createdAt  DateTime @default(now())
-  /// Bumped on every re-register so stale devices can be reaped.
   lastSeenAt DateTime @default(now())
-
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@index([userId])
 }
 
-/// A linked external account shown on the user's profile ("connections" in
-/// Discord). Distinct from OAuthAccount, which exists only to log someone in:
-/// a connection never grants access to this account and is purely display.
-///
-/// `verified` separates the two ways a row gets here — an OAuth/OpenID round
-/// trip proves control of the remote account, whereas a hand-entered custom
-/// link proves nothing and is rendered without a checkmark.
 model Connection {
   id         String  @id @default(cuid())
   userId     String
-  provider   String // registry key: "github" | "steam" | … | "custom"
-  providerId String // stable id on the remote platform; the URL for custom links
-  name       String // handle/label as shown on the card
-  profileUrl String? // link out; null when the platform exposes no public page
+  provider   String
+  providerId String
+  name       String
+  profileUrl String?
   verified   Boolean @default(false)
-  visible    Boolean @default(true) // user can keep a connection linked but off-profile
-  position   Int     @default(0) // manual ordering on the profile card
-
+  visible    Boolean @default(true)
+  position   Int     @default(0)
+  oauthAccessToken  String?
+  oauthRefreshToken String?
+  oauthExpiresAt    DateTime?
+  oauthScope        String?
   createdAt DateTime @default(now())
-
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Scoped to the user, not global: the same remote account may legitimately be
-  // linked by more than one person (shared org GitHub, family Steam), and the
-  // OAuth round trip already proves whoever linked it controls it.
   @@unique([userId, provider, providerId])
   @@index([userId])
 }
 
-/// Single-use recovery code for 2FA. Only the argon2 hash is stored, so a
-/// database leak can't yield usable codes; `usedAt` burns one on redemption.
 model TotpBackupCode {
   id       String    @id @default(cuid())
   userId   String
   codeHash String
   usedAt   DateTime?
-
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@index([userId])
 }
 
@@ -140,23 +100,19 @@ model Friendship {
   status      String   @default("pending") // "pending" | "accepted"
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
   requester User @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
   addressee User @relation("FriendAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
-
   @@unique([requesterId, addresseeId])
   @@index([addresseeId])
 }
 
 model OAuthAccount {
   id         String   @id @default(cuid())
-  provider   String // "google" | "discord"
+  provider   String // "google"
   providerId String
   userId     String
   createdAt  DateTime @default(now())
-
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@unique([provider, providerId])
   @@index([userId])
 }
@@ -168,19 +124,12 @@ model Server {
   description String?
   bannerUrl   String?
   ownerId     String
-
-  /// Where join/system notices are posted. Soft pointers, deliberately not FKs:
-  /// deleting the channel must blank the setting, not cascade into the server.
   systemChannelId String?
   afkChannelId    String?
-  /// Seconds of voice inactivity before a member is moved to the AFK channel.
   afkTimeout      Int     @default(300)
-  /// "all" | "mentions" — the default a new member inherits.
   defaultMessageNotifications String @default("all")
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
   owner     User           @relation("ServerOwner", fields: [ownerId], references: [id])
   members   ServerMember[]
   roles     Role[]
@@ -190,64 +139,41 @@ model Server {
   auditLogs AuditLog[]
   emojis    Emoji[]
   sounds    Sound[]
-
   @@index([ownerId])
 }
 
-/// A soundboard clip, playable by anyone in one of the server's voice channels.
-///
-/// Capped at a few seconds on upload (see services::audio) — a soundboard plays
-/// to everyone in the channel at once, so length is a moderation problem, not a
-/// storage one.
+/// A soundboard clip, playable by anyone in server's voice channels.
+
 model Sound {
   id        String   @id @default(cuid())
   serverId  String
   name      String
   url       String
-  /// Measured on upload, not taken from the client. Shown in the picker.
   duration  Float
-  /// Unicode emoji shown on the button; purely decorative.
   emoji     String?
-  /// Playback gain 0..1, applied client-side.
   volume    Float    @default(1)
   creatorId String?
   createdAt DateTime @default(now())
-
   server  Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
   creator User?  @relation("SoundCreator", fields: [creatorId], references: [id], onDelete: SetNull)
-
   @@unique([serverId, name])
   @@index([serverId])
 }
 
-/// A server's custom emoji. Referenced in message content as `<:name:id>` (or
-/// `<a:name:id>` when animated), the same shape Discord uses — the id is what
-/// resolves, so renaming an emoji never breaks messages that already use it.
-///
-/// `creatorId` is nullable and set-null on delete for the same reason the audit
-/// log's actor is: losing the uploader's account must not delete the emoji out
-/// of every message it appears in.
 model Emoji {
   id        String   @id @default(cuid())
   serverId  String
   name      String
   url       String
-  /// Animated GIFs render with `<a:...>` and are skipped in static contexts.
   animated  Boolean  @default(false)
   creatorId String?
   createdAt DateTime @default(now())
-
   server  Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
   creator User?  @relation("EmojiCreator", fields: [creatorId], references: [id], onDelete: SetNull)
-
-  /// Names are the human handle inside one server, so they must not collide.
   @@unique([serverId, name])
   @@index([serverId])
 }
 
-/// Who changed what in a server. Retained independently of the actor's account:
-/// an audit trail that erases its own entries when someone deletes their account
-/// is not an audit trail, so actorId is nullable and set null on delete.
 model AuditLog {
   id         String  @id @default(cuid())
   serverId   String
@@ -259,12 +185,9 @@ model AuditLog {
   /// Shape: { "field": { "old": …, "new": … } }
   changes    Json    @default("{}")
   reason     String?
-
   createdAt DateTime @default(now())
-
   server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
   actor  User?  @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: SetNull)
-
   @@index([serverId, createdAt])
   @@index([actorId])
 }
@@ -276,10 +199,8 @@ model Ban {
   bannedById String
   reason     String?
   createdAt  DateTime @default(now())
-
   server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
   user   User   @relation("BannedUser", fields: [userId], references: [id], onDelete: Cascade)
-
   @@unique([serverId, userId])
   @@index([userId])
 }
@@ -289,15 +210,11 @@ model ServerMember {
   serverId String
   userId   String
   nickname String?
-  /// Timed out until this instant: cannot send, react, or speak. Null = not timed
-  /// out; a past value is simply expired and needs no sweeping.
   timedOutUntil DateTime?
   joinedAt DateTime @default(now())
-
   server      Server       @relation(fields: [serverId], references: [id], onDelete: Cascade)
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   memberRoles MemberRole[]
-
   @@unique([serverId, userId])
   @@index([userId])
 }
@@ -308,17 +225,12 @@ model Role {
   name        String
   color       Int      @default(0)
   permissions BigInt   @default(0)
-  /// 0 is always @everyone. Higher outranks lower; the owner outranks all.
   position    Int      @default(0)
-  /// Show this role's members as their own group in the member list.
   hoist       Boolean  @default(false)
-  /// Allow anyone to @mention it, not just holders of MENTION_EVERYONE.
   mentionable Boolean  @default(false)
   createdAt   DateTime @default(now())
-
   server      Server       @relation(fields: [serverId], references: [id], onDelete: Cascade)
   memberRoles MemberRole[]
-
   @@index([serverId])
 }
 
@@ -326,32 +238,26 @@ model MemberRole {
   id       String @id @default(cuid())
   memberId String
   roleId   String
-
   member ServerMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
   role   Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
-
   @@unique([memberId, roleId])
   @@index([roleId])
 }
 
 model Channel {
   id               String   @id @default(cuid())
-  serverId         String? // null for dm / group_dm
+  serverId         String? // null for dm / group
   name             String?
-  type             String // "text" | "voice" | "category" | "dm" | "group_dm"
+  type             String // "text" "voice" "category" "dm" "group_dm"
   topic            String?
   position         Int      @default(0)
   parentCategoryId String?
   nsfw             Boolean  @default(false)
-  /// Slowmode, in seconds between messages per member. 0 = off.
   rateLimitPerUser Int      @default(0)
-  /// Voice only. 0 = unlimited.
   userLimit        Int      @default(0)
-  /// Voice only, bits per second.
   bitrate          Int      @default(64000)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
-
   server         Server?              @relation(fields: [serverId], references: [id], onDelete: Cascade)
   parentCategory Channel?             @relation("ChannelCategory", fields: [parentCategoryId], references: [id], onDelete: SetNull)
   children       Channel[]            @relation("ChannelCategory")
@@ -359,21 +265,30 @@ model Channel {
   participants   ChannelParticipant[]
   overwrites     ChannelOverwrite[]
   readStates     ReadState[]
-
+  drafts         Draft[]
   @@index([serverId])
   @@index([parentCategoryId])
+}
+
+model Draft {
+  userId    String
+  channelId String
+  content   String
+  updatedAt DateTime @updatedAt
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  @@id([userId, channelId])
+  @@index([userId])
 }
 
 model ChannelOverwrite {
   id        String @id @default(cuid())
   channelId String
-  type      String // "role" | "member"
-  targetId  String // roleId when type="role", userId when type="member"
+  type      String
+  targetId  String
   allow     BigInt @default(0)
   deny      BigInt @default(0)
-
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
-
   @@unique([channelId, type, targetId])
   @@index([channelId])
 }
@@ -383,10 +298,8 @@ model ChannelParticipant {
   channelId String
   userId    String
   joinedAt  DateTime @default(now())
-
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@unique([channelId, userId])
   @@index([userId])
 }
@@ -402,26 +315,15 @@ model Message {
   attachments Json      @default("[]")
   pinned      Boolean   @default(false)
   pinnedAt    DateTime?
-
   channel   Channel    @relation(fields: [channelId], references: [id], onDelete: Cascade)
   author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
   replyTo   Message?   @relation("MessageReply", fields: [replyToId], references: [id], onDelete: SetNull)
   replies   Message[]  @relation("MessageReply")
   reactions Reaction[]
-
   @@index([channelId, createdAt])
   @@index([authorId])
 }
 
-/// An uploaded file waiting to be claimed by a message. Upload and send are two
-/// separate round trips, so the descriptor has to live somewhere in between —
-/// and it has to live server-side: `Message.attachments` is written from these
-/// rows, never from client-supplied JSON, so a client can't forge a url/size or
-/// point an attachment at someone else's file.
-///
-/// `send_message` deletes the row once it snapshots it into the message, so a
-/// leftover row means an upload nobody ever sent. Those are swept hourly once a
-/// day old, along with their local bytes (see attachments::sweep_pending).
 model PendingAttachment {
   id          String    @id @default(cuid())
   uploaderId  String
@@ -431,18 +333,11 @@ model PendingAttachment {
   size        Int
   width       Int?
   height      Int?
-  /// "cloudinary" (encrypted bytes at Cloudinary) | "local"
-  /// (bytes under ATTACHMENT_DIR) | "orangmove" (bytes on the OrangMove host)
   storage     String
-  /// Set by omni-moderation at upload time (images only). Clients render a
-  /// placeholder instead of the pixels. False whenever OPENAI_API_KEY is unset.
   flagged     Boolean   @default(false)
-  /// When OrangMove will reap the file. Null for the others, which never expire.
   expiresAt   DateTime?
   createdAt   DateTime  @default(now())
-
   uploader User @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
-
   @@index([uploaderId])
   @@index([createdAt])
 }
@@ -453,10 +348,8 @@ model Reaction {
   userId    String
   emoji     String
   createdAt DateTime @default(now())
-
   message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   @@unique([messageId, userId, emoji])
   @@index([userId])
 }
@@ -467,10 +360,8 @@ model ReadState {
   lastReadMessageId String?
   mentionCount      Int      @default(0)
   updatedAt         DateTime @updatedAt
-
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
-
   @@id([userId, channelId])
   @@index([channelId])
 }
@@ -483,10 +374,8 @@ model Invite {
   maxUses   Int?
   uses      Int       @default(0)
   createdAt DateTime  @default(now())
-
   server  Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
   inviter User   @relation("InviteInviter", fields: [inviterId], references: [id], onDelete: Cascade)
-
   @@index([serverId])
   @@index([inviterId])
 }

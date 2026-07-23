@@ -5,6 +5,9 @@ use crate::ids::cuid;
 use crate::models::{ChannelRow, UserRow};
 use crate::state::AppState;
 
+/// A group DM tops out at 15 people (the creator plus 14).
+pub const MAX_GROUP_SIZE: i64 = 15;
+
 pub async fn can_dm(state: &AppState, requester_id: &str, target_id: &str) -> AppResult<bool> {
     let privacy: Option<String> =
         sqlx::query_scalar(r#"SELECT "dmPrivacy" FROM "User" WHERE id = $1"#)
@@ -181,6 +184,32 @@ pub async fn add_group_participants(
         return Err(AppError::Permission(
             "Not a participant in this conversation".into(),
         ));
+    }
+
+    // A group tops out at 15 people, so a grow can't push it past that.
+    let current: i64 =
+        sqlx::query_scalar(r#"SELECT count(*) FROM "ChannelParticipant" WHERE "channelId" = $1"#)
+            .bind(channel_id)
+            .fetch_one(&state.pool)
+            .await?;
+    if current + new_user_ids.len() as i64 > MAX_GROUP_SIZE {
+        return Err(AppError::BadRequest(format!(
+            "A group can have at most {MAX_GROUP_SIZE} people"
+        )));
+    }
+
+    // Being pulled into a group thread opens a conversation just as much as
+    // starting one does, so it answers to the same privacy gate - otherwise
+    // dmPrivacy is bypassed by creating a group and adding the target to it.
+    for uid in new_user_ids {
+        if uid == requester_id {
+            continue;
+        }
+        if !can_dm(state, requester_id, uid).await? {
+            return Err(AppError::Permission(
+                "This person isn't accepting messages from you".into(),
+            ));
+        }
     }
 
     for uid in new_user_ids {

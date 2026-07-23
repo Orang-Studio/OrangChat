@@ -92,7 +92,10 @@ function processRules(rules: CSSRuleList, scope: string): string {
           if (decls) frames += `${kf.keyText} { ${decls} }\n`;
         }
       }
-      if (frames) css += `@keyframes ${rule.name} { ${frames} }\n`;
+      // `rule.name` is the *decoded* ident, and idents can encode `{`/`}` via
+      // \XX escapes - re-escape it or the name splices raw rules past every
+      // filter above (unscoped selectors, external url(), position:fixed).
+      if (frames) css += `@keyframes ${CSS.escape(rule.name)} { ${frames} }\n`;
     }
     // Everything else (@import, @font-face, @page, …) is intentionally dropped.
   }

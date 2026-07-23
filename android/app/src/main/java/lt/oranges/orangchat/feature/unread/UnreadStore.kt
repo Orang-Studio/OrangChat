@@ -32,7 +32,9 @@ class UnreadStore @Inject constructor() {
     }
 
     fun hydrate(list: List<UnreadState>) {
-        _states.value = list.associateBy { it.channelId }
+        _states.value = list
+            .filterNot { it.channelId == activeChannelId }
+            .associateBy { it.channelId }
     }
 
     /** Fold in a new message's activity. [mentionsMe] bumps the badge count. */

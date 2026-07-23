@@ -1,8 +1,10 @@
 package lt.oranges.orangchat
 
 import android.app.PictureInPictureParams
+import android.os.Build
 import android.os.Bundle
 import android.content.Intent
+import android.net.Uri
 import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -23,6 +25,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import lt.oranges.orangchat.feature.invite.PendingInviteStore
+import lt.oranges.orangchat.feature.share.PendingShare
+import lt.oranges.orangchat.feature.share.PendingShareStore
 import lt.oranges.orangchat.feature.settings.SettingsViewModel
 import lt.oranges.orangchat.feature.voice.CallHost
 import lt.oranges.orangchat.feature.voice.CallManager
@@ -38,11 +42,14 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var callManager: CallManager
     @Inject lateinit var notificationHelper: NotificationHelper
     @Inject lateinit var pendingInviteStore: PendingInviteStore
+    @Inject lateinit var pendingShareStore: PendingShareStore
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        applyLockScreenFlags(intent)
         clearOpenedConversation(intent)
         captureInviteLink(intent)
+        captureSharedContent(intent)
         enableEdgeToEdge()
         setContent {
             val themeVm: ThemeViewModel = hiltViewModel()
@@ -82,13 +89,29 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        applyLockScreenFlags(intent)
         clearOpenedConversation(intent)
         captureInviteLink(intent)
+        captureSharedContent(intent)
+    }
+
+    /**
+     * Show over the lockscreen and wake the screen only for a ringing call —
+     * that alone justifies taking over a locked phone. Every other launch (a
+     * message tap, the launcher) must respect the keyguard, so the flags are set
+     * per-intent here rather than declared statically in the manifest, where
+     * they would apply to the whole app on every launch.
+     */
+    private fun applyLockScreenFlags(intent: Intent?) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O_MR1) return
+        val incomingCall = intent?.getBooleanExtra(NotificationHelper.EXTRA_INCOMING_CALL, false) == true
+        setShowWhenLocked(incomingCall)
+        setTurnScreenOn(incomingCall)
     }
 
     private fun clearOpenedConversation(intent: Intent?) {
         intent?.getStringExtra(NotificationHelper.EXTRA_CHANNEL_ID)?.let {
-            notificationHelper.clearConversationHistory(it)
+            notificationHelper.clearConversationNotifications(it)
         }
     }
 
@@ -100,6 +123,24 @@ class MainActivity : ComponentActivity() {
     private fun captureInviteLink(intent: Intent?) {
         if (intent?.action != Intent.ACTION_VIEW) return
         intent.data?.toString()?.let(InviteLink::codeFrom)?.let(pendingInviteStore::offer)
+    }
+
+    /** Capture text, links, and content URIs sent through Android's share sheet. */
+    @Suppress("DEPRECATION")
+    private fun captureSharedContent(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_SEND && intent?.action != Intent.ACTION_SEND_MULTIPLE) return
+        val uris = buildList {
+            if (intent.action == Intent.ACTION_SEND) {
+                intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.let(::add)
+            } else {
+                intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)?.let(::addAll)
+            }
+            intent.clipData?.let { clip ->
+                repeat(clip.itemCount) { index -> clip.getItemAt(index).uri?.let(::add) }
+            }
+        }.distinct()
+        val text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString().orEmpty()
+        if (text.isNotBlank() || uris.isNotEmpty()) pendingShareStore.offer(PendingShare(text, uris))
     }
 
     /** Keep an active call visible as a system PiP window when Home is pressed. */

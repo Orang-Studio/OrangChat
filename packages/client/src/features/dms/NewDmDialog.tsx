@@ -20,12 +20,15 @@ interface NewDmDialogProps {
   onOpenChange: (open: boolean) => void;
   /** When set, adds the picked people to this group DM instead of creating one. */
   addTo?: Conversation;
+  /** Start framed as a group: needs at least two people to create. */
+  groupMode?: boolean;
 }
 
-const MAX_RECIPIENTS = 9;
+// A group tops out at 15 people: you plus 14 others.
+const MAX_RECIPIENTS = 14;
 
 /** Pick people you share a server with - start a DM/group DM or grow one. */
-export function NewDmDialog({ open, onOpenChange, addTo }: NewDmDialogProps) {
+export function NewDmDialog({ open, onOpenChange, addTo, groupMode = false }: NewDmDialogProps) {
   const selfId = useAuthStore((s) => s.user?.id);
   const navigate = useNavigate();
   const client = useQueryClient();
@@ -92,8 +95,12 @@ export function NewDmDialog({ open, onOpenChange, addTo }: NewDmDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        title={addTo ? "Add people" : "New direct message"}
-        description={`Pick up to ${MAX_RECIPIENTS} people you share a server with.`}
+        title={addTo ? "Add people" : groupMode ? "New group" : "New direct message"}
+        description={
+          groupMode
+            ? `Pick 2 to ${MAX_RECIPIENTS} people to start a group (15 max, including you).`
+            : `Pick up to ${MAX_RECIPIENTS} people you share a server with.`
+        }
       >
         <div className="space-y-3">
           <TextField
@@ -164,15 +171,17 @@ export function NewDmDialog({ open, onOpenChange, addTo }: NewDmDialogProps) {
           )}
           <Button
             className="w-full"
-            disabled={selected.length === 0}
+            disabled={selected.length === 0 || (groupMode && !addTo && selected.length < 2)}
             loading={mutation.isPending}
             onClick={() => mutation.mutate()}
           >
             {addTo
               ? `Add ${selected.length || ""} ${selected.length === 1 ? "person" : "people"}`
-              : selected.length > 1
-                ? `Create group DM (${selected.length})`
-                : "Start conversation"}
+              : groupMode
+                ? `Create group (${selected.length})`
+                : selected.length > 1
+                  ? `Create group DM (${selected.length})`
+                  : "Start conversation"}
           </Button>
         </div>
       </DialogContent>

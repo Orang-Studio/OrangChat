@@ -1,4 +1,5 @@
 import type { PresenceStatus, User } from "@orangchat/shared";
+import { Globe, Monitor, Smartphone } from "lucide-react";
 import { cn } from "../lib/cn";
 
 export const STATUS_COLOR: Record<PresenceStatus, string> = {
@@ -16,7 +17,7 @@ export const STATUS_LABEL: Record<PresenceStatus, string> = {
 };
 
 interface AvatarProps {
-  user: Pick<User, "displayName" | "avatarUrl">;
+  user: Pick<User, "displayName" | "avatarUrl"> & Partial<Pick<User, "devices">>;
   /** Presence dot; omit to hide (e.g. in message rows). */
   status?: PresenceStatus;
   className?: string;
@@ -24,6 +25,10 @@ interface AvatarProps {
 
 /** User avatar with initial fallback and optional presence dot. */
 export function Avatar({ user, status, className }: AvatarProps) {
+  const device = user.devices?.find((kind) => kind === "mobile")
+    ?? user.devices?.find((kind) => kind === "desktop")
+    ?? user.devices?.[0];
+  const DeviceIcon = device === "mobile" ? Smartphone : device === "desktop" ? Monitor : Globe;
   return (
     // rounded-full on the wrapper too: it has no fill of its own, but a ring or
     // outline from a caller follows the wrapper's radius rather than the image's,
@@ -43,7 +48,14 @@ export function Avatar({ user, status, className }: AvatarProps) {
           {user.displayName.charAt(0).toUpperCase()}
         </span>
       )}
-      {status && (
+      {status && device ? (
+        <span
+          title={`${device} · ${STATUS_LABEL[status]}`}
+          className="absolute -bottom-1 -right-1 flex size-4 items-center justify-center rounded-full bg-surface-2"
+        >
+          <DeviceIcon aria-hidden className={cn("size-3", STATUS_COLOR[status].replace("bg-", "text-"))} />
+        </span>
+      ) : status ? (
         <span
           title={STATUS_LABEL[status]}
           className={cn(
@@ -51,7 +63,7 @@ export function Avatar({ user, status, className }: AvatarProps) {
             STATUS_COLOR[status],
           )}
         />
-      )}
+      ) : null}
     </span>
   );
 }

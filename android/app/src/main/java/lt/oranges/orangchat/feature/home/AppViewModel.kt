@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import lt.oranges.orangchat.data.model.Channel
 import lt.oranges.orangchat.data.model.ChannelType
@@ -13,7 +14,9 @@ import lt.oranges.orangchat.data.model.Conversation
 import lt.oranges.orangchat.data.model.Friend
 import lt.oranges.orangchat.data.model.FriendRequest
 import lt.oranges.orangchat.data.model.Message
+import lt.oranges.orangchat.data.model.PresenceDevice
 import lt.oranges.orangchat.data.model.PresenceStatus
+import lt.oranges.orangchat.data.model.UserActivity
 import lt.oranges.orangchat.data.model.Reaction
 import lt.oranges.orangchat.data.model.Server
 import lt.oranges.orangchat.data.model.ServerDetail
@@ -27,6 +30,7 @@ import lt.oranges.orangchat.data.repository.ServerRepository
 import lt.oranges.orangchat.data.repository.SessionState
 import lt.oranges.orangchat.data.repository.SocialRepository
 import lt.oranges.orangchat.feature.invite.PendingInviteStore
+import lt.oranges.orangchat.feature.share.PendingShareStore
 import lt.oranges.orangchat.feature.unread.UnreadStore
 import lt.oranges.orangchat.notifications.NotificationHelper
 import lt.oranges.orangchat.realtime.SocketEvent
@@ -34,6 +38,8 @@ import lt.oranges.orangchat.realtime.SocketManager
 import lt.oranges.orangchat.util.AppForegroundState
 import lt.oranges.orangchat.util.EmojiRef
 import lt.oranges.orangchat.util.Mentions
+import java.time.Instant
+import java.util.UUID
 import javax.inject.Inject
 
 /**
@@ -50,6 +56,7 @@ class AppViewModel @Inject constructor(
     private val notificationHelper: NotificationHelper,
     private val unreadStore: UnreadStore,
     private val pendingInviteStore: PendingInviteStore,
+    private val pendingShareStore: PendingShareStore,
 ) : ViewModel() {
 
     /** Unread dots + mention badges; hydrated on login, then kept live. */
@@ -57,8 +64,10 @@ class AppViewModel @Inject constructor(
 
     /** An invite link the app was opened with, once there's a shell to show it. */
     val pendingInvite = pendingInviteStore.code
+    val pendingShare = pendingShareStore.share
 
     fun clearPendingInvite() = pendingInviteStore.consume()
+    fun clearPendingShare() = pendingShareStore.consume()
 
     private val _loadingOlder = MutableStateFlow<Set<String>>(emptySet())
     /** Channels with an older-page fetch in flight. */
@@ -81,11 +90,32 @@ class AppViewModel @Inject constructor(
     private val _messages = MutableStateFlow<Map<String, List<Message>>>(emptyMap())
     val messages: StateFlow<Map<String, List<Message>>> = _messages.asStateFlow()
 
+    /** Local optimistic rows that have not yet been confirmed by the server. */
+    private val _pendingMessageIds = MutableStateFlow<Set<String>>(emptySet())
+    val pendingMessageIds: StateFlow<Set<String>> = _pendingMessageIds.asStateFlow()
+
+    private data class PendingOutgoing(
+        val localId: String,
+        val channelId: String,
+        val content: String,
+        val replyToId: String?,
+        val attachmentIds: List<String>,
+    )
+
+    private val pendingOutbox = mutableListOf<PendingOutgoing>()
+    private var outboxJob: Job? = null
+
     private val _typing = MutableStateFlow<Map<String, Set<String>>>(emptyMap())
     val typing: StateFlow<Map<String, Set<String>>> = _typing.asStateFlow()
 
     private val _presence = MutableStateFlow<Map<String, PresenceStatus>>(emptyMap())
     val presence: StateFlow<Map<String, PresenceStatus>> = _presence.asStateFlow()
+
+    private val _presenceDevices = MutableStateFlow<Map<String, Set<PresenceDevice>>>(emptyMap())
+    val presenceDevices: StateFlow<Map<String, Set<PresenceDevice>>> = _presenceDevices.asStateFlow()
+
+    private val _presenceActivities = MutableStateFlow<Map<String, List<UserActivity>>>(emptyMap())
+    val presenceActivities: StateFlow<Map<String, List<UserActivity>>> = _presenceActivities.asStateFlow()
 
     private val _dms = MutableStateFlow<List<Conversation>>(emptyList())
     val dms: StateFlow<List<Conversation>> = _dms.asStateFlow()
@@ -166,6 +196,8 @@ class AppViewModel @Inject constructor(
         runCatching { socialRepository.listFriends() }.onSuccess { list ->
             _friends.value = list
             _presence.update { m -> m + list.associate { it.user.id to it.user.status } }
+            _presenceDevices.update { m -> m + list.associate { it.user.id to it.user.devices.toSet() } }
+            _presenceActivities.update { m -> m + list.associate { it.user.id to it.user.activities } }
         }
         runCatching { socialRepository.listRequests() }.onSuccess {
             _incomingRequests.value = it.incoming
@@ -180,6 +212,8 @@ class AppViewModel @Inject constructor(
             .onSuccess { detail ->
                 _serverDetail.value = detail
                 _presence.update { m -> m + detail.members.associate { it.user.id to it.user.status } }
+                _presenceDevices.update { m -> m + detail.members.associate { it.user.id to it.user.devices.toSet() } }
+                _presenceActivities.update { m -> m + detail.members.associate { it.user.id to it.user.activities } }
                 detail.channels.firstOrNull { it.type == ChannelType.TEXT }?.let { selectChannel(it.id) }
                 refreshSounds(serverId)
             }
@@ -192,6 +226,7 @@ class AppViewModel @Inject constructor(
         if (_messages.value[channelId] == null) loadHistory(channelId)
         // Opening a channel reads it, locally and on the server.
         unreadStore.setActiveChannel(channelId)
+        notificationHelper.clearConversationNotifications(channelId)
         viewModelScope.launch { runCatching { serverRepository.markChannelRead(channelId) } }
     }
 
@@ -224,8 +259,13 @@ class AppViewModel @Inject constructor(
     fun loadHistory(channelId: String) = viewModelScope.launch {
         runCatching { serverRepository.getHistory(channelId) }
             .onSuccess { page ->
-                // History comes newest-first from the cursor API; show oldest-first.
-                _messages.update { it + (channelId to page.items.reversed()) }
+                // History comes newest-first from the cursor API. Keep any
+                // optimistic rows created while this request was in flight.
+                _messages.update { current ->
+                    val pending = current[channelId].orEmpty()
+                        .filter { it.id in _pendingMessageIds.value }
+                    current + (channelId to (page.items.reversed() + pending))
+                }
             }
             .onFailure { _error.value = it.message }
     }
@@ -235,10 +275,82 @@ class AppViewModel @Inject constructor(
         content: String,
         replyToId: String? = null,
         attachmentIds: List<String> = emptyList(),
-    ) = viewModelScope.launch {
-        runCatching { socketManager.sendMessage(channelId, content, replyToId, attachmentIds) }
-            .onFailure { _error.value = it.message ?: "Failed to send" }
-        // The message:new broadcast (which we also receive) appends it.
+    ) {
+        val author = authRepository.currentUser?.asUser() ?: return
+        val localId = "pending:${UUID.randomUUID()}"
+        val pending = PendingOutgoing(localId, channelId, content, replyToId, attachmentIds)
+        pendingOutbox += pending
+        _pendingMessageIds.update { it + localId }
+        _messages.update { current ->
+            val optimistic = Message(
+                id = localId,
+                channelId = channelId,
+                author = author,
+                content = content,
+                createdAt = Instant.now().toString(),
+                replyToId = replyToId,
+            )
+            current + (channelId to (current[channelId].orEmpty() + optimistic))
+        }
+        flushPendingMessages()
+    }
+
+    /** Send queued rows in order. Disconnecting cancels the active ack wait; the
+     * same row is tried again after the next connection event. */
+    private fun flushPendingMessages() {
+        if (!_connected.value || !socketManager.isConnected || outboxJob?.isActive == true) return
+        outboxJob = viewModelScope.launch {
+            try {
+                while (_connected.value && socketManager.isConnected) {
+                    val pending = pendingOutbox.firstOrNull() ?: break
+                    val result = runCatching {
+                        socketManager.sendMessage(
+                            pending.channelId,
+                            pending.content,
+                            pending.replyToId,
+                            pending.attachmentIds,
+                        )
+                    }
+                    result.onSuccess { sent ->
+                        confirmPendingMessage(pending.localId, sent)
+                        pendingOutbox.removeAll { it.localId == pending.localId }
+                        unreadStore.markRead(pending.channelId)
+                        notificationHelper.clearConversationNotifications(pending.channelId)
+                    }.onFailure { error ->
+                        if (!_connected.value || !socketManager.isConnected) return@launch
+                        // A live server rejection (permissions, slowmode, etc.)
+                        // will not improve after reconnecting; remove that row
+                        // and surface the actual error instead of retrying it.
+                        rejectPendingMessage(pending.localId)
+                        pendingOutbox.removeAll { it.localId == pending.localId }
+                        _error.value = error.message ?: "Failed to send"
+                    }
+                }
+            } finally {
+                outboxJob = null
+                // A message can be queued after the loop observes an empty
+                // outbox but before this job completes. Do not leave that race
+                // waiting for a future reconnect that may never happen.
+                if (_connected.value && pendingOutbox.isNotEmpty()) flushPendingMessages()
+            }
+        }
+    }
+
+    private fun confirmPendingMessage(localId: String, sent: Message) {
+        _pendingMessageIds.update { it - localId }
+        _messages.update { current ->
+            val existing = current[sent.channelId].orEmpty()
+            val withoutConfirmedCopy = existing.filterNot { it.id == sent.id }
+            val replaced = withoutConfirmedCopy.map { if (it.id == localId) sent else it }
+            current + (sent.channelId to if (replaced.any { it.id == sent.id }) replaced else replaced + sent)
+        }
+    }
+
+    private fun rejectPendingMessage(localId: String) {
+        _pendingMessageIds.update { it - localId }
+        _messages.update { current ->
+            current.mapValues { (_, messages) -> messages.filterNot { it.id == localId } }
+        }
     }
 
     fun editMessage(channelId: String, messageId: String, content: String) = viewModelScope.launch {
@@ -457,16 +569,38 @@ class AppViewModel @Inject constructor(
                 _connected.value = event.connected
                 if (event.connected && !wasConnected) {
                     reconcileAfterReconnect()
+                    flushPendingMessages()
                 } else if (!event.connected && wasConnected) {
+                    outboxJob?.cancel()
+                    outboxJob = null
                     // Once the socket is down, its cached online values are no
                     // longer trustworthy: offline events may be missed until
                     // reconnect. Never keep presenting those values as live.
                     _presence.update { statuses ->
                         statuses.mapValues { PresenceStatus.OFFLINE }
                     }
+                    _presenceDevices.value = emptyMap()
+                    _presenceActivities.value = emptyMap()
                 }
             }
-            is SocketEvent.MessageNew -> appendMessage(event.message)
+            is SocketEvent.MessageNew -> {
+                // The server broadcasts before acknowledging message:send. Use
+                // that broadcast as confirmation of the matching queued row so
+                // it never appears twice and is not retried after an ack loss.
+                val selfId = authRepository.currentUser?.id
+                val pending = pendingOutbox.firstOrNull {
+                    event.message.author.id == selfId &&
+                        it.channelId == event.message.channelId &&
+                        it.content == event.message.content &&
+                        it.replyToId == event.message.replyToId
+                }
+                if (pending != null) {
+                    confirmPendingMessage(pending.localId, event.message)
+                    pendingOutbox.removeAll { it.localId == pending.localId }
+                } else {
+                    appendMessage(event.message)
+                }
+            }
             is SocketEvent.UnreadActivityEvent -> {
                 val selfId = authRepository.currentUser?.id
                 // Our own messages are not unread to us.
@@ -478,12 +612,19 @@ class AppViewModel @Inject constructor(
                     )
                 }
             }
-            is SocketEvent.ChannelRead -> unreadStore.markRead(event.channelId)
+            is SocketEvent.ChannelRead -> {
+                unreadStore.markRead(event.channelId)
+                notificationHelper.clearConversationNotifications(event.channelId)
+            }
             is SocketEvent.MessageUpdated -> replaceMessage(event.message)
             is SocketEvent.MessageDeleted -> removeMessage(event.channelId, event.messageId)
             is SocketEvent.Typing -> addTyping(event.channelId, event.userId)
-            is SocketEvent.Presence -> _presence.update {
-                it + (event.userId to parseStatus(event.status))
+            is SocketEvent.Presence -> {
+                _presence.update { it + (event.userId to parseStatus(event.status)) }
+                _presenceDevices.update {
+                    it + (event.userId to event.devices.mapNotNull(::parseDevice).toSet())
+                }
+                _presenceActivities.update { it + (event.userId to event.activities) }
             }
             is SocketEvent.ReactionEvent -> applyReaction(event)
             is SocketEvent.ChannelCreated -> updateServerChannels { it + event.channel }
@@ -555,6 +696,16 @@ class AppViewModel @Inject constructor(
                             it.user.id to it.user.status
                         }
                     }
+                    _presenceDevices.update { current ->
+                        current + refreshed.members.associate {
+                            it.user.id to it.user.devices.toSet()
+                        }
+                    }
+                    _presenceActivities.update { current ->
+                        current + refreshed.members.associate {
+                            it.user.id to it.user.activities
+                        }
+                    }
                 }
         }
     }
@@ -581,7 +732,7 @@ class AppViewModel @Inject constructor(
         if (me == null || message.author.id == me.id) return
 
         val isDm = _dms.value.any { it.id == message.channelId }
-        val mentionsMe = Mentions.mentionsUser(message.content, me.id)
+        val mentionsMe = Mentions.mentionsUser(message.content, me.id, me.username)
         val focused = AppForegroundState.isForeground && _currentChannelId.value == message.channelId
         if (focused) return
         // Non-DM, non-mention server chatter while merely backgrounded is noisy;
@@ -673,6 +824,13 @@ class AppViewModel @Inject constructor(
         "idle" -> PresenceStatus.IDLE
         "dnd" -> PresenceStatus.DND
         else -> PresenceStatus.OFFLINE
+    }
+
+    private fun parseDevice(s: String): PresenceDevice? = when (s) {
+        "mobile" -> PresenceDevice.MOBILE
+        "browser" -> PresenceDevice.BROWSER
+        "desktop" -> PresenceDevice.DESKTOP
+        else -> null
     }
 }
 

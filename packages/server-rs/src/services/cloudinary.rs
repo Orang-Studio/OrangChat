@@ -64,7 +64,7 @@ impl Cloudinary {
 
     /// Cloudinary signs the alphabetically sorted `k=v&k=v` of every parameter
     /// except file/api_key/resource_type, with the secret appended (not a keyed
-    /// HMAC — the secret is plain suffix input to SHA-1).
+    /// HMAC - the secret is plain suffix input to SHA-1).
     fn sign(&self, params: &[(&str, &str)]) -> String {
         let mut sorted: Vec<&(&str, &str)> = params.iter().collect();
         sorted.sort_by_key(|(k, _)| *k);
@@ -88,7 +88,7 @@ impl Cloudinary {
     }
 
     /// `public_id` must already carry its extension for `raw`, and must not for
-    /// `image`/`video` — Cloudinary appends the format itself for the latter two.
+    /// `image`/`video` - Cloudinary appends the format itself for the latter two.
     pub async fn upload(
         &self,
         bytes: Vec<u8>,
@@ -100,7 +100,7 @@ impl Cloudinary {
 
         // The filename is never stored (public_id names the asset) but must be
         // present: a `file` part without one is read as a string, and Cloudinary
-        // then tries to fetch the bytes as a remote URL — "Invalid URL for upload".
+        // then tries to fetch the bytes as a remote URL - "Invalid URL for upload".
         let form = reqwest::multipart::Form::new()
             .part(
                 "file",
@@ -198,7 +198,7 @@ impl Cloudinary {
 /// their grammar.
 const ID_PREFIX: &str = "orangchat/";
 
-/// `raw` is whatever bytes the user picked — never decoded, never re-encoded, so
+/// `raw` is whatever bytes the user picked - never decoded, never re-encoded, so
 /// it must never render. nginx forces the local copies down with
 /// `Content-Disposition: attachment` and a sandbox CSP.
 ///
@@ -318,7 +318,7 @@ mod tests {
         .is_none());
     }
 
-    /// Round-trips a real asset. Ignored by default — needs live credentials and
+    /// Round-trips a real asset. Ignored by default - needs live credentials and
     /// the network. Run with the same env the server uses:
     ///   cargo test --bin orangchat-server -- --ignored round_trips_against_live_api
     #[tokio::test]
@@ -393,7 +393,7 @@ mod tests {
             .expect("encrypted raw destroy");
 
         // The raw path carries its extension in the id and must come back marked
-        // for download — that's the whole reason un-decoded bytes are safe to host.
+        // for download - that's the whole reason un-decoded bytes are safe to host.
         let raw_id = format!("orangchat/attachments/selftest-{}.html", crate::ids::cuid());
         let raw = cloudinary
             .upload(b"<script>alert(1)</script>".to_vec(), &raw_id, "raw")

@@ -7,11 +7,11 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde_json::{json, Value};
 
-use crate::dto::to_conversation;
+use crate::dto::{to_conversation, ConversationDto};
 use crate::error::{AppError, AppResult};
 use crate::http::{bad_request, AuthUser};
 use crate::models::{ChannelRow, UserRow};
-use crate::services::{dm, rate_limit};
+use crate::services::{dm, presence, rate_limit};
 use crate::state::AppState;
 
 pub fn routes() -> Router<AppState> {
@@ -25,7 +25,7 @@ fn parse_user_ids(body: &Value) -> AppResult<Vec<String>> {
         .get("userIds")
         .and_then(Value::as_array)
         .ok_or_else(|| bad_request("Invalid input"))?;
-    if arr.is_empty() || arr.len() > 9 {
+    if arr.is_empty() || arr.len() > 14 {
         return Err(bad_request("Invalid input"));
     }
     arr.iter()
@@ -51,15 +51,28 @@ async fn load_conversation(state: &AppState, channel_id: &str) -> AppResult<Opti
     .bind(channel_id)
     .fetch_all(&state.pool)
     .await?;
-    Ok(Some(json!(to_conversation(&ch, &users))))
+    Ok(Some(json!(with_presence(state, to_conversation(&ch, &users)).await?)))
+}
+
+async fn with_presence(state: &AppState, mut conversation: ConversationDto) -> AppResult<ConversationDto> {
+    let ids: Vec<String> = conversation.participants.iter().map(|user| user.id.clone()).collect();
+    let statuses = presence::get_statuses(state, &ids).await?;
+    let devices = presence::get_device_sets(state, &ids).await?;
+    let activities = presence::get_activity_sets(state, &ids).await?;
+    for user in &mut conversation.participants {
+        user.status = statuses.get(&user.id).cloned().unwrap_or_else(|| "offline".into());
+        user.devices = devices.get(&user.id).cloned().unwrap_or_default();
+        user.activities = activities.get(&user.id).cloned().unwrap_or_default();
+    }
+    Ok(conversation)
 }
 
 async fn list_dms(State(state): State<AppState>, user: AuthUser) -> AppResult<Json<Value>> {
     let rows = dm::list_conversations(&state, &user.user_id).await?;
-    let out: Vec<Value> = rows
-        .iter()
-        .map(|(c, users)| json!(to_conversation(c, users)))
-        .collect();
+    let mut out = Vec::with_capacity(rows.len());
+    for (channel, users) in &rows {
+        out.push(json!(with_presence(&state, to_conversation(channel, users)).await?));
+    }
     Ok(Json(json!(out)))
 }
 

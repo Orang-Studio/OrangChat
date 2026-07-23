@@ -96,7 +96,7 @@ function recordShare(slug: string) {
 }
 
 /**
- * The viewer's custom emoji, grouped by the server they come from — without the
+ * The viewer's custom emoji, grouped by the server they come from - without the
  * grouping, two servers with a `blob` each are indistinguishable in the grid.
  */
 function CustomEmojiSections({ onPick }: { onPick: (token: string) => void }) {

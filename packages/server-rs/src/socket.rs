@@ -7,22 +7,27 @@ use socketioxide::extract::{AckSender, Data, SocketRef, TryData};
 use socketioxide::handler::ConnectHandler;
 use socketioxide::SocketIo;
 
+use std::collections::HashSet;
+
 use crate::auth::verify_access_token;
 use crate::permissions::{self, CONNECT, MANAGE_MESSAGES, SPEAK};
 use crate::services::{
-    call, channel, membership, message, presence, rate_limit, read_state, server, sound, voice,
+    call, channel, friends, membership, message, presence, rate_limit, read_state, server, sound,
+    voice,
 };
 use crate::state::AppState;
 
 #[derive(Deserialize)]
 struct AuthPayload {
     token: Option<String>,
+    device: Option<String>,
 }
 
 #[derive(Clone)]
 struct SocketUser {
     user_id: String,
     username: String,
+    device: String,
 }
 
 #[derive(Debug)]
@@ -127,6 +132,8 @@ struct CallRespondPayload {
 struct PresencePayload<'a> {
     user_id: &'a str,
     status: &'a str,
+    devices: Vec<String>,
+    activities: Vec<crate::dto::ActivityDto>,
 }
 
 fn ack_ok<T: Serialize>(ack: AckSender, data: &T) {
@@ -145,7 +152,7 @@ fn ack_err(ack: AckSender, msg: String) {
 /// Fan a `voice:state` out to everyone whose UI draws that roster.
 ///
 /// `channel:{id}` is joined by opening a channel's *chat*, which is exactly what
-/// nobody does to a voice channel — selecting one joins the call instead. So the
+/// nobody does to a voice channel - selecting one joins the call instead. So the
 /// roster in the channel list was updating for whoever happened to be reading
 /// that channel and for nobody else: joins survived only because the list is
 /// also seeded over REST, while leaves went unseen until the next reseed. The
@@ -236,15 +243,183 @@ fn arm_ring_timeout(state: AppState, io: SocketIo, channel_id: String, started_a
     });
 }
 
-/// Emit a user's presence to every server they belong to.
-async fn broadcast_presence(io: &SocketIo, state: &AppState, user_id: &str, status: &str) {
+/// Emit a user's presence to shared servers and directly to their friends.
+pub(crate) async fn broadcast_presence(io: &SocketIo, state: &AppState, user_id: &str, status: &str) {
+    let devices = presence::get_devices(state, user_id)
+        .await
+        .unwrap_or_default();
+    let activities = presence::get_activities(state, user_id)
+        .await
+        .unwrap_or_default();
+    // Include the user's own room so every one of their clients sees the same
+    // device/activity set even when they share no server with anyone yet.
+    let mut rooms = vec![format!("user:{user_id}")];
     if let Ok(servers) = server::get_user_servers(state, user_id).await {
-        for s in servers {
+        rooms.extend(servers.into_iter().map(|server| format!("server:{}", server.id)));
+    }
+    if let Ok(friend_rows) = friends::list_friends(state, user_id).await {
+        rooms.extend(
+            friend_rows
+                .into_iter()
+                .map(|friend| format!("user:{}", friend.user.id)),
+        );
+    }
+    let _ = io.to(rooms).emit(
+        "presence",
+        &PresencePayload {
+            user_id,
+            status,
+            devices,
+            activities,
+        },
+    );
+}
+
+/// Fan a freshly-persisted message out to everyone it should reach, and keep
+/// read state honest while doing it: the live `message:new` to open clients, the
+/// author (and anyone watching) marked read on all their devices, unread/mention
+/// bookkeeping for background members, and push to the rest - skipping active
+/// viewers, whose phones would only be buzzing about a message already on their
+/// screen. Shared by the socket `message:send` path and the REST send endpoint
+/// (which the Android notification quick-reply posts to) so the two stay
+/// identical no matter which one a message came in through.
+pub async fn deliver_message(
+    io: &SocketIo,
+    state: &AppState,
+    channel: &crate::models::ChannelRow,
+    msg: &crate::dto::MessageDto,
+    author_id: &str,
+    content: &str,
+) {
+    let channel_id = channel.id.clone();
+
+    // Sending into a conversation reads it for the author, on every one of their
+    // clients - keep their badges and any lingering notification in sync.
+    let _ = read_state::mark_read(state, author_id, &channel_id).await;
+    let _ = io
+        .to(format!("user:{author_id}"))
+        .emit("read:state", &json!({ "channelId": channel_id }));
+    spawn_read_dismiss(state, author_id, &channel_id);
+
+    let _ = io
+        .to(format!("channel:{channel_id}"))
+        .emit("message:new", msg);
+
+    // Unread + @mention bookkeeping, fanned out over rooms members never leave
+    // (server:<id> / user:<id>) so background channels still light up.
+    let parsed = read_state::parse_mentions(content);
+    let recipients = read_state::resolve_mention_recipients(state, channel, author_id, &parsed)
+        .await
+        .unwrap_or_default();
+    if !recipients.is_empty() {
+        let _ = read_state::add_mentions(state, &channel_id, &recipients).await;
+    }
+    let payload = json!({
+        "channelId": channel.id,
+        "serverId": channel.server_id,
+        "authorId": author_id,
+        "mentions": recipients,
+        "preview": msg.content,
+        "author": msg.author,
+    });
+    if let Some(server_id) = &channel.server_id {
+        let _ = io
+            .to(format!("server:{server_id}"))
+            .emit("unread:activity", &payload);
+    } else if let Ok(members) = read_state::channel_member_ids(state, channel).await {
+        for m in &members {
             let _ = io
-                .to(format!("server:{}", s.id))
-                .emit("presence", &PresencePayload { user_id, status });
+                .to(format!("user:{m}"))
+                .emit("unread:activity", &payload);
         }
     }
+
+    let push_targets = if channel.server_id.is_some() {
+        recipients.clone()
+    } else {
+        read_state::channel_member_ids(state, channel)
+            .await
+            .unwrap_or_default()
+    };
+
+    // Anyone with the channel open right now - on any device - is already seeing
+    // the message, so advance their read state (never resurface it as unread on a
+    // reload or another device) and keep it off their push fan-out.
+    let viewing = active_channel_viewers(io, &channel_id);
+    for viewer in &viewing {
+        if viewer == author_id {
+            continue;
+        }
+        let _ = read_state::mark_read(state, viewer, &channel_id).await;
+        let _ = io
+            .to(format!("user:{viewer}"))
+            .emit("read:state", &json!({ "channelId": channel_id }));
+        spawn_read_dismiss(state, viewer, &channel_id);
+    }
+    let push_targets: Vec<String> = push_targets
+        .into_iter()
+        .filter(|t| !viewing.contains(t))
+        .collect();
+
+    let push_state = state.clone();
+    let message_id = msg.id.clone();
+    let push_channel = channel.id.clone();
+    let server_id = channel.server_id.clone();
+    let author = author_id.to_string();
+    let author_name = msg.author.display_name.clone();
+    let author_avatar = msg.author.avatar_url.clone();
+    let preview = msg.content.clone();
+    tokio::spawn(async move {
+        crate::services::push::notify_message(
+            &push_state,
+            &message_id,
+            &push_channel,
+            server_id.as_deref(),
+            &author,
+            &author_name,
+            author_avatar.as_deref(),
+            &preview,
+            &push_targets,
+        )
+        .await;
+    });
+}
+
+/// Fire-and-forget dismissal of any notification a channel left on a user's
+/// other devices, now that they've read it here.
+fn spawn_read_dismiss(state: &AppState, user_id: &str, channel_id: &str) {
+    let state = state.clone();
+    let user_id = user_id.to_string();
+    let channel_id = channel_id.to_string();
+    tokio::spawn(async move {
+        crate::services::push::notify_read(&state, &user_id, &channel_id).await;
+    });
+}
+
+/// User ids with at least one socket currently in a channel's room - everyone
+/// looking at the channel right now, on any device. A message they are already
+/// watching land should not also buzz a phone, so they're excluded from push
+/// fan-out. Room membership is authoritative here because this backend runs as
+/// a single Socket.IO process (see presence::clear_stale_startup_presence).
+fn active_channel_viewers(io: &SocketIo, channel_id: &str) -> HashSet<String> {
+    io.within(format!("channel:{channel_id}"))
+        .sockets()
+        .map(|sockets| {
+            sockets
+                .iter()
+                .filter_map(|s| s.extensions.get::<SocketUser>().map(|u| u.user_id.clone()))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn normalize_device(device: Option<&str>) -> String {
+    match device {
+        Some("mobile") => "mobile",
+        Some("desktop") => "desktop",
+        _ => "browser",
+    }
+    .to_string()
 }
 
 pub fn setup(io: SocketIo, state: AppState) {
@@ -262,7 +437,8 @@ pub fn setup(io: SocketIo, state: AppState) {
     let middleware = move |s: SocketRef, TryData(auth): TryData<AuthPayload>| {
         let state = mw_state.clone();
         async move {
-            let token = auth.ok().and_then(|a| a.token);
+            let auth = auth.ok();
+            let token = auth.as_ref().and_then(|a| a.token.clone());
             let Some(token) = token else {
                 return Err(AuthError);
             };
@@ -271,6 +447,7 @@ pub fn setup(io: SocketIo, state: AppState) {
                     s.extensions.insert(SocketUser {
                         user_id: claims.sub,
                         username: claims.username,
+                        device: normalize_device(auth.as_ref().and_then(|a| a.device.as_deref())),
                     });
                     Ok(())
                 }
@@ -289,6 +466,7 @@ async fn handle_connect(s: SocketRef, io: SocketIo, state: AppState) {
     };
     let user_id = user.user_id.clone();
     let username = user.username.clone();
+    let device = user.device.clone();
 
     register_handlers(
         &s,
@@ -303,17 +481,19 @@ async fn handle_connect(s: SocketRef, io: SocketIo, state: AppState) {
         let io = io.clone();
         let state = state.clone();
         let uid = user_id.clone();
+        let device = device.clone();
         s.on_disconnect(move |s: SocketRef| {
             let io = io.clone();
             let state = state.clone();
             let uid = uid.clone();
+            let device = device.clone();
             async move {
                 let sid = s.id.to_string();
                 let _ = voice::remove_device(&state, &uid, &sid).await;
                 for room in s.rooms().expect("room lookup is infallible") {
                     let room = room.to_string();
                     if let Some(cid) = room.strip_prefix("voice:") {
-                        // As in voice:leave — one device dropping must not evict
+                        // As in voice:leave - one device dropping must not evict
                         // the user from a channel their other device is still in.
                         if voice::has_other_device_in(&state, &uid, cid, &sid)
                             .await
@@ -326,13 +506,20 @@ async fn handle_connect(s: SocketRef, io: SocketIo, state: AppState) {
                     }
                 }
                 emit_voice_devices(&io, &state, &uid).await;
-                // Only the user's *last* socket going away ends their call —
+                // Only the user's *last* socket going away ends their call -
                 // closing one of several tabs must not hang up on the others.
-                if let Ok(true) = presence::remove_socket(&state, &uid).await {
-                    if let Ok(Some(channel_id)) = call::active_call_of(&state, &uid).await {
-                        end_call_for(&io, &state, &channel_id, &uid, "ended").await;
+                if let Ok(last_socket) = presence::remove_socket(&state, &uid, &device).await {
+                    if last_socket {
+                        if let Ok(Some(channel_id)) = call::active_call_of(&state, &uid).await {
+                            end_call_for(&io, &state, &channel_id, &uid, "ended").await;
+                        }
+                        broadcast_presence(&io, &state, &uid, "offline").await;
+                    } else {
+                        let status = presence::get_status(&state, &uid)
+                            .await
+                            .unwrap_or_else(|_| "online".into());
+                        broadcast_presence(&io, &state, &uid, &status).await;
                     }
-                    broadcast_presence(&io, &state, &uid, "offline").await;
                 }
             }
         });
@@ -350,9 +537,14 @@ async fn handle_connect(s: SocketRef, io: SocketIo, state: AppState) {
             let _ = s.join(format!("channel:{}", c.id));
         }
     }
-    if let Ok(true) = presence::add_socket(&state, &user_id).await {
-        let _ = presence::set_status(&state, &user_id, "online").await;
-        broadcast_presence(&io, &state, &user_id, "online").await;
+    if let Ok(first_socket) = presence::add_socket(&state, &user_id, &device).await {
+        if first_socket {
+            let _ = presence::set_status(&state, &user_id, "online").await;
+        }
+        let status = presence::get_status(&state, &user_id)
+            .await
+            .unwrap_or_else(|_| "online".into());
+        broadcast_presence(&io, &state, &user_id, &status).await;
     }
     // A device that opens while another is already in a call has no voice event
     // coming to tell it so; without this the glow would wait for one.
@@ -463,83 +655,10 @@ fn register_handlers(
                     .await;
                     match res {
                         Ok(msg) => {
-                            let _ = io
-                                .to(format!("channel:{}", p.channel_id))
-                                .emit("message:new", &msg);
-
-                            // Unread + @mention bookkeeping: bump mention counters
-                            // and notify members via rooms they never leave
-                            // (server:<id> / user:<id>), so background channels
-                            // still light up.
                             if let Ok(Some(ch)) = channel::get_channel(&state, &p.channel_id).await
                             {
-                                let parsed = read_state::parse_mentions(&p.content);
-                                let recipients = read_state::resolve_mention_recipients(
-                                    &state, &ch, &uid, &parsed,
-                                )
-                                .await
-                                .unwrap_or_default();
-                                if !recipients.is_empty() {
-                                    let _ = read_state::add_mentions(
-                                        &state,
-                                        &p.channel_id,
-                                        &recipients,
-                                    )
-                                    .await;
-                                }
-                                let payload = json!({
-                                    "channelId": ch.id,
-                                    "serverId": ch.server_id,
-                                    "authorId": uid,
-                                    "mentions": recipients,
-                                    "preview": msg.content,
-                                    "author": msg.author,
-                                });
-                                if let Some(server_id) = &ch.server_id {
-                                    let _ = io
-                                        .to(format!("server:{server_id}"))
-                                        .emit("unread:activity", &payload);
-                                } else if let Ok(members) =
-                                    read_state::channel_member_ids(&state, &ch).await
-                                {
-                                    for m in &members {
-                                        let _ = io
-                                            .to(format!("user:{m}"))
-                                            .emit("unread:activity", &payload);
-                                    }
-                                }
-
-                                let push_targets = if ch.server_id.is_some() {
-                                    recipients.clone()
-                                } else {
-                                    read_state::channel_member_ids(&state, &ch)
-                                        .await
-                                        .unwrap_or_default()
-                                };
-                                let push_state = state.clone();
-                                let message_id = msg.id.clone();
-                                let channel_id = ch.id.clone();
-                                let server_id = ch.server_id.clone();
-                                let author_id = uid.clone();
-                                let author_name = msg.author.display_name.clone();
-                                let author_avatar = msg.author.avatar_url.clone();
-                                let preview = msg.content.clone();
-                                tokio::spawn(async move {
-                                    crate::services::push::notify_message(
-                                        &push_state,
-                                        &message_id,
-                                        &channel_id,
-                                        server_id.as_deref(),
-                                        &author_id,
-                                        &author_name,
-                                        author_avatar.as_deref(),
-                                        &preview,
-                                        &push_targets,
-                                    )
-                                    .await;
-                                });
+                                deliver_message(&io, &state, &ch, &msg, &uid, &p.content).await;
                             }
-
                             ack_ok(ack, &msg);
                         }
                         Err(e) => ack_err(ack, e.message()),
@@ -610,7 +729,8 @@ fn register_handlers(
                                 can_manage = permissions::has_permission(perms, MANAGE_MESSAGES);
                             }
                         }
-                        message::delete_message(&state, &p.message_id, &uid, can_manage).await
+                        message::delete_message(&state, &p.channel_id, &p.message_id, &uid, can_manage)
+                            .await
                     }
                     .await;
                     match res {
@@ -682,7 +802,7 @@ fn register_handlers(
                     return;
                 }
                 if let Ok((_, true)) =
-                    message::add_reaction(&state, &p.message_id, &uid, &p.emoji).await
+                    message::add_reaction(&state, &p.channel_id, &p.message_id, &uid, &p.emoji).await
                 {
                     let _ = io.to(format!("channel:{}", p.channel_id)).emit(
                         "reaction",
@@ -719,7 +839,8 @@ fn register_handlers(
                     return;
                 }
                 if let Ok((_, true)) =
-                    message::remove_reaction(&state, &p.message_id, &uid, &p.emoji).await
+                    message::remove_reaction(&state, &p.channel_id, &p.message_id, &uid, &p.emoji)
+                        .await
                 {
                     let _ = io.to(format!("channel:{}", p.channel_id)).emit(
                         "reaction",
@@ -854,7 +975,7 @@ fn register_handlers(
         );
     }
 
-    // voice:device:disconnect — hang up one of my *other* devices.
+    // voice:device:disconnect - hang up one of my *other* devices.
     {
         let state = state.clone();
         let io = io.clone();
@@ -887,7 +1008,7 @@ fn register_handlers(
                     match session_id.parse() {
                         Ok(sid) => match io.get_socket(sid) {
                             // The target tears down its own media and emits
-                            // voice:leave, which is what actually clears state —
+                            // voice:leave, which is what actually clears state -
                             // so a device that has already gone away needs no
                             // cleanup here beyond the stale entry below.
                             Some(target) => {
@@ -983,7 +1104,7 @@ fn register_handlers(
                                 url: snd.url,
                                 volume: snd.volume,
                             };
-                            // Everyone in the voice room, the player included —
+                            // Everyone in the voice room, the player included -
                             // hearing your own sound is the confirmation it fired.
                             let _ = io
                                 .to(format!("voice:{}", p.channel_id))
@@ -1009,13 +1130,18 @@ fn register_handlers(
                 let io = io.clone();
                 let uid = uid.clone();
                 async move {
-                    let patch = voice::VoicePatch {
-                        muted: p.muted,
-                        deafened: p.deafened,
-                        video: p.video,
-                        screen_sharing: p.screen_sharing,
-                    };
-                    match voice::set_voice_state(&state, &p.channel_id, &uid, patch).await {
+                    let res = async {
+                        channel::require_channel_access(&state, &p.channel_id, &uid).await?;
+                        let patch = voice::VoicePatch {
+                            muted: p.muted,
+                            deafened: p.deafened,
+                            video: p.video,
+                            screen_sharing: p.screen_sharing,
+                        };
+                        voice::patch_voice_state(&state, &p.channel_id, &uid, patch).await
+                    }
+                    .await;
+                    match res {
                         Ok(voice_state) => {
                             emit_voice_state(&io, &state, &p.channel_id, &voice_state).await;
                             ack_void(ack);
@@ -1162,7 +1288,7 @@ fn register_handlers(
         );
     }
 
-    // dm:call:cancel — the caller gives up before anyone answers.
+    // dm:call:cancel - the caller gives up before anyone answers.
     {
         let state = state.clone();
         let io = io.clone();
@@ -1181,7 +1307,7 @@ fn register_handlers(
         );
     }
 
-    // dm:call:end — hang up a call in progress.
+    // dm:call:end - hang up a call in progress.
     {
         let state = state.clone();
         let io = io.clone();

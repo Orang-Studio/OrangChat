@@ -100,7 +100,10 @@ export function ProfileDialog({ user, open, onOpenChange }: ProfileDialogProps) 
             pronouns: user.pronouns,
             bio: user.bio,
             status: user.status,
+            devices: user.devices,
+            activities: user.activities,
             createdAt: user.createdAt,
+            badges: user.badges,
             profileCss: user.profileCss,
             connections,
           }}

@@ -10,7 +10,7 @@ export const inviteKeys = {
 
 /**
  * Why the Join button is unavailable, or null when it isn't. Already being a
- * member is not a refusal — following the link just takes you there.
+ * member is not a refusal - following the link just takes you there.
  */
 export function inviteBlockedReason(status: InviteStatus): string | null {
   switch (status) {
