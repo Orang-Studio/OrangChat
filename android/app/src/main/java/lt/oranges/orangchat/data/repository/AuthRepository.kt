@@ -12,6 +12,8 @@ import lt.oranges.orangchat.data.remote.ChangeEmailRequest
 import lt.oranges.orangchat.data.remote.ChangeEmailResult
 import lt.oranges.orangchat.data.remote.ChangePasswordRequest
 import lt.oranges.orangchat.data.remote.ChangePasswordResult
+import lt.oranges.orangchat.data.remote.DeleteAccountRequest
+import lt.oranges.orangchat.data.remote.DeleteAccountResult
 import lt.oranges.orangchat.data.remote.LoginRequest
 import lt.oranges.orangchat.data.remote.SignupRequest
 import lt.oranges.orangchat.data.remote.TwoFactorCodeRequest
@@ -174,6 +176,17 @@ class AuthRepository @Inject constructor(
             ChangeEmailRequest(password?.ifBlank { null }, email.trim(), code.trim()),
         )
         currentUser?.let { _session.value = SessionState.Authenticated(it.copy(email = result.email)) }
+        return result
+    }
+
+    /** Irreversible. On success the local session is torn down like a sign-out. */
+    suspend fun deleteAccount(password: String?, username: String, code: String): DeleteAccountResult {
+        val result = api.deleteAccount(
+            DeleteAccountRequest(password?.ifBlank { null }, username.trim(), code.trim()),
+        )
+        tokenStore.clear()
+        socketManager.disconnect()
+        _session.value = SessionState.Unauthenticated
         return result
     }
 

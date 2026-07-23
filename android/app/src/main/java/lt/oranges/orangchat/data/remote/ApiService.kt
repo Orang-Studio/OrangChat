@@ -26,6 +26,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.HTTP
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -84,6 +85,11 @@ interface ApiService {
 
     @POST("security/email")
     suspend fun changeEmail(@Body body: ChangeEmailRequest): ChangeEmailResult
+
+    // @HTTP rather than @DELETE: Retrofit's @DELETE can't carry a body, and the
+    // confirmation fields have to travel with the request.
+    @HTTP(method = "DELETE", path = "security/account", hasBody = true)
+    suspend fun deleteAccount(@Body body: DeleteAccountRequest): DeleteAccountResult
 
     // ── servers.rs ──────────────────────────────────────
     @GET("servers")

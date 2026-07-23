@@ -1,7 +1,7 @@
 //! Account-security REST (2FA), mounted under /api/security. Requires auth.
 
 use axum::extract::State;
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 use axum::{Json, Router};
 use serde_json::{json, Value};
 
@@ -9,7 +9,7 @@ use crate::auth::verify_password;
 use crate::error::{AppError, AppResult};
 use crate::http::{bad_request, valid_email, AuthUser};
 use crate::models::UserRow;
-use crate::services::{rate_limit, totp};
+use crate::services::{account, rate_limit, totp};
 use crate::state::AppState;
 
 pub fn routes() -> Router<AppState> {
@@ -21,6 +21,31 @@ pub fn routes() -> Router<AppState> {
         .route("/2fa/backup-codes", post(regenerate_backup_codes))
         .route("/password", post(change_password))
         .route("/email", post(change_email))
+        .route("/account", delete(delete_account))
+}
+
+/// Tombstones the account. Gated on the password, a 2FA code when enabled, and
+/// the username typed back - deletion is irreversible, so it asks for something
+/// no accidental click supplies.
+async fn delete_account(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Json(body): Json<Value>,
+) -> AppResult<Json<Value>> {
+    limit(&state, &user.user_id).await?;
+    let row = fetch_user(&state, &user.user_id).await?;
+    if row.deleted_at.is_some() {
+        return Err(bad_request("This account is already deleted"));
+    }
+
+    if field(&body, "username").unwrap_or_default() != row.username {
+        return Err(bad_request("Type your username exactly to confirm"));
+    }
+    check_password(&row, &body)?;
+    check_totp(&state, &row, &body).await?;
+
+    account::delete_account(&state, &user.user_id).await?;
+    Ok(Json(json!({ "deleted": true })))
 }
 
 /// A live 6-digit code (or a backup code), required alongside the password on

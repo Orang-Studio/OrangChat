@@ -101,6 +101,17 @@ data class ChangePasswordResult(
 @Serializable
 data class ChangeEmailResult(val email: String = "")
 
+/** `username` must match the account's exactly; the server refuses otherwise. */
+@Serializable
+data class DeleteAccountRequest(
+    val password: String? = null,
+    val username: String,
+    val code: String = "",
+)
+
+@Serializable
+data class DeleteAccountResult(val deleted: Boolean = false)
+
 @Serializable
 data class CreateServerRequest(val name: String, val iconUrl: String? = null)
 

@@ -185,6 +185,10 @@ fun SecurityScreen(
                 is TwoFactorUi.ShowCodes -> BackupCodes(s.codes) { vm.dismissCodes() }
                 is TwoFactorUi.On -> TwoFactorManage(s, hasPassword, vm)
             }
+
+            HorizontalDivider(color = c.border)
+
+            DeleteAccountSection(self, hasPassword, vm)
         }
     }
 }
@@ -319,6 +323,81 @@ private fun CredentialsSection(self: SelfUser, hasPassword: Boolean, vm: Setting
                         size = ButtonSize.Sm,
                     )
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Irreversible account deletion. The account is tombstoned rather than removed:
+ * messages stay in the conversations they're part of and everything identifying
+ * is scrubbed. Owning a server blocks it; the server names which ones.
+ */
+@Composable
+private fun DeleteAccountSection(self: SelfUser, hasPassword: Boolean, vm: SettingsViewModel) {
+    val c = OrangTheme.colors
+    val ui by vm.credentials.collectAsStateWithLifecycle()
+
+    var open by remember { mutableStateOf(false) }
+    var password by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("Delete account", color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            "Your messages stay in the conversations they're part of, shown as from a " +
+                "deleted user. Everything else — profile, connections, friends, server " +
+                "memberships — is erased. This can't be undone.",
+            color = c.inkSecondary,
+            fontSize = 13.sp,
+        )
+
+        if (!open) {
+            OrangButton(
+                text = "Delete my account",
+                onClick = { vm.clearCredentialsMessages(); open = true },
+                variant = ButtonVariant.Ghost,
+                size = ButtonSize.Sm,
+            )
+        } else {
+            OrangTextField(
+                value = username,
+                onValueChange = { username = it },
+                label = "Type ${self.username} to confirm",
+            )
+            if (hasPassword) {
+                OrangTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = "Your password",
+                    isPassword = true,
+                )
+            }
+            if (self.twoFactorEnabled) {
+                OrangTextField(
+                    value = code,
+                    onValueChange = { code = it },
+                    label = "Code from your app (or a recovery code)",
+                    placeholder = "123456",
+                )
+            }
+            ui.error?.let { Text(it, color = c.danger, fontSize = 13.sp) }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OrangButton(
+                    text = "Permanently delete",
+                    onClick = { vm.deleteAccount(password, username, code) },
+                    variant = ButtonVariant.Danger,
+                    size = ButtonSize.Sm,
+                    enabled = username == self.username && !ui.busy,
+                    loading = ui.busy,
+                )
+                OrangButton(
+                    text = "Cancel",
+                    onClick = { open = false; username = ""; password = ""; code = "" },
+                    variant = ButtonVariant.Ghost,
+                    size = ButtonSize.Sm,
+                )
             }
         }
     }

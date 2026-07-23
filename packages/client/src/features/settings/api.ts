@@ -33,3 +33,10 @@ export const changeEmail = (password: string, email: string, code: string) =>
     method: "POST",
     json: { password, email, code },
   });
+
+/** Irreversible. `username` must match exactly or the server refuses. */
+export const deleteAccount = (password: string, username: string, code: string) =>
+  api<{ deleted: boolean }>("/security/account", {
+    method: "DELETE",
+    json: { password, username, code },
+  });

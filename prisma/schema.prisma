@@ -27,6 +27,10 @@ model User {
   /// Awarded profile badges, as catalog slugs (see services::badge). Denormalized
   /// onto the user so every `SELECT * FROM "User"` already carries them.
   badges               String[] @default([])
+  /// Set when the account is deleted. The row is kept as a tombstone so the
+  /// user's messages stay readable in other people's conversations; everything
+  /// identifying was scrubbed at deletion. See services::account.
+  deletedAt            DateTime?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
   totpBackupCodes        TotpBackupCode[]

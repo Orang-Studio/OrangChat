@@ -209,6 +209,20 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Irreversible. The repository tears the session down on success, so the app
+     * falls back to the sign-in screen on its own - there's no onDone here.
+     */
+    fun deleteAccount(password: String, username: String, code: String) {
+        viewModelScope.launch {
+            _credentials.value = CredentialsUi(busy = true)
+            runCatching { authRepository.deleteAccount(password, username, code) }
+                .onFailure {
+                    _credentials.value = CredentialsUi(error = it.message ?: "Could not delete account")
+                }
+        }
+    }
+
     fun changeEmail(password: String, email: String, code: String, onDone: () -> Unit) {
         viewModelScope.launch {
             _credentials.value = CredentialsUi(busy = true)

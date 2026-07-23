@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, Download, ShieldCheck, ShieldOff } from "lucide-react";
+import { Check, Copy, Download, ShieldCheck, ShieldOff, Trash2 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { PasswordField } from "../../components/ui/PasswordField";
 import { TextField } from "../../components/ui/TextField";
@@ -9,6 +9,7 @@ import { SectionTitle } from "./controls";
 import {
   changeEmail,
   changePassword,
+  deleteAccount,
   disableTwoFactor,
   enableTwoFactor,
   getTwoFactorStatus,
@@ -468,6 +469,113 @@ function CredentialsSection() {
   );
 }
 
+/**
+ * Irreversible account deletion. The account is tombstoned rather than removed:
+ * messages stay where they are so other people's conversations don't develop
+ * holes, and everything identifying is scrubbed. Owning a server blocks it -
+ * the server says which ones.
+ */
+function DeleteAccountSection() {
+  const user = useAuthStore((s) => s.user);
+  const hasPassword = user?.hasPassword ?? true;
+  const twoFactor = user?.twoFactorEnabled ?? false;
+
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [username, setUsername] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: () => deleteAccount(password, username, code),
+    // The session is already dead server-side; a full reload is the honest way
+    // to land back on the sign-in screen with no stale state in memory.
+    onSuccess: () => window.location.reload(),
+  });
+
+  const confirmed = username === user?.username;
+
+  return (
+    <div className="space-y-3">
+      <SectionTitle>Delete account</SectionTitle>
+      <p className="text-sm text-ink-secondary">
+        Your messages stay in the conversations they're part of, shown as from a
+        deleted user. Everything else - profile, connections, friends, server
+        memberships - is erased. This can't be undone.
+      </p>
+
+      {!open ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-danger hover:text-danger"
+          onClick={() => setOpen(true)}
+        >
+          <Trash2 aria-hidden className="size-4" />
+          Delete my account
+        </Button>
+      ) : (
+        <form
+          className="space-y-3 rounded-lg border border-danger/40 p-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (confirmed) mutation.mutate();
+          }}
+        >
+          <TextField
+            label={`Type ${user?.username} to confirm`}
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoComplete="off"
+          />
+          {hasPassword && (
+            <PasswordField
+              label="Your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+          )}
+          {twoFactor && (
+            <TextField
+              label="Code from your app (or a recovery code)"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              autoComplete="one-time-code"
+              placeholder="123456"
+            />
+          )}
+          {mutation.isError && <p className="text-sm text-danger">{mutation.error.message}</p>}
+          <div className="flex gap-2">
+            <Button
+              type="submit"
+              size="sm"
+              variant="danger"
+              loading={mutation.isPending}
+              disabled={!confirmed}
+            >
+              Permanently delete
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setOpen(false);
+                setUsername("");
+                setPassword("");
+                setCode("");
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
 export function SecurityTab() {
   const queryClient = useQueryClient();
   const { data, isPending } = useQuery({
@@ -496,6 +604,10 @@ export function SecurityTab() {
         ) : (
           <EnrollFlow onDone={onEnrolled} />
         )}
+      </div>
+
+      <div className="border-t border-border pt-5">
+        <DeleteAccountSection />
       </div>
     </div>
   );

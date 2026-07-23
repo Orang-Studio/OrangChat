@@ -162,12 +162,15 @@ async fn login(
         .await?;
     }
 
+    // A tombstoned account keeps its row so its messages stay readable, but the
+    // scrub already cleared passwordHash - this is belt-and-braces, and it keeps
+    // the failure indistinguishable from a wrong password either way.
     let valid = match &user {
-        Some(u) => match &u.password_hash {
+        Some(u) if u.deleted_at.is_none() => match &u.password_hash {
             Some(h) => verify_password(h, password),
             None => false,
         },
-        None => false,
+        _ => false,
     };
     if !valid {
         if let Some(u) = &user {

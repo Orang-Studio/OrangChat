@@ -1,3 +1,4 @@
+pub mod account;
 pub mod attachment_crypto;
 pub mod audio;
 pub mod audit;
