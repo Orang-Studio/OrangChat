@@ -15,6 +15,8 @@ import lt.oranges.orangchat.data.remote.ChangePasswordRequest
 import lt.oranges.orangchat.data.remote.ChangePasswordResult
 import lt.oranges.orangchat.data.remote.DeleteAccountRequest
 import lt.oranges.orangchat.data.remote.DeleteAccountResult
+import lt.oranges.orangchat.data.remote.DeleteAllMessagesRequest
+import lt.oranges.orangchat.data.remote.DeleteAllMessagesResult
 import lt.oranges.orangchat.data.remote.LoginRequest
 import lt.oranges.orangchat.data.remote.SignupRequest
 import lt.oranges.orangchat.data.remote.TwoFactorCodeRequest
@@ -181,6 +183,10 @@ class AuthRepository @Inject constructor(
         currentUser?.let { _session.value = SessionState.Authenticated(it.copy(email = result.email)) }
         return result
     }
+
+    /** Irreversible: wipes the user's messages everywhere, including left servers. */
+    suspend fun deleteAllMessages(password: String?, code: String): DeleteAllMessagesResult =
+        api.deleteAllMessages(DeleteAllMessagesRequest(password?.ifBlank { null }, code.trim()))
 
     /** Irreversible. On success the local session is torn down like a sign-out. */
     suspend fun deleteAccount(password: String?, username: String, code: String): DeleteAccountResult {

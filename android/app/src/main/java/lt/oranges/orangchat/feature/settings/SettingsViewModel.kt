@@ -241,6 +241,29 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    // ── Message wipe ────────────────────────────────────
+    private val _wipe = MutableStateFlow(CredentialsUi())
+    val wipe: StateFlow<CredentialsUi> = _wipe.asStateFlow()
+
+    fun resetWipe() {
+        _wipe.value = CredentialsUi()
+    }
+
+    fun deleteAllMessages(password: String, code: String, onDone: () -> Unit) {
+        viewModelScope.launch {
+            _wipe.value = CredentialsUi(busy = true)
+            runCatching { authRepository.deleteAllMessages(password, code) }
+                .onSuccess {
+                    val plural = if (it.deleted == 1L) "" else "s"
+                    _wipe.value = CredentialsUi(done = "Deleted ${it.deleted} message$plural.")
+                    onDone()
+                }
+                .onFailure {
+                    _wipe.value = CredentialsUi(error = it.message ?: "Could not delete messages")
+                }
+        }
+    }
+
     // ── Account standing ────────────────────────────────
     private val _standing = MutableStateFlow<StandingUi>(StandingUi.Loading)
     val standing: StateFlow<StandingUi> = _standing.asStateFlow()

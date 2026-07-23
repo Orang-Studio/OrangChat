@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, DoorOpen, Download, ShieldCheck, ShieldOff, Trash2 } from "lucide-react";
+import {
+  Check,
+  Copy,
+  DoorOpen,
+  Download,
+  Eraser,
+  ShieldCheck,
+  ShieldOff,
+  Trash2,
+} from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { PasswordField } from "../../components/ui/PasswordField";
 import { TextField } from "../../components/ui/TextField";
@@ -11,6 +20,7 @@ import {
   changeEmail,
   changePassword,
   deleteAccount,
+  deleteAllMessages,
   disableTwoFactor,
   enableTwoFactor,
   getAccountStanding,
@@ -597,6 +607,109 @@ function LeaveAllServersSection() {
 }
 
 /**
+ * Wipes every message the user has written, anywhere - including servers and
+ * group DMs they've left. Password-gated: unlike leaving a server, none of this
+ * can be undone or re-obtained.
+ */
+function DeleteAllMessagesSection() {
+  const user = useAuthStore((s) => s.user);
+  const hasPassword = user?.hasPassword ?? true;
+  const twoFactor = user?.twoFactorEnabled ?? false;
+
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [deleted, setDeleted] = useState<number | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: () => deleteAllMessages(password, code),
+    onSuccess: (res) => {
+      setDeleted(res.deleted);
+      setOpen(false);
+      setPassword("");
+      setCode("");
+    },
+  });
+
+  return (
+    <div className="space-y-3">
+      <SectionTitle>Delete all your messages</SectionTitle>
+      <p className="text-sm text-ink-secondary">
+        Removes every message you've sent, in every server and group - including
+        the ones you've left. Attachments you uploaded aren't removed from
+        storage. This can't be undone.
+      </p>
+
+      {deleted !== null && (
+        <p role="status" className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
+          Deleted {deleted} message{deleted === 1 ? "" : "s"}.
+        </p>
+      )}
+
+      {!open ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-danger hover:text-danger"
+          onClick={() => {
+            setDeleted(null);
+            setOpen(true);
+          }}
+        >
+          <Eraser aria-hidden className="size-4" />
+          Delete all my messages
+        </Button>
+      ) : (
+        <form
+          className="space-y-3 rounded-lg border border-danger/40 p-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            mutation.mutate();
+          }}
+        >
+          {hasPassword && (
+            <PasswordField
+              label="Your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+          )}
+          {twoFactor && (
+            <TextField
+              label="Code from your app (or a recovery code)"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              autoComplete="one-time-code"
+              placeholder="123456"
+            />
+          )}
+          {mutation.isError && <p className="text-sm text-danger">{mutation.error.message}</p>}
+          <div className="flex gap-2">
+            <Button type="submit" size="sm" variant="danger" loading={mutation.isPending}>
+              Delete them all
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setOpen(false);
+                setPassword("");
+                setCode("");
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
+/**
  * Irreversible account deletion. The account is tombstoned rather than removed:
  * messages stay where they are so other people's conversations don't develop
  * holes, and everything identifying is scrubbed. Owning a server blocks it -
@@ -739,6 +852,10 @@ export function SecurityTab() {
 
       <div className="border-t border-border pt-5">
         <LeaveAllServersSection />
+      </div>
+
+      <div className="border-t border-border pt-5">
+        <DeleteAllMessagesSection />
       </div>
 
       <div className="border-t border-border pt-5">

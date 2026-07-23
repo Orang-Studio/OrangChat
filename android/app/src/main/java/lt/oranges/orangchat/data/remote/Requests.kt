@@ -112,6 +112,16 @@ data class DeleteAccountRequest(
 @Serializable
 data class DeleteAccountResult(val deleted: Boolean = false)
 
+@Serializable
+data class DeleteAllMessagesRequest(
+    val password: String? = null,
+    val code: String = "",
+)
+
+/** How many messages were removed. */
+@Serializable
+data class DeleteAllMessagesResult(val deleted: Long = 0)
+
 /** One restriction in force against the account; moderation is per-server. */
 @Serializable
 data class StandingEntry(

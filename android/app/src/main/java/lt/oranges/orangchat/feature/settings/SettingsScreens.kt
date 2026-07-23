@@ -198,6 +198,10 @@ fun SecurityScreen(
 
             HorizontalDivider(color = c.border)
 
+            DeleteAllMessagesSection(self, hasPassword, vm)
+
+            HorizontalDivider(color = c.border)
+
             DeleteAccountSection(self, hasPassword, vm)
         }
     }
@@ -467,6 +471,88 @@ private fun LeaveAllServersSection(vm: SettingsViewModel) {
                 variant = ButtonVariant.Secondary,
                 size = ButtonSize.Sm,
             )
+        }
+    }
+}
+
+/**
+ * Wipes every message the user has written, anywhere - including servers and
+ * group DMs they've left. Password-gated: unlike leaving a server, none of this
+ * can be undone or re-obtained.
+ */
+@Composable
+private fun DeleteAllMessagesSection(self: SelfUser, hasPassword: Boolean, vm: SettingsViewModel) {
+    val c = OrangTheme.colors
+    val ui by vm.wipe.collectAsStateWithLifecycle()
+
+    var open by remember { mutableStateOf(false) }
+    var password by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf("") }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            "Delete all your messages",
+            color = c.ink,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            "Removes every message you've sent, in every server and group — including " +
+                "the ones you've left. Attachments you uploaded aren't removed from " +
+                "storage. This can't be undone.",
+            color = c.inkSecondary,
+            fontSize = 13.sp,
+        )
+
+        ui.done?.let { Text(it, color = c.success, fontSize = 13.sp) }
+
+        if (!open) {
+            OrangButton(
+                text = "Delete all my messages",
+                onClick = { vm.resetWipe(); open = true },
+                variant = ButtonVariant.Ghost,
+                size = ButtonSize.Sm,
+            )
+        } else {
+            if (hasPassword) {
+                OrangTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = "Your password",
+                    isPassword = true,
+                )
+            }
+            if (self.twoFactorEnabled) {
+                OrangTextField(
+                    value = code,
+                    onValueChange = { code = it },
+                    label = "Code from your app (or a recovery code)",
+                    placeholder = "123456",
+                )
+            }
+            ui.error?.let { Text(it, color = c.danger, fontSize = 13.sp) }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OrangButton(
+                    text = "Delete them all",
+                    onClick = {
+                        vm.deleteAllMessages(password, code) {
+                            open = false
+                            password = ""
+                            code = ""
+                        }
+                    },
+                    variant = ButtonVariant.Danger,
+                    size = ButtonSize.Sm,
+                    enabled = !ui.busy,
+                    loading = ui.busy,
+                )
+                OrangButton(
+                    text = "Cancel",
+                    onClick = { open = false; password = ""; code = "" },
+                    variant = ButtonVariant.Ghost,
+                    size = ButtonSize.Sm,
+                )
+            }
         }
     }
 }

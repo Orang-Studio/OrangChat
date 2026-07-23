@@ -45,6 +45,13 @@ export const changeEmail = (password: string, email: string, code: string) =>
 export const leaveAllServers = () =>
   api<{ left: number; keptOwned: string[] }>("/servers/leave-all", { method: "POST" });
 
+/** Irreversible: wipes the user's messages everywhere, including left servers. */
+export const deleteAllMessages = (password: string, code: string) =>
+  api<{ deleted: number }>("/security/messages", {
+    method: "DELETE",
+    json: { password, code },
+  });
+
 /** Irreversible. `username` must match exactly or the server refuses. */
 export const deleteAccount = (password: string, username: string, code: string) =>
   api<{ deleted: boolean }>("/security/account", {

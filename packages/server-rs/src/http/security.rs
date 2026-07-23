@@ -23,6 +23,25 @@ pub fn routes() -> Router<AppState> {
         .route("/email", post(change_email))
         .route("/account", delete(delete_account))
         .route("/standing", get(standing))
+        .route("/messages", delete(delete_all_messages))
+}
+
+/// Wipes the user's entire message history everywhere, including servers and
+/// group DMs they've since left. Password-gated: unlike leaving servers, nothing
+/// here can be undone or re-obtained.
+async fn delete_all_messages(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Json(body): Json<Value>,
+) -> AppResult<Json<Value>> {
+    limit(&state, &user.user_id).await?;
+    let row = fetch_user(&state, &user.user_id).await?;
+
+    check_password(&row, &body)?;
+    check_totp(&state, &row, &body).await?;
+
+    let deleted = account::delete_all_messages(&state, &user.user_id).await?;
+    Ok(Json(json!({ "deleted": deleted })))
 }
 
 /// Bans and live timeouts against the account. Read-only, and cheap enough not

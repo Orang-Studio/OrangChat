@@ -94,6 +94,9 @@ interface ApiService {
     @HTTP(method = "DELETE", path = "security/account", hasBody = true)
     suspend fun deleteAccount(@Body body: DeleteAccountRequest): DeleteAccountResult
 
+    @HTTP(method = "DELETE", path = "security/messages", hasBody = true)
+    suspend fun deleteAllMessages(@Body body: DeleteAllMessagesRequest): DeleteAllMessagesResult
+
     // ── servers.rs ──────────────────────────────────────
     @GET("servers")
     suspend fun listServers(): List<Server>

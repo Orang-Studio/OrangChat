@@ -91,6 +91,24 @@ pub async fn standing(state: &AppState, user_id: &str) -> AppResult<Vec<Standing
     Ok(out)
 }
 
+/// Deletes every message the user ever wrote, wherever it lives.
+///
+/// Keyed on authorship alone, which is what makes "even the ones in servers and
+/// groups I've left" fall out for free: a message's row doesn't care whether its
+/// author is still a member. Reactions and pins go with it through the existing
+/// FK cascades.
+///
+/// Attachment blobs are deliberately left alone. They live in Cloudinary or on
+/// disk behind their own lifecycle, and orphaning a blob is recoverable in a way
+/// that deleting one another message still references is not.
+pub async fn delete_all_messages(state: &AppState, user_id: &str) -> AppResult<u64> {
+    let deleted = sqlx::query(r#"DELETE FROM "Message" WHERE "authorId" = $1"#)
+        .bind(user_id)
+        .execute(&state.pool)
+        .await?;
+    Ok(deleted.rows_affected())
+}
+
 /// Tombstones the account. Idempotent-ish: a second call on an already-deleted
 /// account is refused by the caller's `deletedAt` check.
 pub async fn delete_account(state: &AppState, user_id: &str) -> AppResult<()> {
