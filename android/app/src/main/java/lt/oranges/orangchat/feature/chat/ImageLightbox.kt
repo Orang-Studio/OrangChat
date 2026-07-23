@@ -16,13 +16,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material3.Icon
 import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -56,6 +60,25 @@ import lt.oranges.orangchat.util.absoluteUrl
 fun ImageLightbox(attachment: Attachment, onDismiss: () -> Unit) {
     val download = rememberAttachmentDownloader()
     val href = absoluteUrl(attachment.url)
+
+    // Only GIFs get the button - it feeds the picker's existing Favorites tab,
+    // so a favourited PNG would have nowhere to appear. Reuses
+    // GifFavoritesStore rather than keeping a second list: the lightbox and the
+    // picker must agree on what's favourited.
+    val gifViewModel: KlipyGifViewModel = hiltViewModel()
+    val favorites by gifViewModel.favorites.collectAsState()
+    val gif = attachment.contentType == "image/gif" ||
+        attachment.filename.lowercase().endsWith(".gif")
+    // Attachments have no Klipy slug, so the URL stands in as the identity.
+    val asKlipy = KlipyGif(
+        slug = attachment.url,
+        title = attachment.filename,
+        previewUrl = attachment.url,
+        url = attachment.url,
+        width = attachment.width ?: 0,
+        height = attachment.height ?: 0,
+    )
+    val saved = gif && favorites.any { it.slug == asKlipy.slug }
 
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
@@ -138,6 +161,14 @@ fun ImageLightbox(attachment: Attachment, onDismiss: () -> Unit) {
                     }
                 }
                 Spacer(Modifier.width(8.dp))
+                if (gif) {
+                    LightboxAction(
+                        icon = if (saved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                        label = if (saved) "Remove from favourites" else "Favourite this GIF",
+                        onClick = { gifViewModel.toggleFavorite(asKlipy) },
+                    )
+                    Spacer(Modifier.width(4.dp))
+                }
                 LightboxAction(
                     icon = Icons.Default.Download,
                     label = "Download ${attachment.filename}",

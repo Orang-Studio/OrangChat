@@ -1,7 +1,8 @@
 import * as RadixDialog from "@radix-ui/react-dialog";
-import { Download, X } from "lucide-react";
+import { Bookmark, Download, X } from "lucide-react";
 import type { Attachment } from "@orangchat/shared";
 import { formatBytes } from "./attachments";
+import { isGif, isGifFavorite, useFavoriteGifs } from "./favoriteGifs";
 
 /**
  * Full-bleed viewer for an image attachment.
@@ -24,6 +25,14 @@ export function ImageLightbox({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const favoriteGifs = useFavoriteGifs((s) => s.gifs);
+  const toggleFavorite = useFavoriteGifs((s) => s.toggle);
+
+  // Only GIFs are bookmarkable - the picker they feed is a GIF picker, so a
+  // saved PNG would have nowhere to appear.
+  const gif = isGif(attachment.contentType, attachment.filename);
+  const saved = gif && isGifFavorite(favoriteGifs, attachment.url);
+
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
@@ -44,6 +53,23 @@ export function ImageLightbox({
                 <p className="text-[11px] text-white/60">{formatBytes(attachment.size)}</p>
               )}
             </div>
+            {gif && (
+              <button
+                type="button"
+                aria-pressed={saved}
+                aria-label={saved ? "Remove from favourites" : "Favourite this GIF"}
+                onClick={() =>
+                  toggleFavorite({ url: attachment.url, label: attachment.filename })
+                }
+                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-white/15"
+              >
+                <Bookmark
+                  aria-hidden
+                  className={`size-4 ${saved ? "fill-current" : ""}`}
+                />
+                {saved ? "Favourited" : "Favourite"}
+              </button>
+            )}
             <a
               href={attachment.url}
               // The stored name is an opaque id, so the real one comes from here.

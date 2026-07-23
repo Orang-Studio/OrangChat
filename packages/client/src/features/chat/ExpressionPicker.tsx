@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
-import { Smile } from "lucide-react";
+import { Smile, X } from "lucide-react";
 import type { Emoji } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
 import { emojiToken, useUsableEmojis } from "../emojis/queries";
 import { useServers } from "../servers/queries";
 import { EMOJI_CATEGORIES } from "./emoji-data";
+import { useFavoriteGifs } from "./favoriteGifs";
 
 interface KlipyFile {
   url: string;
@@ -176,6 +177,8 @@ function EmojiPanel({ onPick }: { onPick: (emoji: string) => void }) {
 }
 
 function GifPanel({ onPick }: { onPick: (url: string) => void }) {
+  const favoriteGifs = useFavoriteGifs((s) => s.gifs);
+  const removeFavorite = useFavoriteGifs((s) => s.remove);
   const [query, setQuery] = useState("");
   const [gifs, setGifs] = useState<KlipyGif[]>([]);
   const [loading, setLoading] = useState(true);
@@ -213,6 +216,37 @@ function GifPanel({ onPick }: { onPick: (url: string) => void }) {
         className="w-full rounded-lg border border-border bg-surface-1 px-3 py-2 text-sm outline-none focus:border-primary"
       />
       <div className="min-h-0 flex-1 overflow-y-auto">
+        {/* Bookmarks lead, and only while browsing: a search is a request for
+            something specific, and saved GIFs aren't part of that answer. */}
+        {favoriteGifs.length > 0 && !query.trim() && (
+          <div className="mb-2">
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+              Favourites
+            </p>
+            <div className="columns-2 gap-1.5">
+              {favoriteGifs.map((gif) => (
+                <div key={gif.url} className="group relative mb-1.5 break-inside-avoid">
+                  <button
+                    type="button"
+                    title={gif.label}
+                    onClick={() => onPick(gif.url)}
+                    className="block w-full overflow-hidden rounded-lg bg-surface-1 focus-visible:outline-2 focus-visible:outline-primary"
+                  >
+                    <img src={gif.url} alt={gif.label} loading="lazy" className="w-full" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${gif.label} from favourites`}
+                    onClick={() => removeFavorite(gif.url)}
+                    className="absolute right-1 top-1 rounded-md bg-black/60 p-1 text-white opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+                  >
+                    <X aria-hidden className="size-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {loading && gifs.length === 0 ? (
           <p className="grid h-full place-items-center text-xs text-ink-muted">Loading GIFs…</p>
         ) : error ? (
