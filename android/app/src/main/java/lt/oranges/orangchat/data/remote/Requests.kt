@@ -76,6 +76,31 @@ data class BackupCodesResult(
     val backupCodes: List<String> = emptyList(),
 )
 
+/** `code` is ignored server-side unless 2FA is on; `password` is null for OAuth-only accounts. */
+@Serializable
+data class ChangePasswordRequest(
+    val password: String? = null,
+    val newPassword: String,
+    val code: String = "",
+)
+
+@Serializable
+data class ChangeEmailRequest(
+    val password: String? = null,
+    val email: String,
+    val code: String = "",
+)
+
+@Serializable
+data class ChangePasswordResult(
+    val ok: Boolean = false,
+    /** Other sessions signed out by the change. */
+    val sessionsRevoked: Int = 0,
+)
+
+@Serializable
+data class ChangeEmailResult(val email: String = "")
+
 @Serializable
 data class CreateServerRequest(val name: String, val iconUrl: String? = null)
 

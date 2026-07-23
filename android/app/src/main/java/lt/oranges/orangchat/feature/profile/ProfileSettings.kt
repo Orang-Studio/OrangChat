@@ -10,11 +10,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.ui.draw.alpha
+import lt.oranges.orangchat.ui.components.Badge
 import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -195,6 +200,9 @@ fun ProfileSettingsSection(
             )
         }
 
+        ProfileSectionTitle("Badges")
+        BadgeCatalog(self.badges)
+
         state.error?.let { Text(it, color = c.danger, fontSize = 12.sp) }
 
         OrangButton(
@@ -213,6 +221,45 @@ fun ProfileSettingsSection(
             enabled = dirty,
             modifier = Modifier.fillMaxWidth(),
         )
+    }
+}
+
+/**
+ * The whole badge catalog with the held ones lit up and the rest dimmed. Badges
+ * are awarded server-side, so this is read-only - it exists to say what each one
+ * is and how it's earned.
+ */
+@Composable
+private fun BadgeCatalog(owned: List<String>) {
+    val c = OrangTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Badge.entries.forEach { badge ->
+            val has = badge.slug in owned
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(OrangRadius.lg))
+                    .background(c.surface1)
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
+                    .alpha(if (has) 1f else 0.5f),
+            ) {
+                Icon(
+                    imageVector = badge.icon,
+                    contentDescription = null,
+                    tint = if (has) badge.color else c.inkMuted,
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(badge.label, color = c.ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Text(badge.description, color = c.inkMuted, fontSize = 12.sp)
+                }
+                if (has) {
+                    Text("Earned", color = c.success, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                }
+            }
+        }
     }
 }
 

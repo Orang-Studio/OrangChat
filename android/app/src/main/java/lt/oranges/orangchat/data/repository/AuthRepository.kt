@@ -8,6 +8,10 @@ import lt.oranges.orangchat.data.model.AuthResult
 import lt.oranges.orangchat.data.model.SelfUser
 import lt.oranges.orangchat.data.remote.ApiService
 import lt.oranges.orangchat.data.remote.BackupCodesResult
+import lt.oranges.orangchat.data.remote.ChangeEmailRequest
+import lt.oranges.orangchat.data.remote.ChangeEmailResult
+import lt.oranges.orangchat.data.remote.ChangePasswordRequest
+import lt.oranges.orangchat.data.remote.ChangePasswordResult
 import lt.oranges.orangchat.data.remote.LoginRequest
 import lt.oranges.orangchat.data.remote.SignupRequest
 import lt.oranges.orangchat.data.remote.TwoFactorCodeRequest
@@ -150,6 +154,28 @@ class AuthRepository @Inject constructor(
 
     suspend fun regenerateBackupCodes(password: String?, code: String): BackupCodesResult =
         api.regenerateBackupCodes(TwoFactorDisableRequest(password?.ifBlank { null }, code.trim()))
+
+    // ── Credentials ─────────────────────────────────────
+    /**
+     * The server revokes every refresh token on success, including this device's.
+     * The access token stays valid until it expires, so the session survives long
+     * enough to show the result and the next refresh is what signs us out.
+     */
+    suspend fun changePassword(password: String?, newPassword: String, code: String): ChangePasswordResult {
+        val result = api.changePassword(
+            ChangePasswordRequest(password?.ifBlank { null }, newPassword, code.trim()),
+        )
+        currentUser?.let { _session.value = SessionState.Authenticated(it.copy(hasPassword = true)) }
+        return result
+    }
+
+    suspend fun changeEmail(password: String?, email: String, code: String): ChangeEmailResult {
+        val result = api.changeEmail(
+            ChangeEmailRequest(password?.ifBlank { null }, email.trim(), code.trim()),
+        )
+        currentUser?.let { _session.value = SessionState.Authenticated(it.copy(email = result.email)) }
+        return result
+    }
 
     suspend fun logout() {
         try {

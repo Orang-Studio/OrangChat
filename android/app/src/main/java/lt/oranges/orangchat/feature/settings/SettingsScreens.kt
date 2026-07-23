@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -45,6 +46,7 @@ import lt.oranges.orangchat.data.model.FriendRequestPrivacy
 import lt.oranges.orangchat.data.model.SelfUser
 import lt.oranges.orangchat.feature.updates.UpdateUiState
 import lt.oranges.orangchat.feature.updates.UpdateViewModel
+import lt.oranges.orangchat.ui.components.ButtonSize
 import lt.oranges.orangchat.ui.components.ButtonVariant
 import lt.oranges.orangchat.ui.components.OrangButton
 import lt.oranges.orangchat.ui.components.OrangTextField
@@ -149,7 +151,12 @@ fun SharingScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
 // ── Security (2FA) ──────────────────────────────────────
 
 @Composable
-fun SecurityScreen(hasPassword: Boolean, onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
+fun SecurityScreen(
+    self: SelfUser,
+    hasPassword: Boolean,
+    onBack: () -> Unit,
+    vm: SettingsViewModel = hiltViewModel(),
+) {
     val c = OrangTheme.colors
     val state by vm.twoFactor.collectAsStateWithLifecycle()
 
@@ -161,6 +168,10 @@ fun SecurityScreen(hasPassword: Boolean, onBack: () -> Unit, vm: SettingsViewMod
             modifier = Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            CredentialsSection(self, hasPassword, vm)
+
+            HorizontalDivider(color = c.border)
+
             Text("Two-factor authentication", color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             Text(
                 "Ask for a code from your phone in addition to your password when you sign in.",
@@ -173,6 +184,141 @@ fun SecurityScreen(hasPassword: Boolean, onBack: () -> Unit, vm: SettingsViewMod
                 is TwoFactorUi.Setup -> TwoFactorVerify(s, vm)
                 is TwoFactorUi.ShowCodes -> BackupCodes(s.codes) { vm.dismissCodes() }
                 is TwoFactorUi.On -> TwoFactorManage(s, hasPassword, vm)
+            }
+        }
+    }
+}
+
+/**
+ * Change email / set-or-change password. Both are gated on the current password
+ * (except on OAuth-only accounts) plus a 2FA code when it's on, so the two forms
+ * share one credential block - mirrors the web CredentialsSection.
+ */
+@Composable
+private fun CredentialsSection(self: SelfUser, hasPassword: Boolean, vm: SettingsViewModel) {
+    val c = OrangTheme.colors
+    val ui by vm.credentials.collectAsStateWithLifecycle()
+
+    // null = neither form open.
+    var mode by remember { mutableStateOf<String?>(null) }
+    var password by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirm by remember { mutableStateOf("") }
+
+    fun reset() {
+        mode = null
+        password = ""
+        code = ""
+        email = ""
+        newPassword = ""
+        confirm = ""
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Email & password", color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text("Signed in as ${self.email}.", color = c.inkSecondary, fontSize = 13.sp)
+
+        ui.done?.let { Text(it, color = c.success, fontSize = 13.sp) }
+
+        if (mode == null) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OrangButton(
+                    text = "Change email",
+                    onClick = { vm.clearCredentialsMessages(); mode = "email" },
+                    variant = ButtonVariant.Secondary,
+                    size = ButtonSize.Sm,
+                )
+                OrangButton(
+                    text = if (hasPassword) "Change password" else "Set a password",
+                    onClick = { vm.clearCredentialsMessages(); mode = "password" },
+                    variant = ButtonVariant.Secondary,
+                    size = ButtonSize.Sm,
+                )
+            }
+        } else {
+            val mismatch = newPassword.isNotEmpty() && confirm.isNotEmpty() && newPassword != confirm
+            val canSubmit = if (mode == "email") {
+                email.isNotBlank()
+            } else {
+                newPassword.length >= 8 && newPassword == confirm
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (mode == "email") {
+                    OrangTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = "New email",
+                        // Nothing confirms the address afterwards - there's no
+                        // mail transport - so don't imply a confirmation email.
+                        hint = "Used to sign in. There's no confirmation email, so double-check it.",
+                    )
+                } else {
+                    OrangTextField(
+                        value = newPassword,
+                        onValueChange = { newPassword = it },
+                        label = "New password",
+                        isPassword = true,
+                        hint = "At least 8 characters.",
+                    )
+                    OrangTextField(
+                        value = confirm,
+                        onValueChange = { confirm = it },
+                        label = "Confirm new password",
+                        isPassword = true,
+                        error = if (mismatch) "Those don't match." else null,
+                    )
+                }
+
+                if (hasPassword) {
+                    OrangTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = "Your current password",
+                        isPassword = true,
+                    )
+                }
+                if (self.twoFactorEnabled) {
+                    OrangTextField(
+                        value = code,
+                        onValueChange = { code = it },
+                        label = "Code from your app (or a recovery code)",
+                        placeholder = "123456",
+                    )
+                }
+
+                if (mode == "password") {
+                    Text(
+                        "Changing your password signs out every other session.",
+                        color = c.inkMuted,
+                        fontSize = 12.sp,
+                    )
+                }
+                ui.error?.let { Text(it, color = c.danger, fontSize = 13.sp) }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OrangButton(
+                        text = if (mode == "email") "Change email" else if (hasPassword) "Change password" else "Set password",
+                        onClick = {
+                            if (mode == "email") {
+                                vm.changeEmail(password, email, code) { reset() }
+                            } else {
+                                vm.changePassword(password, newPassword, code) { reset() }
+                            }
+                        },
+                        enabled = canSubmit && !ui.busy,
+                        loading = ui.busy,
+                        size = ButtonSize.Sm,
+                    )
+                    OrangButton(
+                        text = "Cancel",
+                        onClick = { reset() },
+                        variant = ButtonVariant.Ghost,
+                        size = ButtonSize.Sm,
+                    )
+                }
             }
         }
     }

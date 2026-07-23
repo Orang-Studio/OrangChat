@@ -72,6 +72,8 @@ data class User(
     val accentColor: Int? = null,
     val pronouns: String? = null,
     val profileCss: String? = null,
+    /** Awarded badge slugs; unknown ones are dropped at render. */
+    val badges: List<String> = emptyList(),
     val createdAt: String = "",
 )
 
@@ -89,6 +91,7 @@ data class SelfUser(
     val accentColor: Int? = null,
     val pronouns: String? = null,
     val profileCss: String? = null,
+    val badges: List<String> = emptyList(),
     val createdAt: String = "",
     val email: String = "",
     val customCss: String? = null,
@@ -99,7 +102,7 @@ data class SelfUser(
     /** False for OAuth-only accounts, which have no password to re-confirm. */
     val hasPassword: Boolean = true,
 ) {
-    fun asUser() = User(id, username, displayName, avatarUrl, status, devices, activities, bio, bannerUrl, accentColor, pronouns, profileCss, createdAt)
+    fun asUser() = User(id, username, displayName, avatarUrl, status, devices, activities, bio, bannerUrl, accentColor, pronouns, profileCss, badges, createdAt)
 }
 
 @Serializable

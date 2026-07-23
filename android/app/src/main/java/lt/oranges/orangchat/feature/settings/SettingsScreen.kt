@@ -82,7 +82,7 @@ fun SettingsScreen(
         SettingsPage.PRIVACY -> PrivacyScreen(self, toRoot)
         SettingsPage.SHARING -> SharingScreen(toRoot)
         SettingsPage.RINGTONE -> RingtonePage(toRoot, modifier)
-        SettingsPage.SECURITY -> SecurityScreen(hasPassword = self.hasPassword, onBack = toRoot)
+        SettingsPage.SECURITY -> SecurityScreen(self = self, hasPassword = self.hasPassword, onBack = toRoot)
         SettingsPage.ACCESSIBILITY -> AccessibilityScreen(toRoot)
         SettingsPage.SYSTEM -> SystemScreen(connected = connected, onBack = toRoot)
         SettingsPage.ABOUT -> AboutScreen(toRoot)

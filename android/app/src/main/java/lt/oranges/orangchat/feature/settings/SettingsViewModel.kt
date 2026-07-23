@@ -35,6 +35,14 @@ sealed interface TwoFactorUi {
     data class On(val backupCodesRemaining: Int, val busy: Boolean = false, val error: String? = null) : TwoFactorUi
 }
 
+/** Drives the email/password forms on the Security screen. */
+data class CredentialsUi(
+    val busy: Boolean = false,
+    val error: String? = null,
+    /** Success line shown after a change; cleared when a new form is opened. */
+    val done: String? = null,
+)
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val tokenStore: TokenStore,
@@ -171,6 +179,49 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun dismissCodes() = refreshTwoFactor()
+
+    // ── Credentials ─────────────────────────────────────
+    private val _credentials = MutableStateFlow(CredentialsUi())
+    val credentials: StateFlow<CredentialsUi> = _credentials.asStateFlow()
+
+    fun clearCredentialsMessages() {
+        _credentials.value = CredentialsUi()
+    }
+
+    fun changePassword(password: String, newPassword: String, code: String, onDone: () -> Unit) {
+        viewModelScope.launch {
+            _credentials.value = CredentialsUi(busy = true)
+            runCatching { authRepository.changePassword(password, newPassword, code) }
+                .onSuccess { result ->
+                    _credentials.value = CredentialsUi(
+                        done = if (result.sessionsRevoked > 0) {
+                            val plural = if (result.sessionsRevoked == 1) " was" else "s were"
+                            "Password changed. ${result.sessionsRevoked} other session$plural signed out."
+                        } else {
+                            "Password changed."
+                        },
+                    )
+                    onDone()
+                }
+                .onFailure {
+                    _credentials.value = CredentialsUi(error = it.message ?: "Could not change password")
+                }
+        }
+    }
+
+    fun changeEmail(password: String, email: String, code: String, onDone: () -> Unit) {
+        viewModelScope.launch {
+            _credentials.value = CredentialsUi(busy = true)
+            runCatching { authRepository.changeEmail(password, email, code) }
+                .onSuccess {
+                    _credentials.value = CredentialsUi(done = "Email changed to ${it.email}.")
+                    onDone()
+                }
+                .onFailure {
+                    _credentials.value = CredentialsUi(error = it.message ?: "Could not change email")
+                }
+        }
+    }
 }
 
 private fun DmPrivacy.wire() = when (this) {

@@ -31,6 +31,7 @@ import lt.oranges.orangchat.data.model.PresenceStatus
 import lt.oranges.orangchat.data.model.User
 import lt.oranges.orangchat.ui.components.Avatar
 import lt.oranges.orangchat.ui.components.ActivityStatus
+import lt.oranges.orangchat.ui.components.ProfileBadges
 import lt.oranges.orangchat.ui.components.DeviceIndicators
 import lt.oranges.orangchat.ui.components.ButtonVariant
 import lt.oranges.orangchat.ui.components.OrangButton
@@ -141,6 +142,8 @@ private fun ProfileCardNative(
                         )
                     }
                     ActivityStatus(activities = user.activities, modifier = Modifier.padding(top = 3.dp))
+
+                    ProfileBadges(badges = user.badges, modifier = Modifier.padding(top = 8.dp))
 
                     user.bio?.takeIf { it.isNotBlank() }?.let { bio ->
                         ProfileDivider()

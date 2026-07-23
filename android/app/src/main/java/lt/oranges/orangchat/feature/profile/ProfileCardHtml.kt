@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import lt.oranges.orangchat.data.model.PresenceStatus
 import lt.oranges.orangchat.data.model.User
+import lt.oranges.orangchat.ui.components.Badge
 import lt.oranges.orangchat.ui.theme.OrangColors
 import lt.oranges.orangchat.util.BACKEND_ORIGIN
 import lt.oranges.orangchat.util.absoluteUrl
@@ -53,6 +54,15 @@ fun buildProfileCardHtml(
     }
     val pronouns = user.pronouns?.takeIf { it.isNotBlank() }
         ?.let { """<span class="oc-pf-pronouns">${it.escapeHtml()}</span>""" } ?: ""
+    // Same oc-pf-badge* hook classes as the web card, so one bit of profile CSS
+    // styles both. Colours are inline because the catalog owns them, not the theme.
+    val badges = Badge.resolve(user.badges).takeIf { it.isNotEmpty() }?.let { list ->
+        val pills = list.joinToString("") { badge ->
+            val hex = badge.color.css()
+            """<span class="oc-pf-badge" style="color:$hex;border-color:$hex;" title="${badge.description.escapeAttr()}">${badge.label.escapeHtml()}</span>"""
+        }
+        """<div class="oc-pf-badges">$pills</div>"""
+    } ?: ""
     val bio = user.bio?.takeIf { it.isNotBlank() }?.let {
         """<div class="oc-pf-bio"><h3 class="oc-pf-heading">About me</h3><p class="oc-pf-bio-text">${it.escapeHtml()}</p></div>"""
     } ?: ""
@@ -88,6 +98,7 @@ fun buildProfileCardHtml(
       <div class="oc-pf-head"><h2 class="oc-pf-name">${displayName.ifBlank { "—" }.escapeHtml()}</h2>$pronouns</div>
       <div class="oc-pf-identity"><p class="oc-pf-username">@${username.ifBlank { "username" }.escapeHtml()}</p>$deviceStatus</div>
       $activity
+      $badges
       $bio
       $member
     </div>
@@ -159,6 +170,12 @@ body {
 .oc-pf-identity { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .oc-pf-device { color: ${statusDotColor(status ?: PresenceStatus.OFFLINE, c).css()}; font-size: 13px; line-height: 1; }
 .oc-pf-activity { margin-top: 4px; color: ${c.inkMuted.css()}; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.oc-pf-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.oc-pf-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  border: 1px solid; border-radius: 6px; padding: 2px 6px;
+  font-size: 11px; font-weight: 500;
+}
 .oc-pf-body { border-radius: 7px; background: ${c.surface1.css()}; padding: 12px; }
 .oc-pf-head { display: flex; align-items: baseline; gap: 8px; }
 .oc-pf-name {

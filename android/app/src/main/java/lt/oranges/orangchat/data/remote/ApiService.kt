@@ -79,6 +79,12 @@ interface ApiService {
     @POST("security/2fa/backup-codes")
     suspend fun regenerateBackupCodes(@Body body: TwoFactorDisableRequest): BackupCodesResult
 
+    @POST("security/password")
+    suspend fun changePassword(@Body body: ChangePasswordRequest): ChangePasswordResult
+
+    @POST("security/email")
+    suspend fun changeEmail(@Body body: ChangeEmailRequest): ChangeEmailResult
+
     // ── servers.rs ──────────────────────────────────────
     @GET("servers")
     suspend fun listServers(): List<Server>
