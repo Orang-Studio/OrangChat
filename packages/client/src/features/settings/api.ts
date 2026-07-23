@@ -34,6 +34,10 @@ export const changeEmail = (password: string, email: string, code: string) =>
     json: { password, email, code },
   });
 
+/** Leaves every server you don't own; owned ones are reported back untouched. */
+export const leaveAllServers = () =>
+  api<{ left: number; keptOwned: string[] }>("/servers/leave-all", { method: "POST" });
+
 /** Irreversible. `username` must match exactly or the server refuses. */
 export const deleteAccount = (password: string, username: string, code: string) =>
   api<{ deleted: boolean }>("/security/account", {

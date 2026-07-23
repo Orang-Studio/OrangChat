@@ -117,6 +117,9 @@ interface ApiService {
     @POST("servers/{serverId}/leave")
     suspend fun leaveServer(@Path("serverId") serverId: String): Response<Unit>
 
+    @POST("servers/leave-all")
+    suspend fun leaveAllServers(): LeaveAllServersResult
+
     @POST("invites/{code}")
     suspend fun joinInvite(@Path("code") code: String): Server
 

@@ -188,6 +188,10 @@ fun SecurityScreen(
 
             HorizontalDivider(color = c.border)
 
+            LeaveAllServersSection(vm)
+
+            HorizontalDivider(color = c.border)
+
             DeleteAccountSection(self, hasPassword, vm)
         }
     }
@@ -324,6 +328,65 @@ private fun CredentialsSection(self: SelfUser, hasPassword: Boolean, vm: Setting
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * Bulk-leaves every server the user doesn't own. Two-step: destructive enough
+ * that one tap shouldn't do it, cheap enough not to need a password.
+ */
+@Composable
+private fun LeaveAllServersSection(vm: SettingsViewModel) {
+    val c = OrangTheme.colors
+    val state by vm.leaveAll.collectAsStateWithLifecycle()
+    var confirming by remember { mutableStateOf(false) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("Leave all servers", color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            "Leaves every server you're in except the ones you own. You'll need a new " +
+                "invite to get back into any of them.",
+            color = c.inkSecondary,
+            fontSize = 13.sp,
+        )
+
+        when (val s = state) {
+            is LeaveAllUi.Done -> {
+                val kept = if (s.keptOwned.isEmpty()) "" else " Still yours: ${s.keptOwned.joinToString(", ")}."
+                Text(
+                    "Left ${s.left} server${if (s.left == 1) "" else "s"}.$kept",
+                    color = c.success,
+                    fontSize = 13.sp,
+                )
+            }
+            is LeaveAllUi.Failed -> Text(s.error, color = c.danger, fontSize = 13.sp)
+            else -> Unit
+        }
+
+        if (confirming) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OrangButton(
+                    text = "Yes, leave them all",
+                    onClick = { vm.leaveAllServers(); confirming = false },
+                    variant = ButtonVariant.Danger,
+                    size = ButtonSize.Sm,
+                    loading = state is LeaveAllUi.Busy,
+                )
+                OrangButton(
+                    text = "Cancel",
+                    onClick = { confirming = false },
+                    variant = ButtonVariant.Ghost,
+                    size = ButtonSize.Sm,
+                )
+            }
+        } else {
+            OrangButton(
+                text = "Leave all servers",
+                onClick = { vm.resetLeaveAll(); confirming = true },
+                variant = ButtonVariant.Secondary,
+                size = ButtonSize.Sm,
+            )
         }
     }
 }

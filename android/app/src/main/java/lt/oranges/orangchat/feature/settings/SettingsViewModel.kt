@@ -12,6 +12,7 @@ import lt.oranges.orangchat.data.model.DmPrivacy
 import lt.oranges.orangchat.data.model.FriendRequestPrivacy
 import lt.oranges.orangchat.data.remote.TwoFactorSetup
 import lt.oranges.orangchat.data.repository.AuthRepository
+import lt.oranges.orangchat.data.repository.ServerRepository
 import javax.inject.Inject
 
 const val FONT_SCALE_MIN = 0.85f
@@ -35,6 +36,14 @@ sealed interface TwoFactorUi {
     data class On(val backupCodesRemaining: Int, val busy: Boolean = false, val error: String? = null) : TwoFactorUi
 }
 
+/** Drives the "leave all servers" control on the Security screen. */
+sealed interface LeaveAllUi {
+    data object Idle : LeaveAllUi
+    data object Busy : LeaveAllUi
+    data class Done(val left: Int, val keptOwned: List<String>) : LeaveAllUi
+    data class Failed(val error: String) : LeaveAllUi
+}
+
 /** Drives the email/password forms on the Security screen. */
 data class CredentialsUi(
     val busy: Boolean = false,
@@ -47,6 +56,7 @@ data class CredentialsUi(
 class SettingsViewModel @Inject constructor(
     private val tokenStore: TokenStore,
     private val authRepository: AuthRepository,
+    private val serverRepository: ServerRepository,
 ) : ViewModel() {
 
     private val _prefs = MutableStateFlow(
@@ -221,6 +231,23 @@ class SettingsViewModel @Inject constructor(
                     _credentials.value = CredentialsUi(error = it.message ?: "Could not delete account")
                 }
         }
+    }
+
+    // ── Bulk server actions ─────────────────────────────
+    private val _leaveAll = MutableStateFlow<LeaveAllUi>(LeaveAllUi.Idle)
+    val leaveAll: StateFlow<LeaveAllUi> = _leaveAll.asStateFlow()
+
+    fun leaveAllServers() {
+        viewModelScope.launch {
+            _leaveAll.value = LeaveAllUi.Busy
+            runCatching { serverRepository.leaveAllServers() }
+                .onSuccess { _leaveAll.value = LeaveAllUi.Done(it.left, it.keptOwned) }
+                .onFailure { _leaveAll.value = LeaveAllUi.Failed(it.message ?: "Could not leave servers") }
+        }
+    }
+
+    fun resetLeaveAll() {
+        _leaveAll.value = LeaveAllUi.Idle
     }
 
     fun changeEmail(password: String, email: String, code: String, onDone: () -> Unit) {

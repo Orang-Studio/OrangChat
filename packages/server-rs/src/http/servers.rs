@@ -12,12 +12,16 @@ use crate::dto::*;
 use crate::error::{AppError, AppResult};
 use crate::http::{bad_request, AuthUser, ClientIp, OptionalAuthUser};
 use crate::permissions::{self, MANAGE_CHANNELS, MANAGE_INVITES, MANAGE_SERVER, VIEW_AUDIT_LOG};
-use crate::services::{audit, channel, membership, message, presence, rate_limit, server};
+use crate::services::{
+    account, audit, channel, membership, message, presence, rate_limit, server,
+};
 use crate::state::AppState;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/servers", post(create_server).get(list_servers))
+        // Before /servers/:serverId so the literal segment wins the match.
+        .route("/servers/leave-all", post(leave_all_servers))
         .route(
             "/servers/:serverId",
             get(get_server).patch(update_server).delete(delete_server),
@@ -369,6 +373,31 @@ async fn leave_server(
         .to(format!("user:{user_id}"))
         .leave(format!("server:{server_id}"));
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// Leaves every server the user doesn't own. Servers they own are left alone -
+/// an owner can't leave without stranding it, so those are reported back rather
+/// than silently skipped.
+async fn leave_all_servers(
+    State(state): State<AppState>,
+    user: AuthUser,
+) -> AppResult<Json<Value>> {
+    let left = server::leave_all_non_owned(&state, &user.user_id).await?;
+    let user_id = &user.user_id;
+
+    for server_id in &left {
+        let _ = state.io().to(format!("server:{server_id}")).emit(
+            "member:left",
+            &json!({ "serverId": server_id, "userId": user_id }),
+        );
+        let _ = state
+            .io()
+            .to(format!("user:{user_id}"))
+            .leave(format!("server:{server_id}"));
+    }
+
+    let kept = account::owned_server_names(&state, user_id).await?;
+    Ok(Json(json!({ "left": left.len(), "keptOwned": kept })))
 }
 
 async fn create_channel(

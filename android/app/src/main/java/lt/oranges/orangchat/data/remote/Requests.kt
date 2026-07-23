@@ -112,6 +112,13 @@ data class DeleteAccountRequest(
 @Serializable
 data class DeleteAccountResult(val deleted: Boolean = false)
 
+/** `keptOwned` names the servers left untouched because the user owns them. */
+@Serializable
+data class LeaveAllServersResult(
+    val left: Int = 0,
+    val keptOwned: List<String> = emptyList(),
+)
+
 @Serializable
 data class CreateServerRequest(val name: String, val iconUrl: String? = null)
 

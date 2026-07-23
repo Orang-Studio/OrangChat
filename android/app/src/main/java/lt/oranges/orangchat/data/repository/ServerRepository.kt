@@ -16,6 +16,7 @@ import lt.oranges.orangchat.data.model.VoiceState
 import lt.oranges.orangchat.data.remote.ApiService
 import lt.oranges.orangchat.data.remote.BanRequest
 import lt.oranges.orangchat.data.remote.CreateChannelRequest
+import lt.oranges.orangchat.data.remote.LeaveAllServersResult
 import lt.oranges.orangchat.data.remote.CreateInviteRequest
 import lt.oranges.orangchat.data.remote.CreateRoleRequest
 import lt.oranges.orangchat.data.remote.CreateServerRequest
@@ -69,6 +70,9 @@ class ServerRepository @Inject constructor(
     suspend fun leaveServer(serverId: String) {
         api.leaveServer(serverId)
     }
+
+    /** Leaves every server the user doesn't own; owned ones come back in `keptOwned`. */
+    suspend fun leaveAllServers(): LeaveAllServersResult = api.leaveAllServers()
 
     // Unread / read state
     suspend fun getUnreads(): List<UnreadState> = api.getUnreads()

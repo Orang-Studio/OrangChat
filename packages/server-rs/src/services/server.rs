@@ -422,6 +422,28 @@ pub async fn leave_server(state: &AppState, server_id: &str, user_id: &str) -> A
     Ok(())
 }
 
+/// Leaves every server the user is in but does not own, in one statement.
+///
+/// Owned servers are skipped rather than refused: the point of the button is
+/// "get me out of everyone else's servers", and an owner leaving would strand
+/// theirs without one - same rule `leave_server` enforces individually.
+///
+/// Returns the ids left, so the caller can drop the sockets out of those rooms.
+pub async fn leave_all_non_owned(state: &AppState, user_id: &str) -> AppResult<Vec<String>> {
+    let rows: Vec<(String,)> = sqlx::query_as(
+        r#"DELETE FROM "ServerMember" m
+           USING "Server" s
+           WHERE m."serverId" = s.id
+             AND m."userId" = $1
+             AND s."ownerId" <> $1
+           RETURNING m."serverId""#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.pool)
+    .await?;
+    Ok(rows.into_iter().map(|(id,)| id).collect())
+}
+
 pub async fn delete_server(state: &AppState, server_id: &str, user_id: &str) -> AppResult<()> {
     let owner: Option<String> =
         sqlx::query_scalar(r#"SELECT "ownerId" FROM "Server" WHERE id = $1"#)

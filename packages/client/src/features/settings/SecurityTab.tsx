@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, Download, ShieldCheck, ShieldOff, Trash2 } from "lucide-react";
+import { Check, Copy, DoorOpen, Download, ShieldCheck, ShieldOff, Trash2 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { PasswordField } from "../../components/ui/PasswordField";
 import { TextField } from "../../components/ui/TextField";
@@ -13,6 +13,7 @@ import {
   disableTwoFactor,
   enableTwoFactor,
   getTwoFactorStatus,
+  leaveAllServers,
   regenerateBackupCodes,
   startTwoFactorSetup,
 } from "./api";
@@ -470,6 +471,74 @@ function CredentialsSection() {
 }
 
 /**
+ * Bulk-leaves every server the user doesn't own. Two-step: destructive enough
+ * that one click shouldn't do it, cheap enough that it doesn't need a password.
+ */
+function LeaveAllServersSection() {
+  const queryClient = useQueryClient();
+  const [confirming, setConfirming] = useState(false);
+  const [result, setResult] = useState<{ left: number; keptOwned: string[] } | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: leaveAllServers,
+    onSuccess: (res) => {
+      setResult(res);
+      setConfirming(false);
+      void queryClient.invalidateQueries({ queryKey: ["servers"] });
+    },
+  });
+
+  return (
+    <div className="space-y-3">
+      <SectionTitle>Leave all servers</SectionTitle>
+      <p className="text-sm text-ink-secondary">
+        Leaves every server you're in except the ones you own. You'll need a new
+        invite to get back into any of them.
+      </p>
+
+      {result && (
+        <p role="status" className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
+          Left {result.left} server{result.left === 1 ? "" : "s"}.
+          {result.keptOwned.length > 0 &&
+            ` Still yours: ${result.keptOwned.join(", ")}.`}
+        </p>
+      )}
+      {mutation.isError && <p className="text-sm text-danger">{mutation.error.message}</p>}
+
+      {confirming ? (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="danger"
+            loading={mutation.isPending}
+            onClick={() => mutation.mutate()}
+          >
+            Yes, leave them all
+          </Button>
+          <Button type="button" variant="ghost" size="sm" onClick={() => setConfirming(false)}>
+            Cancel
+          </Button>
+        </div>
+      ) : (
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            setResult(null);
+            setConfirming(true);
+          }}
+        >
+          <DoorOpen aria-hidden className="size-4" />
+          Leave all servers
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/**
  * Irreversible account deletion. The account is tombstoned rather than removed:
  * messages stay where they are so other people's conversations don't develop
  * holes, and everything identifying is scrubbed. Owning a server blocks it -
@@ -604,6 +673,10 @@ export function SecurityTab() {
         ) : (
           <EnrollFlow onDone={onEnrolled} />
         )}
+      </div>
+
+      <div className="border-t border-border pt-5">
+        <LeaveAllServersSection />
       </div>
 
       <div className="border-t border-border pt-5">
