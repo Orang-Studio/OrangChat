@@ -141,6 +141,25 @@ data class AccountStanding(
     val entries: List<StandingEntry> = emptyList(),
 )
 
+/** One live session, as shown on the devices screen. */
+@Serializable
+data class DeviceSession(
+    val id: String = "",
+    /** True for the session making the request. */
+    val current: Boolean = false,
+    /** Raw User-Agent; turned into a device name client-side. */
+    val userAgent: String? = null,
+    val ip: String? = null,
+    val createdAt: String? = null,
+    val lastSeenAt: String? = null,
+)
+
+@Serializable
+data class SessionsResult(val sessions: List<DeviceSession> = emptyList())
+
+@Serializable
+data class RevokeResult(val revoked: Int = 0)
+
 /** `keptOwned` names the servers left untouched because the user owns them. */
 @Serializable
 data class LeaveAllServersResult(

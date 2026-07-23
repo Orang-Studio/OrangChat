@@ -29,13 +29,116 @@ pub fn routes() -> Router<AppState> {
         .route("/me", get(get_me).patch(patch_me))
         .route("/oauth/:provider", get(oauth_start))
         .route("/oauth/:provider/callback", get(oauth_callback))
+        // Under /auth rather than /security so the refresh cookie is in scope -
+        // it's path-scoped to /api/auth, and its jti is the only way to tell
+        // which of the listed sessions is the one asking.
+        .route("/sessions", get(list_sessions).delete(revoke_other_sessions))
+        .route("/sessions/:jti", axum::routing::delete(revoke_session))
+}
+
+/// The jti of the session making this request, read from the refresh cookie.
+/// None when the cookie is absent or unreadable, in which case nothing is
+/// marked "this device" rather than something being marked wrongly.
+fn current_jti(state: &AppState, jar: &CookieJar) -> Option<String> {
+    let token = jar.get(REFRESH_COOKIE)?.value().to_string();
+    verify_refresh_token(&state.config, &token).ok().map(|c| c.jti)
+}
+
+async fn list_sessions(
+    State(state): State<AppState>,
+    user: AuthUser,
+    jar: CookieJar,
+) -> AppResult<Json<Value>> {
+    let current = current_jti(&state, &jar);
+    let sessions: Vec<Value> = crate::auth::list_sessions(&state, &user.user_id)
+        .await?
+        .into_iter()
+        .map(|(jti, s)| {
+            json!({
+                "id": jti,
+                "current": Some(&jti) == current.as_ref(),
+                "userAgent": s.user_agent,
+                "ip": s.ip,
+                "createdAt": s.created_at,
+                "lastSeenAt": s.last_seen_at,
+            })
+        })
+        .collect();
+    Ok(Json(json!({ "sessions": sessions })))
+}
+
+/// Signs one device out. Revoking your own is allowed - it's the same as
+/// signing out, and refusing would be surprising.
+async fn revoke_session(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Path(jti): Path<String>,
+) -> AppResult<Json<Value>> {
+    // Scoped to the caller's own set, so a guessed jti can't sign out a stranger.
+    if !is_refresh_token_valid(&state, &jti, &user.user_id).await? {
+        return Err(AppError::NotFound("No such session".into()));
+    }
+    revoke_refresh_token(&state, &jti, &user.user_id).await?;
+    Ok(Json(json!({ "revoked": 1 })))
+}
+
+/// Signs out every device except this one.
+async fn revoke_other_sessions(
+    State(state): State<AppState>,
+    user: AuthUser,
+    jar: CookieJar,
+) -> AppResult<Json<Value>> {
+    let current = current_jti(&state, &jar);
+    let revoked =
+        revoke_all_refresh_tokens(&state, &user.user_id, current.as_deref()).await?;
+    Ok(Json(json!({ "revoked": revoked })))
+}
+
+/// Where a session was minted from, for the devices screen. Both are best-effort:
+/// a client that sends no User-Agent still gets a session, just an unlabelled one.
+#[derive(Default)]
+struct DeviceInfo {
+    user_agent: Option<String>,
+    ip: Option<String>,
+    /// Set only on refresh, to carry the original sign-in time forward.
+    created_at: Option<String>,
+}
+
+impl DeviceInfo {
+    fn new(headers: &axum::http::HeaderMap, ip: &str) -> Self {
+        Self {
+            user_agent: headers
+                .get(axum::http::header::USER_AGENT)
+                .and_then(|v| v.to_str().ok())
+                .map(|s| s.chars().take(400).collect()),
+            ip: Some(ip.to_string()).filter(|s| s != "unknown"),
+            created_at: None,
+        }
+    }
+
+    fn inheriting(mut self, created_at: Option<String>) -> Self {
+        self.created_at = created_at;
+        self
+    }
 }
 
 /// Mint an access token + rotating refresh cookie for a user. Mirrors issueSession.
-async fn issue_session(state: &AppState, user: &UserRow) -> AppResult<(Value, Cookie<'static>)> {
+async fn issue_session(
+    state: &AppState,
+    user: &UserRow,
+    device: DeviceInfo,
+) -> AppResult<(Value, Cookie<'static>)> {
     let access = sign_access_token(&state.config, &user.id, &user.username)?;
     let (refresh, jti) = sign_refresh_token(&state.config, &user.id)?;
-    register_refresh_token(state, &jti, &user.id).await?;
+    register_refresh_token(
+        state,
+        &jti,
+        &user.id,
+        device.user_agent,
+        device.ip,
+        device.created_at,
+    )
+    .await?;
     let cookie = set_refresh_cookie(&state.config, refresh);
     let result = json!({
         "user": to_self_user(user),
@@ -47,6 +150,7 @@ async fn issue_session(state: &AppState, user: &UserRow) -> AppResult<(Value, Co
 async fn signup(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
+    headers: axum::http::HeaderMap,
     jar: CookieJar,
     Json(body): Json<Value>,
 ) -> AppResult<impl IntoResponse> {
@@ -114,13 +218,14 @@ async fn signup(
     .fetch_one(&state.pool)
     .await?;
 
-    let (result, cookie) = issue_session(&state, &user).await?;
+    let (result, cookie) = issue_session(&state, &user, DeviceInfo::new(&headers, &ip)).await?;
     Ok((StatusCode::CREATED, jar.add(cookie), Json(result)))
 }
 
 async fn login(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
+    headers: axum::http::HeaderMap,
     jar: CookieJar,
     Json(body): Json<Value>,
 ) -> AppResult<impl IntoResponse> {
@@ -211,7 +316,7 @@ async fn login(
         rate_limit::LOGIN_FAILURES_PER_ACCOUNT,
     )
     .await;
-    let (result, cookie) = issue_session(&state, &user).await?;
+    let (result, cookie) = issue_session(&state, &user, DeviceInfo::new(&headers, &ip)).await?;
     Ok((jar.add(cookie), Json(result)))
 }
 
@@ -228,6 +333,7 @@ async fn record_login_failure(state: &AppState, user_id: &str) {
 async fn refresh(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
+    headers: axum::http::HeaderMap,
     jar: CookieJar,
 ) -> Result<(CookieJar, Json<Value>), AppError> {
     rate_limit::check(&state, "refresh", &ip, rate_limit::REFRESH_PER_IP).await?;
@@ -258,9 +364,18 @@ async fn refresh(
         return Err(AppError::Unauthorized("User no longer exists".into()));
     };
 
-    // Single-use: burn the old token, issue a fresh pair.
+    // Single-use: burn the old token, issue a fresh pair. The replacement keeps
+    // the original sign-in time so a device doesn't look new after every refresh.
+    let inherited = read_session(&state, &claims.jti)
+        .await?
+        .and_then(|s| s.created_at);
     revoke_refresh_token(&state, &claims.jti, &claims.sub).await?;
-    let (result, cookie) = issue_session(&state, &user).await?;
+    let (result, cookie) = issue_session(
+        &state,
+        &user,
+        DeviceInfo::new(&headers, &ip).inheriting(inherited),
+    )
+    .await?;
     Ok((jar.add(cookie), Json(result)))
 }
 
@@ -437,6 +552,8 @@ async fn oauth_callback(
     State(state): State<AppState>,
     Path(provider): Path<String>,
     Query(params): Query<std::collections::HashMap<String, String>>,
+    ClientIp(ip): ClientIp,
+    headers: axum::http::HeaderMap,
     jar: CookieJar,
 ) -> Result<(CookieJar, Redirect), AppError> {
     if !oauth::is_oauth_provider(&provider) {
@@ -478,7 +595,7 @@ async fn oauth_callback(
                         Redirect::to(&format!("{origin}/login?error=totp_required")),
                     ));
                 }
-                let (_result, cookie) = issue_session(&state, &user).await?;
+                let (_result, cookie) = issue_session(&state, &user, DeviceInfo::new(&headers, &ip)).await?;
                 Ok((
                     jar.add(cookie),
                     Redirect::to(&format!("{origin}/auth/callback")),

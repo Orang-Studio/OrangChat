@@ -46,6 +46,7 @@ import { AccessibilityTab } from "./AccessibilityTab";
 import { SystemTab } from "./SystemTab";
 import { DownloadTab } from "./DownloadTab";
 import { AboutTab } from "./AboutTab";
+import { DevicesTab } from "./DevicesTab";
 
 interface UserSettingsDialogProps {
   open: boolean;
@@ -642,6 +643,7 @@ type SettingsSection =
   | "privacy"
   | "sharing"
   | "security"
+  | "devices"
   | "accessibility"
   | "appearance"
   | "system"
@@ -654,6 +656,7 @@ const NAV: { id: SettingsSection; label: string; icon: typeof UserIcon }[] = [
   { id: "privacy", label: "Privacy", icon: Sliders },
   { id: "sharing", label: "Camera & Mic", icon: Video },
   { id: "security", label: "Security", icon: ShieldCheck },
+  { id: "devices", label: "Devices", icon: Monitor },
   { id: "accessibility", label: "Accessibility", icon: Accessibility },
   { id: "appearance", label: "Appearance", icon: Paintbrush },
   { id: "system", label: "System", icon: Monitor },
@@ -667,6 +670,7 @@ const SECTION_TITLE: Record<SettingsSection, string> = {
   privacy: "Privacy",
   sharing: "Camera & Microphone",
   security: "Security",
+  devices: "Devices",
   accessibility: "Accessibility",
   appearance: "Appearance",
   system: "System",
@@ -686,6 +690,8 @@ function SectionBody({ section }: { section: SettingsSection }) {
       return <SharingTab />;
     case "security":
       return <SecurityTab />;
+    case "devices":
+      return <DevicesTab />;
     case "accessibility":
       return <AccessibilityTab />;
     case "appearance":

@@ -1,5 +1,6 @@
 import type {
   AccountStanding,
+  DeviceSession,
   BackupCodes,
   TwoFactorSetup,
   TwoFactorStatus,
@@ -9,6 +10,16 @@ import { api } from "../../lib/api";
 export const getTwoFactorStatus = () => api<TwoFactorStatus>("/security/2fa");
 
 export const getAccountStanding = () => api<AccountStanding>("/security/standing");
+
+/** Sessions live under /auth so the path-scoped refresh cookie is in scope. */
+export const getSessions = () => api<{ sessions: DeviceSession[] }>("/auth/sessions");
+
+export const revokeSession = (id: string) =>
+  api<{ revoked: number }>(`/auth/sessions/${id}`, { method: "DELETE" });
+
+/** Signs out every device but this one. */
+export const revokeOtherSessions = () =>
+  api<{ revoked: number }>("/auth/sessions", { method: "DELETE" });
 
 export const startTwoFactorSetup = (password: string) =>
   api<TwoFactorSetup>("/security/2fa/setup", { method: "POST", json: { password } });

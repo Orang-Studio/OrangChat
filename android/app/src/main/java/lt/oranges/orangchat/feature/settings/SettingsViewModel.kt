@@ -11,6 +11,7 @@ import lt.oranges.orangchat.data.local.TokenStore
 import lt.oranges.orangchat.data.model.DmPrivacy
 import lt.oranges.orangchat.data.model.FriendRequestPrivacy
 import lt.oranges.orangchat.data.remote.AccountStanding
+import lt.oranges.orangchat.data.remote.DeviceSession
 import lt.oranges.orangchat.data.remote.TwoFactorSetup
 import lt.oranges.orangchat.data.repository.AuthRepository
 import lt.oranges.orangchat.data.repository.ServerRepository
@@ -35,6 +36,13 @@ sealed interface TwoFactorUi {
     data class Setup(val setup: TwoFactorSetup, val verifying: Boolean = false, val error: String? = null) : TwoFactorUi
     data class ShowCodes(val codes: List<String>) : TwoFactorUi
     data class On(val backupCodesRemaining: Int, val busy: Boolean = false, val error: String? = null) : TwoFactorUi
+}
+
+/** Drives the devices list. */
+sealed interface SessionsUi {
+    data object Loading : SessionsUi
+    data class Loaded(val sessions: List<DeviceSession>) : SessionsUi
+    data class Failed(val error: String) : SessionsUi
 }
 
 /** Drives the account-standing panel on the Security screen. */
@@ -238,6 +246,35 @@ class SettingsViewModel @Inject constructor(
                 .onFailure {
                     _credentials.value = CredentialsUi(error = it.message ?: "Could not delete account")
                 }
+        }
+    }
+
+    // ── Devices ─────────────────────────────────────────
+    private val _sessions = MutableStateFlow<SessionsUi>(SessionsUi.Loading)
+    val sessions: StateFlow<SessionsUi> = _sessions.asStateFlow()
+
+    fun refreshSessions() {
+        viewModelScope.launch {
+            _sessions.value = SessionsUi.Loading
+            runCatching { authRepository.sessions() }
+                .onSuccess { _sessions.value = SessionsUi.Loaded(it.sessions) }
+                .onFailure { _sessions.value = SessionsUi.Failed(it.message ?: "Could not load devices") }
+        }
+    }
+
+    fun revokeSession(jti: String) {
+        viewModelScope.launch {
+            runCatching { authRepository.revokeSession(jti) }
+                .onSuccess { refreshSessions() }
+                .onFailure { _sessions.value = SessionsUi.Failed(it.message ?: "Could not revoke") }
+        }
+    }
+
+    fun revokeOtherSessions() {
+        viewModelScope.launch {
+            runCatching { authRepository.revokeOtherSessions() }
+                .onSuccess { refreshSessions() }
+                .onFailure { _sessions.value = SessionsUi.Failed(it.message ?: "Could not revoke") }
         }
     }
 

@@ -86,6 +86,16 @@ interface ApiService {
     @POST("security/email")
     suspend fun changeEmail(@Body body: ChangeEmailRequest): ChangeEmailResult
 
+    /** Sessions live under auth/ so the path-scoped refresh cookie is in scope. */
+    @GET("auth/sessions")
+    suspend fun getSessions(): SessionsResult
+
+    @DELETE("auth/sessions/{jti}")
+    suspend fun revokeSession(@Path("jti") jti: String): RevokeResult
+
+    @DELETE("auth/sessions")
+    suspend fun revokeOtherSessions(): RevokeResult
+
     @GET("security/standing")
     suspend fun getAccountStanding(): AccountStanding
 

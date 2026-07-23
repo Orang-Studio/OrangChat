@@ -136,19 +136,104 @@ fn user_set(user_id: &str) -> String {
     format!("refresh:user:{user_id}")
 }
 
-pub async fn register_refresh_token(state: &AppState, jti: &str, user_id: &str) -> AppResult<()> {
-    let ttl = state.config.refresh_ttl_seconds;
+/// What a live session records about the device holding it. Stored as JSON at
+/// `refresh:{jti}` so the sessions screen has something to show beyond an
+/// opaque id.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionRecord {
+    pub user_id: String,
+    /// Raw User-Agent, kept verbatim; the client turns it into a device name.
+    #[serde(default)]
+    pub user_agent: Option<String>,
+    #[serde(default)]
+    pub ip: Option<String>,
+    #[serde(default)]
+    pub created_at: Option<String>,
+    #[serde(default)]
+    pub last_seen_at: Option<String>,
+}
+
+/// Reads a session record, tolerating the bare-user-id values written before
+/// sessions carried metadata. Those pre-date this format and would otherwise
+/// have to be revoked on deploy, signing everyone out for a cosmetic change.
+pub async fn read_session(state: &AppState, jti: &str) -> AppResult<Option<SessionRecord>> {
     let mut con = state.rd();
-    let _: () = con.set_ex(key(jti), user_id, ttl as u64).await?;
+    let stored: Option<String> = con.get(key(jti)).await?;
+    Ok(stored.map(|raw| {
+        serde_json::from_str::<SessionRecord>(&raw).unwrap_or(SessionRecord {
+            user_id: raw,
+            user_agent: None,
+            ip: None,
+            created_at: None,
+            last_seen_at: None,
+        })
+    }))
+}
+
+/// `created_at` carries the original sign-in time across refresh rotation.
+/// Refresh burns the old jti and mints a new one every time the access token
+/// expires, so without this every device would look like it appeared minutes
+/// ago and "signed in since" would be meaningless.
+pub async fn register_refresh_token(
+    state: &AppState,
+    jti: &str,
+    user_id: &str,
+    user_agent: Option<String>,
+    ip: Option<String>,
+    created_at: Option<String>,
+) -> AppResult<()> {
+    let ttl = state.config.refresh_ttl_seconds;
+    let now = Utc::now().to_rfc3339();
+    let record = SessionRecord {
+        user_id: user_id.to_string(),
+        user_agent,
+        ip,
+        created_at: Some(created_at.unwrap_or_else(|| now.clone())),
+        last_seen_at: Some(now),
+    };
+    let encoded =
+        serde_json::to_string(&record).map_err(|e| AppError::Internal(format!("session: {e}")))?;
+
+    let mut con = state.rd();
+    let _: () = con.set_ex(key(jti), encoded, ttl as u64).await?;
     let _: () = con.sadd(user_set(user_id), jti).await?;
     let _: () = con.expire(user_set(user_id), ttl).await?;
     Ok(())
 }
 
 pub async fn is_refresh_token_valid(state: &AppState, jti: &str, user_id: &str) -> AppResult<bool> {
-    let mut con = state.rd();
-    let stored: Option<String> = con.get(key(jti)).await?;
-    Ok(stored.as_deref() == Some(user_id))
+    Ok(read_session(state, jti)
+        .await?
+        .is_some_and(|s| s.user_id == user_id))
+}
+
+/// Every live session for a user, newest first, paired with its jti.
+///
+/// The set can outlive its entries - a key expires on its own TTL while the id
+/// lingers in the set - so misses are swept as they're found rather than left
+/// to show up as phantom devices.
+pub async fn list_sessions(
+    state: &AppState,
+    user_id: &str,
+) -> AppResult<Vec<(String, SessionRecord)>> {
+    let jtis: Vec<String> = {
+        let mut con = state.rd();
+        con.smembers(user_set(user_id)).await?
+    };
+
+    let mut out = Vec::new();
+    for jti in jtis {
+        match read_session(state, &jti).await? {
+            Some(record) if record.user_id == user_id => out.push((jti, record)),
+            Some(_) => {}
+            None => {
+                let mut con = state.rd();
+                let _: () = con.srem(user_set(user_id), &jti).await?;
+            }
+        }
+    }
+    out.sort_by(|a, b| b.1.created_at.cmp(&a.1.created_at));
+    Ok(out)
 }
 
 pub async fn revoke_refresh_token(state: &AppState, jti: &str, user_id: &str) -> AppResult<()> {

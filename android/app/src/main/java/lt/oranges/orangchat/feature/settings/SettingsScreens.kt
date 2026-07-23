@@ -150,6 +150,129 @@ fun SharingScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
     }
 }
 
+// ── Devices ─────────────────────────────────────────────
+
+/**
+ * Best-effort device name from a User-Agent. Deliberately coarse: the string is
+ * attacker-controlled and only ever a label, so it's matched against a short
+ * list of substrings rather than parsed.
+ */
+private fun describeDevice(userAgent: String?): String {
+    if (userAgent.isNullOrBlank()) return "Unknown device"
+    val ua = userAgent.lowercase()
+    return when {
+        ua.contains("orangchat-android") -> "OrangChat for Android"
+        ua.contains("electron") -> "OrangChat desktop app"
+        ua.contains("android") -> "Android browser"
+        ua.contains("iphone") || ua.contains("ipad") -> "iOS browser"
+        else -> {
+            val browser = when {
+                ua.contains("firefox") -> "Firefox"
+                ua.contains("edg/") -> "Edge"
+                ua.contains("chrome") -> "Chrome"
+                ua.contains("safari") -> "Safari"
+                else -> "Browser"
+            }
+            val os = when {
+                ua.contains("windows") -> "Windows"
+                ua.contains("mac os") || ua.contains("macintosh") -> "macOS"
+                ua.contains("linux") -> "Linux"
+                else -> null
+            }
+            if (os != null) "$browser on $os" else browser
+        }
+    }
+}
+
+/**
+ * Live sessions, one per signed-in device. A session is a refresh token, so
+ * revoking one stops that device renewing - it keeps working until its current
+ * access token expires, which is minutes, not indefinitely.
+ */
+@Composable
+fun DevicesScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
+    val c = OrangTheme.colors
+    val state by vm.sessions.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) { vm.refreshSessions() }
+
+    Column(modifier = screenModifier(c)) {
+        SettingsTopBar("Devices", onBack)
+        Column(
+            modifier = Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                "Each entry is a device with a live sign-in. Revoking one stops it " +
+                    "renewing; it loses access within a few minutes.",
+                color = c.inkSecondary,
+                fontSize = 13.sp,
+            )
+
+            when (val s = state) {
+                is SessionsUi.Loading -> Text("Loading…", color = c.inkMuted, fontSize = 14.sp)
+                is SessionsUi.Failed -> Text(s.error, color = c.danger, fontSize = 13.sp)
+                is SessionsUi.Loaded -> {
+                    s.sessions.forEach { session ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(OrangRadius.lg))
+                                .background(c.surface1)
+                                .padding(12.dp),
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    describeDevice(session.userAgent) +
+                                        if (session.current) "  ·  This device" else "",
+                                    color = c.ink,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                                Text(
+                                    buildString {
+                                        append(session.ip ?: "unknown IP")
+                                        session.lastSeenAt?.let {
+                                            append(" · last active ")
+                                            append(formatFullTime(it))
+                                        }
+                                    },
+                                    color = c.inkMuted,
+                                    fontSize = 12.sp,
+                                )
+                                session.createdAt?.let {
+                                    Text(
+                                        "Signed in ${formatFullTime(it)}",
+                                        color = c.inkMuted,
+                                        fontSize = 12.sp,
+                                    )
+                                }
+                            }
+                            OrangButton(
+                                text = if (session.current) "Sign out" else "Revoke",
+                                onClick = { vm.revokeSession(session.id) },
+                                variant = ButtonVariant.Ghost,
+                                size = ButtonSize.Sm,
+                            )
+                        }
+                    }
+
+                    val others = s.sessions.count { !it.current }
+                    if (others > 0) {
+                        OrangButton(
+                            text = "Sign out $others other device${if (others == 1) "" else "s"}",
+                            onClick = { vm.revokeOtherSessions() },
+                            variant = ButtonVariant.Secondary,
+                            size = ButtonSize.Sm,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 // ── Security (2FA) ──────────────────────────────────────
 
 @Composable

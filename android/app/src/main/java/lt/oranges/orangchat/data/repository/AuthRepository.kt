@@ -18,6 +18,8 @@ import lt.oranges.orangchat.data.remote.DeleteAccountResult
 import lt.oranges.orangchat.data.remote.DeleteAllMessagesRequest
 import lt.oranges.orangchat.data.remote.DeleteAllMessagesResult
 import lt.oranges.orangchat.data.remote.LoginRequest
+import lt.oranges.orangchat.data.remote.RevokeResult
+import lt.oranges.orangchat.data.remote.SessionsResult
 import lt.oranges.orangchat.data.remote.SignupRequest
 import lt.oranges.orangchat.data.remote.TwoFactorCodeRequest
 import lt.oranges.orangchat.data.remote.TwoFactorDisableRequest
@@ -161,6 +163,13 @@ class AuthRepository @Inject constructor(
         api.regenerateBackupCodes(TwoFactorDisableRequest(password?.ifBlank { null }, code.trim()))
 
     suspend fun accountStanding(): AccountStanding = api.getAccountStanding()
+
+    // ── Devices ─────────────────────────────────────────
+    suspend fun sessions(): SessionsResult = api.getSessions()
+
+    suspend fun revokeSession(jti: String): RevokeResult = api.revokeSession(jti)
+
+    suspend fun revokeOtherSessions(): RevokeResult = api.revokeOtherSessions()
 
     // ── Credentials ─────────────────────────────────────
     /**

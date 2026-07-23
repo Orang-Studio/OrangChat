@@ -43,7 +43,7 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.ui.theme.ThemePreference
 
 private enum class SettingsPage {
-    ROOT, PROFILE, APPEARANCE, PRIVACY, SHARING, RINGTONE, SECURITY, ACCESSIBILITY, SYSTEM, ABOUT
+    ROOT, PROFILE, APPEARANCE, PRIVACY, SHARING, RINGTONE, SECURITY, DEVICES, ACCESSIBILITY, SYSTEM, ABOUT
 }
 
 @Composable
@@ -83,6 +83,7 @@ fun SettingsScreen(
         SettingsPage.SHARING -> SharingScreen(toRoot)
         SettingsPage.RINGTONE -> RingtonePage(toRoot, modifier)
         SettingsPage.SECURITY -> SecurityScreen(self = self, hasPassword = self.hasPassword, onBack = toRoot)
+        SettingsPage.DEVICES -> DevicesScreen(onBack = toRoot)
         SettingsPage.ACCESSIBILITY -> AccessibilityScreen(toRoot)
         SettingsPage.SYSTEM -> SystemScreen(connected = connected, onBack = toRoot)
         SettingsPage.ABOUT -> AboutScreen(toRoot)
@@ -161,6 +162,11 @@ private fun SettingsRoot(
                     if (self.twoFactorEnabled) "Two-factor is on" else "Two-factor authentication",
                     onClick = { onOpen(SettingsPage.SECURITY) },
                     trailing = if (self.twoFactorEnabled) "On" else null,
+                )
+                SettingsNavRow(
+                    "Devices",
+                    "Where you're signed in",
+                    onClick = { onOpen(SettingsPage.DEVICES) },
                 )
                 SettingsNavRow(
                     "Accessibility",

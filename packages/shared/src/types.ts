@@ -78,6 +78,18 @@ export interface AccountStanding {
   entries: StandingEntry[];
 }
 
+/** One live session, as shown on the devices screen. */
+export interface DeviceSession {
+  id: string;
+  /** True for the session making the request. */
+  current: boolean;
+  /** Raw User-Agent; the client turns it into a device name. */
+  userAgent: string | null;
+  ip: string | null;
+  createdAt: string | null;
+  lastSeenAt: string | null;
+}
+
 /** GET /security/2fa */
 export interface TwoFactorStatus {
   enabled: boolean;
