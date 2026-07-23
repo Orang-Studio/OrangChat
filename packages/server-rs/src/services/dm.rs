@@ -9,11 +9,17 @@ use crate::state::AppState;
 pub const MAX_GROUP_SIZE: i64 = 15;
 
 pub async fn can_dm(state: &AppState, requester_id: &str, target_id: &str) -> AppResult<bool> {
-    let privacy: Option<String> =
-        sqlx::query_scalar(r#"SELECT "dmPrivacy" FROM "User" WHERE id = $1"#)
+    // Lockdown outranks the target's own setting: it means "nothing new reaches
+    // this account", which a permissive dmPrivacy must not undo.
+    let row: Option<(String, Option<chrono::NaiveDateTime>)> =
+        sqlx::query_as(r#"SELECT "dmPrivacy", "lockdownAt" FROM "User" WHERE id = $1"#)
             .bind(target_id)
             .fetch_optional(&state.pool)
             .await?;
+    if row.as_ref().is_some_and(|(_, lockdown)| lockdown.is_some()) {
+        return Ok(false);
+    }
+    let privacy = row.map(|(p, _)| p);
     match privacy.as_deref() {
         Some("everyone") | None => Ok(true),
         Some("none") => Ok(false),

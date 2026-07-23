@@ -17,6 +17,17 @@ export const getSessions = () => api<{ sessions: DeviceSession[] }>("/auth/sessi
 export const revokeSession = (id: string) =>
   api<{ revoked: number }>(`/auth/sessions/${id}`, { method: "DELETE" });
 
+/**
+ * Freezes/unfreezes the account. Turning it on signs out every other device;
+ * turning it off needs the password. Lives under /auth so the refresh cookie is
+ * in scope and this session can be spared.
+ */
+export const setLockdown = (on: boolean, password: string) =>
+  api<{ lockdown: boolean; sessionsRevoked: number }>("/auth/lockdown", {
+    method: "POST",
+    json: { on, password },
+  });
+
 /** Signs out every device but this one. */
 export const revokeOtherSessions = () =>
   api<{ revoked: number }>("/auth/sessions", { method: "DELETE" });

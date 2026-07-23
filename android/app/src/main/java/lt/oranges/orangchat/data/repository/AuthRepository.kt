@@ -17,6 +17,8 @@ import lt.oranges.orangchat.data.remote.DeleteAccountRequest
 import lt.oranges.orangchat.data.remote.DeleteAccountResult
 import lt.oranges.orangchat.data.remote.DeleteAllMessagesRequest
 import lt.oranges.orangchat.data.remote.DeleteAllMessagesResult
+import lt.oranges.orangchat.data.remote.LockdownRequest
+import lt.oranges.orangchat.data.remote.LockdownResult
 import lt.oranges.orangchat.data.remote.LoginRequest
 import lt.oranges.orangchat.data.remote.RevokeResult
 import lt.oranges.orangchat.data.remote.SessionsResult
@@ -170,6 +172,15 @@ class AuthRepository @Inject constructor(
     suspend fun revokeSession(jti: String): RevokeResult = api.revokeSession(jti)
 
     suspend fun revokeOtherSessions(): RevokeResult = api.revokeOtherSessions()
+
+    /** Freezes/unfreezes the account; the password is only needed to lift it. */
+    suspend fun setLockdown(on: Boolean, password: String?): LockdownResult {
+        val result = api.setLockdown(LockdownRequest(on, password?.ifBlank { null }))
+        currentUser?.let {
+            _session.value = SessionState.Authenticated(it.copy(lockdown = result.lockdown))
+        }
+        return result
+    }
 
     // ── Credentials ─────────────────────────────────────
     /**

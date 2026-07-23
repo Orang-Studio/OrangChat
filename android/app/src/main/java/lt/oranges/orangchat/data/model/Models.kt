@@ -101,6 +101,8 @@ data class SelfUser(
     val twoFactorEnabled: Boolean = false,
     /** False for OAuth-only accounts, which have no password to re-confirm. */
     val hasPassword: Boolean = true,
+    /** True while the account is frozen: no new sign-ins, DMs or friend requests. */
+    val lockdown: Boolean = false,
 ) {
     fun asUser() = User(id, username, displayName, avatarUrl, status, devices, activities, bio, bannerUrl, accentColor, pronouns, profileCss, badges, createdAt)
 }

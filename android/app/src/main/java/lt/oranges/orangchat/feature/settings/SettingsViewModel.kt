@@ -249,6 +249,37 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    // ── Lockdown ────────────────────────────────────────
+    private val _lockdown = MutableStateFlow(CredentialsUi())
+    val lockdown: StateFlow<CredentialsUi> = _lockdown.asStateFlow()
+
+    fun resetLockdown() {
+        _lockdown.value = CredentialsUi()
+    }
+
+    fun setLockdown(on: Boolean, password: String, onDone: () -> Unit) {
+        viewModelScope.launch {
+            _lockdown.value = CredentialsUi(busy = true)
+            runCatching { authRepository.setLockdown(on, password) }
+                .onSuccess { result ->
+                    _lockdown.value = CredentialsUi(
+                        done = if (result.lockdown && result.sessionsRevoked > 0) {
+                            val plural = if (result.sessionsRevoked == 1) "" else "s"
+                            "Locked down. Signed out ${result.sessionsRevoked} other session$plural."
+                        } else if (result.lockdown) {
+                            "Locked down."
+                        } else {
+                            "Lockdown lifted."
+                        },
+                    )
+                    onDone()
+                }
+                .onFailure {
+                    _lockdown.value = CredentialsUi(error = it.message ?: "Could not change lockdown")
+                }
+        }
+    }
+
     // ── Devices ─────────────────────────────────────────
     private val _sessions = MutableStateFlow<SessionsUi>(SessionsUi.Loading)
     val sessions: StateFlow<SessionsUi> = _sessions.asStateFlow()

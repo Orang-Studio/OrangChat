@@ -6,6 +6,7 @@ import {
   DoorOpen,
   Download,
   Eraser,
+  Lock,
   ShieldCheck,
   ShieldOff,
   Trash2,
@@ -27,6 +28,7 @@ import {
   getTwoFactorStatus,
   leaveAllServers,
   regenerateBackupCodes,
+  setLockdown,
   startTwoFactorSetup,
 } from "./api";
 
@@ -607,6 +609,118 @@ function LeaveAllServersSection() {
 }
 
 /**
+ * Freezes the account: nothing can sign in, no new DM reaches it, no friend
+ * request lands. For "I think someone's in my account" - a step short of
+ * deleting it, and reversible.
+ */
+function LockdownSection() {
+  const user = useAuthStore((s) => s.user);
+  const hasPassword = user?.hasPassword ?? true;
+  const locked = user?.lockdown ?? false;
+
+  const [confirming, setConfirming] = useState(false);
+  const [password, setPassword] = useState("");
+  const [revoked, setRevoked] = useState<number | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: (on: boolean) => setLockdown(on, password),
+    onSuccess: (res) => {
+      authStoreActions.patchUser({ lockdown: res.lockdown });
+      setRevoked(res.lockdown ? res.sessionsRevoked : null);
+      setConfirming(false);
+      setPassword("");
+    },
+  });
+
+  return (
+    <div className="space-y-3">
+      <SectionTitle>Lockdown</SectionTitle>
+
+      {locked ? (
+        <div className="flex items-start gap-3 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2.5">
+          <Lock aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
+          <div>
+            <p className="text-sm font-medium">Your account is locked down</p>
+            <p className="text-xs text-ink-secondary">
+              Nothing can sign in, and no new DMs or friend requests reach you.
+              This device stays signed in.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm text-ink-secondary">
+          Freezes the account if you think someone else is in it: signs out every
+          other device, blocks new sign-ins, and closes new DMs and friend
+          requests until you lift it.
+        </p>
+      )}
+
+      {revoked !== null && revoked > 0 && (
+        <p role="status" className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
+          Signed out {revoked} other session{revoked === 1 ? "" : "s"}.
+        </p>
+      )}
+      {mutation.isError && <p className="text-sm text-danger">{mutation.error.message}</p>}
+
+      {confirming ? (
+        <form
+          className="space-y-3 rounded-lg border border-border p-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            mutation.mutate(!locked);
+          }}
+        >
+          {/* Lifting needs the password; turning it on deliberately doesn't, so
+              nothing slows you down in the moment you actually need it. */}
+          {locked && hasPassword && (
+            <PasswordField
+              label="Your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+          )}
+          <div className="flex gap-2">
+            <Button
+              type="submit"
+              size="sm"
+              variant={locked ? "primary" : "danger"}
+              loading={mutation.isPending}
+            >
+              {locked ? "Lift lockdown" : "Lock down my account"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setConfirming(false);
+                setPassword("");
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <Button
+          type="button"
+          variant={locked ? "primary" : "secondary"}
+          size="sm"
+          onClick={() => {
+            setRevoked(null);
+            setConfirming(true);
+          }}
+        >
+          <Lock aria-hidden className="size-4" />
+          {locked ? "Lift lockdown" : "Lock down my account"}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/**
  * Wipes every message the user has written, anywhere - including servers and
  * group DMs they've left. Password-gated: unlike leaving a server, none of this
  * can be undone or re-obtained.
@@ -848,6 +962,10 @@ export function SecurityTab() {
         ) : (
           <EnrollFlow onDone={onEnrolled} />
         )}
+      </div>
+
+      <div className="border-t border-border pt-5">
+        <LockdownSection />
       </div>
 
       <div className="border-t border-border pt-5">

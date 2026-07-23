@@ -27,6 +27,9 @@ model User {
   /// Awarded profile badges, as catalog slugs (see services::badge). Denormalized
   /// onto the user so every `SELECT * FROM "User"` already carries them.
   badges               String[] @default([])
+  /// Set while the account is in lockdown: no new sign-ins, no new DMs, no
+  /// friend requests. Lifted by the owner from a session that survived it.
+  lockdownAt           DateTime?
   /// Set when the account is deleted. The row is kept as a tombstone so the
   /// user's messages stay readable in other people's conversations; everything
   /// identifying was scrubbed at deletion. See services::account.

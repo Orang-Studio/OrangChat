@@ -96,6 +96,9 @@ interface ApiService {
     @DELETE("auth/sessions")
     suspend fun revokeOtherSessions(): RevokeResult
 
+    @POST("auth/lockdown")
+    suspend fun setLockdown(@Body body: LockdownRequest): LockdownResult
+
     @GET("security/standing")
     suspend fun getAccountStanding(): AccountStanding
 

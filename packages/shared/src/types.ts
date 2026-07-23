@@ -58,6 +58,8 @@ export interface SelfUser extends User {
   twoFactorEnabled: boolean;
   /** False for OAuth-only accounts, which have no password to re-confirm. */
   hasPassword: boolean;
+  /** True while the account is frozen: no new sign-ins, DMs or friend requests. */
+  lockdown: boolean;
 }
 
 /** One restriction in force against the account. Moderation is per-server. */

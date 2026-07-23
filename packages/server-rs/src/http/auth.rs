@@ -15,7 +15,7 @@ use crate::http::{bad_request, valid_email, valid_username, AuthUser, ClientIp};
 use crate::ids::cuid;
 use crate::models::UserRow;
 use crate::oauth;
-use crate::services::{badge, rate_limit, totp, user};
+use crate::services::{account, badge, rate_limit, totp, user};
 use crate::state::AppState;
 
 const OAUTH_STATE_COOKIE: &str = "oc_oauth_state";
@@ -34,6 +34,40 @@ pub fn routes() -> Router<AppState> {
         // which of the listed sessions is the one asking.
         .route("/sessions", get(list_sessions).delete(revoke_other_sessions))
         .route("/sessions/:jti", axum::routing::delete(revoke_session))
+        // Also here rather than under /security: turning lockdown on has to
+        // spare the session doing it, which means reading the refresh cookie.
+        .route("/lockdown", post(set_lockdown))
+}
+
+/// Freezes or unfreezes the account. Turning it on signs out every other device;
+/// turning it off needs the password, since a lockdown that anyone holding the
+/// session can lift protects nothing once that session is the compromised one.
+async fn set_lockdown(
+    State(state): State<AppState>,
+    user: AuthUser,
+    jar: CookieJar,
+    Json(body): Json<Value>,
+) -> AppResult<Json<Value>> {
+    let on = body.get("on").and_then(Value::as_bool).unwrap_or(false);
+
+    let row: UserRow = sqlx::query_as(r#"SELECT * FROM "User" WHERE id = $1"#)
+        .bind(&user.user_id)
+        .fetch_one(&state.pool)
+        .await?;
+
+    if !on {
+        rate_limit::check(&state, "2fa", &user.user_id, rate_limit::TOTP_PER_USER).await?;
+        if let Some(hash) = row.password_hash.as_deref() {
+            let supplied = body.get("password").and_then(Value::as_str).unwrap_or("");
+            if !verify_password(hash, supplied) {
+                return Err(AppError::Unauthorized("Incorrect password".into()));
+            }
+        }
+    }
+
+    let current = current_jti(&state, &jar);
+    let revoked = account::set_lockdown(&state, &user.user_id, on, current.as_deref()).await?;
+    Ok(Json(json!({ "lockdown": on, "sessionsRevoked": revoked })))
 }
 
 /// The jti of the session making this request, read from the refresh cookie.
@@ -286,6 +320,15 @@ async fn login(
 
     // Password checked out; the account may still owe us a second factor.
     let user = user.unwrap();
+
+    // Lockdown is deliberately named in the error rather than hidden behind
+    // "invalid credentials": the owner is the one most likely to hit it, and a
+    // silent failure would look like the account was already stolen.
+    if user.lockdown_at.is_some() {
+        return Err(AppError::Unauthorized(
+            "This account is locked down. Lift it from a device that's still signed in.".into(),
+        ));
+    }
     if user.totp_enabled {
         let code = body
             .get("totpCode")

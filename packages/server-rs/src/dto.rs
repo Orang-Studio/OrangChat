@@ -65,6 +65,8 @@ pub struct SelfUserDto {
     pub two_factor_enabled: bool,
     /// False for OAuth-only accounts, which have no password to re-confirm.
     pub has_password: bool,
+    /// True while the account is frozen; see services::account.
+    pub lockdown: bool,
 }
 
 /// A linked external account, as shown on a profile card.
@@ -311,6 +313,7 @@ pub fn to_self_user(u: &UserRow) -> SelfUserDto {
         typing_indicators: u.typing_indicators,
         two_factor_enabled: u.totp_enabled,
         has_password: u.password_hash.is_some(),
+        lockdown: u.lockdown_at.is_some(),
     }
 }
 

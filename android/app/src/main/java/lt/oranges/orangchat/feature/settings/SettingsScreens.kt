@@ -317,6 +317,10 @@ fun SecurityScreen(
 
             HorizontalDivider(color = c.border)
 
+            LockdownSection(self, hasPassword, vm)
+
+            HorizontalDivider(color = c.border)
+
             LeaveAllServersSection(vm)
 
             HorizontalDivider(color = c.border)
@@ -535,6 +539,100 @@ private fun AccountStandingSection(vm: SettingsViewModel) {
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Freezes the account: nothing can sign in, no new DM reaches it, no friend
+ * request lands. For "I think someone's in my account" - a step short of
+ * deleting it, and reversible.
+ */
+@Composable
+private fun LockdownSection(self: SelfUser, hasPassword: Boolean, vm: SettingsViewModel) {
+    val c = OrangTheme.colors
+    val ui by vm.lockdown.collectAsStateWithLifecycle()
+    val locked = self.lockdown
+
+    var confirming by remember { mutableStateOf(false) }
+    var password by remember { mutableStateOf("") }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("Lockdown", color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+
+        if (locked) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(OrangRadius.lg))
+                    .background(c.warning.copy(alpha = 0.10f))
+                    .padding(12.dp),
+            ) {
+                Text(
+                    "Your account is locked down",
+                    color = c.ink,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    "Nothing can sign in, and no new DMs or friend requests reach you. " +
+                        "This device stays signed in.",
+                    color = c.inkSecondary,
+                    fontSize = 12.sp,
+                )
+            }
+        } else {
+            Text(
+                "Freezes the account if you think someone else is in it: signs out every " +
+                    "other device, blocks new sign-ins, and closes new DMs and friend " +
+                    "requests until you lift it.",
+                color = c.inkSecondary,
+                fontSize = 13.sp,
+            )
+        }
+
+        ui.done?.let { Text(it, color = c.success, fontSize = 13.sp) }
+        ui.error?.let { Text(it, color = c.danger, fontSize = 13.sp) }
+
+        if (confirming) {
+            // Lifting needs the password; turning it on deliberately doesn't, so
+            // nothing slows you down in the moment you actually need it.
+            if (locked && hasPassword) {
+                OrangTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = "Your password",
+                    isPassword = true,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OrangButton(
+                    text = if (locked) "Lift lockdown" else "Lock down my account",
+                    onClick = {
+                        vm.setLockdown(!locked, password) {
+                            confirming = false
+                            password = ""
+                        }
+                    },
+                    variant = if (locked) ButtonVariant.Primary else ButtonVariant.Danger,
+                    size = ButtonSize.Sm,
+                    enabled = !ui.busy,
+                    loading = ui.busy,
+                )
+                OrangButton(
+                    text = "Cancel",
+                    onClick = { confirming = false; password = "" },
+                    variant = ButtonVariant.Ghost,
+                    size = ButtonSize.Sm,
+                )
+            }
+        } else {
+            OrangButton(
+                text = if (locked) "Lift lockdown" else "Lock down my account",
+                onClick = { vm.resetLockdown(); confirming = true },
+                variant = if (locked) ButtonVariant.Primary else ButtonVariant.Secondary,
+                size = ButtonSize.Sm,
+            )
         }
     }
 }

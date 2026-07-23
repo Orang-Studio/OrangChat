@@ -114,6 +114,11 @@ pub async fn have_mutual_friend(state: &AppState, a: &str, b: &str) -> AppResult
 }
 
 async fn can_request(state: &AppState, requester_id: &str, target: &UserRow) -> AppResult<bool> {
+    // Same rule as can_dm: a locked-down account accepts nothing new, whatever
+    // its own privacy setting says.
+    if target.lockdown_at.is_some() {
+        return Ok(false);
+    }
     match target.friend_request_privacy.as_str() {
         "none" => Ok(false),
         "mutual" => have_mutual_friend(state, requester_id, &target.id).await,

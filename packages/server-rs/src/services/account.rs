@@ -91,6 +91,35 @@ pub async fn standing(state: &AppState, user_id: &str) -> AppResult<Vec<Standing
     Ok(out)
 }
 
+/// Turns lockdown on or off.
+///
+/// Enabling revokes every other session: the point of the switch is "someone
+/// else may be in my account", and leaving their session live would make it
+/// theatre. The session flipping it survives, or the owner would lock themselves
+/// out alongside the intruder.
+pub async fn set_lockdown(
+    state: &AppState,
+    user_id: &str,
+    on: bool,
+    keep_jti: Option<&str>,
+) -> AppResult<usize> {
+    sqlx::query(
+        r#"UPDATE "User" SET "lockdownAt" = CASE WHEN $2 THEN now() ELSE NULL END,
+             "updatedAt" = now()
+           WHERE id = $1"#,
+    )
+    .bind(user_id)
+    .bind(on)
+    .execute(&state.pool)
+    .await?;
+
+    if on {
+        auth::revoke_all_refresh_tokens(state, user_id, keep_jti).await
+    } else {
+        Ok(0)
+    }
+}
+
 /// Deletes every message the user ever wrote, wherever it lives.
 ///
 /// Keyed on authorship alone, which is what makes "even the ones in servers and

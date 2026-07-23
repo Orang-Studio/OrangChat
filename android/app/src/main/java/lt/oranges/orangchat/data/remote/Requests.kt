@@ -160,6 +160,13 @@ data class SessionsResult(val sessions: List<DeviceSession> = emptyList())
 @Serializable
 data class RevokeResult(val revoked: Int = 0)
 
+/** `password` is only checked when lifting a lockdown. */
+@Serializable
+data class LockdownRequest(val on: Boolean, val password: String? = null)
+
+@Serializable
+data class LockdownResult(val lockdown: Boolean = false, val sessionsRevoked: Int = 0)
+
 /** `keptOwned` names the servers left untouched because the user owns them. */
 @Serializable
 data class LeaveAllServersResult(

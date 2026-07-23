@@ -39,6 +39,9 @@ pub struct UserRow {
     pub totp_enabled: bool,
     /// Awarded badge slugs; see services::badge for the catalog.
     pub badges: Vec<String>,
+    /// Set while the account is locked down; see services::account.
+    #[sqlx(rename = "lockdownAt")]
+    pub lockdown_at: Option<NaiveDateTime>,
     /// Set on a tombstoned account; see services::account.
     #[sqlx(rename = "deletedAt")]
     pub deleted_at: Option<NaiveDateTime>,
