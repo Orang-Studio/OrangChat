@@ -22,6 +22,17 @@ pub fn routes() -> Router<AppState> {
         .route("/password", post(change_password))
         .route("/email", post(change_email))
         .route("/account", delete(delete_account))
+        .route("/standing", get(standing))
+}
+
+/// Bans and live timeouts against the account. Read-only, and cheap enough not
+/// to share the credential rate-limit budget.
+async fn standing(State(state): State<AppState>, user: AuthUser) -> AppResult<Json<Value>> {
+    let entries = account::standing(&state, &user.user_id).await?;
+    Ok(Json(json!({
+        "good": entries.is_empty(),
+        "entries": entries,
+    })))
 }
 
 /// Tombstones the account. Gated on the password, a 2FA code when enabled, and

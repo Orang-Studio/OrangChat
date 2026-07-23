@@ -7,6 +7,7 @@ import lt.oranges.orangchat.data.local.TokenStore
 import lt.oranges.orangchat.data.model.AuthResult
 import lt.oranges.orangchat.data.model.SelfUser
 import lt.oranges.orangchat.data.remote.ApiService
+import lt.oranges.orangchat.data.remote.AccountStanding
 import lt.oranges.orangchat.data.remote.BackupCodesResult
 import lt.oranges.orangchat.data.remote.ChangeEmailRequest
 import lt.oranges.orangchat.data.remote.ChangeEmailResult
@@ -156,6 +157,8 @@ class AuthRepository @Inject constructor(
 
     suspend fun regenerateBackupCodes(password: String?, code: String): BackupCodesResult =
         api.regenerateBackupCodes(TwoFactorDisableRequest(password?.ifBlank { null }, code.trim()))
+
+    suspend fun accountStanding(): AccountStanding = api.getAccountStanding()
 
     // ── Credentials ─────────────────────────────────────
     /**

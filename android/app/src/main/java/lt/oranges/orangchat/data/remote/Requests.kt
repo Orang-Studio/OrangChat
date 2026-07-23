@@ -112,6 +112,25 @@ data class DeleteAccountRequest(
 @Serializable
 data class DeleteAccountResult(val deleted: Boolean = false)
 
+/** One restriction in force against the account; moderation is per-server. */
+@Serializable
+data class StandingEntry(
+    val kind: String = "ban",
+    val serverId: String = "",
+    val serverName: String = "",
+    val reason: String? = null,
+    /** When a timeout lifts; null for bans, which don't expire. */
+    val expiresAt: String? = null,
+    val createdAt: String? = null,
+)
+
+@Serializable
+data class AccountStanding(
+    /** True when nothing currently restricts the account. */
+    val good: Boolean = true,
+    val entries: List<StandingEntry> = emptyList(),
+)
+
 /** `keptOwned` names the servers left untouched because the user owns them. */
 @Serializable
 data class LeaveAllServersResult(

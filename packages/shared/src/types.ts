@@ -60,6 +60,24 @@ export interface SelfUser extends User {
   hasPassword: boolean;
 }
 
+/** One restriction in force against the account. Moderation is per-server. */
+export interface StandingEntry {
+  kind: 'ban' | 'timeout';
+  serverId: string;
+  serverName: string;
+  reason: string | null;
+  /** When a timeout lifts; null for bans, which don't expire. */
+  expiresAt: string | null;
+  createdAt: string | null;
+}
+
+/** GET /security/standing */
+export interface AccountStanding {
+  /** True when nothing currently restricts the account. */
+  good: boolean;
+  entries: StandingEntry[];
+}
+
 /** GET /security/2fa */
 export interface TwoFactorStatus {
   enabled: boolean;

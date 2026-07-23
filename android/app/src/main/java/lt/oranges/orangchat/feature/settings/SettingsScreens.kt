@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -51,6 +52,7 @@ import lt.oranges.orangchat.ui.components.ButtonVariant
 import lt.oranges.orangchat.ui.components.OrangButton
 import lt.oranges.orangchat.ui.components.OrangTextField
 import lt.oranges.orangchat.ui.theme.OrangRadius
+import lt.oranges.orangchat.util.formatFullTime
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
 private fun screenModifier(c: lt.oranges.orangchat.ui.theme.OrangColors) =
@@ -168,6 +170,10 @@ fun SecurityScreen(
             modifier = Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            AccountStandingSection(vm)
+
+            HorizontalDivider(color = c.border)
+
             CredentialsSection(self, hasPassword, vm)
 
             HorizontalDivider(color = c.border)
@@ -326,6 +332,80 @@ private fun CredentialsSection(self: SelfUser, hasPassword: Boolean, vm: Setting
                         variant = ButtonVariant.Ghost,
                         size = ButtonSize.Sm,
                     )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Bans and live timeouts against the account. Moderation is per-server - there
+ * is no instance-wide sanction - so "good standing" means no server currently
+ * restricts you.
+ */
+@Composable
+private fun AccountStandingSection(vm: SettingsViewModel) {
+    val c = OrangTheme.colors
+    val state by vm.standing.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) { vm.refreshStanding() }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("Account standing", color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+
+        when (val s = state) {
+            is StandingUi.Loading -> Text("Loading…", color = c.inkMuted, fontSize = 14.sp)
+            is StandingUi.Failed -> Text(s.error, color = c.danger, fontSize = 13.sp)
+            is StandingUi.Loaded -> if (s.standing.good) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(OrangRadius.lg))
+                        .background(c.success.copy(alpha = 0.10f))
+                        .padding(12.dp),
+                ) {
+                    Text(
+                        "Your account is in good standing",
+                        color = c.ink,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        "No server is currently restricting you.",
+                        color = c.inkSecondary,
+                        fontSize = 12.sp,
+                    )
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    s.standing.entries.forEach { entry ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(OrangRadius.lg))
+                                .background(c.danger.copy(alpha = 0.10f))
+                                .padding(12.dp),
+                        ) {
+                            val verb = if (entry.kind == "ban") "Banned from" else "Timed out in"
+                            Text(
+                                "$verb ${entry.serverName}",
+                                color = c.ink,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            entry.reason?.let {
+                                Text("Reason: $it", color = c.inkSecondary, fontSize = 12.sp)
+                            }
+                            entry.expiresAt?.let {
+                                Text("Until ${formatFullTime(it)}", color = c.inkSecondary, fontSize = 12.sp)
+                            }
+                            if (entry.kind == "ban") {
+                                entry.createdAt?.let {
+                                    Text(formatFullTime(it), color = c.inkMuted, fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

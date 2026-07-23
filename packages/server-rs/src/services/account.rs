@@ -25,6 +25,72 @@ pub async fn owned_server_names(state: &AppState, user_id: &str) -> AppResult<Ve
     Ok(rows.into_iter().map(|(n,)| n).collect())
 }
 
+/// One restriction currently in force against the account.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StandingEntry {
+    /// "ban" | "timeout"
+    pub kind: String,
+    pub server_id: String,
+    pub server_name: String,
+    pub reason: Option<String>,
+    /// When a timeout lifts. Bans have no expiry, so it's null for those.
+    pub expires_at: Option<String>,
+    pub created_at: Option<String>,
+}
+
+/// What the account's standing actually is: the bans and unexpired timeouts
+/// against it. Moderation here is per-server - there is no instance-wide
+/// sanction - so "good standing" means no server currently restricts you.
+pub async fn standing(state: &AppState, user_id: &str) -> AppResult<Vec<StandingEntry>> {
+    let bans: Vec<(String, String, Option<String>, chrono::NaiveDateTime)> = sqlx::query_as(
+        r#"SELECT s.id, s.name, b.reason, b."createdAt"
+           FROM "Ban" b JOIN "Server" s ON s.id = b."serverId"
+           WHERE b."userId" = $1
+           ORDER BY b."createdAt" DESC"#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.pool)
+    .await?;
+
+    let timeouts: Vec<(String, String, chrono::NaiveDateTime)> = sqlx::query_as(
+        r#"SELECT s.id, s.name, m."timedOutUntil"
+           FROM "ServerMember" m JOIN "Server" s ON s.id = m."serverId"
+           WHERE m."userId" = $1 AND m."timedOutUntil" > now()
+           ORDER BY m."timedOutUntil" DESC"#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.pool)
+    .await?;
+
+    let mut out: Vec<StandingEntry> = bans
+        .into_iter()
+        .map(|(server_id, server_name, reason, created_at)| StandingEntry {
+            kind: "ban".into(),
+            server_id,
+            server_name,
+            reason,
+            expires_at: None,
+            created_at: Some(crate::timefmt::iso(created_at)),
+        })
+        .collect();
+
+    out.extend(
+        timeouts
+            .into_iter()
+            .map(|(server_id, server_name, until)| StandingEntry {
+                kind: "timeout".into(),
+                server_id,
+                server_name,
+                reason: None,
+                expires_at: Some(crate::timefmt::iso(until)),
+                created_at: None,
+            }),
+    );
+
+    Ok(out)
+}
+
 /// Tombstones the account. Idempotent-ish: a second call on an already-deleted
 /// account is refused by the caller's `deletedAt` check.
 pub async fn delete_account(state: &AppState, user_id: &str) -> AppResult<()> {

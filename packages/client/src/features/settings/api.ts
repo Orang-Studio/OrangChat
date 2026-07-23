@@ -1,7 +1,14 @@
-import type { BackupCodes, TwoFactorSetup, TwoFactorStatus } from "@orangchat/shared";
+import type {
+  AccountStanding,
+  BackupCodes,
+  TwoFactorSetup,
+  TwoFactorStatus,
+} from "@orangchat/shared";
 import { api } from "../../lib/api";
 
 export const getTwoFactorStatus = () => api<TwoFactorStatus>("/security/2fa");
+
+export const getAccountStanding = () => api<AccountStanding>("/security/standing");
 
 export const startTwoFactorSetup = (password: string) =>
   api<TwoFactorSetup>("/security/2fa/setup", { method: "POST", json: { password } });

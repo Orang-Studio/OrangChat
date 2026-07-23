@@ -86,6 +86,9 @@ interface ApiService {
     @POST("security/email")
     suspend fun changeEmail(@Body body: ChangeEmailRequest): ChangeEmailResult
 
+    @GET("security/standing")
+    suspend fun getAccountStanding(): AccountStanding
+
     // @HTTP rather than @DELETE: Retrofit's @DELETE can't carry a body, and the
     // confirmation fields have to travel with the request.
     @HTTP(method = "DELETE", path = "security/account", hasBody = true)

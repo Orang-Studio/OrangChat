@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 import lt.oranges.orangchat.data.local.TokenStore
 import lt.oranges.orangchat.data.model.DmPrivacy
 import lt.oranges.orangchat.data.model.FriendRequestPrivacy
+import lt.oranges.orangchat.data.remote.AccountStanding
 import lt.oranges.orangchat.data.remote.TwoFactorSetup
 import lt.oranges.orangchat.data.repository.AuthRepository
 import lt.oranges.orangchat.data.repository.ServerRepository
@@ -34,6 +35,13 @@ sealed interface TwoFactorUi {
     data class Setup(val setup: TwoFactorSetup, val verifying: Boolean = false, val error: String? = null) : TwoFactorUi
     data class ShowCodes(val codes: List<String>) : TwoFactorUi
     data class On(val backupCodesRemaining: Int, val busy: Boolean = false, val error: String? = null) : TwoFactorUi
+}
+
+/** Drives the account-standing panel on the Security screen. */
+sealed interface StandingUi {
+    data object Loading : StandingUi
+    data class Loaded(val standing: AccountStanding) : StandingUi
+    data class Failed(val error: String) : StandingUi
 }
 
 /** Drives the "leave all servers" control on the Security screen. */
@@ -230,6 +238,19 @@ class SettingsViewModel @Inject constructor(
                 .onFailure {
                     _credentials.value = CredentialsUi(error = it.message ?: "Could not delete account")
                 }
+        }
+    }
+
+    // ── Account standing ────────────────────────────────
+    private val _standing = MutableStateFlow<StandingUi>(StandingUi.Loading)
+    val standing: StateFlow<StandingUi> = _standing.asStateFlow()
+
+    fun refreshStanding() {
+        viewModelScope.launch {
+            _standing.value = StandingUi.Loading
+            runCatching { authRepository.accountStanding() }
+                .onSuccess { _standing.value = StandingUi.Loaded(it) }
+                .onFailure { _standing.value = StandingUi.Failed(it.message ?: "Could not load standing") }
         }
     }
 

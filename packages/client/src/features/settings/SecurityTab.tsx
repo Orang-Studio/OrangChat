@@ -5,6 +5,7 @@ import { Button } from "../../components/ui/Button";
 import { PasswordField } from "../../components/ui/PasswordField";
 import { TextField } from "../../components/ui/TextField";
 import { authStoreActions, useAuthStore } from "../../stores/auth";
+import { formatFullTime } from "../../lib/time";
 import { SectionTitle } from "./controls";
 import {
   changeEmail,
@@ -12,6 +13,7 @@ import {
   deleteAccount,
   disableTwoFactor,
   enableTwoFactor,
+  getAccountStanding,
   getTwoFactorStatus,
   leaveAllServers,
   regenerateBackupCodes,
@@ -471,6 +473,62 @@ function CredentialsSection() {
 }
 
 /**
+ * Bans and live timeouts against the account. Moderation is per-server - there
+ * is no instance-wide sanction - so "good standing" means no server currently
+ * restricts you.
+ */
+function AccountStandingSection() {
+  const { data, isPending } = useQuery({
+    queryKey: ["account-standing"],
+    queryFn: getAccountStanding,
+  });
+
+  return (
+    <div className="space-y-3">
+      <SectionTitle>Account standing</SectionTitle>
+
+      {isPending ? (
+        <div className="h-14 animate-pulse rounded-lg bg-surface-3" />
+      ) : data?.good ? (
+        <div className="flex items-start gap-3 rounded-lg border border-success/40 bg-success/10 px-3 py-2.5">
+          <ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />
+          <div>
+            <p className="text-sm font-medium">Your account is in good standing</p>
+            <p className="text-xs text-ink-secondary">
+              No server is currently restricting you.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {data?.entries.map((entry) => (
+            <li
+              key={`${entry.kind}-${entry.serverId}`}
+              className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2.5"
+            >
+              <p className="text-sm font-medium">
+                {entry.kind === "ban" ? "Banned from" : "Timed out in"} {entry.serverName}
+              </p>
+              {entry.reason && (
+                <p className="text-xs text-ink-secondary">Reason: {entry.reason}</p>
+              )}
+              {entry.expiresAt && (
+                <p className="text-xs text-ink-secondary">
+                  Until {formatFullTime(entry.expiresAt)}
+                </p>
+              )}
+              {entry.kind === "ban" && entry.createdAt && (
+                <p className="text-xs text-ink-muted">{formatFullTime(entry.createdAt)}</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/**
  * Bulk-leaves every server the user doesn't own. Two-step: destructive enough
  * that one click shouldn't do it, cheap enough that it doesn't need a password.
  */
@@ -659,7 +717,11 @@ export function SecurityTab() {
 
   return (
     <div className="space-y-6">
-      <CredentialsSection />
+      <AccountStandingSection />
+
+      <div className="border-t border-border pt-5">
+        <CredentialsSection />
+      </div>
 
       <div className="border-t border-border pt-5">
         <SectionTitle>Two-factor authentication</SectionTitle>
