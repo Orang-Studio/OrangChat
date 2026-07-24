@@ -25,6 +25,9 @@ const ALLOWED_EXT: [&str; 6] = ["mp3", "ogg", "wav", "flac", "m4a", "aac"];
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/servers/:serverId/sounds", get(list).post(create))
+        // Every sound the user can play, across their servers - the picker's
+        // source so the soundboard works outside any one server.
+        .route("/sounds", get(list_usable))
         .route(
             "/servers/:serverId/sounds/:soundId",
             patch(update).delete(remove),
@@ -41,6 +44,14 @@ async fn list(
     // see the board.
     membership::require_permission(&state, &server_id, &user.user_id, 0).await?;
     let rows = sound::list_sounds(&state, &server_id).await?;
+    Ok(Json(rows.iter().map(to_sound).collect()))
+}
+
+async fn list_usable(
+    user: AuthUser,
+    State(state): State<AppState>,
+) -> AppResult<Json<Vec<SoundDto>>> {
+    let rows = sound::list_usable_sounds(&state, &user.user_id).await?;
     Ok(Json(rows.iter().map(to_sound).collect()))
 }
 

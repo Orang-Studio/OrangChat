@@ -39,6 +39,24 @@ pub async fn list_sounds(state: &AppState, server_id: &str) -> AppResult<Vec<Sou
     Ok(rows)
 }
 
+/// Every sound from every server the user is in - what the soundboard picker
+/// needs to let them fire any of their sounds into whatever voice room they're
+/// in, mirroring how custom emoji are usable anywhere you're a member.
+pub async fn list_usable_sounds(state: &AppState, user_id: &str) -> AppResult<Vec<SoundRow>> {
+    let rows = sqlx::query_as::<_, SoundRow>(
+        r#"SELECT s.id, s."serverId", s.name, s.url, s.duration, s.emoji, s.volume,
+                  s."creatorId", s."createdAt"
+           FROM "Sound" s
+           JOIN "ServerMember" m ON m."serverId" = s."serverId"
+           WHERE m."userId" = $1
+           ORDER BY s.name ASC"#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.pool)
+    .await?;
+    Ok(rows)
+}
+
 pub async fn get_sound(state: &AppState, sound_id: &str) -> AppResult<SoundRow> {
     sqlx::query_as::<_, SoundRow>(
         r#"SELECT id, "serverId", name, url, duration, emoji, volume, "creatorId", "createdAt"

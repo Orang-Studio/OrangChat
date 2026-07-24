@@ -3,18 +3,21 @@ import * as Popover from "@radix-ui/react-popover";
 import { Music } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { useVoiceStore } from "../voice/store";
-import { playSound, useSounds } from "./queries";
+import { playSound, useUsableSounds } from "./queries";
 
 /**
  * The soundboard, as a popover off the voice controls.
  *
- * Only offered inside a server voice channel: the board belongs to a server, and
- * a DM call has none.
+ * Only offered inside a server voice channel (a DM call has no soundboard), but
+ * the sounds shown come from every server the viewer is in, so a clip from one
+ * server can be fired into another server's voice room.
  */
 export function SoundboardPanel({ className }: { className?: string }) {
   const session = useVoiceStore((s) => s.session);
   const [open, setOpen] = useState(false);
-  const { data: sounds, isLoading } = useSounds(open ? (session?.serverId ?? undefined) : undefined);
+  // Sourced across all the viewer's servers, not just this channel's, so
+  // their whole soundboard is available wherever they are in voice.
+  const { data: sounds, isLoading } = useUsableSounds(open && Boolean(session?.serverId));
 
   if (!session?.serverId) return null;
   const channelId = session.channelId;

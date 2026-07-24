@@ -1084,9 +1084,15 @@ fn register_handlers(
                         }
 
                         let snd = sound::get_sound(&state, &p.sound_id).await?;
-                        // Otherwise any server's sounds could be played into any
-                        // other server's channels.
-                        if snd.server_id != server_id {
+                        // The sound may come from any server the user belongs to,
+                        // not just this channel's - the same "usable anywhere you're
+                        // a member" rule custom emoji already follow. Membership in
+                        // the sound's origin server is the gate; SPEAK and actually
+                        // being in this voice room (checked above) are what bound
+                        // where it can be fired.
+                        let owns = membership::is_server_member(&state, &snd.server_id, &uid)
+                            .await?;
+                        if !owns {
                             return Err(crate::error::AppError::NotFound(
                                 "Sound not found".into(),
                             ));

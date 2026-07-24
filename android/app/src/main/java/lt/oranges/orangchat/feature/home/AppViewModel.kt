@@ -186,8 +186,10 @@ class AppViewModel @Inject constructor(
             }
     }
 
-    fun refreshSounds(serverId: String) = viewModelScope.launch {
-        runCatching { serverRepository.listSounds(serverId) }
+    // Sounds from every server the user is in, so the soundboard works in any
+    // voice room, mirroring how usable emoji span servers.
+    fun refreshSounds() = viewModelScope.launch {
+        runCatching { serverRepository.listUsableSounds() }
             .onSuccess { _sounds.value = it }
             .onFailure { _sounds.value = emptyList() }
     }
@@ -215,7 +217,7 @@ class AppViewModel @Inject constructor(
                 _presenceDevices.update { m -> m + detail.members.associate { it.user.id to it.user.devices.toSet() } }
                 _presenceActivities.update { m -> m + detail.members.associate { it.user.id to it.user.activities } }
                 detail.channels.firstOrNull { it.type == ChannelType.TEXT }?.let { selectChannel(it.id) }
-                refreshSounds(serverId)
+                refreshSounds()
             }
             .onFailure { _error.value = it.message }
     }

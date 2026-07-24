@@ -332,6 +332,10 @@ interface ApiService {
     @GET("servers/{serverId}/sounds")
     suspend fun listSounds(@Path("serverId") serverId: String): List<Sound>
 
+    /** Every sound the viewer can play, across their servers. */
+    @GET("sounds")
+    suspend fun listUsableSounds(): List<Sound>
+
     @Multipart
     @POST("servers/{serverId}/sounds")
     suspend fun createSound(

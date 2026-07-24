@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { socket } from "../../lib/socket";
-import { listSounds } from "./api";
+import { listSounds, listUsableSounds } from "./api";
 
 export const soundKeys = {
   server: (serverId: string) => ["sounds", serverId] as const,
+  usable: ["sounds", "usable"] as const,
 };
 
 export function useSounds(serverId: string | undefined) {
@@ -11,6 +12,19 @@ export function useSounds(serverId: string | undefined) {
     queryKey: soundKeys.server(serverId ?? ""),
     queryFn: () => listSounds(serverId as string),
     enabled: !!serverId,
+  });
+}
+
+/**
+ * Every sound the viewer can play, from all their servers. This is what the
+ * soundboard shows: your sounds follow you into any voice room, the way custom
+ * emoji are usable in any channel.
+ */
+export function useUsableSounds(enabled: boolean) {
+  return useQuery({
+    queryKey: soundKeys.usable,
+    queryFn: listUsableSounds,
+    enabled,
   });
 }
 

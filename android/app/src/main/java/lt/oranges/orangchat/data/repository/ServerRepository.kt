@@ -165,6 +165,8 @@ class ServerRepository @Inject constructor(
 
     suspend fun listSounds(serverId: String): List<Sound> = api.listSounds(serverId)
 
+    suspend fun listUsableSounds(): List<Sound> = api.listUsableSounds()
+
     suspend fun createSound(serverId: String, file: MultipartBody.Part, name: String, emoji: String?): Sound =
         api.createSound(serverId, file, name.toPlainBody(), emoji?.toPlainBody())
 

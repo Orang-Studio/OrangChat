@@ -10,6 +10,9 @@ export const MAX_SOUND_SECS = 3;
 
 export const listSounds = (serverId: string) => api<Sound[]>(`/servers/${serverId}/sounds`);
 
+/** Every sound the viewer can play, across all their servers. */
+export const listUsableSounds = () => api<Sound[]>("/sounds");
+
 export const updateSound = (
   serverId: string,
   soundId: string,
