@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { QrCode } from "lucide-react";
 import { loginSchema, type LoginInput } from "@orangchat/shared";
 import { AuthLayout } from "./AuthLayout";
 import { OAuthButtons, OAuthDivider } from "./OAuthButtons";
+import { QrLogin } from "./QrLogin";
 import { login } from "./api";
 import { applySession } from "./session";
 import { Button } from "../../components/ui/Button";
@@ -15,6 +18,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? "/";
+  const [mode, setMode] = useState<"password" | "qr">("password");
 
   const {
     register,
@@ -46,6 +50,10 @@ export function LoginPage() {
         </>
       }
     >
+      {mode === "qr" ? (
+        <QrLogin onBack={() => setMode("password")} />
+      ) : (
+        <>
       <OAuthButtons />
       <OAuthDivider />
       <form
@@ -75,6 +83,16 @@ export function LoginPage() {
           Log in
         </Button>
       </form>
+      <button
+        type="button"
+        onClick={() => setMode("qr")}
+        className="mt-4 flex w-full items-center justify-center gap-2 text-sm text-ink-secondary hover:underline"
+      >
+        <QrCode aria-hidden className="size-4" />
+        Sign in with your phone
+      </button>
+        </>
+      )}
     </AuthLayout>
   );
 }

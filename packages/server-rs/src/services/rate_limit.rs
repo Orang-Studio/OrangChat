@@ -44,6 +44,8 @@ pub const SIGNUP_PER_IP: Quota = Quota::new(5, HOUR);
 /// 48-bit code space.
 pub const INVITE_PREVIEW_PER_IP: Quota = Quota::new(120, MINUTE);
 pub const REFRESH_PER_IP: Quota = Quota::new(60, 5 * MINUTE);
+/// QR sign-in polls run ~every 2s for up to 2 min per attempt; keep it roomy.
+pub const QR_POLL_PER_IP: Quota = Quota::new(200, MINUTE);
 pub const OAUTH_START_PER_IP: Quota = Quota::new(20, 5 * MINUTE);
 pub const TOTP_PER_USER: Quota = Quota::new(10, 5 * MINUTE);
 

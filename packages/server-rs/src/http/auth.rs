@@ -15,7 +15,7 @@ use crate::http::{bad_request, valid_email, valid_username, AuthUser, ClientIp};
 use crate::ids::cuid;
 use crate::models::UserRow;
 use crate::oauth;
-use crate::services::{account, badge, rate_limit, totp, user};
+use crate::services::{account, badge, qr, rate_limit, totp, user};
 use crate::state::AppState;
 
 const OAUTH_STATE_COOKIE: &str = "oc_oauth_state";
@@ -29,6 +29,12 @@ pub fn routes() -> Router<AppState> {
         .route("/me", get(get_me).patch(patch_me))
         .route("/oauth/:provider", get(oauth_start))
         .route("/oauth/:provider/callback", get(oauth_callback))
+        // QR sign-in. start/poll are for the logged-out web client; scan/approve
+        // are called by the signed-in phone.
+        .route("/qr/start", post(qr_start))
+        .route("/qr/poll", get(qr_poll))
+        .route("/qr/scan", post(qr_scan))
+        .route("/qr/approve", post(qr_approve))
         // Under /auth rather than /security so the refresh cookie is in scope -
         // it's path-scoped to /api/auth, and its jti is the only way to tell
         // which of the listed sessions is the one asking.
@@ -68,6 +74,76 @@ async fn set_lockdown(
     let current = current_jti(&state, &jar);
     let revoked = account::set_lockdown(&state, &user.user_id, on, current.as_deref()).await?;
     Ok(Json(json!({ "lockdown": on, "sessionsRevoked": revoked })))
+}
+
+/// Web, logged out: mint a code to render as a QR. Rate-limited per IP so it
+/// can't be used to churn Redis.
+async fn qr_start(
+    State(state): State<AppState>,
+    ClientIp(ip): ClientIp,
+) -> AppResult<Json<Value>> {
+    rate_limit::check(&state, "qr:start", &ip, rate_limit::LOGIN_PER_IP).await?;
+    let (token, expires_in) = qr::start(&state).await?;
+    Ok(Json(json!({ "token": token, "expiresIn": expires_in })))
+}
+
+/// Web: poll a code. Once the phone has approved, this issues the session (like
+/// login) and the code is spent. Until then it reports the stage so the UI can
+/// say "scan me" then "confirm on your phone".
+async fn qr_poll(
+    State(state): State<AppState>,
+    headers: axum::http::HeaderMap,
+    ClientIp(ip): ClientIp,
+    jar: CookieJar,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> AppResult<impl IntoResponse> {
+    rate_limit::check(&state, "qr:poll", &ip, rate_limit::QR_POLL_PER_IP).await?;
+    let token = params.get("token").map(String::as_str).unwrap_or_default();
+    match qr::poll(&state, token).await? {
+        qr::PollResult::Pending => Ok((jar, Json(json!({ "status": "pending" }))).into_response()),
+        qr::PollResult::Scanned => Ok((jar, Json(json!({ "status": "scanned" }))).into_response()),
+        qr::PollResult::Expired => {
+            Ok((jar, Json(json!({ "status": "expired" }))).into_response())
+        }
+        qr::PollResult::Approved(user_id) => {
+            let user: UserRow = sqlx::query_as(r#"SELECT * FROM "User" WHERE id = $1"#)
+                .bind(&user_id)
+                .fetch_one(&state.pool)
+                .await?;
+            // A code approved a moment before the account locked down must not
+            // still open a session.
+            if user.lockdown_at.is_some() || user.deleted_at.is_some() {
+                return Ok((jar, Json(json!({ "status": "expired" }))).into_response());
+            }
+            let (result, cookie) =
+                issue_session(&state, &user, DeviceInfo::new(&headers, &ip)).await?;
+            Ok((jar.add(cookie), Json(json!({ "status": "approved", "session": result })))
+                .into_response())
+        }
+    }
+}
+
+/// Phone, signed in: report a scan of this code.
+async fn qr_scan(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Json(body): Json<Value>,
+) -> AppResult<Json<Value>> {
+    let token = body.get("token").and_then(Value::as_str).unwrap_or_default();
+    qr::scan(&state, token, &user.user_id).await?;
+    Ok(Json(json!({ "ok": true })))
+}
+
+/// Phone, signed in: approve the code, authorising a web session for this
+/// account. The confirm tap in the app is what stands between a scan and a login.
+async fn qr_approve(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Json(body): Json<Value>,
+) -> AppResult<Json<Value>> {
+    let token = body.get("token").and_then(Value::as_str).unwrap_or_default();
+    qr::approve(&state, token, &user.user_id).await?;
+    Ok(Json(json!({ "ok": true })))
 }
 
 /// The jti of the session making this request, read from the refresh cookie.

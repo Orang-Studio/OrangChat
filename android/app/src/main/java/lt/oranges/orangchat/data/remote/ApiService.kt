@@ -99,6 +99,14 @@ interface ApiService {
     @POST("auth/lockdown")
     suspend fun setLockdown(@Body body: LockdownRequest): LockdownResult
 
+    // QR sign-in: the signed-in phone reports a scan, then approves it, opening
+    // a web session for this account.
+    @POST("auth/qr/scan")
+    suspend fun qrScan(@Body body: QrTokenRequest): QrActionResult
+
+    @POST("auth/qr/approve")
+    suspend fun qrApprove(@Body body: QrTokenRequest): QrActionResult
+
     @GET("security/standing")
     suspend fun getAccountStanding(): AccountStanding
 

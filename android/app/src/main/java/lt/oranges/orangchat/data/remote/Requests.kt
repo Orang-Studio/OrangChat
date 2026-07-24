@@ -167,6 +167,12 @@ data class LockdownRequest(val on: Boolean, val password: String? = null)
 @Serializable
 data class LockdownResult(val lockdown: Boolean = false, val sessionsRevoked: Int = 0)
 
+@Serializable
+data class QrTokenRequest(val token: String)
+
+@Serializable
+data class QrActionResult(val ok: Boolean = false)
+
 /** `keptOwned` names the servers left untouched because the user owns them. */
 @Serializable
 data class LeaveAllServersResult(

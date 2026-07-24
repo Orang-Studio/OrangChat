@@ -17,6 +17,7 @@ pub mod message;
 pub mod moderation;
 pub mod presence;
 pub mod push;
+pub mod qr;
 pub mod rate_limit;
 pub mod read_state;
 pub mod role;

@@ -84,6 +84,16 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="chat.oranges.lt" android:pathPrefix="/invite/" />
             </intent-filter>
+
+            <!-- QR sign-in. The web login page shows an orangchat://login?token=
+                 code; scanning it with the phone's camera opens the app here to
+                 confirm the web session. Custom scheme, so no assetlinks needed. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="orangchat" android:host="login" />
+            </intent-filter>
         </activity>
 
         <service

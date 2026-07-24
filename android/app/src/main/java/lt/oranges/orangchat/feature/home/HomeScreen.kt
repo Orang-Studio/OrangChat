@@ -40,6 +40,7 @@ import lt.oranges.orangchat.feature.roles.RolesScreen
 import lt.oranges.orangchat.feature.profile.ProfileDialog
 import lt.oranges.orangchat.feature.profile.ProfileRelation
 import lt.oranges.orangchat.feature.invite.DeepLinkInviteDialog
+import lt.oranges.orangchat.feature.qrlogin.QrLoginConfirmDialog
 import lt.oranges.orangchat.feature.search.SearchScreen
 import lt.oranges.orangchat.feature.settings.SettingsScreen
 import lt.oranges.orangchat.feature.settings.SettingsViewModel
@@ -86,6 +87,7 @@ fun HomeScreen(
     val devicePrefs by settingsViewModel.prefs.collectAsStateWithLifecycle()
     val connected by appViewModel.connected.collectAsStateWithLifecycle()
     val pendingInvite by appViewModel.pendingInvite.collectAsStateWithLifecycle()
+    val pendingQrLogin by appViewModel.pendingQrLogin.collectAsStateWithLifecycle()
 
     // The authenticated user object is a login-time snapshot. Presence events
     // arrive separately, so fold their latest values into every self-facing UI.
@@ -623,6 +625,12 @@ fun HomeScreen(
                 homeSelected = false
             },
         )
+    }
+
+    // A web sign-in QR scanned into the app. Only reachable here, in the signed-in
+    // shell, since approving a web session needs this phone's own account.
+    pendingQrLogin?.let { token ->
+        QrLoginConfirmDialog(token = token, appViewModel = appViewModel)
     }
     if (showCreateChannel && detail != null) {
         CreateEntityDialog(

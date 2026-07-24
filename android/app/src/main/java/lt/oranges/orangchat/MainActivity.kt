@@ -25,6 +25,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import lt.oranges.orangchat.feature.invite.PendingInviteStore
+import lt.oranges.orangchat.feature.qrlogin.PendingQrLoginStore
+import lt.oranges.orangchat.feature.qrlogin.QrLoginLink
 import lt.oranges.orangchat.feature.share.PendingShare
 import lt.oranges.orangchat.feature.share.PendingShareStore
 import lt.oranges.orangchat.feature.settings.SettingsViewModel
@@ -43,12 +45,14 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var notificationHelper: NotificationHelper
     @Inject lateinit var pendingInviteStore: PendingInviteStore
     @Inject lateinit var pendingShareStore: PendingShareStore
+    @Inject lateinit var pendingQrLoginStore: PendingQrLoginStore
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         applyLockScreenFlags(intent)
         clearOpenedConversation(intent)
         captureInviteLink(intent)
+        captureQrLogin(intent)
         captureSharedContent(intent)
         enableEdgeToEdge()
         setContent {
@@ -92,6 +96,7 @@ class MainActivity : ComponentActivity() {
         applyLockScreenFlags(intent)
         clearOpenedConversation(intent)
         captureInviteLink(intent)
+        captureQrLogin(intent)
         captureSharedContent(intent)
     }
 
@@ -123,6 +128,16 @@ class MainActivity : ComponentActivity() {
     private fun captureInviteLink(intent: Intent?) {
         if (intent?.action != Intent.ACTION_VIEW) return
         intent.data?.toString()?.let(InviteLink::codeFrom)?.let(pendingInviteStore::offer)
+    }
+
+    /**
+     * Park a QR sign-in token the app was opened with. Approving the web session
+     * only makes sense once this phone is signed in, so the shell raises the
+     * confirm prompt when it can - the token survives a sign-in first if needed.
+     */
+    private fun captureQrLogin(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_VIEW) return
+        intent.data?.toString()?.let(QrLoginLink::tokenFrom)?.let(pendingQrLoginStore::offer)
     }
 
     /** Capture text, links, and content URIs sent through Android's share sheet. */

@@ -30,6 +30,7 @@ import lt.oranges.orangchat.data.repository.ServerRepository
 import lt.oranges.orangchat.data.repository.SessionState
 import lt.oranges.orangchat.data.repository.SocialRepository
 import lt.oranges.orangchat.feature.invite.PendingInviteStore
+import lt.oranges.orangchat.feature.qrlogin.PendingQrLoginStore
 import lt.oranges.orangchat.feature.share.PendingShareStore
 import lt.oranges.orangchat.feature.unread.UnreadStore
 import lt.oranges.orangchat.notifications.NotificationHelper
@@ -56,6 +57,7 @@ class AppViewModel @Inject constructor(
     private val notificationHelper: NotificationHelper,
     private val unreadStore: UnreadStore,
     private val pendingInviteStore: PendingInviteStore,
+    private val pendingQrLoginStore: PendingQrLoginStore,
     private val pendingShareStore: PendingShareStore,
 ) : ViewModel() {
 
@@ -66,8 +68,35 @@ class AppViewModel @Inject constructor(
     val pendingInvite = pendingInviteStore.code
     val pendingShare = pendingShareStore.share
 
+    /** A QR sign-in token the app was opened with, once there's a signed-in shell. */
+    val pendingQrLogin = pendingQrLoginStore.token
+
     fun clearPendingInvite() = pendingInviteStore.consume()
     fun clearPendingShare() = pendingShareStore.consume()
+    fun clearPendingQrLogin() = pendingQrLoginStore.consume()
+
+    private val _qrApproving = MutableStateFlow(false)
+    val qrApproving: StateFlow<Boolean> = _qrApproving.asStateFlow()
+    private val _qrError = MutableStateFlow<String?>(null)
+    val qrError: StateFlow<String?> = _qrError.asStateFlow()
+
+    /** Confirm a web sign-in: report the scan, then approve. onDone on success. */
+    fun approveQrLogin(token: String, onDone: () -> Unit) {
+        viewModelScope.launch {
+            _qrApproving.value = true
+            _qrError.value = null
+            runCatching {
+                authRepository.qrScan(token)
+                authRepository.qrApprove(token)
+            }.onSuccess {
+                _qrApproving.value = false
+                onDone()
+            }.onFailure {
+                _qrApproving.value = false
+                _qrError.value = it.message ?: "Could not sign in on the web"
+            }
+        }
+    }
 
     private val _loadingOlder = MutableStateFlow<Set<String>>(emptySet())
     /** Channels with an older-page fetch in flight. */

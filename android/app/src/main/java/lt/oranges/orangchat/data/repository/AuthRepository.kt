@@ -19,6 +19,7 @@ import lt.oranges.orangchat.data.remote.DeleteAllMessagesRequest
 import lt.oranges.orangchat.data.remote.DeleteAllMessagesResult
 import lt.oranges.orangchat.data.remote.LockdownRequest
 import lt.oranges.orangchat.data.remote.LockdownResult
+import lt.oranges.orangchat.data.remote.QrTokenRequest
 import lt.oranges.orangchat.data.remote.LoginRequest
 import lt.oranges.orangchat.data.remote.RevokeResult
 import lt.oranges.orangchat.data.remote.SessionsResult
@@ -172,6 +173,12 @@ class AuthRepository @Inject constructor(
     suspend fun revokeSession(jti: String): RevokeResult = api.revokeSession(jti)
 
     suspend fun revokeOtherSessions(): RevokeResult = api.revokeOtherSessions()
+
+    /** QR sign-in: tell the server this phone scanned a web code. */
+    suspend fun qrScan(token: String) = api.qrScan(QrTokenRequest(token))
+
+    /** QR sign-in: approve the code, opening a web session for this account. */
+    suspend fun qrApprove(token: String) = api.qrApprove(QrTokenRequest(token))
 
     /** Freezes/unfreezes the account; the password is only needed to lift it. */
     suspend fun setLockdown(on: Boolean, password: String?): LockdownResult {
