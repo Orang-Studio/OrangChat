@@ -69,6 +69,25 @@ pub struct SelfUserDto {
     pub lockdown: bool,
 }
 
+/// A shareable colour theme in the marketplace.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThemeDto {
+    pub id: String,
+    pub author_id: String,
+    /// Author's display name; only populated for marketplace listings.
+    pub author_name: Option<String>,
+    pub name: String,
+    /// { "--oc-*": "colour" } - keys allow-listed, values colour-validated.
+    pub vars: Json,
+    /// The author has asked for it to be listed; awaits admin review.
+    pub submitted: bool,
+    /// Approved by an admin and live in the marketplace.
+    pub published: bool,
+    pub installs: i32,
+    pub created_at: String,
+}
+
 /// A linked external account, as shown on a profile card.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

@@ -257,3 +257,18 @@ pub struct ConnectionRow {
     #[sqlx(rename = "createdAt")]
     pub created_at: NaiveDateTime,
 }
+
+#[derive(Debug, Clone, FromRow)]
+pub struct ThemeRow {
+    pub id: String,
+    #[sqlx(rename = "authorId")]
+    pub author_id: String,
+    pub name: String,
+    /// { "--oc-*": "colour" }, validated on the way in; see services::theme.
+    pub vars: Json,
+    pub submitted: bool,
+    pub published: bool,
+    pub installs: i32,
+    #[sqlx(rename = "createdAt")]
+    pub created_at: NaiveDateTime,
+}

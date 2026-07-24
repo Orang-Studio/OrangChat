@@ -12,6 +12,7 @@ pub mod roles;
 pub mod security;
 pub mod servers;
 pub mod sounds;
+pub mod themes;
 pub mod uploads;
 
 use std::convert::Infallible;
@@ -123,6 +124,40 @@ impl<S: Send + Sync> FromRequestParts<S> for ClientIp {
     }
 }
 
+/// A request that reached the backend directly on the host, not through the
+/// public proxy. nginx sets `X-Real-IP`/`X-Forwarded-For` on everything it
+/// forwards, so their *absence* means the request never went through nginx -
+/// and since the backend isn't publicly bound, that only happens from the
+/// server itself (SSH, a local shell, a tunnel). The peer must also be loopback.
+///
+/// This is how the theme admin panel stays "in the server, not outside" without
+/// any admin account: there is no header an outside client can drop to look
+/// local, because nginx always adds one.
+pub struct LocalOnly;
+
+#[axum::async_trait]
+impl<S: Send + Sync> FromRequestParts<S> for LocalOnly {
+    type Rejection = AppError;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let forwarded = parts.headers.contains_key("x-real-ip")
+            || parts.headers.contains_key("x-forwarded-for");
+        if forwarded {
+            return Err(AppError::NotFound("Not found".into()));
+        }
+        let peer_local = parts
+            .extensions
+            .get::<ConnectInfo<SocketAddr>>()
+            .map(|ci| ci.0.ip().is_loopback())
+            // No ConnectInfo (e.g. tests) counts as local.
+            .unwrap_or(true);
+        if !peer_local {
+            return Err(AppError::NotFound("Not found".into()));
+        }
+        Ok(LocalOnly)
+    }
+}
+
 /// Coarse per-address ceiling over the whole API. Individual routes layer their
 /// own tighter quotas on top; this one only exists to stop blunt hammering.
 pub async fn api_rate_limit(
@@ -184,6 +219,7 @@ pub fn router(state: AppState) -> Router {
         .merge(push::routes())
         .merge(roles::routes())
         .merge(sounds::routes())
+        .merge(themes::routes())
         .merge(uploads::routes())
         .merge(attachments::routes())
         .layer(axum::middleware::from_fn_with_state(

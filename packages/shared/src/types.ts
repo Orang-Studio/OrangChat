@@ -80,6 +80,23 @@ export interface AccountStanding {
   entries: StandingEntry[];
 }
 
+/** A shareable colour theme in the marketplace. */
+export interface MarketplaceTheme {
+  id: string;
+  authorId: string;
+  /** Author's display name; present on marketplace listings. */
+  authorName: string | null;
+  name: string;
+  /** { "--oc-*": "colour" }; keys allow-listed, values colour-validated server-side. */
+  vars: Record<string, string>;
+  /** The author has asked for it to be listed; awaits review. */
+  submitted: boolean;
+  /** Approved and live in the marketplace. */
+  published: boolean;
+  installs: number;
+  createdAt: string;
+}
+
 /** One live session, as shown on the devices screen. */
 export interface DeviceSession {
   id: string;

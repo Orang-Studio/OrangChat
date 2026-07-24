@@ -23,6 +23,7 @@ pub mod role;
 pub mod server;
 pub mod sound;
 pub mod spotify;
+pub mod theme;
 pub mod totp;
 pub mod user;
 pub mod voice;

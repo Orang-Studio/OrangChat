@@ -1,0 +1,146 @@
+import { create } from "zustand";
+import { PLUGINS, pluginById } from "./registry";
+import { pluginDefaults, type PluginContext, type PluginSettingValues } from "./types";
+
+/**
+ * Which plugins are on, and what their settings hold. Device-local, like the
+ * rest of prefs: a plugin toggle describes this browser, not the account, so it
+ * never reaches the server.
+ */
+interface PersistedState {
+  enabled: string[];
+  settings: Record<string, PluginSettingValues>;
+}
+
+const STORAGE_KEY = "oc-plugins";
+
+function read(): PersistedState {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { enabled: [], settings: {} };
+    const parsed = JSON.parse(raw) as Partial<PersistedState>;
+    return {
+      enabled: Array.isArray(parsed.enabled) ? parsed.enabled : [],
+      settings: typeof parsed.settings === "object" && parsed.settings ? parsed.settings : {},
+    };
+  } catch {
+    return { enabled: [], settings: {} };
+  }
+}
+
+function write(state: PersistedState): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Storage unavailable (private mode) - choices just won't persist.
+  }
+}
+
+/** Teardowns for the currently-running plugins, so a toggle-off is clean. */
+const running = new Map<string, () => void>();
+
+/** Settings a plugin will see, falling back to catalog defaults per key. */
+function resolvedSettings(pluginId: string, stored: PersistedState): PluginSettingValues {
+  const plugin = pluginById(pluginId);
+  if (!plugin) return {};
+  return { ...pluginDefaults(plugin), ...(stored.settings[pluginId] ?? {}) };
+}
+
+function startPlugin(pluginId: string, stored: PersistedState): void {
+  const plugin = pluginById(pluginId);
+  if (!plugin || running.has(pluginId)) return;
+
+  const values = resolvedSettings(pluginId, stored);
+  const disposers: (() => void)[] = [];
+  const ctx: PluginContext = {
+    css: (text) => {
+      const el = document.createElement("style");
+      el.dataset.plugin = pluginId;
+      el.textContent = text;
+      document.head.appendChild(el);
+      const dispose = () => el.remove();
+      disposers.push(dispose);
+      return dispose;
+    },
+    setting: <T extends string | boolean>(key: string) => values[key] as T | undefined,
+  };
+
+  // A plugin that throws on start must not take the whole app down with it.
+  try {
+    const teardown = plugin.start(ctx);
+    if (teardown) disposers.push(teardown);
+  } catch (err) {
+    console.error(`[plugins] ${pluginId} failed to start`, err);
+  }
+  running.set(pluginId, () => {
+    for (const d of disposers) {
+      try {
+        d();
+      } catch (err) {
+        console.error(`[plugins] ${pluginId} failed to stop`, err);
+      }
+    }
+  });
+}
+
+function stopPlugin(pluginId: string): void {
+  running.get(pluginId)?.();
+  running.delete(pluginId);
+}
+
+interface PluginStore {
+  enabled: string[];
+  settings: Record<string, PluginSettingValues>;
+  isEnabled: (id: string) => boolean;
+  setEnabled: (id: string, on: boolean) => void;
+  getSetting: (id: string, key: string) => string | boolean | undefined;
+  setSetting: (id: string, key: string, value: string | boolean) => void;
+}
+
+export const usePlugins = create<PluginStore>((set, get) => ({
+  ...read(),
+
+  isEnabled: (id) => get().enabled.includes(id),
+
+  setEnabled: (id, on) => {
+    const state = { enabled: get().enabled, settings: get().settings };
+    const next: PersistedState = {
+      enabled: on ? [...new Set([...state.enabled, id])] : state.enabled.filter((x) => x !== id),
+      settings: state.settings,
+    };
+    if (on) startPlugin(id, next);
+    else stopPlugin(id);
+    write(next);
+    set({ enabled: next.enabled });
+  },
+
+  getSetting: (id, key) => {
+    const plugin = pluginById(id);
+    const fallback = plugin?.settings?.find((s) => s.key === key)?.default;
+    return get().settings[id]?.[key] ?? fallback;
+  },
+
+  setSetting: (id, key, value) => {
+    const settings = {
+      ...get().settings,
+      [id]: { ...get().settings[id], [key]: value },
+    };
+    const next: PersistedState = { enabled: get().enabled, settings };
+    // Restart so the new value takes effect: stop tears down the old CSS,
+    // start reads the fresh setting. No plugin has to handle live updates.
+    if (running.has(id)) {
+      stopPlugin(id);
+      startPlugin(id, next);
+    }
+    write(next);
+    set({ settings });
+  },
+}));
+
+/** Start every enabled plugin. Called once at app boot. */
+export function initPlugins(): void {
+  const stored = read();
+  for (const plugin of PLUGINS) {
+    if (stored.enabled.includes(plugin.id)) startPlugin(plugin.id, stored);
+  }
+}

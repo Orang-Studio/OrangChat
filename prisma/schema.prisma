@@ -54,6 +54,7 @@ model User {
   pushSubscriptions      PushSubscription[]
   auditLogEntries        AuditLog[]           @relation("AuditLogActor")
   createdEmojis          Emoji[]              @relation("EmojiCreator")
+  themes                 Theme[]
   createdSounds          Sound[]              @relation("SoundCreator")
 }
 
@@ -89,6 +90,29 @@ model Connection {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([userId, provider, providerId])
   @@index([userId])
+}
+
+/// A shareable colour theme: a map of allow-listed --oc-* CSS variables to
+/// colour values. No freeform CSS and no code - values are validated as colours
+/// server-side (see services::theme), so installing someone else's theme can
+/// only ever recolour, never script or overlay.
+model Theme {
+  id        String   @id @default(cuid())
+  authorId  String
+  name      String
+  /// { "--oc-primary": "#ff6a1a", ... } - keys allow-listed, values colour-checked.
+  vars      Json     @default("{}")
+  /// The author has asked for this to be listed; awaits admin review.
+  submitted Boolean  @default(false)
+  /// Approved by an admin and live in the marketplace.
+  published Boolean  @default(false)
+  /// How many times it's been installed; the marketplace sorts on it.
+  installs  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  @@index([authorId])
+  @@index([published, installs])
 }
 
 model TotpBackupCode {

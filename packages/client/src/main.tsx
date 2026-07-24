@@ -7,11 +7,17 @@ import { registerRealtime } from "./features/chat/realtime";
 import { initPrefs } from "./lib/prefs";
 import { initTheme } from "./lib/theme";
 import { initViewport } from "./lib/viewport";
+import { initPlugins } from "./features/plugins/store";
+import { initInstalledTheme } from "./features/plugins/themes";
 import "./styles/index.css";
 
 initTheme();
 initPrefs();
 initViewport();
+// Installed theme first (recolours variables), then enabled plugins, so a
+// plugin that reads a colour sees the theme's value, not the stock one.
+initInstalledTheme();
+initPlugins();
 
 const queryClient = new QueryClient({
   defaultOptions: {

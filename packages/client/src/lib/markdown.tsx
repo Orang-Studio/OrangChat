@@ -192,7 +192,7 @@ const INLINE_RULES: {
           title={`:${emoji.name}:`}
           loading="lazy"
           draggable={false}
-          className="inline-block size-8 align-text-bottom"
+          className="oc-emoji inline-block size-8 align-text-bottom"
         />
       );
     },
