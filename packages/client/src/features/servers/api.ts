@@ -52,3 +52,7 @@ export const updateServer = (serverId: string, input: UpdateServerInput) =>
 
 export const deleteServer = (serverId: string) =>
   api<void>(`/servers/${serverId}`, { method: "DELETE" });
+
+/** Leave a server you're a member of. The owner has to delete it instead. */
+export const leaveServer = (serverId: string) =>
+  api<void>(`/servers/${serverId}/leave`, { method: "POST" });

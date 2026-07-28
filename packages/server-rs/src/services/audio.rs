@@ -63,18 +63,13 @@ pub fn probe_duration(bytes: Vec<u8>, extension: Option<&str>) -> AppResult<f64>
 
     // No frame count in the header: add up what the packets actually carry.
     let mut frames: u64 = 0;
-    loop {
-        match format.next_packet() {
-            Ok(packet) => {
-                if packet.track_id() == track_id {
-                    frames += packet.dur();
-                }
-            }
-            // Any read error here is the end of a file we already accepted the
-            // bytes of; whatever we counted is the answer.
-            Err(_) => break,
+    while let Ok(packet) = format.next_packet() {
+        if packet.track_id() == track_id {
+            frames += packet.dur();
         }
     }
+    // Any read error here is the end of a file we already accepted the bytes
+    // of; whatever we counted is the answer.
     Ok(frames as f64 / sample_rate)
 }
 
@@ -115,7 +110,7 @@ mod tests {
         out.extend(16u16.to_le_bytes()); // bits per sample
         out.extend(b"data");
         out.extend(data_len.to_le_bytes());
-        out.extend(std::iter::repeat(0u8).take(data_len as usize));
+        out.extend(std::iter::repeat_n(0u8, data_len as usize));
         out
     }
 

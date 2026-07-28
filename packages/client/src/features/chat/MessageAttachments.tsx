@@ -1,10 +1,17 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Download, EyeOff, FileWarning, Maximize2, Paperclip, ShieldAlert } from 'lucide-react';
-import type { Attachment } from '@orangchat/shared';
+import { Download, EyeOff, FileWarning, Lock, Maximize2, Paperclip, ShieldAlert } from 'lucide-react';
+import type { Attachment, SealedAttachmentRef } from '@orangchat/shared';
 import { Button } from '../../components/ui/Button';
+import {
+  MAX_INLINE_SEALED,
+  isSealedThumbnail,
+  sealedAttachmentsOf,
+  sealedObjectUrl,
+} from '../e2ee/attachments';
 import { formatBytes } from './attachments';
 import { AudioPlayer } from './AudioPlayer';
 import { ImageLightbox } from './ImageLightbox';
+import { ImageContextMenu } from './ImageContextMenu';
 import { VideoLightbox } from './VideoLightbox';
 
 /**
@@ -146,24 +153,27 @@ export function ImagePreview({ attachment }: { attachment: Attachment }) {
     <figure className="max-w-sm">
       {/* A button, not a link: the file's own URL is served as a download, so
           navigating to it is the one thing clicking must not do. */}
-      <button
-        type="button"
-        onClick={() => setExpanded(true)}
-        aria-label={`Expand ${attachment.filename}`}
-        className="block cursor-zoom-in rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-      >
-        <img
-          src={attachment.url}
-          alt={attachment.filename}
-          // Known for local uploads (measured server-side); OrangMove files fall
-          // back to intrinsic size, so the box may shift as they load.
-          width={attachment.width}
-          height={attachment.height}
-          loading="lazy"
-          onError={() => setBroken(true)}
-          className="max-h-80 w-auto rounded-lg border border-border object-contain"
-        />
-      </button>
+      <ImageContextMenu attachment={attachment}>
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          onContextMenu={(event) => event.stopPropagation()}
+          aria-label={`Expand ${attachment.filename}`}
+          className="block cursor-zoom-in rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
+          <img
+            src={attachment.url}
+            alt={attachment.filename}
+            // Known for local uploads (measured server-side); OrangMove files fall
+            // back to intrinsic size, so the box may shift as they load.
+            width={attachment.width}
+            height={attachment.height}
+            loading="lazy"
+            onError={() => setBroken(true)}
+            className="max-h-80 w-auto rounded-lg border border-border object-contain"
+          />
+        </button>
+      </ImageContextMenu>
       <figcaption className="mt-0.5 flex items-center gap-1 text-[11px] text-ink-muted">
         <span className="truncate">{attachment.filename}</span>
         {attachment.expiresAt && (
@@ -261,13 +271,91 @@ function Body({ attachment }: { attachment: Attachment }) {
   return <FileCard attachment={attachment} />;
 }
 
+/**
+ * A file whose bytes only this device can read (docs/E2EE.md §7). Nothing in the
+ * page can point an `<img>` at it, so it is fetched, decrypted here, and handed
+ * on as an object URL - after which every renderer below behaves normally.
+ */
+function SealedBody({
+  attachment,
+  sealed,
+}: {
+  attachment: Attachment;
+  sealed: SealedAttachmentRef;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [wanted, setWanted] = useState(sealed.size <= MAX_INLINE_SEALED);
+
+  useEffect(() => {
+    if (!wanted || url || failed) return;
+    let cancelled = false;
+    void sealedObjectUrl(sealed, attachment.url)
+      .then((resolved) => !cancelled && setUrl(resolved))
+      .catch(() => !cancelled && setFailed(true));
+    return () => {
+      cancelled = true;
+    };
+  }, [wanted, url, failed, sealed, attachment.url]);
+
+  if (failed) {
+    return (
+      <div className="flex max-w-sm items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2 text-ink-muted">
+        <FileWarning aria-hidden className="size-4 shrink-0" />
+        <div className="min-w-0">
+          <p className="truncate text-xs font-medium">{sealed.filename}</p>
+          <p className="text-[11px]">This file could not be decrypted on this device</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Big files stay out of memory until asked for: decryption has one tag over
+  // the whole file, so "play inline" means "load all of it".
+  if (!wanted) {
+    return (
+      <div className="flex max-w-sm items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2">
+        <Lock aria-hidden className="size-4 shrink-0 text-ink-muted" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-medium text-ink">{sealed.filename}</p>
+          <p className="text-[11px] text-ink-muted">{formatBytes(sealed.size)} · encrypted</p>
+        </div>
+        <Button type="button" size="sm" className="shrink-0" onClick={() => setWanted(true)}>
+          Decrypt
+        </Button>
+      </div>
+    );
+  }
+
+  if (!url) {
+    return (
+      <div className="flex max-w-sm items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2 text-ink-muted">
+        <Lock aria-hidden className="size-4 shrink-0" />
+        <p className="truncate text-xs">Decrypting {sealed.filename}…</p>
+      </div>
+    );
+  }
+
+  return <Body attachment={{ ...attachment, url }} />;
+}
+
+function Resolved({ attachment }: { attachment: Attachment }) {
+  const sealed = sealedAttachmentsOf(attachment.id);
+  return sealed ? (
+    <SealedBody attachment={attachment} sealed={sealed} />
+  ) : (
+    <Body attachment={attachment} />
+  );
+}
+
 export function MessageAttachments({ attachments }: { attachments: Attachment[] }) {
   useExpiryTick(attachments);
-  if (attachments.length === 0) return null;
+  const visible = attachments.filter((attachment) => !isSealedThumbnail(attachment.id));
+  if (visible.length === 0) return null;
 
   return (
     <ul className="mt-1.5 flex flex-col gap-1.5">
-      {attachments.map((a) => (
+      {visible.map((a) => (
         <li key={a.id}>
           {/* Moderation outranks everything else until the viewer explicitly
               chooses to reveal the image. */}
@@ -277,10 +365,10 @@ export function MessageAttachments({ attachments }: { attachments: Attachment[] 
             <Expired attachment={a} />
           ) : a.spoiler ? (
             <SpoilerShade>
-              <Body attachment={a} />
+              <Resolved attachment={a} />
             </SpoilerShade>
           ) : (
-            <Body attachment={a} />
+            <Resolved attachment={a} />
           )}
         </li>
       ))}

@@ -53,14 +53,18 @@ async fn preview(
         Url::parse(&query.url).map_err(|_| AppError::BadRequest("Invalid preview URL".into()))?;
     let (final_url, html) = fetch_html(requested).await?;
     let mut result = parse_preview(&final_url, &html);
-    if let Some(image_url) = &result.image_url {
-        let is_public = match Url::parse(image_url) {
-            Ok(image) => resolve_public_destination(&image).await.is_ok(),
-            Err(_) => false,
+    if let Some(image_url) = result.image_url.take() {
+        // The thumbnail is fetched by the *viewer's* browser, so handing back the
+        // raw third-party URL would leak every reader's IP to whoever set the
+        // og:image. Route it through our signed same-origin proxy instead, and
+        // only if the host resolves public (the proxy re-checks, but no point
+        // minting a token for something it will refuse).
+        result.image_url = match Url::parse(&image_url) {
+            Ok(image) if resolve_public_destination(&image).await.is_ok() => Some(
+                super::media_proxy::sign_media_url(&state.config.jwt_access_secret, &image_url)?,
+            ),
+            _ => None,
         };
-        if !is_public {
-            result.image_url = None;
-        }
     }
     Ok(Json(result))
 }
@@ -143,7 +147,7 @@ async fn fetch_html(mut url: Url) -> AppResult<(Url, String)> {
     Err(AppError::BadRequest("Unable to fetch link preview".into()))
 }
 
-async fn resolve_public_destination(url: &Url) -> AppResult<(String, SocketAddr)> {
+pub(crate) async fn resolve_public_destination(url: &Url) -> AppResult<(String, SocketAddr)> {
     if !matches!(url.scheme(), "http" | "https")
         || !url.username().is_empty()
         || url.password().is_some()
@@ -185,7 +189,7 @@ async fn resolve_public_destination(url: &Url) -> AppResult<(String, SocketAddr)
     Ok((host, addresses[0]))
 }
 
-fn is_public_ip(ip: IpAddr) -> bool {
+pub(crate) fn is_public_ip(ip: IpAddr) -> bool {
     match ip {
         IpAddr::V4(ip) => is_public_ipv4(ip),
         IpAddr::V6(ip) => is_public_ipv6(ip),

@@ -15,12 +15,14 @@ export const signupSchema = z.object({
   username: usernameSchema,
   displayName: displayNameSchema.optional(),
   password: passwordSchema,
+  recaptchaToken: z.string().optional(),
 });
 export type SignupInput = z.infer<typeof signupSchema>;
 export const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
   totpCode: z.string().min(1).max(32).optional(),
+  recaptchaToken: z.string().optional(),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 export const dmPrivacySchema = z.enum(['everyone', 'friends', 'none']);
@@ -40,6 +42,7 @@ export const updateProfileSchema = z
     dmPrivacy: dmPrivacySchema.optional(),
     friendRequestPrivacy: friendRequestPrivacySchema.optional(),
     typingIndicators: z.boolean().optional(),
+    e2eeStrict: z.boolean().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: 'No fields to update' });
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

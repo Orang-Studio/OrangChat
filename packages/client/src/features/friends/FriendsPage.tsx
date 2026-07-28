@@ -14,6 +14,7 @@ import { panelActions } from "../../stores/panels";
 import { createDm } from "../dms/api";
 import { upsertConversation } from "../dms/queries";
 import { ProfileDialog } from "../profile/ProfileDialog";
+import { AddByCode } from "../e2ee/AddByCode";
 import {
   acceptFriendRequest,
   removeFriend,
@@ -211,13 +212,14 @@ function AddFriend() {
   });
 
   return (
+    <div className="space-y-3 pt-2">
     <form
       onSubmit={(e) => {
         e.preventDefault();
         setNotice(null);
         if (username.trim()) send.mutate();
       }}
-      className="space-y-3 pt-2"
+      className="space-y-3"
     >
       <p className="text-sm text-ink-secondary">
         Add a friend by their username.
@@ -249,6 +251,8 @@ function AddFriend() {
         <p className="rounded-lg bg-primary-soft px-3 py-2 text-sm text-success">{notice}</p>
       )}
     </form>
+    <AddByCode />
+    </div>
   );
 }
 

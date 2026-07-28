@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { AtSign, Hash, Loader2, Menu, Search, Users } from "lucide-react";
-import { Permissions, hasPermission, type Channel, type Message, type ServerMember } from "@orangchat/shared";
+import { useSearchParams } from "react-router-dom";
+import { AtSign, Hash, Loader2, Lock, Menu, Search, ShieldAlert, Users } from "lucide-react";
+import {
+  Permissions,
+  hasPermission,
+  type Channel,
+  type Message,
+  type ServerMember,
+} from "@orangchat/shared";
 import { useAuthStore } from "../../stores/auth";
 import { panelActions } from "../../stores/panels";
 import { useMyPermissions } from "../servers/queries";
@@ -10,6 +17,7 @@ import { setActiveChannel } from "../unread/active";
 import { markChannelRead } from "../unread/api";
 import { unreadActions } from "../../stores/unread";
 import { clearConversationNotifications } from "../../lib/notifications";
+import { useE2eeChannel } from "../e2ee/useE2eeChannel";
 import { useChannelRoom } from "./socket-actions";
 import { MessageList } from "./MessageList";
 import { Composer } from "./Composer";
@@ -26,17 +34,39 @@ interface ChatViewProps {
   headerSubtitle?: ReactNode;
   /** Start-of-history block; DMs pass their own instead of the #channel welcome. */
   intro?: ReactNode;
+  /**
+   * The verification affordance (§6.6). DMs pass one because only they know who
+   * the conversation is with; without it the header falls back to a plain
+   * "Encrypted" label, which is still true, just not actionable.
+   */
+  encryptionBadge?: ReactNode;
+  /** Strict-mode blocked-state copy; DMs pass one for the same reason. */
+  encryptionNotice?: ReactNode;
 }
 
 const HEADER_ICON = { dm: AtSign, group_dm: Users } as const;
 
 /** Main column: channel header, message history, typing line, composer. */
-export function ChatView({ channel, members, headerActions, headerIcon, headerSubtitle, intro }: ChatViewProps) {
+export function ChatView({
+  channel,
+  members,
+  headerActions,
+  headerIcon,
+  headerSubtitle,
+  intro,
+  encryptionBadge,
+  encryptionNotice,
+}: ChatViewProps) {
   const selfId = useAuthStore((s) => s.user?.id);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  // `?m=<id>` - what a copied message link carries. The list scrolls to it once
+  // history is in, then the param is dropped so a reload doesn't re-jump.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const jumpToId = searchParams.get("m");
 
   useChannelRoom(channel.id, channel.serverId === null);
+  const encryption = useE2eeChannel(channel.id, channel.type);
 
   // Opening a channel reads it: clear its badge and persist the read cursor.
   useEffect(() => {
@@ -76,8 +106,7 @@ export function ChatView({ channel, members, headerActions, headerIcon, headerSu
   }, [members]);
 
   const channelName = channel.name ?? "channel";
-  const HeaderIcon =
-    HEADER_ICON[channel.type as keyof typeof HEADER_ICON] ?? Hash;
+  const HeaderIcon = HEADER_ICON[channel.type as keyof typeof HEADER_ICON] ?? Hash;
 
   return (
     <section className="flex min-w-0 flex-1 flex-col bg-surface-2">
@@ -99,23 +128,29 @@ export function ChatView({ channel, members, headerActions, headerIcon, headerSu
         {channel.topic && (
           <>
             <span aria-hidden className="mx-1 hidden h-4 w-px bg-border md:block" />
-            <p className="hidden truncate text-sm text-ink-secondary md:block">
-              {channel.topic}
-            </p>
+            <p className="hidden truncate text-sm text-ink-secondary md:block">{channel.topic}</p>
           </>
         )}
         <div className="ml-auto flex items-center gap-1">
+          {encryption.encrypted &&
+            (encryptionBadge ?? (
+              <span
+                title="Messages in this conversation are end-to-end encrypted"
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-ink-muted"
+              >
+                <Lock aria-hidden className="size-4" />
+                <span className="hidden sm:inline">Encrypted</span>
+              </span>
+            ))}
           {headerActions}
-          {channel.serverId && (
-            <button
-              type="button"
-              onClick={() => setSearchOpen(true)}
-              aria-label="Search messages"
-              className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink"
-            >
-              <Search aria-hidden className="size-5" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            aria-label="Search messages"
+            className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink"
+          >
+            <Search aria-hidden className="size-5" />
+          </button>
           {channel.serverId && (
             <button
               type="button"
@@ -129,14 +164,16 @@ export function ChatView({ channel, members, headerActions, headerIcon, headerSu
         </div>
       </header>
 
-      {channel.serverId && (
-        <SearchDialog
-          serverId={channel.serverId}
-          currentChannelId={channel.id}
-          open={searchOpen}
-          onOpenChange={setSearchOpen}
-        />
-      )}
+      {/* Encrypted conversations are searched on this device: the server's
+          `content ILIKE` cannot see them at all, so routing a DM search through
+          it would return nothing and call that an answer. */}
+      <SearchDialog
+        serverId={channel.serverId ?? undefined}
+        currentChannelId={channel.id}
+        authors={members.map((m) => m.user)}
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+      />
 
       {isLoading && messages.length === 0 ? (
         <div className="flex flex-1 items-center justify-center">
@@ -156,7 +193,26 @@ export function ChatView({ channel, members, headerActions, headerIcon, headerSu
           mentionNames={mentionNames}
           mentionUsers={mentionUsers}
           intro={intro}
+          jumpToId={jumpToId}
+          onJumpHandled={() =>
+            setSearchParams(
+              (params) => {
+                params.delete("m");
+                return params;
+              },
+              { replace: true },
+            )
+          }
         />
+      )}
+
+      {encryptionNotice}
+
+      {encryption.blocker && (
+        <div className="mx-4 mb-2 flex items-start gap-2 rounded-lg border border-border px-3 py-2">
+          <ShieldAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
+          <p className="text-xs text-ink-secondary">{encryption.blocker}</p>
+        </div>
       )}
 
       <TypingIndicator channelId={channel.id} members={members} />

@@ -234,10 +234,10 @@ async fn reorder_roles(
 
     let roles = role::reorder_roles(&state, &server_id, &user.user_id, &positions).await?;
     let dtos: Vec<_> = roles.iter().map(to_role).collect();
-    let _ = state
-        .io()
-        .to(format!("server:{server_id}"))
-        .emit("roles:reordered", &json!({ "serverId": server_id, "roles": dtos }));
+    let _ = state.io().to(format!("server:{server_id}")).emit(
+        "roles:reordered",
+        &json!({ "serverId": server_id, "roles": dtos }),
+    );
     Ok(Json(json!(dtos)))
 }
 

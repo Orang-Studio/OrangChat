@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.chat
 
+import android.app.Activity
+import android.app.KeyguardManager
 import android.net.Uri
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -52,9 +54,16 @@ import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.EmojiEmotions
+import androidx.compose.material.icons.filled.GroupAdd
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
 import lt.oranges.orangchat.ui.components.Text
@@ -85,6 +94,7 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.IntOffset
@@ -102,11 +112,18 @@ import lt.oranges.orangchat.data.model.Message
 import lt.oranges.orangchat.data.model.PresenceStatus
 import lt.oranges.orangchat.data.model.ServerMember
 import lt.oranges.orangchat.data.model.User
+import lt.oranges.orangchat.crypto.SealedAttachmentRef
+import lt.oranges.orangchat.feature.home.AppViewModel
+import lt.oranges.orangchat.feature.e2ee.ConversationEncryptionDialog
+import lt.oranges.orangchat.feature.transfer.ContactQrScanner
 import lt.oranges.orangchat.data.model.UserActivity
 import lt.oranges.orangchat.ui.components.ActivityStatus
 import lt.oranges.orangchat.ui.components.Avatar
 import lt.oranges.orangchat.ui.components.MenuItem
 import lt.oranges.orangchat.ui.components.OrangDropdownMenu
+import lt.oranges.orangchat.ui.components.OrangTextField
+import lt.oranges.orangchat.ui.components.OrangButton
+import lt.oranges.orangchat.ui.components.OrangDialog
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.EmojiRef
@@ -134,8 +151,8 @@ private enum class SwipeAction { NONE, REPLY, EDIT }
  * Leftward drags only, and only once past touch slop.
  *
  * Rightward drags are deliberately left unclaimed so they reach the navigation
- * drawer, which then tracks the finger. Anything a child has already consumed —
- * a media scrubber, above all — is that child's gesture and never a swipe:
+ * drawer, which then tracks the finger. Anything a child has already consumed -
+ * a media scrubber, above all - is that child's gesture and never a swipe:
  * dragging the playhead must not also arm a reply.
  */
 private suspend fun PointerInputScope.detectSwipeToReply(
@@ -196,7 +213,7 @@ private data class MessageRowData(val message: Message, val grouped: Boolean)
 
 /**
  * Whether [message] should hide its avatar and header because it continues
- * [previous]'s run — same author, close in time, and not a reply (a reply needs
+ * [previous]'s run - same author, close in time, and not a reply (a reply needs
  * its own context line, so it always starts a fresh block).
  */
 private fun isGrouped(previous: Message?, message: Message): Boolean {
@@ -221,9 +238,15 @@ fun ChatPane(
     presence: Map<String, PresenceStatus>,
     typingUserIds: Set<String>,
     onBack: () -> Unit,
-    onSend: (content: String, replyToId: String?, attachmentIds: List<String>) -> Unit,
+    onSend: (
+        content: String,
+        replyToId: String?,
+        attachmentIds: List<String>,
+        sealedAttachments: List<SealedAttachmentRef>,
+    ) -> Unit,
     onEdit: (String, String) -> Unit,
     onDelete: (String) -> Unit,
+    onReport: (Message, String, (String?) -> Unit) -> Unit,
     onReact: (Message, String) -> Unit,
     onTyping: () -> Unit,
     modifier: Modifier = Modifier,
@@ -236,6 +259,8 @@ fun ChatPane(
     reducedMotion: Boolean = false,
     /** Non-null only for DMs / group DMs, which are the only callable channels. */
     onStartCall: ((video: Boolean) -> Unit)? = null,
+    /** Non-null only for group DMs: opens the friend picker to add people. */
+    onAddPeople: (() -> Unit)? = null,
     /** True while we are already on this conversation's call. */
     onCall: Boolean = false,
     /** The other DM participant, shown beside the conversation title. */
@@ -247,14 +272,32 @@ fun ChatPane(
     onOpenProfile: (User) -> Unit = {},
     /** emojiId -> emoji, for resolving `<:name:id>` in message text and for the picker. */
     emojis: Map<String, EmojiRef> = emptyMap(),
+    encryptionInfo: AppViewModel.ConversationEncryptionInfo? = null,
+    onResetEncryption: (() -> Unit)? = null,
+    onSetStrict: ((Boolean) -> Unit)? = null,
+    onVerifyContact: ((String, String, (Boolean, String?) -> Unit) -> Unit)? = null,
+    /** Verification for people who are not in the same room (§6.6). */
+    onCompareSafetyNumber: (
+        (String, (AppViewModel.SafetyNumberVerdict) -> Unit) -> Unit
+    )? = null,
 ) {
     val customEmojis = remember(emojis) { emojis.values.sortedBy { it.name.lowercase() } }
     val c = OrangTheme.colors
     val listState = rememberLazyListState()
+    var reportTarget by remember { mutableStateOf<Message?>(null) }
+    var reportReason by remember { mutableStateOf("") }
+    var reportSending by remember { mutableStateOf(false) }
+    var reportSent by remember { mutableStateOf(false) }
+    var reportError by remember { mutableStateOf<String?>(null) }
+    var contactScannerOpen by remember { mutableStateOf(false) }
+    var scannedContactCode by remember { mutableStateOf<String?>(null) }
+    var contactVerifyBusy by remember { mutableStateOf(false) }
+    var contactVerifyError by remember { mutableStateOf<String?>(null) }
+    var contactVerified by remember { mutableStateOf(false) }
 
     // Rendered newest-first into a reverseLayout list, so index 0 is the visual
     // bottom. This is what pins the view to the newest message and keeps the
-    // viewport still when an older page is prepended — the browser client gets
+    // viewport still when an older page is prepended - the browser client gets
     // the same property from `flex-col-reverse`. Grouping is decided on the
     // chronological order first, then the rows are flipped for display.
     val rows = remember(messages) {
@@ -266,7 +309,7 @@ fun ChatPane(
     // Ask for the page before the oldest row once it comes into view. Driven by
     // the *last* visible index (the visual top under reverseLayout) rather than
     // by messages.size, so a prepended page cannot retrigger the load that
-    // produced it — that feedback loop used to pull the whole channel in at once.
+    // produced it - that feedback loop used to pull the whole channel in at once.
     LaunchedEffect(listState, rows.size) {
         snapshotFlow {
             val last = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
@@ -304,9 +347,16 @@ fun ChatPane(
 
     // Swipe-to-reply target, cleared once the reply is sent or dismissed.
     var replyTo by remember { mutableStateOf<Message?>(null) }
+    var encryptionOpen by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val relaxStrict = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) onSetStrict?.invoke(false)
+    }
 
     // Tapping a reply's quoted line jumps to what it answers. Only messages
-    // already loaded can be reached — an unloaded parent renders no quote line
+    // already loaded can be reached - an unloaded parent renders no quote line
     // to tap in the first place, so there is nothing to jump to.
     val jumpScope = rememberCoroutineScope()
     var highlightedId by remember { mutableStateOf<String?>(null) }
@@ -370,6 +420,21 @@ fun ChatPane(
                     Text(topic, color = c.inkMuted, fontSize = 12.sp, maxLines = 1)
                 }
             }
+            if (encryptionInfo != null) {
+                Icon(
+                    imageVector = if (encryptionInfo.verified) Icons.Default.Shield else Icons.Default.Lock,
+                    contentDescription = if (encryptionInfo.verified) {
+                        "Encrypted and verified"
+                    } else {
+                        "Encrypted"
+                    },
+                    tint = c.inkSecondary,
+                    modifier = Modifier
+                        .clickable { encryptionOpen = true }
+                        .padding(6.dp)
+                        .size(20.dp),
+                )
+            }
             if (onStartCall != null) {
                 Icon(
                     Icons.Default.Call,
@@ -386,6 +451,17 @@ fun ChatPane(
                     tint = if (onCall) c.inkMuted.copy(alpha = 0.4f) else c.inkSecondary,
                     modifier = Modifier
                         .clickable(enabled = !onCall) { onStartCall(true) }
+                        .padding(6.dp)
+                        .size(20.dp),
+                )
+            }
+            if (onAddPeople != null) {
+                Icon(
+                    Icons.Default.GroupAdd,
+                    contentDescription = "Add people",
+                    tint = c.inkSecondary,
+                    modifier = Modifier
+                        .clickable(onClick = onAddPeople)
                         .padding(6.dp)
                         .size(20.dp),
                 )
@@ -419,6 +495,7 @@ fun ChatPane(
                     onReply = { replyTo = it },
                     onEdit = onEdit,
                     onDelete = onDelete,
+                    onReport = { reportTarget = it },
                     onReact = onReact,
                     onOpenProfile = onOpenProfile,
                     emojis = emojis,
@@ -433,6 +510,51 @@ fun ChatPane(
                     ) {
                         CircularProgressIndicator(color = c.inkMuted, modifier = Modifier.size(18.dp))
                     }
+                }
+            }
+        }
+
+        // A conversation still in plaintext says so, and names who it is waiting
+        // on, rather than just showing no padlock and letting people assume
+        // (docs/E2EE.md §10.1).
+        encryptionInfo?.waitingOn?.takeIf { it.isNotEmpty() }?.let { waiting ->
+            val names = waiting.mapNotNull(nameOf)
+            val who = when (names.size) {
+                0 -> "Someone here"
+                1 -> names[0]
+                2 -> "${names[0]} and ${names[1]}"
+                else -> "${names.dropLast(1).joinToString(", ")} and ${names.last()}"
+            }
+            val one = waiting.size == 1
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .background(c.warning.copy(alpha = 0.12f), RoundedCornerShape(OrangRadius.lg))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    Icons.Default.LockOpen,
+                    contentDescription = null,
+                    tint = c.warning,
+                    modifier = Modifier.size(16.dp),
+                )
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "This conversation is not encrypted yet",
+                        color = c.ink,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        "$who ${if (one) "has" else "have"} not set up encryption on any device, " +
+                            "and a locked message needs a key on their side to open it. " +
+                            "Messages here are stored the ordinary way until then - it switches on by itself " +
+                            "the moment ${if (one) "they open" else "they all open"} OrangChat on a phone or computer.",
+                        color = c.inkSecondary,
+                        fontSize = 11.sp,
+                    )
                 }
             }
         }
@@ -484,14 +606,243 @@ fun ChatPane(
             }
         }
         Composer(
-            onSend = { content, attachmentIds ->
-                onSend(content, replyTo?.id, attachmentIds)
+            onSend = { content, attachmentIds, sealedAttachments ->
+                onSend(content, replyTo?.id, attachmentIds, sealedAttachments)
                 replyTo = null
             },
             onTyping = onTyping,
             channelId = channelId,
             customEmojis = customEmojis,
             members = members,
+        )
+    }
+
+    if (encryptionOpen && encryptionInfo != null) {
+        ConversationEncryptionDialog(
+            info = encryptionInfo,
+            peerName = headerUser?.displayName,
+            canScan = headerUser != null && onVerifyContact != null,
+            onScan = {
+                encryptionOpen = false
+                contactScannerOpen = true
+            },
+            onSetStrict = onSetStrict,
+            onRelaxStrict = {
+                val keyguard = context.getSystemService(KeyguardManager::class.java)
+                val intent = keyguard?.createConfirmDeviceCredentialIntent(
+                    "Send without checking them first",
+                    "Confirm your screen lock before letting messages go to an unchecked contact.",
+                )
+                if (intent != null) relaxStrict.launch(intent)
+            },
+            onResetEncryption = onResetEncryption,
+            onCompareSafetyNumber = onCompareSafetyNumber,
+            onDismiss = { encryptionOpen = false },
+        )
+    }
+
+    reportTarget?.let { target ->
+        AlertDialog(
+            onDismissRequest = {
+                if (!reportSending) {
+                    reportTarget = null
+                    reportReason = ""
+                    reportError = null
+                    reportSent = false
+                }
+            },
+            title = {
+                Text(
+                    if (reportSent) "Report received" else "Report message",
+                    color = c.ink,
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (reportSent) {
+                        Text(
+                            if (target.ciphertext != null) {
+                                "Only this message was disclosed. OrangChat verified its encryption tag and sender-device signature; the rest of the conversation remains private."
+                            } else {
+                                "The message was preserved for review."
+                            },
+                            color = c.inkSecondary,
+                            fontSize = 14.sp,
+                        )
+                    } else {
+                        Text(
+                            "Report ${target.author.displayName}'s message for review?",
+                            color = c.inkSecondary,
+                            fontSize = 14.sp,
+                        )
+                        Text(
+                            target.content.ifBlank { "Attachment-only message" },
+                            color = c.ink,
+                            fontSize = 13.sp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(c.surface1, RoundedCornerShape(12.dp))
+                                .padding(12.dp),
+                        )
+                        if (target.ciphertext != null) {
+                            Text(
+                                "Reporting reveals this one decrypted message and a one-message key. It does not reveal the conversation key or any other message.",
+                                color = c.inkMuted,
+                                fontSize = 12.sp,
+                            )
+                        }
+                        OrangTextField(
+                            value = reportReason,
+                            onValueChange = { reportReason = it.take(1000) },
+                            label = "What happened? (optional)",
+                            placeholder = "Add context for the reviewer",
+                        )
+                        Text(
+                            "${reportReason.length}/1000",
+                            color = c.inkMuted,
+                            fontSize = 11.sp,
+                            modifier = Modifier.align(Alignment.End),
+                        )
+                        reportError?.let { Text(it, color = c.danger, fontSize = 12.sp) }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !reportSending,
+                    onClick = {
+                        if (reportSent) {
+                            reportTarget = null
+                            reportReason = ""
+                            reportSent = false
+                        } else {
+                            reportSending = true
+                            reportError = null
+                            onReport(target, reportReason) { error ->
+                                reportSending = false
+                                reportError = error
+                                reportSent = error == null
+                            }
+                        }
+                    },
+                ) {
+                    if (reportSending) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = c.danger,
+                        )
+                    } else {
+                        Text(if (reportSent) "Done" else "Send report", color = if (reportSent) c.primary else c.danger)
+                    }
+                }
+            },
+            dismissButton = if (reportSent) null else {
+                {
+                    TextButton(
+                        enabled = !reportSending,
+                        onClick = {
+                            reportTarget = null
+                            reportReason = ""
+                            reportError = null
+                        },
+                    ) { Text("Cancel", color = c.inkSecondary) }
+                }
+            },
+        )
+    }
+
+    if (contactScannerOpen) {
+        OrangDialog(
+            onDismiss = { contactScannerOpen = false },
+            title = "Scan verification code",
+        ) {
+            ContactQrScanner(
+                onScanned = {
+                    contactScannerOpen = false
+                    scannedContactCode = it
+                    contactVerifyError = null
+                    contactVerified = false
+                },
+                onCancel = { contactScannerOpen = false },
+            )
+        }
+    }
+
+    scannedContactCode?.let { raw ->
+        val contact = headerUser
+        AlertDialog(
+            onDismissRequest = {
+                if (!contactVerifyBusy) {
+                    scannedContactCode = null
+                    contactVerifyError = null
+                    contactVerified = false
+                }
+            },
+            title = {
+                Text(
+                    if (contactVerified) {
+                        "Checked"
+                    } else {
+                        "Is this ${contact?.displayName ?: "the right person"}?"
+                    },
+                    color = c.ink,
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        if (contactVerified) {
+                            "This phone will remember the lock you saw in person, so a swapped one no longer matches. Now show them your own code - one scan only proves one direction."
+                        } else {
+                            "This phone will remember the lock on that code as theirs, and warn you if it ever changes. Only continue if this person showed you the code themselves."
+                        },
+                        color = c.inkSecondary,
+                        fontSize = 14.sp,
+                    )
+                    contactVerifyError?.let { Text(it, color = c.danger, fontSize = 12.sp) }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !contactVerifyBusy && contact != null && onVerifyContact != null,
+                    onClick = {
+                        if (contactVerified) {
+                            scannedContactCode = null
+                            contactVerified = false
+                        } else if (contact != null && onVerifyContact != null) {
+                            contactVerifyBusy = true
+                            contactVerifyError = null
+                            onVerifyContact(raw, contact.id) { ok, error ->
+                                contactVerifyBusy = false
+                                contactVerifyError = error
+                                contactVerified = ok
+                            }
+                        }
+                    },
+                ) {
+                    if (contactVerifyBusy) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = c.primary,
+                        )
+                    } else {
+                        Text(if (contactVerified) "Done" else "Yes, that's them", color = c.primary)
+                    }
+                }
+            },
+            dismissButton = if (contactVerified) null else {
+                {
+                    TextButton(
+                        enabled = !contactVerifyBusy,
+                        onClick = {
+                            scannedContactCode = null
+                            contactVerifyError = null
+                        },
+                    ) { Text("Cancel", color = c.inkSecondary) }
+                }
+            },
         )
     }
 }
@@ -518,11 +869,17 @@ private fun MessageRow(
     onReply: (Message) -> Unit,
     onEdit: (String, String) -> Unit,
     onDelete: (String) -> Unit,
+    onReport: (Message) -> Unit,
     onReact: (Message, String) -> Unit,
     onOpenProfile: (User) -> Unit,
     emojis: Map<String, EmojiRef>,
 ) {
     val c = OrangTheme.colors
+    val renderEmojis = remember(emojis, message.emojis) {
+        emojis + message.emojis.associate {
+            it.id to EmojiRef(it.id, it.name, it.url, it.animated)
+        }
+    }
     var menuOpen by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
     var editText by remember(message.id) { mutableStateOf(message.content) }
@@ -708,9 +1065,9 @@ private fun MessageRow(
                 Composer(
                     initial = editText,
                     submitLabel = "Save",
-                    // Editing text only — attachments are fixed once sent, so no
+                    // Editing text only - attachments are fixed once sent, so no
                     // channelId and no picker here.
-                    onSend = { content, _ -> onEdit(message.id, content); editing = false },
+                    onSend = { content, _, _ -> onEdit(message.id, content); editing = false },
                     onTyping = {},
                     members = members,
                 )
@@ -722,7 +1079,7 @@ private fun MessageRow(
                         mentionNames = mentionNames,
                         mentionUsers = mentionUsers,
                         selfId = selfId,
-                        emojis = emojis,
+                        emojis = renderEmojis,
                         fontSize = 15.sp,
                     )
                 }
@@ -779,6 +1136,12 @@ private fun MessageRow(
                     if (isMine) {
                         add(MenuItem("Edit", Icons.Default.Edit) { editing = true })
                         add(MenuItem("Delete", Icons.Default.Delete, destructive = true) { onDelete(message.id) })
+                    } else {
+                        add(
+                            MenuItem("Report message", Icons.Default.Flag, destructive = true) {
+                                onReport(message)
+                            },
+                        )
                     }
                 },
             )
@@ -807,6 +1170,7 @@ private fun EmojiPicker(expanded: Boolean, onDismiss: () -> Unit, onPick: (Strin
             onPick(emoji)
         }
     }
+
 }
 
 /** A `@query` fragment ending at the caret, at line start or after whitespace. */
@@ -822,13 +1186,17 @@ private fun activeMentionQuery(text: String, caret: Int): MentionQuery? {
 }
 
 /**
- * The message box. [channelId] non-null turns on attachments — it's null when
+ * The message box. [channelId] non-null turns on attachments - it's null when
  * this is reused to edit an existing message, which can only change text.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun Composer(
-    onSend: (content: String, attachmentIds: List<String>) -> Unit,
+    onSend: (
+        content: String,
+        attachmentIds: List<String>,
+        sealedAttachments: List<SealedAttachmentRef>,
+    ) -> Unit,
     onTyping: () -> Unit,
     initial: String = "",
     submitLabel: String? = null,
@@ -842,7 +1210,7 @@ private fun Composer(
     val c = OrangTheme.colors
     // TextFieldState rather than a plain String: keyboard content (GIFs,
     // stickers, pasted screenshots) arrives through commitContent, and only the
-    // state-based BasicTextField wires that up — see contentReceiver below.
+    // state-based BasicTextField wires that up - see contentReceiver below.
     val textState = rememberTextFieldState(initial)
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -905,7 +1273,7 @@ private fun Composer(
     // The picker returns content uris; uploading starts immediately.
     val picker = rememberLauncherForActivityResult(
         ActivityResultContracts.GetMultipleContents(),
-    ) { uris -> drafts.add(uris) }
+    ) { uris -> drafts.add(uris, channelId) }
 
     // Was an onValueChange side effect before the state migration. Also persists
     // the draft as it's typed. Keyed on channelId so a channel switch routes
@@ -921,7 +1289,7 @@ private fun Composer(
 
     /**
      * Images handed over by the keyboard. Declaring this is also what tells the
-     * IME we take them at all — without a receiver, Gboard greys out its GIF and
+     * IME we take them at all - without a receiver, Gboard greys out its GIF and
      * sticker tabs with "this app does not support images here".
      *
      * Compose has already called requestPermission() on the IME's content uri by
@@ -938,7 +1306,7 @@ private fun Composer(
                     val uri = item.uri
                     if (uri == null) false else { received.add(uri); true }
                 }
-                if (received.isNotEmpty()) drafts.add(received)
+                if (received.isNotEmpty()) drafts.add(received, channelId)
                 return remaining
             }
         }
@@ -1001,7 +1369,7 @@ private fun Composer(
                 },
                 // GIFs are standalone messages. Any text or attachment draft
                 // stays in place for the user's next send.
-                onGif = { url -> onSend(url, emptyList()) },
+                onGif = { url -> onSend(url, emptyList(), emptyList()) },
             )
         }
         if (channelId != null) {
@@ -1031,7 +1399,7 @@ private fun Composer(
                 textStyle = TextStyle(color = c.ink, fontSize = 15.sp),
                 cursorBrush = SolidColor(c.primary),
                 lineLimits = TextFieldLineLimits.MultiLine(),
-                // BasicTextField defaults to no capitalization — that default is
+                // BasicTextField defaults to no capitalization - that default is
                 // why Gboard auto-capitalized everywhere but here.
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Sentences,
@@ -1050,8 +1418,13 @@ private fun Composer(
         }
         Spacer(Modifier.width(8.dp))
         // Attachments can carry a message on their own, so blank text is fine as
-        // long as something is going with it — but not while it's still uploading.
-        val ready = uploads.mapNotNull { it.attachment?.id }
+        // long as something is going with it - but not while it's still uploading.
+        // Both the sealed file and the sealed preview beside it: an attachment id
+        // the message never claims is swept as an abandoned upload, which took the
+        // thumbnail out from under every ref that pointed at it.
+        val ready = uploads.flatMap { upload ->
+            listOfNotNull(upload.attachment?.id, upload.sealed?.thumb?.attachmentId)
+        }
         val enabled = (textState.text.isNotBlank() || ready.isNotEmpty()) &&
             uploads.none { !it.settled } &&
             uploads.none { it.error != null }
@@ -1060,7 +1433,11 @@ private fun Composer(
                 .size(44.dp)
                 .background(if (enabled) c.primary else c.surface4, CircleShape)
                 .clickable(enabled = enabled) {
-                    onSend(textState.text.toString().trim(), ready)
+                    onSend(
+                        textState.text.toString().trim(),
+                        ready,
+                        uploads.mapNotNull { it.sealed },
+                    )
                     textState.setTextAndPlaceCursorAtEnd("")
                     drafts.clear()
                     channelId?.let { textDrafts.clear(it) }

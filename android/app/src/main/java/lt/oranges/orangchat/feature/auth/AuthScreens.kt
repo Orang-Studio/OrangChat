@@ -65,13 +65,20 @@ fun AuthScreens(viewModel: AuthViewModel = hiltViewModel()) {
             Spacer(Modifier.height(28.dp))
 
             if (showSignup) {
-                SignupForm(state = state, onSubmit = viewModel::signup, onChange = viewModel::clearError)
+                SignupForm(
+                    state = state,
+                    onSubmit = viewModel::signup,
+                    onChange = viewModel::clearError,
+                )
             } else {
                 LoginForm(
                     state = state,
                     onSubmit = { e, p, code -> viewModel.login(e, p, code) },
                     onChange = viewModel::clearError,
                     onCancelTwoFactor = viewModel::cancelTwoFactor,
+                    onVerifyEmailCode = viewModel::verifyEmailCode,
+                    onResendEmailCode = viewModel::resendEmailCode,
+                    onCancelEmailCode = viewModel::cancelEmailCode,
                 )
             }
 
@@ -82,7 +89,7 @@ fun AuthScreens(viewModel: AuthViewModel = hiltViewModel()) {
                 color = c.primary,
                 fontSize = 14.sp,
                 modifier = Modifier.clickable {
-                    viewModel.clearError()
+                    viewModel.dismissVerificationNotice()
                     showSignup = !showSignup
                 },
             )
@@ -96,11 +103,57 @@ private fun LoginForm(
     onSubmit: (String, String, String?) -> Unit,
     onChange: () -> Unit,
     onCancelTwoFactor: () -> Unit,
+    onVerifyEmailCode: (String) -> Unit,
+    onResendEmailCode: () -> Unit,
+    onCancelEmailCode: () -> Unit,
 ) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var code by rememberSaveable { mutableStateOf("") }
+    var emailCode by rememberSaveable { mutableStateOf("") }
     var reveal by remember { mutableStateOf(false) }
+
+    // Every login ends here: the password (and any authenticator code) checked
+    // out, and the server mailed a one-time code to finish the sign-in with.
+    if (state.loginToken != null) {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
+            Text(
+                "We emailed you a sign-in code. It expires in 10 minutes.",
+                color = OrangTheme.colors.inkSecondary,
+                fontSize = 14.sp,
+            )
+            OrangTextField(
+                value = emailCode,
+                onValueChange = { emailCode = it.take(12); onChange() },
+                label = "Email code",
+                placeholder = "123456",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            )
+            NoticeText(state.notice)
+            ErrorText(state.error)
+            OrangButton(
+                text = "Sign in",
+                onClick = { onVerifyEmailCode(emailCode) },
+                size = ButtonSize.Lg,
+                enabled = emailCode.isNotBlank(),
+                loading = state.loading,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OrangButton(
+                text = "Send a new code",
+                onClick = { emailCode = ""; onResendEmailCode() },
+                variant = ButtonVariant.Ghost,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OrangButton(
+                text = "Back",
+                onClick = { emailCode = ""; code = ""; password = ""; onCancelEmailCode() },
+                variant = ButtonVariant.Ghost,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        return
+    }
 
     // The password already checked out; all that's left is the second factor.
     if (state.needsTwoFactor) {
@@ -171,6 +224,21 @@ private fun SignupForm(
     var password by rememberSaveable { mutableStateOf("") }
     var reveal by remember { mutableStateOf(false) }
 
+    // Signup no longer signs anyone in - the account is unusable until the
+    // emailed link is opened, so say that instead of dropping them on a form
+    // that would just answer "verify your email first".
+    if (state.verificationSent) {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
+            Text(
+                "Account created. Check your email for a verification link - " +
+                    "you'll need to open it before you can log in.",
+                color = OrangTheme.colors.inkSecondary,
+                fontSize = 14.sp,
+            )
+        }
+        return
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
         OrangTextField(
             value = email,
@@ -183,7 +251,7 @@ private fun SignupForm(
             value = username,
             onValueChange = { username = it.lowercase(); onChange() },
             label = "Username",
-            hint = "Lowercase letters, digits, _ and . — 2 to 32 chars",
+            hint = "Lowercase letters, digits, _ and . - 2 to 32 chars",
         )
         OrangTextField(
             value = displayName,
@@ -219,6 +287,13 @@ private fun RevealToggle(revealed: Boolean, onToggle: () -> Unit) {
         tint = c.inkMuted,
         modifier = Modifier.clickable(onClick = onToggle).padding(4.dp),
     )
+}
+
+@Composable
+private fun NoticeText(notice: String?) {
+    if (notice != null) {
+        Text(notice, color = OrangTheme.colors.inkSecondary, fontSize = 14.sp)
+    }
 }
 
 @Composable

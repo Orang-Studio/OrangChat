@@ -1,7 +1,7 @@
 -- Profile badges (early developer, early member, bonfire), stored as catalog
 -- slugs directly on the user rather than in a join table: there are a handful of
 -- them, they change rarely, and every profile read already does `SELECT * FROM
--- "User"` — so this keeps badges free at read time and the DTO mappers sync.
+-- "User"` - so this keeps badges free at read time and the DTO mappers sync.
 --
 -- Additive with a default, so it can be applied ahead of the deploy.
 

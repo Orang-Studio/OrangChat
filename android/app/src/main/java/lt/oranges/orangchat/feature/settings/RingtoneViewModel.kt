@@ -16,7 +16,7 @@ import javax.inject.Inject
 
 /**
  * The custom call ringtone. Entirely device-local: the picked file is never
- * uploaded and never leaves the phone — only its content:// URI is kept, in the
+ * uploaded and never leaves the phone - only its content:// URI is kept, in the
  * app's encrypted prefs, so the server knows nothing about it.
  */
 @HiltViewModel

@@ -113,7 +113,7 @@ private fun ProfileCardNative(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = user.displayName.ifBlank { "—" },
+                            text = user.displayName.ifBlank { "-" },
                             color = c.ink,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,

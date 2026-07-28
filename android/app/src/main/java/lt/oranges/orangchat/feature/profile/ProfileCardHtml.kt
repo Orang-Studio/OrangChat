@@ -32,18 +32,21 @@ fun buildProfileCardHtml(
     val status = presence ?: user.status
     val displayName = user.displayName
     val username = user.username
-    val deviceStatus = if (status == PresenceStatus.OFFLINE) "" else user.devices.joinToString("") { device ->
-        val (symbol, label) = when (device.name) {
-            "MOBILE" -> "&#128241;" to "Mobile"
-            "DESKTOP" -> "&#128421;" to "Desktop app"
-            else -> "&#127760;" to "Browser"
+    val devices = if (status == PresenceStatus.OFFLINE || user.devices.isEmpty()) "" else {
+        val icons = user.devices.joinToString("") { device ->
+            val (symbol, label) = when (device.name) {
+                "MOBILE" -> "&#128241;" to "Mobile"
+                "DESKTOP" -> "&#128421;" to "Desktop app"
+                else -> "&#127760;" to "Browser"
+            }
+            """<span class="oc-pf-device" data-device="${device.name.lowercase()}" title="$label">$symbol</span>"""
         }
-        """<span class="oc-pf-device" title="$label">$symbol</span>"""
+        """<span class="oc-pf-devices">$icons</span>"""
     }
     val activity = (user.activities.firstOrNull { it.kind == "spotify" } ?: user.activities.firstOrNull())?.let {
         val prefix = if (it.kind == "spotify") "Listening to" else "Playing"
-        val detail = it.details?.let { text -> " — ${text.escapeHtml()}" } ?: ""
-        """<p class="oc-pf-activity">$prefix <strong>${it.name.escapeHtml()}</strong>$detail</p>"""
+        val detail = it.details?.let { text -> " - ${text.escapeHtml()}" } ?: ""
+        """<p class="oc-pf-activity" data-kind="${it.kind.escapeAttr()}"><span class="oc-pf-activity-text">$prefix <span class="oc-pf-activity-name">${it.name.escapeHtml()}</span>$detail</span></p>"""
     } ?: ""
 
     val bannerInner = banner?.let { """<img class="oc-pf-banner-img" src="${it.escapeAttr()}" alt="">""" } ?: ""
@@ -55,26 +58,29 @@ fun buildProfileCardHtml(
     val pronouns = user.pronouns?.takeIf { it.isNotBlank() }
         ?.let { """<span class="oc-pf-pronouns">${it.escapeHtml()}</span>""" } ?: ""
     // Same oc-pf-badge* hook classes as the web card, so one bit of profile CSS
-    // styles both. Colours are inline because the catalog owns them, not the theme.
-    val badges = Badge.resolve(user.badges).takeIf { it.isNotEmpty() }?.let { list ->
-        val pills = list.joinToString("") { badge ->
-            val hex = badge.color.css()
-            """<span class="oc-pf-badge" style="color:$hex;border-color:$hex;" title="${badge.description.escapeAttr()}">${badge.label.escapeHtml()}</span>"""
+    // styles both. Each badge is artwork served from the web app's /badges/.
+    val resolvedBadges = Badge.resolve(user.badges)
+    val badgeUrls = resolvedBadges.map { "$BACKEND_ORIGIN/badges/${it.slug}.svg" }
+    val badges = resolvedBadges.takeIf { it.isNotEmpty() }?.let { list ->
+        val imgs = list.joinToString("") { badge ->
+            val src = "$BACKEND_ORIGIN/badges/${badge.slug}.svg"
+            val alt = "${badge.label}: ${badge.description}".escapeAttr()
+            """<img class="oc-pf-badge oc-pf-badge-${badge.slug.replace('_', '-')}" data-badge="${badge.slug.escapeAttr()}" src="${src.escapeAttr()}" alt="$alt" title="$alt">"""
         }
-        """<div class="oc-pf-badges">$pills</div>"""
+        """<div class="oc-pf-badges">$imgs</div>"""
     } ?: ""
     val bio = user.bio?.takeIf { it.isNotBlank() }?.let {
-        """<div class="oc-pf-bio"><h3 class="oc-pf-heading">About me</h3><p class="oc-pf-bio-text">${it.escapeHtml()}</p></div>"""
+        """<div class="oc-pf-bio oc-pf-section"><h3 class="oc-pf-heading">About me</h3><p class="oc-pf-bio-text">${it.escapeHtml()}</p></div>"""
     } ?: ""
     val member = user.createdAt.takeIf { it.isNotBlank() }?.let {
-        """<div class="oc-pf-member"><h3 class="oc-pf-heading">Member since</h3><p class="oc-pf-member-text">${formatFullTime(it).escapeHtml()}</p></div>"""
+        """<div class="oc-pf-member oc-pf-section"><h3 class="oc-pf-heading">Member since</h3><p class="oc-pf-member-text">${formatFullTime(it).escapeHtml()}</p></div>"""
     } ?: ""
 
-    // Avatars and banners are not all on the backend — Cloudinary serves its own
-    // origin — so the policy has to name wherever this card's images actually
+    // Avatars and banners are not all on the backend - Cloudinary serves its own
+    // origin - so the policy has to name wherever this card's images actually
     // came from. Only those two URLs are ever put in the document, and
     // shouldInterceptRequest still hard-blocks anything else.
-    val imageAllowlist = setOfNotNull(avatar, banner)
+    val imageAllowlist = setOfNotNull(avatar, banner) + badgeUrls
     val imgSrc = (listOf(BACKEND_ORIGIN) + imageAllowlist.mapNotNull(::originOf))
         .distinct()
         .joinToString(" ")
@@ -90,13 +96,13 @@ fun buildProfileCardHtml(
 <style>$themeCss</style>
 </head>
 <body>
-<div class="oc-profile-card">
+<div class="oc-profile-card" data-status="${(status ?: PresenceStatus.OFFLINE).name.lowercase()}" data-has-banner="${banner != null}" data-has-avatar="${avatar != null}">
   <div class="oc-pf-banner">$bannerInner</div>
   <div class="oc-pf-inner">
     <div class="oc-pf-avatar"><span class="oc-pf-avatar-frame">$avatarInner</span></div>
     <div class="oc-pf-body">
-      <div class="oc-pf-head"><h2 class="oc-pf-name">${displayName.ifBlank { "—" }.escapeHtml()}</h2>$pronouns</div>
-      <div class="oc-pf-identity"><p class="oc-pf-username">@${username.ifBlank { "username" }.escapeHtml()}</p>$deviceStatus</div>
+      <div class="oc-pf-head"><h2 class="oc-pf-name">${displayName.ifBlank { "-" }.escapeHtml()}</h2>$pronouns</div>
+      <div class="oc-pf-identity"><p class="oc-pf-username">@${username.ifBlank { "username" }.escapeHtml()}</p>$devices</div>
       $activity
       $badges
       $bio
@@ -113,7 +119,7 @@ fun buildProfileCardHtml(
 
 /**
  * The `scheme://host[:port]` of [url], which is the granularity CSP source
- * expressions work at. Null if it will not parse — such a URL is not going to
+ * expressions work at. Null if it will not parse - such a URL is not going to
  * load either, so naming it in the policy would achieve nothing.
  */
 internal fun originOf(url: String): String? = try {
@@ -139,6 +145,7 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 .oc-profile-card {
+  --oc-pf-accent: $accent;
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -147,7 +154,7 @@ body {
   border-radius: 7px;
   background: ${c.surface2.css()};
 }
-.oc-pf-banner { height: 80px; width: 100%; background: $accent; }
+.oc-pf-banner { height: 80px; width: 100%; background: var(--oc-pf-accent); }
 .oc-pf-banner-img { height: 100%; width: 100%; object-fit: cover; display: block; }
 .oc-pf-inner { padding: 0 16px 16px; }
 .oc-pf-avatar { margin-top: -36px; margin-bottom: 8px; }
@@ -168,14 +175,12 @@ body {
   font-size: 24px; font-weight: 600; line-height: 1;
 }
 .oc-pf-identity { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.oc-pf-devices { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .oc-pf-device { color: ${statusDotColor(status ?: PresenceStatus.OFFLINE, c).css()}; font-size: 13px; line-height: 1; }
+.oc-pf-activity-name { font-weight: 500; color: ${c.inkSecondary.css()}; }
 .oc-pf-activity { margin-top: 4px; color: ${c.inkMuted.css()}; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.oc-pf-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.oc-pf-badge {
-  display: inline-flex; align-items: center; gap: 4px;
-  border: 1px solid; border-radius: 6px; padding: 2px 6px;
-  font-size: 11px; font-weight: 500;
-}
+.oc-pf-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 8px; }
+.oc-pf-badge { width: 20px; height: 20px; display: block; object-fit: contain; }
 .oc-pf-body { border-radius: 7px; background: ${c.surface1.css()}; padding: 12px; }
 .oc-pf-head { display: flex; align-items: baseline; gap: 8px; }
 .oc-pf-name {

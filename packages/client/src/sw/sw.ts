@@ -1,0 +1,217 @@
+/// <reference lib="webworker" />
+// Straight from the crypto module rather than the package barrel: the barrel
+// pulls in the zod schemas and everything else the app needs, none of which a
+// notification path has any use for.
+import {
+  decodeEnvelope,
+  decodeMessagePayload,
+  fromBase64,
+  importSigningPublicKey,
+  openMessage,
+} from '@orangchat/shared/e2ee';
+
+/**
+ * The service worker. Two jobs: render notifications, and open the encrypted
+ * ones itself (docs/E2EE.md §8).
+ *
+ * The server has no body to compose for an encrypted conversation, so it sends
+ * the envelope instead. Everything needed to open it is already in this origin's
+ * IndexedDB - the identity key handles, the sealed conversation keys, and the
+ * signing keys of devices whose chain the app has already replayed - and none of
+ * it is extractable, so a worker that can *use* them still cannot leak them.
+ *
+ * Failure is a placeholder, never nothing. "New message from Vakaris" is an
+ * acceptable notification; a swallowed exception that shows nothing is the bug
+ * this file exists to avoid.
+ */
+
+declare const self: ServiceWorkerGlobalScope;
+
+interface PushPayload {
+  kind: 'message' | 'call' | 'read' | 'security';
+  title: string;
+  body: string;
+  href?: string;
+  tag: string;
+  icon?: string | null;
+  channelId: string;
+  messageId?: string | null;
+  senderId: string;
+  senderName: string;
+  isGroup: boolean;
+  ciphertext?: string;
+  encEpoch?: number;
+}
+
+const DB_NAME = 'orangchat-e2ee';
+const EPOCH_KEYS = 'epochKeys';
+const HEADS = 'heads';
+const DEVICE_KEYS = 'deviceKeys';
+
+interface StoredEpochKey {
+  channelId: string;
+  epoch: number;
+  nonce: ArrayBuffer;
+  wrapped: ArrayBuffer;
+}
+
+/**
+ * Opens the app's database without ever upgrading it. A service worker that
+ * created the schema would race the page and could win with an older idea of
+ * what the stores are; if the app has not run yet there is simply nothing to
+ * decrypt.
+ */
+function openDb(): Promise<IDBDatabase | null> {
+  return new Promise((resolve) => {
+    let request: IDBOpenDBRequest;
+    try {
+      request = indexedDB.open(DB_NAME);
+    } catch {
+      return resolve(null);
+    }
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => resolve(null);
+    request.onblocked = () => resolve(null);
+  });
+}
+
+function get<T>(db: IDBDatabase, store: string, key: IDBValidKey): Promise<T | null> {
+  return new Promise((resolve) => {
+    if (!db.objectStoreNames.contains(store)) return resolve(null);
+    try {
+      const request = db.transaction(store, 'readonly').objectStore(store).get(key);
+      request.onsuccess = () => resolve((request.result as T) ?? null);
+      request.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+async function conversationKey(
+  db: IDBDatabase,
+  channelId: string,
+  epoch: number,
+): Promise<Uint8Array | null> {
+  const record = await get<StoredEpochKey>(db, EPOCH_KEYS, `${channelId}:${epoch}`);
+  if (!record) return null;
+  const vault = await get<{ key: CryptoKey }>(db, HEADS, 'vault');
+  if (!vault?.key) return null;
+  try {
+    const plaintext = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: new Uint8Array(record.nonce) },
+      vault.key,
+      record.wrapped,
+    );
+    return new Uint8Array(plaintext);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Opens one message, with the sender's signature checked exactly as it is in the
+ * app. Everybody in a conversation holds the same conversation key, so a valid
+ * GCM tag proves only that *someone* there wrote it; skipping the per-sender
+ * signature here would make a notification the one place authorship is not
+ * established.
+ */
+async function decrypt(payload: PushPayload): Promise<string | null> {
+  if (!payload.ciphertext) return null;
+
+  const db = await openDb();
+  if (!db) return null;
+
+  try {
+    const envelope = decodeEnvelope(fromBase64(payload.ciphertext));
+
+    // An epoch minted while this device was asleep has no cached key here, and
+    // the worker holds no access token to go and fetch its envelope. That is a
+    // placeholder case by design - epochs rotate on membership changes and long
+    // intervals, not per message, so it is the exception rather than the rule.
+    const key = await conversationKey(db, payload.channelId, envelope.epoch);
+    if (!key) return null;
+
+    const sender = await get<{ ikSigPub: string; userId: string }>(
+      db,
+      DEVICE_KEYS,
+      envelope.senderDeviceId,
+    );
+    if (!sender || sender.userId !== envelope.senderUserId) return null;
+
+    const verifying = await importSigningPublicKey(fromBase64(sender.ikSigPub));
+    const plaintext = await openMessage(key, payload.channelId, envelope, verifying);
+    return decodeMessagePayload(plaintext).text;
+  } catch {
+    return null;
+  } finally {
+    db.close();
+  }
+}
+
+function fallbackBody(payload: PushPayload): string {
+  return payload.isGroup ? `New message from ${payload.senderName}` : 'New message';
+}
+
+self.addEventListener('push', (event: PushEvent) => {
+  event.waitUntil(
+    (async () => {
+      const payload = event.data?.json() as PushPayload | undefined;
+      if (!payload) return;
+
+      // A read on another device: take back this channel's notification rather
+      // than showing anything new.
+      if (payload.kind === 'read') {
+        const existing = await self.registration.getNotifications({ tag: payload.tag });
+        existing.forEach((n) => n.close());
+        return;
+      }
+
+      // A focused window normally makes a notification redundant - the user is
+      // already looking at the app. Not for a security notice: it is about the
+      // account rather than the conversation on screen, and the one it has to
+      // reach is somebody who may be several screens away from Settings.
+      if (payload.kind !== 'security') {
+        const windows = await self.clients.matchAll({
+          type: 'window',
+          includeUncontrolled: true,
+        });
+        if (windows.some((client) => (client as WindowClient).focused)) return;
+      }
+
+      let body = payload.body;
+      if (payload.ciphertext) {
+        body = (await decrypt(payload)) ?? fallbackBody(payload);
+      }
+
+      await self.registration.showNotification(payload.title || payload.senderName, {
+        body,
+        icon: payload.icon || '/icon.svg',
+        badge: '/icon.svg',
+        tag: payload.tag,
+        renotify: payload.kind === 'call' || payload.kind === 'security',
+        requireInteraction: payload.kind === 'call' || payload.kind === 'security',
+        data: { href: payload.href },
+      } as NotificationOptions);
+    })(),
+  );
+});
+
+self.addEventListener('notificationclick', (event: NotificationEvent) => {
+  event.notification.close();
+  const href = (event.notification.data as { href?: string } | null)?.href || '/';
+  event.waitUntil(
+    (async () => {
+      const url = new URL(href, self.location.origin).href;
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const client of windows) {
+        if (new URL(client.url).origin === self.location.origin) {
+          await (client as WindowClient).focus();
+          client.postMessage({ type: 'notification:navigate', href });
+          return;
+        }
+      }
+      await self.clients.openWindow(url);
+    })(),
+  );
+});

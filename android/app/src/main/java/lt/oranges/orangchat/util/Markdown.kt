@@ -2,7 +2,7 @@ package lt.oranges.orangchat.util
 
 /**
  * Discord-style markdown, parsed into a structure Compose can render. Port of
- * the web client's lib/markdown.tsx — same subset, same precedence:
+ * the web client's lib/markdown.tsx - same subset, same precedence:
  *   **bold**  *italic* / _italic_  __underline__  ~~strike~~  `code`
  *   ```fenced code```  > blockquote  [label](url)  bare http(s) links
  *   @username and <@userId> mentions  @everyone / @here
@@ -43,6 +43,14 @@ data class EmojiRef(
     val animated: Boolean = false,
 )
 
+/** Convert manually typed `:name:` references to durable message tokens. */
+fun normalizeCustomEmojiNames(content: String, emojis: Map<String, EmojiRef>): String {
+    val byName = emojis.values.associateBy { it.name.lowercase() }
+    return EmojiTokens.resolveShortcodes(content) { name ->
+        byName[name]?.let { EmojiTokens.Ref(it.animated, it.name, it.id) }
+    }
+}
+
 /**
  * Names for mention resolution plus the viewer, so self-mentions stand out.
  *
@@ -72,7 +80,8 @@ private val ITALIC_STAR = Regex("^\\*([^*\\n]+?)\\*")
 private val ITALIC_UNDER = Regex("^_([^_\\n]+?)_")
 private val LINK = Regex("^\\[([^\\]\\n]+)]\\((https?://[^\\s)]+)\\)")
 private val AUTOLINK = Regex("^(https?://[^\\s<]+[^\\s<.,:;\"')\\]}])")
-private val CUSTOM_EMOJI = Regex("^<(a?):([a-z0-9_-]{2,32}):([a-z0-9]+)>", RegexOption.IGNORE_CASE)
+private val CUSTOM_EMOJI = Regex("^" + EmojiTokens.TOKEN_SOURCE, RegexOption.IGNORE_CASE)
+private val EMOJI_NAME = Regex("^" + EmojiTokens.SHORTCODE_SOURCE, RegexOption.IGNORE_CASE)
 private val MENTION = Regex("^<@([a-zA-Z0-9]+)>")
 private val EVERYONE = Regex("^@(everyone|here)\\b")
 // Dot-separated segments rather than a greedy [a-z0-9_.] run, so "@alice." at
@@ -200,9 +209,15 @@ private fun matchInline(slice: String, ctx: MentionContext): Pair<MdNode, Int>? 
     CUSTOM_EMOJI.find(slice)?.let {
         val name = it.groupValues[2]
         val emoji = ctx.emojis[it.groupValues[3]]
-        // Deleted, or from a server the viewer is not in. Discord shows the raw
-        // name rather than a broken image, and so do we.
+        // Deleted emoji show their raw name rather than a broken image.
             ?: return MdNode.Text(":$name:") to it.value.length
+        return MdNode.CustomEmoji(emoji.id, emoji.name, emoji.url, emoji.animated) to it.value.length
+    }
+    EMOJI_NAME.find(slice)?.let {
+        val name = it.groupValues[1]
+        val emoji = ctx.emojis.values.firstOrNull { candidate ->
+            candidate.name.equals(name, ignoreCase = true)
+        } ?: return MdNode.Text(it.value) to it.value.length
         return MdNode.CustomEmoji(emoji.id, emoji.name, emoji.url, emoji.animated) to it.value.length
     }
     MENTION.find(slice)?.let {

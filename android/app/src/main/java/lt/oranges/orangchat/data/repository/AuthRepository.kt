@@ -17,6 +17,8 @@ import lt.oranges.orangchat.data.remote.DeleteAccountRequest
 import lt.oranges.orangchat.data.remote.DeleteAccountResult
 import lt.oranges.orangchat.data.remote.DeleteAllMessagesRequest
 import lt.oranges.orangchat.data.remote.DeleteAllMessagesResult
+import lt.oranges.orangchat.data.remote.EmailTwoFactorRequest
+import lt.oranges.orangchat.data.remote.ResendEmailTwoFactorRequest
 import lt.oranges.orangchat.data.remote.LockdownRequest
 import lt.oranges.orangchat.data.remote.LockdownResult
 import lt.oranges.orangchat.data.remote.QrTokenRequest
@@ -79,19 +81,31 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    suspend fun login(email: String, password: String, totpCode: String? = null) {
-        applyAuth(api.login(LoginRequest(email.trim(), password, totpCode?.trim()?.ifBlank { null })))
+    /**
+     * First half of a login. A correct password buys a mailed code, never a
+     * session, so this returns the token that [verifyEmailCode] needs rather
+     * than flipping [session]. Any authenticator code is still checked here.
+     */
+    suspend fun login(email: String, password: String, totpCode: String? = null): String =
+        api.login(LoginRequest(email.trim(), password, totpCode?.trim()?.ifBlank { null })).loginToken
+
+    /** Second half: the mailed code is what actually opens the session. */
+    suspend fun verifyEmailCode(loginToken: String, code: String) {
+        applyAuth(api.verifyEmailTwoFactor(EmailTwoFactorRequest(loginToken, code.trim())))
     }
 
+    suspend fun resendEmailCode(loginToken: String) {
+        api.resendEmailTwoFactor(ResendEmailTwoFactorRequest(loginToken))
+    }
+
+    /** Creates the account; it stays unusable until the emailed link is opened. */
     suspend fun signup(email: String, username: String, password: String, displayName: String?) {
-        applyAuth(
-            api.signup(
-                SignupRequest(
-                    email = email.trim(),
-                    username = username.trim(),
-                    password = password,
-                    displayName = displayName?.trim()?.ifBlank { null },
-                ),
+        api.signup(
+            SignupRequest(
+                email = email.trim(),
+                username = username.trim(),
+                password = password,
+                displayName = displayName?.trim()?.ifBlank { null },
             ),
         )
     }
@@ -132,16 +146,21 @@ class AuthRepository @Inject constructor(
         dmPrivacy: String? = null,
         friendRequestPrivacy: String? = null,
         typingIndicators: Boolean? = null,
+        e2eeStrict: Boolean? = null,
     ): SelfUser = updateMe(
         UpdateMeRequest(
             dmPrivacy = dmPrivacy,
             friendRequestPrivacy = friendRequestPrivacy,
             typingIndicators = typingIndicators,
+            e2eeStrict = e2eeStrict,
         ),
     )
 
     suspend fun uploadImage(part: MultipartBody.Part, kind: String): UploadResponse =
         api.uploadImage(part, kind)
+
+    /** The running backend's health payload, including its version. */
+    suspend fun health() = api.health()
 
     // ── Two-factor auth ─────────────────────────────────
     suspend fun twoFactorStatus(): TwoFactorStatus = api.getTwoFactorStatus()

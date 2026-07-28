@@ -15,7 +15,7 @@ export function isAppUrl(target: string): boolean {
 
 // Every hand-off to the OS shell goes through here. openExternal resolves any
 // registered protocol, so an unfiltered one turns a link the page controls into
-// file:// / smb: / search-ms: — i.e. code execution on Windows.
+// file:// / smb: / search-ms: - i.e. code execution on Windows.
 export function openExternalIfWeb(url: string): void {
   try {
     if (/^https?:$/.test(new URL(url).protocol)) void shell.openExternal(url);

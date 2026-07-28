@@ -1,0 +1,6 @@
+Device transfer scanning now works end to end.
+
+- Scan the QR on your PC with a live camera scanner built into OrangChat.
+- Review a clear explanation before any keys or encrypted history move.
+- Fixed Android rejecting the new one-time desktop invitation after a successful scan.
+- The system Camera app handoff remains available as an alternative.

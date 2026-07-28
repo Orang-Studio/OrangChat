@@ -1,2 +1,4 @@
 /target
 .env
+# Real badge roster (user IDs); the committed template is badges.example.json.
+badges.json

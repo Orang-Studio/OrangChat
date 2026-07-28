@@ -9,10 +9,10 @@
 //! on the way back, which keeps the user id out of the URL where the remote
 //! platform (and the user) could tamper with it.
 
-use redis::AsyncCommands;
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine as _;
 use chrono::{Duration, Utc};
+use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
 
 use crate::connections::{self, ConnectionProfile, OAuthGrant};
@@ -155,15 +155,22 @@ pub async fn upsert_verified(
         )));
     }
 
-    let aad = format!("oauth:{user_id}:{}:{}", profile.provider, profile.provider_id);
+    let aad = format!(
+        "oauth:{user_id}:{}:{}",
+        profile.provider, profile.provider_id
+    );
     let encrypt = |value: &str| -> AppResult<String> {
-        let cipher = state.attachment_cipher.as_ref().ok_or_else(|| {
-            AppError::Internal("OAuth token encryption is not configured".into())
-        })?;
+        let cipher = state
+            .attachment_cipher
+            .as_ref()
+            .ok_or_else(|| AppError::Internal("OAuth token encryption is not configured".into()))?;
         Ok(STANDARD.encode(cipher.encrypt(value.as_bytes(), &aad)?))
     };
     let access_token = grant.map(|g| encrypt(&g.access_token)).transpose()?;
-    let refresh_token = grant.and_then(|g| g.refresh_token.as_deref()).map(encrypt).transpose()?;
+    let refresh_token = grant
+        .and_then(|g| g.refresh_token.as_deref())
+        .map(encrypt)
+        .transpose()?;
     let expires_at = grant.map(|g| (Utc::now() + Duration::seconds(g.expires_in)).naive_utc());
     let scope = grant.and_then(|g| g.scope.clone());
 
@@ -270,10 +277,10 @@ pub async fn remove(state: &AppState, user_id: &str, id: &str) -> AppResult<Stri
     let provider: Option<String> = sqlx::query_scalar(
         r#"DELETE FROM "Connection" WHERE id = $1 AND "userId" = $2 RETURNING provider"#,
     )
-        .bind(id)
-        .bind(user_id)
-        .fetch_optional(&state.pool)
-        .await?;
+    .bind(id)
+    .bind(user_id)
+    .fetch_optional(&state.pool)
+    .await?;
     provider.ok_or_else(|| AppError::NotFound("Connection not found".into()))
 }
 

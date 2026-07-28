@@ -42,7 +42,7 @@ object NetworkModule {
     @Singleton
     fun provideCookieJar(cookieJar: PersistentCookieJar): okhttp3.CookieJar = cookieJar
 
-    /** Bare client used only by the authenticator's refresh call — carries the
+    /** Bare client used only by the authenticator's refresh call - carries the
      *  cookie jar (to send the refresh cookie) but has NO authenticator itself,
      *  so a failed refresh can't recurse. */
     @Provides
@@ -92,8 +92,8 @@ object NetworkModule {
 
     /**
      * Attachments, not API calls. The shared client's timeouts are sized for
-     * small JSON round trips — a 1 GB upload over a phone connection would trip
-     * the write timeout long before it finished — so uploads get their own with
+     * small JSON round trips - a 1 GB upload over a phone connection would trip
+     * the write timeout long before it finished - so uploads get their own with
      * no write/call deadline. Progress callbacks are what tell the UI it's still
      * alive; a stalled connection still fails on the socket read.
      *
@@ -149,7 +149,7 @@ object NetworkModule {
      * The update manifest and APK are public static files on the same host, not
      * API calls. Kept off the shared client for the same reason as OrangMove's:
      * a static download has no use for the session, so the access token and
-     * refresh cookie are never attached to it. No read deadline either — a
+     * refresh cookie are never attached to it. No read deadline either - a
      * 30 MB APK over a phone connection outlives a 30-second one.
      */
     @Provides

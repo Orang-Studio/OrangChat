@@ -18,7 +18,7 @@ import lt.oranges.orangchat.data.model.UNREAD_COUNT_CAP
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
 /**
- * Red count pill. Mirrors the web client's UnreadBadge — capped so a runaway
+ * Red count pill. Mirrors the web client's UnreadBadge - capped so a runaway
  * number cannot stretch the row. Renders nothing at zero, so callers can drop it
  * in unconditionally.
  */

@@ -49,8 +49,8 @@ import lt.oranges.orangchat.util.absoluteUrl
 /**
  * Full-screen viewer for an image attachment.
  *
- * Tapping a thumbnail used to hand the URL to the browser, which — since nginx
- * serves attachments as `Content-Disposition: attachment` — meant "look closer"
+ * Tapping a thumbnail used to hand the URL to the browser, which - since nginx
+ * serves attachments as `Content-Disposition: attachment` - meant "look closer"
  * silently downloaded the file and left the app. Expanding in place restores
  * the obvious reading, and downloading stays behind the button that says so.
  *
@@ -59,7 +59,7 @@ import lt.oranges.orangchat.util.absoluteUrl
 @Composable
 fun ImageLightbox(attachment: Attachment, onDismiss: () -> Unit) {
     val download = rememberAttachmentDownloader()
-    val href = absoluteUrl(attachment.url)
+    val href = rememberResolvedAttachmentUrl(attachment)
 
     // Only GIFs get the button - it feeds the picker's existing Favorites tab,
     // so a favourited PNG would have nowhere to appear. Reuses
@@ -69,12 +69,16 @@ fun ImageLightbox(attachment: Attachment, onDismiss: () -> Unit) {
     val favorites by gifViewModel.favorites.collectAsState()
     val gif = attachment.contentType == "image/gif" ||
         attachment.filename.lowercase().endsWith(".gif")
-    // Attachments have no Klipy slug, so the URL stands in as the identity.
+    // Attachments have no Klipy slug, so the URL stands in as the identity. Use
+    // the absolute form: a GIF is sent by putting its url in the message, and the
+    // media embed pipeline only renders absolute http(s) urls - a relative
+    // `/api/attachments/...` would arrive as bare text.
+    val gifUrl = href ?: attachment.url
     val asKlipy = KlipyGif(
-        slug = attachment.url,
+        slug = gifUrl,
         title = attachment.filename,
-        previewUrl = attachment.url,
-        url = attachment.url,
+        previewUrl = gifUrl,
+        url = gifUrl,
         width = attachment.width ?: 0,
         height = attachment.height ?: 0,
     )
@@ -85,7 +89,7 @@ fun ImageLightbox(attachment: Attachment, onDismiss: () -> Unit) {
 
     Dialog(
         onDismissRequest = onDismiss,
-        // The point of this screen is the image, so it gets the whole screen —
+        // The point of this screen is the image, so it gets the whole screen -
         // the default dialog insets would letterbox it for nothing.
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
@@ -120,7 +124,7 @@ fun ImageLightbox(attachment: Attachment, onDismiss: () -> Unit) {
                                 }
                             },
                             // Tapping the image at rest dismisses, as every
-                            // other viewer does — but not once it's zoomed, or
+                            // other viewer does - but not once it's zoomed, or
                             // a look around would keep closing it.
                             onTap = { if (scale <= 1f) onDismiss() },
                         )

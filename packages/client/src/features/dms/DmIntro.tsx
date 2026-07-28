@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { Lock } from "lucide-react";
 import type { User } from "@orangchat/shared";
 import { Avatar, STATUS_COLOR, STATUS_LABEL } from "../../components/Avatar";
 import { cn } from "../../lib/cn";
+import { HowEncryptionWorksLink } from "../e2ee/HowEncryptionWorks";
 import { ProfileDialog } from "../profile/ProfileDialog";
 
 /**
@@ -9,6 +11,26 @@ import { ProfileDialog } from "../profile/ProfileDialog";
  * history left to load - the DM equivalent of a channel's welcome block.
  * Mirrors Discord: a large avatar, who you're talking to, and their presence.
  */
+/**
+ * The onboarding explainer from docs/E2EE.md §6.6, item 5: one line, stated
+ * once, at the place people actually look. Deliberately not a choice - asking
+ * someone to pick a security mode before they have sent a message guarantees a
+ * random answer - but the full explanation is one tap away for anyone who wants
+ * to know what the sentence actually means.
+ */
+function EncryptionLine() {
+  return (
+    <div className="mt-2 space-y-1">
+      <p className="flex items-start gap-1.5 text-xs text-ink-muted">
+        <Lock aria-hidden className="mt-0.5 size-3 shrink-0" />
+        Messages here are locked on your device, so only the people in this conversation can read
+        them.
+      </p>
+      <HowEncryptionWorksLink className="ml-[1.125rem]" />
+    </div>
+  );
+}
+
 export function DmIntro({
   participants,
   groupName,
@@ -51,6 +73,7 @@ export function DmIntro({
           This is the beginning of this group, with {participants.length} other{" "}
           {participants.length === 1 ? "person" : "people"}.
         </p>
+        <EncryptionLine />
       </div>
     );
   }
@@ -75,6 +98,7 @@ export function DmIntro({
         This is the beginning of your direct message history with{" "}
         <span className="font-semibold text-ink">{other.displayName}</span>.
       </p>
+      <EncryptionLine />
       <ProfileDialog user={other} open={profileOpen} onOpenChange={setProfileOpen} />
     </div>
   );

@@ -10,6 +10,8 @@ import { CallStage } from "../features/voice/CallStage";
 import { CallErrorToast } from "../features/voice/CallErrorToast";
 import { IncomingCallDialog } from "../features/voice/IncomingCallDialog";
 import { getActiveChannel } from "../features/unread/active";
+import { WhatsNewDialog } from "../features/updates/WhatsNewDialog";
+import { SecurityAlertOverlay } from "../features/e2ee/SecurityAlertOverlay";
 
 /** Authenticated frame: each layout renders its own PanelShell inside. */
 export function AppShell() {
@@ -51,6 +53,10 @@ export function AppShell() {
       <IncomingCallDialog />
       <CallStage />
       <CallErrorToast />
+      <WhatsNewDialog />
+      {/* Above everything, including calls: an equivocating server is the one
+          thing that outranks whatever the user is currently doing. */}
+      <SecurityAlertOverlay />
     </TooltipProvider>
   );
 }

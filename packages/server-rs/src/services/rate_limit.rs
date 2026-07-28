@@ -48,12 +48,41 @@ pub const REFRESH_PER_IP: Quota = Quota::new(60, 5 * MINUTE);
 pub const QR_POLL_PER_IP: Quota = Quota::new(200, MINUTE);
 pub const OAUTH_START_PER_IP: Quota = Quota::new(20, 5 * MINUTE);
 pub const TOTP_PER_USER: Quota = Quota::new(10, 5 * MINUTE);
+pub const EMAIL_PER_IP: Quota = Quota::new(3, MINUTE);
+pub const EMAIL_2FA_PER_IP: Quota = Quota::new(10, 5 * MINUTE);
+
+/// Enrolling, authorizing or revoking a device. Rare by nature, and each one is
+/// a security event, so the budget is tight enough that a stolen session cannot
+/// churn the device log.
+pub const E2EE_ENROL_PER_USER: Quota = Quota::new(10, HOUR);
+/// Reading someone's published device log. Public key material by design, but
+/// budgeted so it is not a cheap way to sweep the user table.
+pub const E2EE_LOOKUP_PER_USER: Quota = Quota::new(300, MINUTE);
+/// Minting an epoch. Rotation is driven by membership and device changes, and a
+/// busy group still needs far fewer than this.
+pub const E2EE_EPOCH_PER_USER: Quota = Quota::new(120, 10 * MINUTE);
+/// Creating a transfer or publishing one of its three single-use relay blobs.
+/// These are genuine mutations and a normal transfer needs only a handful.
+pub const E2EE_TRANSFER_MUTATION_PER_USER: Quota = Quota::new(20, 10 * MINUTE);
+/// Both devices poll two-second relay slots while a person scans the QR,
+/// compares the SAS and enters TOTP. A worst-case successful transfer makes
+/// roughly 90 reads, so reads must not share the mutation budget.
+pub const E2EE_TRANSFER_POLL_PER_USER: Quota = Quota::new(240, 10 * MINUTE);
 
 pub const UPLOAD_IMAGE_PER_USER: Quota = Quota::new(30, 10 * MINUTE);
 pub const UPLOAD_ATTACHMENT_PER_USER: Quota = Quota::new(60, 10 * MINUTE);
 /// Fetches an arbitrary third-party URL, so this one guards other people's
 /// servers as much as ours.
 pub const LINK_PREVIEW_PER_USER: Quota = Quota::new(30, MINUTE);
+
+/// Minting a signed proxy URL is cheap, but it's the gate on how much media a
+/// single account can route through us; kept well above a busy channel's needs.
+pub const MEDIA_SIGN_PER_USER: Quota = Quota::new(120, MINUTE);
+
+/// The proxy fetch itself, keyed by client address since the signed URL carries
+/// no session. A video streams in ranged chunks, so this sits high enough that
+/// seeking a clip doesn't trip it while still capping open-proxy abuse.
+pub const MEDIA_PROXY_PER_IP: Quota = Quota::new(600, MINUTE);
 
 /// A soundboard plays out of everyone's speakers at once, which makes spamming
 /// it the point rather than a side effect. Loose enough for a punchline, tight
@@ -67,6 +96,9 @@ pub const SEARCH_PER_USER: Quota = Quota::new(60, MINUTE);
 
 pub const MESSAGE_SEND_PER_USER: Quota = Quota::new(10, 5);
 pub const MESSAGE_EDIT_PER_USER: Quota = Quota::new(20, 10);
+/// Reporting is intentionally rare and stores disclosed plaintext. A tight
+/// ceiling limits storage abuse without making a genuine burst impossible.
+pub const MESSAGE_REPORT_PER_USER: Quota = Quota::new(20, HOUR);
 pub const REACTION_PER_USER: Quota = Quota::new(30, 10);
 pub const TYPING_PER_USER: Quota = Quota::new(20, 10);
 pub const CALL_START_PER_USER: Quota = Quota::new(15, 5 * MINUTE);
@@ -136,6 +168,17 @@ pub async fn record(state: &AppState, bucket: &str, key: &str, quota: Quota) {
     incr(state, &window_key(bucket, key, quota, now), quota).await;
 }
 
+/// Read the current count without recording a request. Redis failures are
+/// deliberately fail-open, matching the rest of this module.
+pub async fn current(state: &AppState, bucket: &str, key: &str, quota: Quota) -> u64 {
+    let mut con = state.rd();
+    redis::cmd("GET")
+        .arg(window_key(bucket, key, quota, now_secs()))
+        .query_async(&mut con)
+        .await
+        .unwrap_or(0)
+}
+
 /// Clear a bucket, e.g. once a login succeeds. Best-effort.
 pub async fn reset(state: &AppState, bucket: &str, key: &str, quota: Quota) {
     let mut con = state.rd();
@@ -179,5 +222,14 @@ mod tests {
         assert_eq!(retry_after(Q, 120), 60);
         assert_eq!(retry_after(Q, 150), 30);
         assert_eq!(retry_after(Q, 179), 1);
+    }
+
+    #[test]
+    fn e2ee_poll_budget_covers_a_complete_relay_transfer() {
+        // Desktop may wait 45 times for the phone's hello and the phone may
+        // wait 45 times each for handshake and bundle. Leave room for retries.
+        const MAX_NORMAL_POLLS: u32 = 45 * 3;
+        assert!(E2EE_TRANSFER_POLL_PER_USER.limit >= MAX_NORMAL_POLLS);
+        assert!(E2EE_TRANSFER_POLL_PER_USER.limit > E2EE_TRANSFER_MUTATION_PER_USER.limit,);
     }
 }

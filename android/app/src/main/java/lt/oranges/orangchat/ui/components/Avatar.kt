@@ -96,8 +96,9 @@ fun Avatar(
         }
         if (status != null && devices.isNotEmpty()) {
             val device = when {
-                PresenceDevice.MOBILE in devices -> PresenceDevice.MOBILE
                 PresenceDevice.DESKTOP in devices -> PresenceDevice.DESKTOP
+                PresenceDevice.BROWSER in devices -> PresenceDevice.BROWSER
+                PresenceDevice.MOBILE in devices -> PresenceDevice.MOBILE
                 else -> PresenceDevice.BROWSER
             }
             Icon(

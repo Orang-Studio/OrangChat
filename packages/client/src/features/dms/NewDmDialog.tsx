@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQueries } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 import type { Conversation, User } from "@orangchat/shared";
@@ -9,11 +9,9 @@ import { Dialog, DialogContent } from "../../components/ui/Dialog";
 import { TextField } from "../../components/ui/TextField";
 import { cn } from "../../lib/cn";
 import { useAuthStore } from "../../stores/auth";
-import { getServerDetail } from "../servers/api";
-import { serverKeys, useServers } from "../servers/queries";
+import { useFriends } from "../friends/queries";
 import { addDmParticipants, createDm } from "./api";
 import { upsertConversation } from "./queries";
-import { useQueryClient } from "@tanstack/react-query";
 
 interface NewDmDialogProps {
   open: boolean;
@@ -27,7 +25,7 @@ interface NewDmDialogProps {
 // A group tops out at 15 people: you plus 14 others.
 const MAX_RECIPIENTS = 14;
 
-/** Pick people you share a server with - start a DM/group DM or grow one. */
+/** Pick friends - start a DM/group DM or grow an existing group. */
 export function NewDmDialog({ open, onOpenChange, addTo, groupMode = false }: NewDmDialogProps) {
   const selfId = useAuthStore((s) => s.user?.id);
   const navigate = useNavigate();
@@ -35,32 +33,19 @@ export function NewDmDialog({ open, onOpenChange, addTo, groupMode = false }: Ne
   const [filter, setFilter] = useState("");
   const [selected, setSelected] = useState<User[]>([]);
 
-  const { data: servers } = useServers();
-  const detailQueries = useQueries({
-    queries: (servers ?? []).map((server) => ({
-      queryKey: serverKeys.detail(server.id),
-      queryFn: () => getServerDetail(server.id),
-      enabled: open,
-      staleTime: 60_000,
-    })),
-  });
+  const { data: friends } = useFriends();
 
-  // Everyone you share a server with, deduped, minus yourself and anyone
-  // already in the conversation being grown.
-  const knownUsers = useMemo(() => {
+  // Your friends, minus yourself and anyone already in the conversation being
+  // grown, sorted by display name.
+  const candidates = useMemo(() => {
     const excluded = new Set([selfId, ...(addTo?.participants.map((p) => p.id) ?? [])]);
-    const byId = new Map<string, User>();
-    for (const q of detailQueries) {
-      for (const member of q.data?.members ?? []) {
-        if (!excluded.has(member.userId)) byId.set(member.userId, member.user);
-      }
-    }
-    return [...byId.values()].sort((a, b) =>
-      a.displayName.localeCompare(b.displayName),
-    );
-  }, [detailQueries, selfId, addTo]);
+    return (friends ?? [])
+      .map((f) => f.user)
+      .filter((u) => !excluded.has(u.id))
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
+  }, [friends, selfId, addTo]);
 
-  const visible = knownUsers.filter((u) => {
+  const visible = candidates.filter((u) => {
     const q = filter.trim().toLowerCase();
     if (!q) return true;
     return (
@@ -95,16 +80,16 @@ export function NewDmDialog({ open, onOpenChange, addTo, groupMode = false }: Ne
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        title={addTo ? "Add people" : groupMode ? "New group" : "New direct message"}
+        title={addTo ? "Add friends" : groupMode ? "New group" : "New direct message"}
         description={
           groupMode
-            ? `Pick 2 to ${MAX_RECIPIENTS} people to start a group (15 max, including you).`
-            : `Pick up to ${MAX_RECIPIENTS} people you share a server with.`
+            ? `Pick 2 to ${MAX_RECIPIENTS} friends to start a group (15 max, including you).`
+            : `Pick a friend to message, or a few to start a group.`
         }
       >
         <div className="space-y-3">
           <TextField
-            label="Find people"
+            label="Find friends"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Search by name or username"
@@ -157,8 +142,10 @@ export function NewDmDialog({ open, onOpenChange, addTo, groupMode = false }: Ne
             })}
             {visible.length === 0 && (
               <li className="px-2 py-6 text-center text-sm text-ink-muted">
-                {knownUsers.length === 0
-                  ? "No one to message yet - join a server first."
+                {candidates.length === 0
+                  ? addTo
+                    ? "All your friends are already here."
+                    : "No friends yet - add some from the Friends tab first."
                   : "No matches."}
               </li>
             )}
@@ -176,7 +163,7 @@ export function NewDmDialog({ open, onOpenChange, addTo, groupMode = false }: Ne
             onClick={() => mutation.mutate()}
           >
             {addTo
-              ? `Add ${selected.length || ""} ${selected.length === 1 ? "person" : "people"}`
+              ? `Add ${selected.length || ""} ${selected.length === 1 ? "friend" : "friends"}`
               : groupMode
                 ? `Create group (${selected.length})`
                 : selected.length > 1

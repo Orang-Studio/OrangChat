@@ -57,7 +57,7 @@ The systemd unit runs the binary in place from `packages/server-rs/target/releas
 
 `assetlinks.json` names the release signing certificate's SHA-256 fingerprint.
 Android re-verifies it on install, so a debug-signed build will never take over
-invite links — that is deliberate, and it means testing app links needs a
+invite links - that is deliberate, and it means testing app links needs a
 release-signed APK. Verify a device accepted it with:
 
 ```bash
@@ -72,9 +72,16 @@ sudo cp deploy/orangchat.env.example /etc/orangchat/orangchat.env
 sudo $EDITOR /etc/orangchat/orangchat.env     # set secrets (openssl rand -hex 32), DB url, OAuth, LiveKit
 sudo chmod 600 /etc/orangchat/orangchat.env
 
+# Hand-awarded badges: copy the template and fill each badge's list with user
+# IDs. Reconciled at every boot; the server's working dir is packages/server-rs,
+# so the default BADGES_FILE=badges.json resolves there. Omit it and the
+# beta badge (auto-awarded to every signup) is the only one anyone gets.
+cp packages/server-rs/badges.example.json packages/server-rs/badges.json
+$EDITOR packages/server-rs/badges.json
+
 # apply schema (Prisma migrations at repo root own the DB schema; the Rust
 # backend reads it via sqlx and ships no migrations of its own)
-cd ~/orangchat && sudo -E DATABASE_URL=... pnpm dlx prisma migrate deploy --schema ./prisma/schema.prisma
+cd ~/orangchat && sudo -E DATABASE_URL=... pnpm dlx prisma@6.19.3 migrate deploy --schema ./prisma/schema.prisma
 ```
 
 ## 6. systemd

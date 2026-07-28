@@ -25,6 +25,12 @@ export function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProp
       </section>
 
       {footer && <div className="text-sm text-ink-secondary">{footer}</div>}
+      <nav aria-label="Legal" className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-ink-muted">
+        <a href="/terms" className="hover:text-ink">Terms</a>
+        <a href="/privacy" className="hover:text-ink">Privacy</a>
+        <a href="/cookies" className="hover:text-ink">Cookies</a>
+        <a href="/guidelines" className="hover:text-ink">Guidelines</a>
+      </nav>
     </main>
   );
 }

@@ -45,6 +45,8 @@ import lt.oranges.orangchat.BuildConfig
 import lt.oranges.orangchat.data.model.DmPrivacy
 import lt.oranges.orangchat.data.model.FriendRequestPrivacy
 import lt.oranges.orangchat.data.model.SelfUser
+import lt.oranges.orangchat.feature.e2ee.EncryptionExplainerDialog
+import lt.oranges.orangchat.feature.e2ee.HowEncryptionWorksLink
 import lt.oranges.orangchat.feature.updates.UpdateUiState
 import lt.oranges.orangchat.feature.updates.UpdateViewModel
 import lt.oranges.orangchat.ui.components.ButtonSize
@@ -64,6 +66,7 @@ private fun screenModifier(c: lt.oranges.orangchat.ui.theme.OrangColors) =
 fun PrivacyScreen(self: SelfUser, onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
     val c = OrangTheme.colors
     val error by vm.privacyError.collectAsStateWithLifecycle()
+    var explainerOpen by remember { mutableStateOf(false) }
 
     Column(modifier = screenModifier(c)) {
         SettingsTopBar("Privacy", onBack)
@@ -101,10 +104,33 @@ fun PrivacyScreen(self: SelfUser, onBack: () -> Unit, vm: SettingsViewModel = hi
                     onCheckedChange = vm::setTypingIndicators,
                 )
             }
+            SettingSection("Encryption") {
+                Text(
+                    "Every direct message is encrypted, always, and that part cannot be switched off. This setting is about how carefully the other person's lock is checked before your messages are sent to it.",
+                    color = c.inkSecondary,
+                    fontSize = 13.sp,
+                )
+                SettingsToggleRow(
+                    label = "Check people before messaging them",
+                    hint = "With someone new, your messages wait on this phone - locked, sent nowhere - until you have seen their code in person or read the numbers to each other on a call.",
+                    checked = self.e2eeStrict,
+                    onCheckedChange = vm::setE2eeStrict,
+                )
+                Text(
+                    "Leaving it off is not \"unprotected\". Every lock is still checked against a logbook that can only be added to, which your own devices read on every start. The difference is whether a swapped lock is stopped before it can be used, or caught right after. Group conversations always send straight away, either way.",
+                    color = c.inkMuted,
+                    fontSize = 12.sp,
+                )
+                HowEncryptionWorksLink(onClick = { explainerOpen = true })
+            }
             if (error != null) {
                 Text(error!!, color = c.danger, fontSize = 13.sp)
             }
         }
+    }
+
+    if (explainerOpen) {
+        EncryptionExplainerDialog(onDismiss = { explainerOpen = false })
     }
 }
 
@@ -718,7 +744,7 @@ private fun DeleteAllMessagesSection(self: SelfUser, hasPassword: Boolean, vm: S
             fontWeight = FontWeight.SemiBold,
         )
         Text(
-            "Removes every message you've sent, in every server and group — including " +
+            "Removes every message you've sent, in every server and group - including " +
                 "the ones you've left. Attachments you uploaded aren't removed from " +
                 "storage. This can't be undone.",
             color = c.inkSecondary,
@@ -797,8 +823,8 @@ private fun DeleteAccountSection(self: SelfUser, hasPassword: Boolean, vm: Setti
         Text("Delete account", color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         Text(
             "Your messages stay in the conversations they're part of, shown as from a " +
-                "deleted user. Everything else — profile, connections, friends, server " +
-                "memberships — is erased. This can't be undone.",
+                "deleted user. Everything else - profile, connections, friends, server " +
+                "memberships - is erased. This can't be undone.",
             color = c.inkSecondary,
             fontSize = 13.sp,
         )
@@ -1006,7 +1032,7 @@ private fun BackupCodes(codes: List<String>, onDone: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Recovery codes", color = c.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
         Text(
-            "Save these now — each works once if you lose your phone, and they're shown only this once.",
+            "Save these now - each works once if you lose your phone, and they're shown only this once.",
             color = c.inkSecondary,
             fontSize = 13.sp,
         )
@@ -1103,8 +1129,11 @@ fun AccessibilityScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewMode
 fun SystemScreen(
     connected: Boolean,
     onBack: () -> Unit,
+    vm: SettingsViewModel = hiltViewModel(),
 ) {
     val c = OrangTheme.colors
+    val backend by vm.backend.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { vm.refreshBackend() }
     Column(modifier = screenModifier(c)) {
         SettingsTopBar("System", onBack)
         Column(
@@ -1133,6 +1162,14 @@ fun SystemScreen(
                 }
             }
             SettingSection("Server") {
+                InfoRow(
+                    "Backend",
+                    when (val b = backend) {
+                        is BackendUi.Loading -> "Checking…"
+                        is BackendUi.Loaded -> "v${b.version}"
+                        is BackendUi.Unknown -> "Unknown"
+                    },
+                )
                 InfoRow("API", BuildConfig.API_BASE_URL)
                 InfoRow("Realtime", BuildConfig.SOCKET_URL)
             }
@@ -1159,7 +1196,7 @@ fun AboutScreen(onBack: () -> Unit) {
                 Text("OrangChat", color = c.ink, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Text("Version ${BuildConfig.VERSION_NAME}", color = c.inkMuted, fontSize = 13.sp)
                 Text(
-                    "A fast, self-hosted chat for servers, DMs, and voice — part of the Oranges.LT family.",
+                    "A fast, self-hosted chat for servers, DMs, and voice - part of the Oranges.LT family.",
                     color = c.inkSecondary,
                     fontSize = 13.sp,
                 )

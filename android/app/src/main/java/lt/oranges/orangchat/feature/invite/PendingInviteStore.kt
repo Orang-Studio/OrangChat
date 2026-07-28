@@ -10,7 +10,7 @@ import javax.inject.Singleton
  * An invite link the app was opened with, parked until something can act on it.
  *
  * Deep links arrive at the Activity, but the join UI only exists inside the
- * authenticated shell — and a link tapped by a logged-out user has to survive
+ * authenticated shell - and a link tapped by a logged-out user has to survive
  * the whole sign-in flow before it can be honoured. Holding the code here rather
  * than in the intent means the shell can pick it up whenever it appears.
  */

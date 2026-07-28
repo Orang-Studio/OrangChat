@@ -1,63 +1,36 @@
 package lt.oranges.orangchat.ui.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import lt.oranges.orangchat.util.absoluteUrl
 
 /**
  * Profile badge catalog, mirroring packages/shared/src/badges.ts and
  * services::badge. The slug is the contract; everything shown here is local, so
- * a renamed label never needs a server change.
+ * a renamed label never needs a server change. Each badge is a piece of artwork
+ * served from the web app's /badges/ directory.
  */
 enum class Badge(
     val slug: String,
     val label: String,
     val description: String,
-    val color: Color,
-    val icon: ImageVector,
 ) {
-    EARLY_DEVELOPER(
-        "early_developer",
-        "Early Developer",
-        "Built on OrangChat before it opened up.",
-        Color(0xFFFF6A1A),
-        Icons.Default.Code,
-    ),
-    EARLY_MEMBER(
-        "early_member",
-        "Early Member",
-        "Joined OrangChat in its first days.",
-        Color(0xFF5B8DEF),
-        Icons.Default.AutoAwesome,
-    ),
-    BONFIRE(
-        "bonfire",
-        "Bonfire",
-        "Was there for the bonfire.",
-        Color(0xFFE2574C),
-        Icons.Default.LocalFireDepartment,
-    );
+    BETA("beta", "Beta", "Here since the beta."),
+    FOUNDER("founder", "Founder", "Was here at the very beginning."),
+    DEVELOPER("developer", "Developer", "Builds and maintains OrangChat."),
+    BUGHUNTER("bughunter", "Bug Hunter", "Tracked down bugs in OrangChat."),
+    CONTRIBUTOR("contributor", "Contributor", "Contributed to OrangChat."),
+    BONFIRE("bonfire", "Bonfire", "Was there for the bonfire."),
+    BOT("bot", "Bot", "An automated account.");
+
+    /** Artwork URL, served from the web app's static assets. */
+    val imageUrl: String? get() = absoluteUrl("/badges/$slug.png")
 
     companion object {
         /** Drops unknown slugs and returns the rest in catalog order. */
@@ -66,7 +39,7 @@ enum class Badge(
     }
 }
 
-/** Badge pills for a profile card. Renders nothing when there are none. */
+/** Artwork badges for a profile card. Renders nothing when there are none. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProfileBadges(badges: List<String>, modifier: Modifier = Modifier) {
@@ -75,31 +48,15 @@ fun ProfileBadges(badges: List<String>, modifier: Modifier = Modifier) {
 
     FlowRow(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         resolved.forEach { badge ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .background(badge.color.copy(alpha = 0.12f), RoundedCornerShape(6.dp))
-                    .border(1.dp, badge.color.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
-                    .padding(horizontal = 6.dp, vertical = 2.dp),
-            ) {
-                Icon(
-                    imageVector = badge.icon,
-                    contentDescription = null,
-                    tint = badge.color,
-                    modifier = Modifier.size(14.dp),
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text = badge.label,
-                    color = badge.color,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 11.sp,
-                )
-            }
+            AsyncImage(
+                model = badge.imageUrl,
+                contentDescription = "${badge.label}: ${badge.description}",
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }

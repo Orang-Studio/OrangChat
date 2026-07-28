@@ -17,7 +17,7 @@ image = { version = "0.25", default-features = false, features = [
     "png",
     "webp",
 ] }
-# Soundboard duration probing only — no playback, no resampling. Pure Rust, so
+# Soundboard duration probing only - no playback, no resampling. Pure Rust, so
 # it adds no ffmpeg/native dependency to the deploy.
 symphonia = { version = "0.5", default-features = false, features = [
     "mp3",
@@ -54,7 +54,7 @@ aes-gcm = "0.10"
 
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream", "multipart"] }
 # Web Push (RFC 8030/8291/8292): payload encryption and VAPID signing only. The
-# bundled HTTP clients are cut deliberately — isahc drags in libcurl and
+# bundled HTTP clients are cut deliberately - isahc drags in libcurl and
 # hyper-tls drags in native-tls, and the reqwest above already speaks rustls, so
 # the built message is POSTed with that instead. See services::push.
 web-push = { version = "0.11", default-features = false }
@@ -63,7 +63,9 @@ url = "2"
 
 cuid = "1"
 uuid = { version = "1", features = ["v4"] }
+p256 = { version = "0.13", default-features = false, features = ["ecdsa", "pkcs8", "std"] }
 sha1 = "0.10"
+sha2 = "0.10"
 hex = "0.4"
 time = "0.3"
 rand = "0.8"

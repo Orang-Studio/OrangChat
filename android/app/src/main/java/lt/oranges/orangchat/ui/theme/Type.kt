@@ -8,13 +8,13 @@ import androidx.compose.ui.unit.sp
 
 /**
  * Typography mirroring the web client's Inter-based scale. The system default
- * sans (Roboto) stands in for Inter — bundle the Inter .ttf under res/font and
+ * sans (Roboto) stands in for Inter - bundle the Inter .ttf under res/font and
  * swap [AppFontFamily] to switch, matching --font-sans.
  */
 private val AppFontFamily = FontFamily.Default
 
 val OrangTypography = Typography(
-    // Section / dialog titles — text-lg font-semibold
+    // Section / dialog titles - text-lg font-semibold
     titleLarge = TextStyle(
         fontFamily = AppFontFamily,
         fontWeight = FontWeight.SemiBold,
@@ -27,28 +27,28 @@ val OrangTypography = Typography(
         fontSize = 16.sp,
         lineHeight = 22.sp,
     ),
-    // Channel names, member rows — text-sm font-medium
+    // Channel names, member rows - text-sm font-medium
     titleSmall = TextStyle(
         fontFamily = AppFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         lineHeight = 20.sp,
     ),
-    // Message body — text-base
+    // Message body - text-base
     bodyLarge = TextStyle(
         fontFamily = AppFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 15.sp,
         lineHeight = 22.sp,
     ),
-    // Default UI text — text-sm
+    // Default UI text - text-sm
     bodyMedium = TextStyle(
         fontFamily = AppFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
         lineHeight = 20.sp,
     ),
-    // Hints / timestamps — text-xs
+    // Hints / timestamps - text-xs
     bodySmall = TextStyle(
         fontFamily = AppFontFamily,
         fontWeight = FontWeight.Normal,

@@ -12,11 +12,11 @@ object OrangRadius {
     val xs = 2.dp        // 0.125rem
     val sm = 3.dp        // 0.1875rem
     val md = 4.dp        // 0.25rem
-    val lg = 5.dp        // 0.3125rem  (buttons, inputs — rounded-lg)
+    val lg = 5.dp        // 0.3125rem  (buttons, inputs - rounded-lg)
     val xl = 7.dp        // 0.4375rem
-    val xl2 = 10.dp      // 0.625rem   (dialogs — rounded-2xl)
+    val xl2 = 10.dp      // 0.625rem   (dialogs - rounded-2xl)
     val xl3 = 14.dp      // 0.875rem
-    val squircle = 8.dp  // server icons — crisp rounded-square
+    val squircle = 8.dp  // server icons - crisp rounded-square
 }
 
 val OrangShapes = Shapes(

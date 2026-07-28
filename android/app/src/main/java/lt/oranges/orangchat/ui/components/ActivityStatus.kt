@@ -34,7 +34,7 @@ fun ActivityStatus(activities: List<UserActivity>, modifier: Modifier = Modifier
             text = buildString {
                 append(if (spotify) "Listening to " else "Playing ")
                 append(activity.name)
-                activity.details?.let { append(" — "); append(it) }
+                activity.details?.let { append(" - "); append(it) }
             },
             color = OrangTheme.colors.inkMuted,
             fontWeight = FontWeight.Medium,

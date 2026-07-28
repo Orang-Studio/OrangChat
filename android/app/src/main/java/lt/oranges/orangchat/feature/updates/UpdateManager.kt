@@ -28,8 +28,11 @@ data class UpdateManifest(
     val versionCode: Int,
     val versionName: String,
     val apkUrl: String,
+    val changelogUrl: String = "",
     val size: Long = 0,
     val sha256: String = "",
+    /** Loaded from [changelogUrl] after the manifest; never persisted in it. */
+    val changelog: String = "",
 )
 
 /**
@@ -37,7 +40,7 @@ data class UpdateManifest(
  * manifest, compare version codes, download the APK, hand it to the system
  * installer.
  *
- * The install itself is not silent and cannot be — the user grants "install
+ * The install itself is not silent and cannot be - the user grants "install
  * unknown apps" once, and the system installer still shows its own confirmation
  * every time. Android also refuses an APK signed with a different key than the
  * installed app, which is the real integrity guarantee here; the sha256 check
@@ -65,7 +68,18 @@ class UpdateManager @Inject constructor(
             response.body?.string() ?: error("Update server sent an empty manifest")
         }
         val manifest = json.decodeFromString<UpdateManifest>(body)
-        manifest.takeIf { it.versionCode > BuildConfig.VERSION_CODE }
+        if (manifest.versionCode <= BuildConfig.VERSION_CODE) return@withContext null
+        // Changelogs are deliberately standalone text files: a release can
+        // correct its notes without rewriting the APK manifest. A missing note
+        // must not hide an otherwise valid update.
+        val changelog = manifest.changelogUrl.takeIf { it.isNotBlank() }?.let { url ->
+            runCatching {
+                client.newCall(Request.Builder().url(url).build()).execute().use { response ->
+                    if (response.isSuccessful) response.body?.string().orEmpty() else ""
+                }
+            }.getOrDefault("")
+        }.orEmpty()
+        manifest.copy(changelog = changelog)
     }
 
     /**
@@ -119,7 +133,7 @@ class UpdateManager @Inject constructor(
 
     /**
      * Whether the user has already allowed OrangChat to install APKs. Required
-     * from API 26 on, and it is a per-app toggle in system settings — there is
+     * from API 26 on, and it is a per-app toggle in system settings - there is
      * no runtime dialog we can raise for it.
      */
     fun canInstall(): Boolean =

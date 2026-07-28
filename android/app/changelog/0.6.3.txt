@@ -1,0 +1,4 @@
+- Profile CSS can now style every part of your card, not just a handful of pieces: the avatar and its frame, the banner image, badges, the activity line, section headings and the About-me and Member-since text all have their own hooks.
+- Themes can react to what the card is showing - your status, whether you have a banner or an avatar, which device you are online from, and your accent colour.
+- Container queries, cascade layers and entry animations (@container, @layer, @starting-style) now work in profile CSS.
+- The profile settings screen lists the full set of hooks you can target.

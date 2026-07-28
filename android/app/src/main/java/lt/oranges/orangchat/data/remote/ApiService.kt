@@ -5,11 +5,26 @@ import lt.oranges.orangchat.data.model.AuthResult
 import lt.oranges.orangchat.data.model.Channel
 import lt.oranges.orangchat.data.model.ChannelOverwrite
 import lt.oranges.orangchat.data.model.Conversation
+import lt.oranges.orangchat.data.model.E2eeAddDeviceRequest
+import lt.oranges.orangchat.data.model.E2eeBlob
+import lt.oranges.orangchat.data.model.E2eeBlobRequest
+import lt.oranges.orangchat.data.model.E2eeChannelState
+import lt.oranges.orangchat.data.model.E2eeDevice
+import lt.oranges.orangchat.data.model.E2eeDeviceList
+import lt.oranges.orangchat.data.model.E2eeEpoch
+import lt.oranges.orangchat.data.model.E2eeEpochKeys
+import lt.oranges.orangchat.data.model.E2eeGenesisRequest
+import lt.oranges.orangchat.data.model.E2eeMintEpochRequest
+import lt.oranges.orangchat.data.model.E2eeRevokeRequest
+import lt.oranges.orangchat.data.model.E2eeTransferGrant
+import lt.oranges.orangchat.data.model.E2eeTransferGrantRequest
+import lt.oranges.orangchat.data.model.E2eeTransferId
 import lt.oranges.orangchat.data.model.Emoji
 import lt.oranges.orangchat.data.model.Friend
 import lt.oranges.orangchat.data.model.FriendRequestsEnvelope
 import lt.oranges.orangchat.data.model.Invite
 import lt.oranges.orangchat.data.model.InvitePreview
+import lt.oranges.orangchat.data.model.LoginChallenge
 import lt.oranges.orangchat.data.model.Message
 import lt.oranges.orangchat.data.model.Page
 import lt.oranges.orangchat.data.model.Role
@@ -17,6 +32,7 @@ import lt.oranges.orangchat.data.model.SelfUser
 import lt.oranges.orangchat.data.model.Server
 import lt.oranges.orangchat.data.model.ServerDetail
 import lt.oranges.orangchat.data.model.ServerMember
+import lt.oranges.orangchat.data.model.SignupResult
 import lt.oranges.orangchat.data.model.Sound
 import lt.oranges.orangchat.data.model.UnreadState
 import lt.oranges.orangchat.data.model.VoiceState
@@ -42,12 +58,24 @@ import retrofit2.http.Query
  */
 interface ApiService {
 
+    /** Lives at the host root, outside /api - the leading slash escapes the
+     *  base URL's /api/ prefix. No auth required. */
+    @GET("/health")
+    suspend fun health(): HealthDto
+
     // ── auth.rs ─────────────────────────────────────────
     @POST("auth/signup")
-    suspend fun signup(@Body body: SignupRequest): AuthResult
+    suspend fun signup(@Body body: SignupRequest): SignupResult
 
+    /** Hands back a login token, not a session - see /auth/login/email-2fa. */
     @POST("auth/login")
-    suspend fun login(@Body body: LoginRequest): AuthResult
+    suspend fun login(@Body body: LoginRequest): LoginChallenge
+
+    @POST("auth/login/email-2fa")
+    suspend fun verifyEmailTwoFactor(@Body body: EmailTwoFactorRequest): AuthResult
+
+    @POST("auth/login/email-2fa/resend")
+    suspend fun resendEmailTwoFactor(@Body body: ResendEmailTwoFactorRequest): OkResult
 
     @POST("auth/refresh")
     suspend fun refresh(): AuthResult
@@ -140,7 +168,7 @@ interface ApiService {
     @POST("servers/{serverId}/invites")
     suspend fun createInvite(@Path("serverId") serverId: String, @Body body: CreateInviteRequest): Invite
 
-    /** Leave under your own steam — distinct from being kicked. */
+    /** Leave under your own steam - distinct from being kicked. */
     @POST("servers/{serverId}/leave")
     suspend fun leaveServer(@Path("serverId") serverId: String): Response<Unit>
 
@@ -203,6 +231,12 @@ interface ApiService {
         @Path("channelId") channelId: String,
         @Body body: SendMessageRequest,
     ): Message
+
+    @POST("messages/{messageId}/report")
+    suspend fun reportMessage(
+        @Path("messageId") messageId: String,
+        @Body body: ReportMessageRequest,
+    ): MessageReportReceipt
 
     @GET("me/unreads")
     suspend fun getUnreads(): List<UnreadState>
@@ -370,4 +404,58 @@ interface ApiService {
         @Part file: MultipartBody.Part,
         @Query("kind") kind: String = "avatar",
     ): UploadResponse
+
+    // ── e2ee.rs ─────────────────────────────────────────
+    // Everything here is public key material, signed statements, or ciphertext
+    // the server cannot open. See docs/E2EE.md.
+    @GET("e2ee/devices")
+    suspend fun getMyE2eeDevices(): E2eeDeviceList
+
+    @GET("e2ee/users/{userId}/devices")
+    suspend fun getPeerE2eeDevices(@Path("userId") userId: String): E2eeDeviceList
+
+    @POST("e2ee/devices/genesis")
+    suspend fun enrolGenesisDevice(@Body body: E2eeGenesisRequest): E2eeDevice
+
+    @POST("e2ee/devices")
+    suspend fun enrolAuthorizedDevice(@Body body: E2eeAddDeviceRequest): E2eeDevice
+
+    @POST("e2ee/devices/revoke")
+    suspend fun revokeE2eeDevice(@Body body: E2eeRevokeRequest): E2eeDevice
+
+    @POST("e2ee/devices/{deviceId}/seen")
+    suspend fun markE2eeDeviceSeen(@Path("deviceId") deviceId: String): Response<Unit>
+
+    @POST("e2ee/transfers")
+    suspend fun startE2eeTransfer(): E2eeTransferId
+
+    @POST("e2ee/transfer-grant")
+    suspend fun requestE2eeTransferGrant(@Body body: E2eeTransferGrantRequest): E2eeTransferGrant
+
+    @POST("e2ee/transfers/{transferId}/blob")
+    suspend fun putE2eeTransferBlob(
+        @Path("transferId") transferId: String,
+        @Body body: E2eeBlobRequest,
+    ): Response<Unit>
+
+    @GET("e2ee/transfers/{transferId}/blob")
+    suspend fun takeE2eeTransferBlob(
+        @Path("transferId") transferId: String,
+        @Query("slot") slot: String,
+    ): E2eeBlob
+
+    @GET("e2ee/channels/{channelId}/state")
+    suspend fun getE2eeChannelState(@Path("channelId") channelId: String): E2eeChannelState
+
+    @POST("e2ee/channels/{channelId}/epochs")
+    suspend fun mintE2eeEpoch(
+        @Path("channelId") channelId: String,
+        @Body body: E2eeMintEpochRequest,
+    ): E2eeEpoch
+
+    @GET("e2ee/channels/{channelId}/keys")
+    suspend fun getE2eeEpochKeys(
+        @Path("channelId") channelId: String,
+        @Query("deviceId") deviceId: String,
+    ): E2eeEpochKeys
 }

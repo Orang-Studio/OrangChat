@@ -23,6 +23,7 @@ import lt.oranges.orangchat.data.remote.CreateServerRequest
 import lt.oranges.orangchat.data.remote.PatchChannelRequest
 import lt.oranges.orangchat.data.remote.PositionEntry
 import lt.oranges.orangchat.data.remote.RenameRequest
+import lt.oranges.orangchat.data.remote.SendMessageRequest
 import lt.oranges.orangchat.data.remote.SetNicknameRequest
 import lt.oranges.orangchat.data.remote.SetTimeoutRequest
 import lt.oranges.orangchat.data.remote.UpdateRoleRequest
@@ -80,6 +81,11 @@ class ServerRepository @Inject constructor(
     suspend fun markChannelRead(channelId: String) {
         api.markChannelRead(channelId)
     }
+
+    /** REST send, for callers with no live socket - the notification quick
+     *  reply and the queue of replies it could not get out at the time. */
+    suspend fun sendMessage(channelId: String, content: String): Message =
+        api.sendMessage(channelId, SendMessageRequest(content))
 
     /** Search a server's messages the viewer can see. Offset-paginated. */
     suspend fun searchMessages(

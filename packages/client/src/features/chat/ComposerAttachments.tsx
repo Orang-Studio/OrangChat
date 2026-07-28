@@ -1,5 +1,5 @@
 import { Eye, EyeOff, FileWarning, Paperclip, X } from "lucide-react";
-import type { Attachment } from "@orangchat/shared";
+import type { Attachment, SealedAttachmentRef } from "@orangchat/shared";
 import { formatBytes } from "./attachments";
 
 /** A file the user picked, from selection through to a finished upload. */
@@ -15,6 +15,13 @@ export interface PendingUpload {
   spoiler: boolean;
   /** Set once the upload finishes; its id is what message:send references. */
   attachment?: Attachment;
+  /** Opaque support blobs that must be claimed with the visible attachment. */
+  supportingAttachments?: Attachment[];
+  /**
+   * Set instead of a readable descriptor in an encrypted conversation: the key
+   * and the real filename go inside the message, never beside the upload.
+   */
+  sealed?: SealedAttachmentRef;
   error?: string;
   /** Local object URL for image previews; revoked when the entry goes away. */
   preview?: string;

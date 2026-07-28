@@ -25,6 +25,7 @@ export const Permissions = {
   MODERATE_MEMBERS: 1n << 23n,
   VIEW_AUDIT_LOG: 1n << 24n,
   MANAGE_EXPRESSIONS: 1n << 25n,
+  MANAGE_EVENTS: 1n << 26n,
 } as const;
 
 export type PermissionName = keyof typeof Permissions;

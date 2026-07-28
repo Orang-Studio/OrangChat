@@ -1,13 +1,14 @@
+import { useCallback, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { z } from "zod";
 import { displayNameSchema, signupSchema } from "@orangchat/shared";
 import { AuthLayout } from "./AuthLayout";
 import { OAuthButtons, OAuthDivider } from "./OAuthButtons";
 import { signup } from "./api";
-import { applySession } from "./session";
+import { Recaptcha, type RecaptchaHandle } from "./Recaptcha";
 import { Button } from "../../components/ui/Button";
 import { TextField } from "../../components/ui/TextField";
 import { PasswordField } from "../../components/ui/PasswordField";
@@ -19,7 +20,12 @@ const signupFormSchema = signupSchema.extend({
 type SignupFormValues = z.infer<typeof signupFormSchema>;
 
 export function SignupPage() {
-  const navigate = useNavigate();
+  const recaptcha = useRef<RecaptchaHandle>(null);
+  const [recaptchaReady, setRecaptchaReady] = useState(false);
+  const [captchaError, setCaptchaError] = useState("");
+  const [awaitingCaptcha, setAwaitingCaptcha] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
+  const onCaptchaRequired = useCallback(() => setRecaptchaReady(true), []);
 
   const {
     register,
@@ -32,17 +38,29 @@ export function SignupPage() {
 
   const mutation = useMutation({
     mutationFn: signup,
-    onSuccess: (result) => {
-      applySession(result.user, result.tokens);
-      navigate("/", { replace: true });
+    onSuccess: () => {
+      setVerificationSent(true);
     },
   });
 
-  const onSubmit = (values: SignupFormValues) =>
+  const onSubmit = async (values: SignupFormValues) => {
+    setCaptchaError("");
+    let recaptchaToken = "";
+    setAwaitingCaptcha(true);
+    try {
+      recaptchaToken = (await recaptcha.current?.execute()) ?? "";
+    } catch {
+      setCaptchaError("The reCAPTCHA challenge wasn't completed. Please try again.");
+      return;
+    } finally {
+      setAwaitingCaptcha(false);
+    }
     mutation.mutate({
       ...values,
       displayName: values.displayName || undefined,
+      recaptchaToken,
     });
+  };
 
   return (
     <AuthLayout
@@ -60,6 +78,9 @@ export function SignupPage() {
       <OAuthButtons />
       <OAuthDivider />
       <form noValidate onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {verificationSent ? (
+          <p role="status" className="rounded-lg bg-primary-soft px-3 py-3 text-sm text-ink">Check your email for a verification link. You must verify it before signing in.</p>
+        ) : (<>
         <TextField
           label="Email"
           type="email"
@@ -86,14 +107,27 @@ export function SignupPage() {
           error={errors.password?.message}
           {...register("password")}
         />
-        {mutation.isError && (
+        {(mutation.isError || captchaError) && (
           <p role="alert" className="rounded-lg bg-primary-soft px-3 py-2 text-sm text-danger">
-            {mutation.error.message}
+            {captchaError || mutation.error?.message}
           </p>
         )}
-        <Button type="submit" loading={mutation.isPending} className="w-full">
+        <Recaptcha ref={recaptcha} onRequired={onCaptchaRequired} />
+        <Button
+          type="submit"
+          loading={mutation.isPending || awaitingCaptcha}
+          disabled={!recaptchaReady}
+          className="w-full"
+        >
           Create account
         </Button>
+        <p className="text-center text-xs leading-5 text-ink-muted">
+          By creating an account, you agree to the{" "}
+          <Link to="/terms" className="oc-link">Terms of Service</Link> and{" "}
+          <Link to="/guidelines" className="oc-link">Community Guidelines</Link>, and acknowledge
+          the <Link to="/privacy" className="oc-link">Privacy Policy</Link>.
+        </p>
+        </>)}
       </form>
     </AuthLayout>
   );

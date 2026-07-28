@@ -4,8 +4,8 @@ use std::collections::HashMap;
 
 use redis::AsyncCommands;
 
-use crate::error::AppResult;
 use crate::dto::ActivityDto;
+use crate::error::AppResult;
 use crate::state::AppState;
 
 const TTL: i64 = 60 * 60 * 24;
@@ -170,7 +170,10 @@ pub async fn online_user_ids(state: &AppState) -> AppResult<Vec<String>> {
             .arg(100)
             .query_async(&mut con)
             .await?;
-        users.extend(keys.into_iter().filter_map(|key| key.strip_prefix("presence:count:").map(str::to_string)));
+        users.extend(
+            keys.into_iter()
+                .filter_map(|key| key.strip_prefix("presence:count:").map(str::to_string)),
+        );
         cursor = next;
         if cursor == 0 {
             break;
@@ -214,7 +217,7 @@ pub async fn get_devices(state: &AppState, user_id: &str) -> AppResult<Vec<Strin
         return Ok(Vec::new());
     }
     let counts: HashMap<String, i64> = con.hgetall(devices_key(user_id)).await?;
-    Ok(["mobile", "browser", "desktop"]
+    Ok(["desktop", "browser", "mobile"]
         .into_iter()
         .filter(|kind| counts.get(*kind).copied().unwrap_or(0) > 0)
         .map(str::to_string)

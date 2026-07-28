@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Puzzle, Search } from "lucide-react";
 import { Button } from "../../components/ui/Button";
-import { MarketplaceThemes } from "./MarketplaceThemes";
 import { PLUGINS } from "../plugins/registry";
 import { usePlugins } from "../plugins/store";
 import type { Plugin, PluginSetting } from "../plugins/types";
@@ -10,9 +9,7 @@ function SettingControl({ plugin, setting }: { plugin: Plugin; setting: PluginSe
   const value = usePlugins((s) => s.getSetting(plugin.id, setting.key));
   const setSetting = usePlugins((s) => s.setSetting);
 
-  const label = (
-    <label className="text-xs font-medium text-ink-secondary">{setting.label}</label>
-  );
+  const label = <label className="text-xs font-medium text-ink-secondary">{setting.label}</label>;
 
   if (setting.type === "boolean") {
     return (
@@ -107,20 +104,27 @@ export function PluginsTab() {
     const q = query.trim().toLowerCase();
     if (!q) return PLUGINS;
     return PLUGINS.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q),
+      (p) => p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q),
     );
   }, [query]);
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-4">
+    <div className="space-y-4">
       <div className="flex items-start gap-3 rounded-lg border border-border bg-surface-1 px-3 py-2.5">
         <Puzzle aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-secondary" />
         <p className="text-xs text-ink-secondary">
-          Built-in plugins tweak how this browser shows OrangChat. They ship with
-          the app - nothing is downloaded or run from elsewhere - and each choice
-          is stored on this device only. {enabledCount} enabled.
+          Built-in plugins tweak how this browser shows OrangChat. They ship with the app - nothing
+          is downloaded or run from elsewhere - and each choice is stored on this device only.{" "}
+          {enabledCount} enabled. Want to contribute?{" "}
+          <a
+            href="https://github.com/Orang-Studio/orangchat-marketplace"
+            target="_blank"
+            rel="noreferrer"
+            className="oc-link"
+          >
+            See the marketplace repo
+          </a>
+          .
         </p>
       </div>
 
@@ -147,11 +151,6 @@ export function PluginsTab() {
           ))}
         </ul>
       )}
-      </div>
-
-      <div className="border-t border-border pt-6">
-        <MarketplaceThemes />
-      </div>
     </div>
   );
 }

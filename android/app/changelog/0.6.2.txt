@@ -1,0 +1,4 @@
+- Fixed a phone getting stuck after being removed as an encryption device from somewhere else. It kept offering to add other devices, and could not be added back even after a restart.
+- The Encryption screen now says plainly when this phone has been removed, and offers "Set up this phone again" to add it back.
+- Actions a removed phone cannot carry out are no longer shown.
+- Contacts you verified in person are kept when you add this phone back, so you do not have to check everyone again.

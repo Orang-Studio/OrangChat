@@ -31,10 +31,13 @@ android {
 
     defaultConfig {
         applicationId = "lt.oranges.orangchat"
-        minSdk = 26
+        // Android Keystore gained non-extractable ECDH (PURPOSE_AGREE_KEY) in
+        // API 31. E2EE promises that identity private keys never become app
+        // bytes, so older releases cannot honestly implement that contract.
+        minSdk = 31
         targetSdk = 35
-        versionCode = 25
-        versionName = "0.4.0"
+        versionCode = 46
+        versionName = "0.6.3"
         buildConfigField("String", "KLIPY_API_KEY", "\"$klipyApiKey\"")
         vectorDrawables { useSupportLibrary = true }
     }
@@ -81,9 +84,24 @@ android {
         buildConfig = true
     }
     packaging {
+        // API 31 defaults to storing dex/native libraries uncompressed. That
+        // makes a universal sideload APK ~43 MB larger on the wire for no
+        // functional gain; the installer can extract them as older releases did.
+        dex {
+            useLegacyPackaging = true
+        }
+        jniLibs {
+            useLegacyPackaging = true
+        }
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+    lint {
+        // AGP 8.7's Kotlin FIR analyzer crashes while resolving E2eeTest.
+        // Unit tests are compiled and run by `test`; keep lint focused on the
+        // shipped sources until that upstream analyzer bug is gone.
+        checkTestSources = false
     }
 }
 
@@ -121,6 +139,11 @@ dependencies {
     implementation(libs.coil.video)
     implementation(libs.datastore.preferences)
     implementation(libs.security.crypto)
+    implementation(libs.zxing.core)
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
     testImplementation(libs.junit)
 }
 
@@ -134,8 +157,13 @@ val publishUpdate by tasks.registering {
     val baseUrl = updateBaseUrl
     val targetDir = File("/var/www/chat.oranges.lt/download/android")
     val apkName = "orangchat-$versionName.apk"
+    val changelogSource = project.file("changelog/$versionName.txt")
+    val changelogName = "changelog-$versionName.txt"
     doLast {
         val apk = apkFile.get().asFile
+        require(changelogSource.isFile) {
+            "Write the release notes first: $changelogSource"
+        }
         require(apk.exists()) {
             "No signed APK at $apk. Without signing.propertiesFile in local.properties " +
                 "the release build is unsigned (app-release-unsigned.apk) and cannot be installed."
@@ -145,17 +173,20 @@ val publishUpdate by tasks.registering {
             .joinToString("") { "%02x".format(it) }
         targetDir.mkdirs()
         apk.copyTo(File(targetDir, apkName), overwrite = true)
+        changelogSource.copyTo(File(targetDir, changelogName), overwrite = true)
         File(targetDir, "update.json").writeText(
             """
             {
               "versionCode": $versionCode,
               "versionName": "$versionName",
               "apkUrl": "$baseUrl/$apkName",
+              "changelogUrl": "$baseUrl/$changelogName",
               "size": ${apk.length()},
               "sha256": "$sha256"
             }
             """.trimIndent() + "\n",
         )
-        logger.lifecycle("Published $apkName — versionCode $versionCode, ${apk.length() / 1024} KiB")
+        logger.lifecycle("Published $apkName - versionCode $versionCode, ${apk.length() / 1024} KiB")
         logger.lifecycle("  -> $targetDir")
-}   }
+    }
+}

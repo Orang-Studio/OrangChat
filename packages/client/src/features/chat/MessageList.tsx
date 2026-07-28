@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
-import { Loader2 } from "lucide-react";
-import type { Message } from "@orangchat/shared";
-import { withinGroupWindow } from "../../lib/time";
-import { MessageItem } from "./MessageItem";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Loader2 } from 'lucide-react';
+import { isStrictDisabledNotice, type Message } from '@orangchat/shared';
+import { withinGroupWindow } from '../../lib/time';
+import { MessageItem } from './MessageItem';
 
 interface MessageListProps {
   messages: Message[];
@@ -21,6 +21,33 @@ interface MessageListProps {
   /** Start-of-history block, shown once there's nothing older to load.
    * Defaults to the channel welcome; DMs pass their own. */
   intro?: ReactNode;
+  /** Message to scroll to once history is in - set from a `?m=` deep link. */
+  jumpToId?: string | null;
+  /** Called once a `jumpToId` has been acted on, so the URL can be cleaned. */
+  onJumpHandled?: () => void;
+}
+
+/** How many older pages a jump will pull in before giving up on finding it. */
+const JUMP_MAX_PAGES = 12;
+
+/**
+ * A downgrade notice (§6.5) travels as an ordinary message because there is no
+ * system-message channel to carry it, but reading it as one of the sender's
+ * remarks gets it wrong - it is a fact about the conversation. So it is drawn
+ * centred and unattributed to a bubble, keeping the name, since who turned the
+ * requirement off is the whole point of sending it.
+ */
+function SystemNotice({ message, selfId }: { message: Message; selfId: string | undefined }) {
+  const name = message.author.id === selfId ? 'You' : message.author.displayName;
+  return (
+    <div className="flex justify-center px-4 py-2">
+      <p role="status" className="max-w-prose text-center text-xs leading-relaxed text-ink-muted">
+        <span aria-hidden>- </span>
+        {name} turned off the requirement to verify before messaging in this conversation.
+        <span aria-hidden> -</span>
+      </p>
+    </div>
+  );
 }
 
 /**
@@ -41,9 +68,55 @@ export function MessageList({
   mentionNames,
   mentionUsers,
   intro,
+  jumpToId,
+  onJumpHandled,
 }: MessageListProps) {
   const topSentinel = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
+  const [flashId, setFlashId] = useState<string | null>(null);
+  const [missingJump, setMissingJump] = useState(false);
+  const flashTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // The jump loop reads these while it awaits, long after its closure was made.
+  const latest = useRef({ hasOlder, isLoadingOlder, onLoadOlder });
+  latest.current = { hasOlder, isLoadingOlder, onLoadOlder };
+
+  useEffect(() => () => clearTimeout(flashTimer.current), []);
+
+  /**
+   * Scroll to a message and light it up. Anything older than the loaded window
+   * isn't in the DOM yet, so pull pages in until it shows up (or history ends).
+   */
+  const jumpTo = useCallback(async (messageId: string) => {
+    setMissingJump(false);
+    for (let page = 0; page <= JUMP_MAX_PAGES; page++) {
+      const target = scroller.current?.querySelector<HTMLElement>(
+        `[data-message-id="${CSS.escape(messageId)}"]`,
+      );
+      if (target) {
+        target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        setFlashId(messageId);
+        clearTimeout(flashTimer.current);
+        flashTimer.current = setTimeout(() => setFlashId(null), 2000);
+        return;
+      }
+      if (!latest.current.hasOlder) break;
+      if (!latest.current.isLoadingOlder) latest.current.onLoadOlder();
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    // Deleted, or further back than we're willing to page through.
+    setMissingJump(true);
+    setTimeout(() => setMissingJump(false), 4000);
+  }, []);
+
+  // Deep link (`?m=<id>`): jump once the first page of history has rendered.
+  useEffect(() => {
+    if (!jumpToId || messages.length === 0) return;
+    void jumpTo(jumpToId);
+    onJumpHandled?.();
+    // Only the id matters; re-running on every new message would yank the view.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jumpToId, messages.length > 0]);
 
   // Load older history when the (visual) top sentinel scrolls into view.
   useEffect(() => {
@@ -53,7 +126,7 @@ export function MessageList({
       (entries) => {
         if (entries[0]?.isIntersecting) onLoadOlder();
       },
-      { root: scroller.current, rootMargin: "200px" },
+      { root: scroller.current, rootMargin: '200px' },
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -72,6 +145,11 @@ export function MessageList({
         const prev = messages[i - 1];
         const compact =
           !!prev &&
+          // A notice is a break in the conversation, not a line of it: letting
+          // the message after one group into the bubble above would hide its
+          // header behind a divider.
+          !isStrictDisabledNotice(prev.content) &&
+          !isStrictDisabledNotice(message.content) &&
           prev.author.id === message.author.id &&
           !message.replyToId &&
           withinGroupWindow(prev.createdAt, message.createdAt);
@@ -81,45 +159,63 @@ export function MessageList({
   );
 
   return (
-    <div
-      ref={scroller}
-      className="flex flex-1 flex-col-reverse overflow-y-auto pb-2"
-      role="log"
-      aria-label={`Messages in ${channelName}`}
-    >
-      {/* column-reverse: first DOM child = visual bottom. Render newest first. */}
-      {[...rows].reverse().map(({ message, compact }) => (
-        <MessageItem
-          key={message.id}
-          message={message}
-          pending={pendingMessageIds.has(message.id)}
-          compact={compact}
-          replyTo={message.replyToId ? byId.get(message.replyToId) : undefined}
-          isOwn={message.author.id === selfId}
-          canManage={canManage}
-          onReply={onReply}
-          mentionNames={mentionNames}
-          mentionUsers={mentionUsers}
-          selfId={selfId}
-        />
-      ))}
-
-      {hasOlder ? (
-        <div ref={topSentinel} className="flex justify-center py-4">
-          {isLoadingOlder && (
-            <Loader2 aria-hidden className="size-5 animate-spin text-ink-muted" />
-          )}
-        </div>
-      ) : (
-        (intro ?? (
-          <div className="px-4 pb-2 pt-6">
-            <h2 className="text-xl font-bold">Welcome to #{channelName}</h2>
-            <p className="text-sm text-ink-secondary">
-              This is the start of the channel. Say something!
-            </p>
-          </div>
-        ))
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      {missingJump && (
+        <p
+          role="status"
+          className="absolute inset-x-0 top-2 z-10 mx-auto w-fit rounded-lg border border-border bg-surface-4 px-3 py-1.5 text-xs text-ink-secondary shadow-lg"
+        >
+          Couldn't find that message - it may have been deleted.
+        </p>
       )}
+      <div
+        ref={scroller}
+        className="flex flex-1 flex-col-reverse overflow-y-auto pb-2"
+        role="log"
+        aria-label={`Messages in ${channelName}`}
+      >
+        {/* column-reverse: first DOM child = visual bottom. Render newest first. */}
+        {[...rows]
+          .reverse()
+          .map(({ message, compact }) =>
+            isStrictDisabledNotice(message.content) ? (
+              <SystemNotice key={message.id} message={message} selfId={selfId} />
+            ) : (
+              <MessageItem
+                key={message.id}
+                message={message}
+                pending={pendingMessageIds.has(message.id)}
+                compact={compact}
+                replyTo={message.replyToId ? byId.get(message.replyToId) : undefined}
+                isOwn={message.author.id === selfId}
+                canManage={canManage}
+                onReply={onReply}
+                onJumpTo={(id) => void jumpTo(id)}
+                flash={flashId === message.id}
+                mentionNames={mentionNames}
+                mentionUsers={mentionUsers}
+                selfId={selfId}
+              />
+            ),
+          )}
+
+        {hasOlder ? (
+          <div ref={topSentinel} className="flex justify-center py-4">
+            {isLoadingOlder && (
+              <Loader2 aria-hidden className="size-5 animate-spin text-ink-muted" />
+            )}
+          </div>
+        ) : (
+          (intro ?? (
+            <div className="px-4 pb-2 pt-6">
+              <h2 className="text-xl font-bold">Welcome to #{channelName}</h2>
+              <p className="text-sm text-ink-secondary">
+                This is the start of the channel. Say something!
+              </p>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }

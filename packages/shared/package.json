@@ -7,7 +7,8 @@
   "module": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./e2ee": "./src/e2ee.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

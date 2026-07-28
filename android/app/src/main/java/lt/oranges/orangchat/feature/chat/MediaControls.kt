@@ -47,7 +47,7 @@ internal fun formatDuration(ms: Long): String {
  *
  * It claims the pointer even when [enabled] is false. An unopened clip has no
  * length to seek within, but a drag across it is still a scrub and must not
- * fall through to the row — that case is exactly where the bar looks inert and
+ * fall through to the row - that case is exactly where the bar looks inert and
  * the reply swipe used to fire instead.
  */
 @Composable
@@ -169,7 +169,7 @@ internal fun Modifier.tapToToggle(onTap: () -> Unit): Modifier = pointerInput(on
     }
 }
 
-/** A round, dark, tappable glyph — the video overlay's only button shape. */
+/** A round, dark, tappable glyph - the video overlay's only button shape. */
 @Composable
 internal fun OverlayIconButton(
     onClick: () -> Unit,

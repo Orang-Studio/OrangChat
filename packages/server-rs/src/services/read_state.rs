@@ -200,6 +200,47 @@ pub async fn mark_read(state: &AppState, user_id: &str, channel_id: &str) -> App
     Ok(())
 }
 
+/// Rewind a user's read cursor so `message_id` and everything after it count as
+/// unread again. The cursor lands on the message immediately before it, or is
+/// cleared when there is nothing before it (the whole channel goes unread).
+///
+/// Mentions are left alone: the badge is a running count the client owns, and
+/// re-deriving it here would double-count the ones already acknowledged.
+pub async fn mark_unread(
+    state: &AppState,
+    user_id: &str,
+    channel_id: &str,
+    message_id: &str,
+) -> AppResult<()> {
+    // (createdAt, id) is the same ordering the history pages use, so the cursor
+    // can't land on the wrong side of two messages sharing a timestamp.
+    let previous: Option<String> = sqlx::query_scalar(
+        r#"SELECT m.id FROM "Message" m
+           WHERE m."channelId" = $1
+             AND (m."createdAt", m.id) <
+                 (SELECT t."createdAt", t.id FROM "Message" t WHERE t.id = $2)
+           ORDER BY m."createdAt" DESC, m.id DESC LIMIT 1"#,
+    )
+    .bind(channel_id)
+    .bind(message_id)
+    .fetch_optional(&state.pool)
+    .await?;
+
+    sqlx::query(
+        r#"INSERT INTO "ReadState" ("userId", "channelId", "lastReadMessageId", "updatedAt")
+           VALUES ($1, $2, $3, now())
+           ON CONFLICT ("userId", "channelId")
+           DO UPDATE SET "lastReadMessageId" = EXCLUDED."lastReadMessageId",
+                         "updatedAt" = now()"#,
+    )
+    .bind(user_id)
+    .bind(channel_id)
+    .bind(previous)
+    .execute(&state.pool)
+    .await?;
+    Ok(())
+}
+
 /// Unread counting stops here. Bounds the per-channel COUNT for users who have
 /// never opened a busy channel; clients render the cap as "99+".
 pub const UNREAD_COUNT_CAP: i64 = 100;
@@ -278,6 +319,54 @@ pub async fn get_unreads(state: &AppState, user_id: &str) -> AppResult<Vec<Unrea
             mention_count: r.mention_count,
         })
         .collect())
+}
+
+/// Unread state for a single channel, recomputed from the cursor. Used after a
+/// mark-unread so the client (and the user's other devices) can update a badge
+/// without refetching the whole unread list.
+pub async fn get_channel_unread(
+    state: &AppState,
+    user_id: &str,
+    channel_id: &str,
+) -> AppResult<Unread> {
+    let row: UnreadRow = sqlx::query_as(
+        r#"
+        SELECT c.id AS channel_id,
+               c."serverId" AS server_id,
+               COALESCE(rs."mentionCount", 0) AS mention_count,
+               (
+                   SELECT COUNT(*) FROM (
+                       SELECT 1 FROM "Message" m
+                       WHERE m."channelId" = c.id
+                         AND m."authorId" <> $1
+                         AND (
+                           rs."lastReadMessageId" IS NULL
+                           OR m."createdAt" > COALESCE(
+                                (SELECT "createdAt" FROM "Message" WHERE id = rs."lastReadMessageId"),
+                                to_timestamp(0)
+                              )
+                         )
+                       LIMIT $3
+                   ) capped
+               ) AS unread_count
+        FROM "Channel" c
+        LEFT JOIN "ReadState" rs ON rs."channelId" = c.id AND rs."userId" = $1
+        WHERE c.id = $2
+        "#,
+    )
+    .bind(user_id)
+    .bind(channel_id)
+    .bind(UNREAD_COUNT_CAP)
+    .fetch_one(&state.pool)
+    .await?;
+
+    Ok(Unread {
+        channel_id: row.channel_id,
+        server_id: row.server_id,
+        unread: row.unread_count > 0,
+        unread_count: row.unread_count,
+        mention_count: row.mention_count,
+    })
 }
 
 #[cfg(test)]

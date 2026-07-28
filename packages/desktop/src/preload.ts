@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld("orangchatDesktop", {
   version: versionArg ? versionArg.slice("--orangchat-version=".length) : null,
   setBadgeCount: (count: number) => ipcRenderer.send("badge:set", count),
   flashFrame: () => ipcRenderer.send("window:flash"),
+  checkForUpdates: () => ipcRenderer.invoke("updates:check"),
 });
 
 // The page already calls the Notification API for DMs and mentions. Wrapping it

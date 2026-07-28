@@ -83,6 +83,26 @@ export function replaceMessage(client: QueryClient, message: Message): void {
   }));
 }
 
+/** Flip a cached message's pin flag (driven by the `message:pins` event). */
+export function setMessagePinnedInCache(
+  client: QueryClient,
+  channelId: string,
+  messageId: string,
+  pinned: boolean,
+): void {
+  updateChannel(client, channelId, (data) => ({
+    ...data,
+    pages: data.pages.map((page) => ({
+      ...page,
+      items: page.items.map((m) =>
+        m.id === messageId
+          ? { ...m, pinned, pinnedAt: pinned ? new Date().toISOString() : null }
+          : m,
+      ),
+    })),
+  }));
+}
+
 export function removeMessage(
   client: QueryClient,
   channelId: string,

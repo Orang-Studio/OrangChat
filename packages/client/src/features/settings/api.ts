@@ -80,3 +80,10 @@ export const deleteAccount = (password: string, username: string, code: string) 
     method: "DELETE",
     json: { password, username, code },
   });
+
+/**
+ * Proves the person at the keyboard, without changing anything. Guards settings
+ * that may only be *relaxed* deliberately - see docs/E2EE.md §6.5.
+ */
+export const confirmIdentity = (password: string, code: string) =>
+  api<{ ok: boolean }>("/security/confirm", { method: "POST", json: { password, code } });

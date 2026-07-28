@@ -38,6 +38,13 @@ sealed interface TwoFactorUi {
     data class On(val backupCodesRemaining: Int, val busy: Boolean = false, val error: String? = null) : TwoFactorUi
 }
 
+/** Drives the backend-version line on the System screen. */
+sealed interface BackendUi {
+    data object Loading : BackendUi
+    data class Loaded(val version: String) : BackendUi
+    data object Unknown : BackendUi
+}
+
 /** Drives the devices list. */
 sealed interface SessionsUi {
     data object Loading : SessionsUi
@@ -73,6 +80,7 @@ class SettingsViewModel @Inject constructor(
     private val tokenStore: TokenStore,
     private val authRepository: AuthRepository,
     private val serverRepository: ServerRepository,
+    private val e2eeRepository: lt.oranges.orangchat.data.repository.E2eeRepository,
 ) : ViewModel() {
 
     private val _prefs = MutableStateFlow(
@@ -129,16 +137,23 @@ class SettingsViewModel @Inject constructor(
     fun setFriendRequestPrivacy(value: FriendRequestPrivacy) =
         patchPrivacy(friendRequestPrivacy = value.wire())
     fun setTypingIndicators(on: Boolean) = patchPrivacy(typingIndicators = on)
+    fun setE2eeStrict(on: Boolean) = patchPrivacy(e2eeStrict = on)
 
     private fun patchPrivacy(
         dmPrivacy: String? = null,
         friendRequestPrivacy: String? = null,
         typingIndicators: Boolean? = null,
+        e2eeStrict: Boolean? = null,
     ) {
         viewModelScope.launch {
             _privacyError.value = null
             runCatching {
-                authRepository.updatePrivacy(dmPrivacy, friendRequestPrivacy, typingIndicators)
+                authRepository.updatePrivacy(
+                    dmPrivacy,
+                    friendRequestPrivacy,
+                    typingIndicators,
+                    e2eeStrict,
+                ).also { e2eeRepository.setGlobalStrict(it.e2eeStrict) }
             }.onFailure { _privacyError.value = it.message ?: "Could not save your privacy settings" }
         }
     }
@@ -306,6 +321,24 @@ class SettingsViewModel @Inject constructor(
             runCatching { authRepository.revokeOtherSessions() }
                 .onSuccess { refreshSessions() }
                 .onFailure { _sessions.value = SessionsUi.Failed(it.message ?: "Could not revoke") }
+        }
+    }
+
+    // ── Backend health ──────────────────────────────────
+    private val _backend = MutableStateFlow<BackendUi>(BackendUi.Loading)
+    val backend: StateFlow<BackendUi> = _backend.asStateFlow()
+
+    fun refreshBackend() {
+        viewModelScope.launch {
+            _backend.value = BackendUi.Loading
+            runCatching { authRepository.health() }
+                .onSuccess { health ->
+                    _backend.value = health.version
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { BackendUi.Loaded(it) }
+                        ?: BackendUi.Unknown
+                }
+                .onFailure { _backend.value = BackendUi.Unknown }
         }
     }
 

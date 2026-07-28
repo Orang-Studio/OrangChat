@@ -40,7 +40,7 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.formatTime
 
 /**
- * Server-scoped message search. Port of the web client's features/search —
+ * Server-scoped message search. Port of the web client's features/search -
  * debounced, offset-paginated, tapping a hit jumps to its channel.
  */
 @Composable

@@ -74,7 +74,7 @@
             </intent-filter>
 
             <!-- Invite links. autoVerify makes these open here instead of the
-                 browser, without a disambiguation prompt — but only once the
+                 browser, without a disambiguation prompt - but only once the
                  site serves /.well-known/assetlinks.json naming this app's
                  signing certificate (see deploy/assetlinks.json). Until then
                  they still work, just via the "open with" chooser. -->
@@ -93,6 +93,26 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="orangchat" android:host="login" />
+            </intent-filter>
+
+            <!-- Contact verification (docs/E2EE.md §6.7). The other person shows
+                 an orangchat://verify?... code; scanning it here pins their
+                 encryption identity. Its own host, so the type tag is enforced
+                 by the OS before the app even sees it. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="orangchat" android:host="verify" />
+            </intent-filter>
+
+            <!-- Device enrollment. A system-camera scan opens the old device
+                 directly into the SAS + TOTP authorization flow. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="orangchat" android:host="device-transfer" />
             </intent-filter>
         </activity>
 
@@ -114,6 +134,13 @@
         <receiver
             android:name=".notifications.NotificationActionReceiver"
             android:exported="false" />
+
+        <!-- Sends a quick reply the broadcast could not get out, as soon as the
+             system sees a network again. Never launched by the app itself. -->
+        <service
+            android:name=".notifications.ReplyRetryJobService"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
 
         <!-- Hands the downloaded APK to the system installer: a file:// uri is
              rejected outright from API 24 on. -->

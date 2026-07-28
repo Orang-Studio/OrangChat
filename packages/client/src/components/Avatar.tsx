@@ -21,13 +21,17 @@ interface AvatarProps {
   /** Presence dot; omit to hide (e.g. in message rows). */
   status?: PresenceStatus;
   className?: string;
+  /** Extra classes on the <img>; lets callers hang CSS hooks off it. */
+  imgClassName?: string;
+  /** Extra classes on the initial-letter stand-in shown when there is no image. */
+  fallbackClassName?: string;
 }
 
 /** User avatar with initial fallback and optional presence dot. */
-export function Avatar({ user, status, className }: AvatarProps) {
-  const device = user.devices?.find((kind) => kind === "mobile")
-    ?? user.devices?.find((kind) => kind === "desktop")
-    ?? user.devices?.[0];
+export function Avatar({ user, status, className, imgClassName, fallbackClassName }: AvatarProps) {
+  const device = user.devices?.find((kind) => kind === "desktop")
+    ?? user.devices?.find((kind) => kind === "browser")
+    ?? user.devices?.find((kind) => kind === "mobile");
   const DeviceIcon = device === "mobile" ? Smartphone : device === "desktop" ? Monitor : Globe;
   return (
     // rounded-full on the wrapper too: it has no fill of its own, but a ring or
@@ -38,12 +42,15 @@ export function Avatar({ user, status, className }: AvatarProps) {
         <img
           src={user.avatarUrl}
           alt=""
-          className="size-full rounded-full object-cover"
+          className={cn("size-full rounded-full object-cover", imgClassName)}
         />
       ) : (
         <span
           aria-hidden
-          className="flex size-full items-center justify-center rounded-full bg-primary-soft font-semibold text-primary"
+          className={cn(
+            "flex size-full items-center justify-center rounded-full bg-primary-soft font-semibold text-primary",
+            fallbackClassName,
+          )}
         >
           {user.displayName.charAt(0).toUpperCase()}
         </span>

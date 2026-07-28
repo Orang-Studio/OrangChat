@@ -14,8 +14,8 @@ import javax.inject.Provider
 /**
  * On a 401 (outside the auth routes), refreshes the session once via POST
  * /auth/refresh
- * — which reads the refresh cookie (carried by the CookieJar) and returns a
- * fresh access token — then retries the original request with it. Mirrors the
+ * - which reads the refresh cookie (carried by the CookieJar) and returns a
+ * fresh access token - then retries the original request with it. Mirrors the
  * web client's request() refresh-and-retry in lib/api.ts. Constructed in
  * NetworkModule (not @Inject) so it can bind the qualified refresh client.
  */
@@ -52,7 +52,7 @@ class TokenAuthenticator(
         }
     }
 
-    /** Blocking refresh — Authenticator runs off the main thread already. */
+    /** Blocking refresh - Authenticator runs off the main thread already. */
     private fun runRefresh(): String? {
         return try {
             val url = baseUrlProvider.get().trimEnd('/') + "/auth/refresh"

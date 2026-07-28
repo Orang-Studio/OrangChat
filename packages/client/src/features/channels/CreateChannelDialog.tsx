@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Hash, Volume2 } from "lucide-react";
+import { Folder, Hash, Volume2 } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { Button } from "../../components/ui/Button";
 import { TextField } from "../../components/ui/TextField";
 import { Dialog, DialogContent } from "../../components/ui/Dialog";
+import type { Channel } from "@orangchat/shared";
 import { createChannel } from "../servers/api";
 import { serverKeys } from "../servers/queries";
 
@@ -13,21 +14,35 @@ interface CreateChannelDialogProps {
   serverId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Fixes the dialog to one kind and hides the type picker. */
+  only?: ChannelKind;
+  /** Categories the new channel can be filed under. */
+  categories?: Channel[];
 }
+
+type ChannelKind = "text" | "voice" | "category";
 
 export function CreateChannelDialog({
   serverId,
   open,
   onOpenChange,
+  only,
+  categories = [],
 }: CreateChannelDialogProps) {
   const [name, setName] = useState("");
-  const [type, setType] = useState<"text" | "voice">("text");
+  const [type, setType] = useState<ChannelKind>(only ?? "text");
+  const [parentCategoryId, setParentCategoryId] = useState("");
+  const kind = only ?? type;
   const client = useQueryClient();
   const navigate = useNavigate();
 
   const mutation = useMutation({
     mutationFn: () =>
-      createChannel(serverId, { name: normalizeChannelName(name), type }),
+      createChannel(serverId, {
+        name: kind === "category" ? name.trim() : normalizeChannelName(name),
+        type: kind,
+        ...(kind !== "category" && parentCategoryId ? { parentCategoryId } : {}),
+      }),
     onSuccess: (channel) => {
       // The channel:created broadcast also updates the cache; invalidate as a fallback.
       client.invalidateQueries({ queryKey: serverKeys.detail(serverId) });
@@ -48,45 +63,71 @@ export function CreateChannelDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        title="Create channel"
-        description="Text channels are where your members talk."
+        title={only === "category" ? "Create category" : "Create channel"}
+        description={
+          only === "category"
+            ? "Categories group channels in the sidebar."
+            : "Text channels are where your members talk."
+        }
       >
         <form onSubmit={onSubmit} className="space-y-4">
-          <div
-            role="radiogroup"
-            aria-label="Channel type"
-            className="grid grid-cols-2 gap-1 rounded-lg bg-surface-1 p-1"
-          >
-            {(
-              [
-                ["text", Hash, "Text"],
-                ["voice", Volume2, "Voice"],
-              ] as const
-            ).map(([value, Icon, label]) => (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={type === value}
-                onClick={() => setType(value)}
-                className={cn(
-                  "flex items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  type === value
-                    ? "bg-surface-3 text-ink"
-                    : "text-ink-muted hover:text-ink-secondary",
-                )}
+          {!only && (
+            <div
+              role="radiogroup"
+              aria-label="Channel type"
+              className="grid grid-cols-3 gap-1 rounded-lg bg-surface-1 p-1"
+            >
+              {(
+                [
+                  ["text", Hash, "Text"],
+                  ["voice", Volume2, "Voice"],
+                  ["category", Folder, "Category"],
+                ] as const
+              ).map(([value, Icon, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={type === value}
+                  onClick={() => setType(value)}
+                  className={cn(
+                    "flex items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                    type === value
+                      ? "bg-surface-3 text-ink"
+                      : "text-ink-muted hover:text-ink-secondary",
+                  )}
+                >
+                  <Icon aria-hidden className="size-4" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+          {kind !== "category" && categories.length > 0 && (
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-ink-secondary">
+                Category
+              </label>
+              <select
+                value={parentCategoryId}
+                onChange={(e) => setParentCategoryId(e.target.value)}
+                className="h-10 w-full rounded-lg border border-border bg-surface-1 px-2 text-sm"
               >
-                <Icon aria-hidden className="size-4" />
-                {label}
-              </button>
-            ))}
-          </div>
+                <option value="">No category</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <TextField
-            label="Channel name"
+            label={kind === "category" ? "Category name" : "Channel name"}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="general"
-            hint="Lowercase, spaces become dashes."
+            placeholder={kind === "category" ? "Text channels" : "general"}
+            hint={kind === "category" ? undefined : "Lowercase, spaces become dashes."}
             maxLength={100}
             autoFocus
           />
@@ -101,7 +142,7 @@ export function CreateChannelDialog({
             disabled={!name.trim()}
             className="w-full"
           >
-            Create channel
+            {kind === "category" ? "Create category" : "Create channel"}
           </Button>
         </form>
       </DialogContent>

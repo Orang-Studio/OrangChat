@@ -33,10 +33,14 @@ pub struct UserRow {
     pub friend_request_privacy: String,
     #[sqlx(rename = "typingIndicators")]
     pub typing_indicators: bool,
+    #[sqlx(rename = "e2eeStrict")]
+    pub e2ee_strict: bool,
     #[sqlx(rename = "totpSecret")]
     pub totp_secret: Option<String>,
     #[sqlx(rename = "totpEnabled")]
     pub totp_enabled: bool,
+    #[sqlx(rename = "emailVerifiedAt")]
+    pub email_verified_at: Option<NaiveDateTime>,
     /// Awarded badge slugs; see services::badge for the catalog.
     pub badges: Vec<String>,
     /// Set while the account is locked down; see services::account.
@@ -103,6 +107,9 @@ pub struct ChannelRow {
     #[sqlx(rename = "userLimit")]
     pub user_limit: i32,
     pub bitrate: i32,
+    pub e2ee: bool,
+    #[sqlx(rename = "epochNumber")]
+    pub epoch_number: i32,
     #[sqlx(rename = "updatedAt")]
     pub updated_at: NaiveDateTime,
 }
@@ -132,6 +139,29 @@ pub struct EmojiRow {
     pub creator_id: Option<String>,
     #[sqlx(rename = "createdAt")]
     pub created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, FromRow)]
+pub struct ScheduledEventRow {
+    pub id: String,
+    #[sqlx(rename = "serverId")]
+    pub server_id: String,
+    #[sqlx(rename = "channelId")]
+    pub channel_id: Option<String>,
+    #[sqlx(rename = "creatorId")]
+    pub creator_id: Option<String>,
+    pub name: String,
+    pub description: Option<String>,
+    pub location: Option<String>,
+    #[sqlx(rename = "startsAt")]
+    pub starts_at: NaiveDateTime,
+    #[sqlx(rename = "endsAt")]
+    pub ends_at: Option<NaiveDateTime>,
+    #[sqlx(rename = "createdAt")]
+    pub created_at: NaiveDateTime,
+    #[sqlx(rename = "interestedCount")]
+    pub interested_count: i64,
+    pub interested: bool,
 }
 
 #[derive(Debug, Clone, FromRow)]
@@ -195,6 +225,82 @@ pub struct MessageRow {
     pub pinned: bool,
     #[sqlx(rename = "pinnedAt")]
     pub pinned_at: Option<NaiveDateTime>,
+    pub ciphertext: Option<Vec<u8>>,
+    #[sqlx(rename = "encEpoch")]
+    pub enc_epoch: Option<i32>,
+    #[sqlx(rename = "encVersion")]
+    pub enc_version: Option<i32>,
+}
+
+#[derive(Debug, Clone, FromRow)]
+pub struct DeviceRow {
+    pub id: String,
+    #[sqlx(rename = "userId")]
+    pub user_id: String,
+    pub name: String,
+    pub platform: String,
+    #[sqlx(rename = "ikSigPub")]
+    pub ik_sig_pub: Vec<u8>,
+    #[sqlx(rename = "ikDhPub")]
+    pub ik_dh_pub: Vec<u8>,
+    #[sqlx(rename = "bundleSig")]
+    pub bundle_sig: Vec<u8>,
+    #[sqlx(rename = "authorizedBy")]
+    pub authorized_by: Option<String>,
+    #[sqlx(rename = "authorizationSig")]
+    pub authorization_sig: Option<Vec<u8>>,
+    #[sqlx(rename = "createdAt")]
+    pub created_at: NaiveDateTime,
+    #[sqlx(rename = "lastSeenAt")]
+    pub last_seen_at: NaiveDateTime,
+    #[sqlx(rename = "revokedAt")]
+    pub revoked_at: Option<NaiveDateTime>,
+}
+
+#[derive(Debug, Clone, FromRow)]
+pub struct DeviceLogEntryRow {
+    #[allow(dead_code)]
+    pub id: String,
+    #[allow(dead_code)]
+    #[sqlx(rename = "userId")]
+    pub user_id: String,
+    pub seq: i32,
+    pub kind: String,
+    pub payload: Vec<u8>,
+    #[sqlx(rename = "entryHash")]
+    pub entry_hash: Vec<u8>,
+    #[sqlx(rename = "prevHash")]
+    pub prev_hash: Option<Vec<u8>>,
+    pub signature: Vec<u8>,
+    #[sqlx(rename = "createdAt")]
+    pub created_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone, FromRow)]
+pub struct ChannelEpochRow {
+    pub id: String,
+    #[sqlx(rename = "channelId")]
+    pub channel_id: String,
+    pub epoch: i32,
+    #[sqlx(rename = "createdAt")]
+    pub created_at: NaiveDateTime,
+    #[sqlx(rename = "createdBy")]
+    pub created_by: String,
+}
+
+#[derive(Debug, Clone, FromRow)]
+pub struct KeyEnvelopeRow {
+    #[allow(dead_code)]
+    pub id: String,
+    #[sqlx(rename = "epochId")]
+    pub epoch_id: String,
+    #[sqlx(rename = "deviceId")]
+    pub device_id: String,
+    #[sqlx(rename = "ephemeralPub")]
+    pub ephemeral_pub: Vec<u8>,
+    #[sqlx(rename = "wrapNonce")]
+    pub wrap_nonce: Vec<u8>,
+    pub wrapped: Vec<u8>,
 }
 
 #[derive(Debug, Clone, FromRow)]
@@ -254,21 +360,6 @@ pub struct ConnectionRow {
     pub profile_url: Option<String>,
     pub verified: bool,
     pub visible: bool,
-    #[sqlx(rename = "createdAt")]
-    pub created_at: NaiveDateTime,
-}
-
-#[derive(Debug, Clone, FromRow)]
-pub struct ThemeRow {
-    pub id: String,
-    #[sqlx(rename = "authorId")]
-    pub author_id: String,
-    pub name: String,
-    /// { "--oc-*": "colour" }, validated on the way in; see services::theme.
-    pub vars: Json,
-    pub submitted: bool,
-    pub published: bool,
-    pub installs: i32,
     #[sqlx(rename = "createdAt")]
     pub created_at: NaiveDateTime,
 }

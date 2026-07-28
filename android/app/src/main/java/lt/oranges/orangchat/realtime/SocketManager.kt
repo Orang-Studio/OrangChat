@@ -303,17 +303,44 @@ class SocketManager @Inject constructor(
         content: String,
         replyToId: String? = null,
         attachmentIds: List<String> = emptyList(),
+        /**
+         * Set for an end-to-end encrypted conversation. `content` then goes as
+         * the empty string the server stores, and the real text only exists
+         * inside this envelope (docs/E2EE.md §2).
+         */
+        ciphertext: String? = null,
+        encEpoch: Int? = null,
+        encVersion: Int? = null,
     ): Message =
         emitWithAck("message:send", buildJson {
             put("channelId", channelId)
-            put("content", content)
+            put("content", if (ciphertext == null) content else "")
             if (replyToId != null) put("replyToId", replyToId)
             if (attachmentIds.isNotEmpty()) put("attachmentIds", JSONArray(attachmentIds))
+            if (ciphertext != null) {
+                put("ciphertext", ciphertext)
+                put("encEpoch", encEpoch)
+                put("encVersion", encVersion)
+            }
         }) { decode(it) }
 
-    suspend fun editMessage(channelId: String, messageId: String, content: String): Message =
+    suspend fun editMessage(
+        channelId: String,
+        messageId: String,
+        content: String,
+        ciphertext: String? = null,
+        encEpoch: Int? = null,
+        encVersion: Int? = null,
+    ): Message =
         emitWithAck("message:edit", buildJson {
-            put("channelId", channelId); put("messageId", messageId); put("content", content)
+            put("channelId", channelId)
+            put("messageId", messageId)
+            put("content", if (ciphertext == null) content else "")
+            if (ciphertext != null) {
+                put("ciphertext", ciphertext)
+                put("encEpoch", encEpoch)
+                put("encVersion", encVersion)
+            }
         }) { decode(it) }
 
     suspend fun deleteMessage(channelId: String, messageId: String) {
@@ -396,7 +423,7 @@ class SocketManager @Inject constructor(
 
     /**
      * Emit with a Socket.IO ack of shape { ok, data } / { ok:false, error }.
-     * [payload] is Any because not every event takes an object — voice:join and
+     * [payload] is Any because not every event takes an object - voice:join and
      * the call cancel/end events send a bare channel-id string.
      *
      * Failures resume with an exception rather than cancelling the continuation:

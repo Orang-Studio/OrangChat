@@ -5,9 +5,16 @@ import { cn } from "../../lib/cn";
 import { usePrefs } from "../../lib/prefs";
 import { Avatar } from "../../components/Avatar";
 import { emitTyping, sendMessage } from "./socket-actions";
-import { isEphemeral, MAX_PER_MESSAGE, uploadAttachment } from "./attachments";
+import {
+  isEphemeral,
+  MAX_PER_MESSAGE,
+  uploadAttachment,
+  uploadSealedAttachment,
+} from "./attachments";
+import { isEncrypted } from "../e2ee/store";
 import { ComposerAttachments, isSettled, type PendingUpload } from "./ComposerAttachments";
 import { ExpressionPicker } from "./ExpressionPicker";
+import { normalizeCustomEmojiNames, useEmojiMap } from "../emojis/queries";
 import { clearDraft, loadDraft, saveDraft, saveDraftNow } from "./drafts";
 
 const TYPING_THROTTLE_MS = 2_500;
@@ -39,6 +46,7 @@ export function Composer({
   onClearReply,
   members = [],
 }: ComposerProps) {
+  const emojiMap = useEmojiMap();
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -187,11 +195,23 @@ export function Composer({
       };
       setUploads((prev) => [...prev, entry]);
 
-      void uploadAttachment(file, {
+      const handle = {
         signal: controller.signal,
-        onProgress: (fraction) => patch(key, { progress: fraction }),
-      })
-        .then((attachment) => patch(key, { attachment, progress: 1 }))
+        onProgress: (fraction: number) => patch(key, { progress: fraction }),
+      };
+      // In an encrypted conversation the bytes, the name and the type are sealed
+      // before anything leaves the machine, so the upload the server sees is an
+      // opaque blob and a length (§7).
+      const upload = isEncrypted(channelId)
+        ? uploadSealedAttachment(file, handle).then(
+            ({ attachment, supportingAttachments, ref }) =>
+              patch(key, { attachment, supportingAttachments, sealed: ref, progress: 1 }),
+          )
+        : uploadAttachment(file, handle).then((attachment) =>
+            patch(key, { attachment, progress: 1 }),
+          );
+
+      void upload
         .catch((err: unknown) => {
           // Cancelling is the user's own doing - drop(key) already removed the
           // entry, so there's nothing to report.
@@ -214,16 +234,25 @@ export function Composer({
       setError("Remove the attachments that failed to upload first");
       return;
     }
-    const content = draft.trim();
+    const content = normalizeCustomEmojiNames(draft.trim(), emojiMap);
     setSending(true);
     try {
       await sendMessage({
         channelId,
         content,
         replyToId: replyTo?.id,
-        attachmentIds: ready.map((u) => u.attachment!.id),
+        attachmentIds: ready.flatMap((u) => [
+          u.attachment!.id,
+          ...(u.supportingAttachments ?? []).map((attachment) => attachment.id),
+        ]),
         spoilerAttachmentIds: ready.filter((u) => u.spoiler).map((u) => u.attachment!.id),
-        optimisticAttachments: ready.map((u) => u.attachment!),
+        optimisticAttachments: ready.flatMap((u) => [
+          u.attachment!,
+          ...(u.supportingAttachments ?? []),
+        ]),
+        sealedAttachments: ready
+          .filter((u) => u.sealed)
+          .map((u) => ({ ...u.sealed!, ...(u.spoiler ? { spoiler: true } : {}) })),
       });
       setDraft("");
       clearDraft(channelId);

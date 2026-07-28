@@ -1,4 +1,5 @@
 import type { BadgeId } from './badges.js';
+import type { DeviceLogKind, E2eePlatform } from './e2ee.js';
 
 export type ChannelType = 'text' | 'voice' | 'category' | 'dm' | 'group_dm';
 export type PresenceStatus = 'online' | 'idle' | 'dnd' | 'offline';
@@ -54,6 +55,12 @@ export interface SelfUser extends User {
   dmPrivacy: DmPrivacy;
   friendRequestPrivacy: FriendRequestPrivacy;
   typingIndicators: boolean;
+  /**
+   * "Require verification before messaging anyone new" (docs/E2EE.md §6.5).
+   * Off by default. It gates only this account's own sending - it never changes
+   * anybody else's policy, and it never turns encryption on or off.
+   */
+  e2eeStrict: boolean;
   /** Whether TOTP is active. The secret is never sent to any client. */
   twoFactorEnabled: boolean;
   /** False for OAuth-only accounts, which have no password to re-confirm. */
@@ -80,23 +87,6 @@ export interface AccountStanding {
   entries: StandingEntry[];
 }
 
-/** A shareable colour theme in the marketplace. */
-export interface MarketplaceTheme {
-  id: string;
-  authorId: string;
-  /** Author's display name; present on marketplace listings. */
-  authorName: string | null;
-  name: string;
-  /** { "--oc-*": "colour" }; keys allow-listed, values colour-validated server-side. */
-  vars: Record<string, string>;
-  /** The author has asked for it to be listed; awaits review. */
-  submitted: boolean;
-  /** Approved and live in the marketplace. */
-  published: boolean;
-  installs: number;
-  createdAt: string;
-}
-
 /** One live session, as shown on the devices screen. */
 export interface DeviceSession {
   id: string;
@@ -107,6 +97,83 @@ export interface DeviceSession {
   ip: string | null;
   createdAt: string | null;
   lastSeenAt: string | null;
+}
+
+export interface E2eeDevice {
+  id: string;
+  userId: string;
+  name: string;
+  platform: E2eePlatform;
+  ikSigPub: string;
+  ikDhPub: string;
+  bundleSig: string;
+  authorizedBy: string | null;
+  authorizationSig: string | null;
+  createdAt: string;
+  lastSeenAt: string;
+  revokedAt: string | null;
+}
+
+export interface E2eeLogEntry {
+  seq: number;
+  kind: DeviceLogKind;
+  payload: string;
+  entryHash: string;
+  prevHash: string | null;
+  signature: string;
+  createdAt: string;
+}
+
+export interface E2eeLogHead {
+  seq: number;
+  entryHash: string;
+}
+
+export interface E2eeDeviceList {
+  userId: string;
+  devices: E2eeDevice[];
+  log: E2eeLogEntry[];
+  head: E2eeLogHead | null;
+}
+
+export interface E2eeIdentity {
+  enrolled: boolean;
+  deviceId: string | null;
+  genesisCommitment: string | null;
+}
+
+export interface E2eeEpoch {
+  id: string;
+  channelId: string;
+  epoch: number;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface E2eeEnvelope {
+  epochId: string;
+  deviceId: string;
+  ephemeralPub: string;
+  wrapNonce: string;
+  wrapped: string;
+}
+
+export interface E2eeEpochKey {
+  epoch: E2eeEpoch;
+  envelope: E2eeEnvelope;
+}
+
+export interface E2eeTransferGrant {
+  grant: string;
+  transferId: string;
+  expiresAt: string;
+}
+
+export interface E2eeChannelState {
+  channelId: string;
+  e2ee: boolean;
+  epochNumber: number;
+  memberDevices: E2eeDevice[];
 }
 
 /** GET /security/2fa */
@@ -322,6 +389,11 @@ export interface Message {
   channelId: string;
   author: User;
   content: string;
+  /**
+   * Existing custom emoji referenced by this message. These are renderable
+   * even when the viewer cannot use the emoji themselves.
+   */
+  emojis?: Emoji[];
   createdAt: string;
   editedAt: string | null;
   replyToId: string | null;
@@ -329,6 +401,9 @@ export interface Message {
   reactions: Reaction[];
   pinned: boolean;
   pinnedAt: string | null;
+  ciphertext?: string | null;
+  encEpoch?: number | null;
+  encVersion?: number | null;
 }
 
 /** One entry in a server's audit log. `actor` is null when the account that made
@@ -395,6 +470,23 @@ export interface AuthResult {
 }
 
 /** Unread + mention state for one channel (from GET /me/unreads). */
+export interface ScheduledEvent {
+  id: string;
+  serverId: string;
+  /** Voice/text channel the event happens in, when it isn't external. */
+  channelId: string | null;
+  creatorId: string | null;
+  name: string;
+  description: string | null;
+  location: string | null;
+  startsAt: string;
+  endsAt: string | null;
+  createdAt: string;
+  interestedCount: number;
+  /** Whether the requesting user marked themselves interested. */
+  interested: boolean;
+}
+
 export interface UnreadState {
   channelId: string;
   /** Server the channel belongs to, or null for a DM/group DM. */

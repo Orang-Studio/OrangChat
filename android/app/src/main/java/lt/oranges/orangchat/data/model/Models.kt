@@ -98,6 +98,8 @@ data class SelfUser(
     val dmPrivacy: DmPrivacy = DmPrivacy.EVERYONE,
     val friendRequestPrivacy: FriendRequestPrivacy = FriendRequestPrivacy.EVERYONE,
     val typingIndicators: Boolean = true,
+    /** Refuse to mint a DM key until the peer was verified out of band. */
+    val e2eeStrict: Boolean = false,
     val twoFactorEnabled: Boolean = false,
     /** False for OAuth-only accounts, which have no password to re-confirm. */
     val hasPassword: Boolean = true,
@@ -174,7 +176,7 @@ data class ServerMember(
     val serverId: String,
     val userId: String,
     val nickname: String? = null,
-    /** A past value is simply expired — compare against now, don't assume null. */
+    /** A past value is simply expired - compare against now, don't assume null. */
     val timedOutUntil: String? = null,
     val joinedAt: String = "",
     val roleIds: List<String> = emptyList(),
@@ -257,6 +259,8 @@ data class Message(
     val channelId: String,
     val author: User,
     val content: String,
+    /** Display metadata for custom emoji referenced by this message. */
+    val emojis: List<Emoji> = emptyList(),
     val createdAt: String,
     val editedAt: String? = null,
     val replyToId: String? = null,
@@ -264,10 +268,18 @@ data class Message(
     val reactions: List<Reaction> = emptyList(),
     val pinned: Boolean = false,
     val pinnedAt: String? = null,
+    /**
+     * The end-to-end encrypted envelope (docs/E2EE.md §2). When it is set,
+     * `content` is the empty string the server stores and the real text only
+     * exists once E2eeRepository opens this.
+     */
+    val ciphertext: String? = null,
+    val encEpoch: Int? = null,
+    val encVersion: Int? = null,
 )
 
 /**
- * `actor` is null when the account that made the change was deleted — the entry
+ * `actor` is null when the account that made the change was deleted - the entry
  * itself is never removed.
  */
 @Serializable
@@ -363,6 +375,22 @@ data class AuthTokens(
 data class AuthResult(
     val user: SelfUser,
     val tokens: AuthTokens,
+)
+
+/**
+ * POST /auth/login never mints a session on its own: a correct password only
+ * earns a mailed code, and the token below is what ties the second call to it.
+ */
+@Serializable
+data class LoginChallenge(
+    val email2faRequired: Boolean = false,
+    val loginToken: String = "",
+)
+
+/** POST /auth/signup: the account exists but cannot sign in until verified. */
+@Serializable
+data class SignupResult(
+    val emailVerificationRequired: Boolean = false,
 )
 
 @Serializable

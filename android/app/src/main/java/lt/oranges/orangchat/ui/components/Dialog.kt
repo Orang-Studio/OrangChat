@@ -29,7 +29,7 @@ import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
 /**
- * Port of components/ui/Dialog.tsx — centered surface-2 card with a title bar,
+ * Port of components/ui/Dialog.tsx - centered surface-2 card with a title bar,
  * close affordance, and rounded-2xl corners over a dimmed scrim.
  */
 @Composable

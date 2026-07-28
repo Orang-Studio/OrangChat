@@ -1,7 +1,9 @@
 package lt.oranges.orangchat.feature.dms
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,25 +19,43 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.GroupAdd
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material3.Icon
 import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import lt.oranges.orangchat.data.model.ChannelType
 import lt.oranges.orangchat.data.model.Conversation
 import lt.oranges.orangchat.data.model.PresenceStatus
 import lt.oranges.orangchat.data.model.SelfUser
 import lt.oranges.orangchat.data.model.UnreadState
+import lt.oranges.orangchat.data.model.User
 import lt.oranges.orangchat.data.model.UserActivity
 import lt.oranges.orangchat.feature.unread.UnreadCountBadge
 import lt.oranges.orangchat.ui.components.ActivityStatus
 import lt.oranges.orangchat.ui.components.Avatar
+import lt.oranges.orangchat.ui.components.MenuItem
+import lt.oranges.orangchat.ui.components.OrangDropdownMenu
 import lt.oranges.orangchat.ui.components.UserFooter
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
@@ -47,9 +67,15 @@ fun HomePane(
     conversations: List<Conversation>,
     presence: Map<String, PresenceStatus>,
     presenceActivities: Map<String, List<UserActivity>>,
+    friendIds: Set<String>,
     onOpenFriends: () -> Unit,
     onOpenConversation: (Conversation) -> Unit,
     onOpenSettings: () -> Unit,
+    onNewGroup: () -> Unit,
+    onMarkRead: (String) -> Unit,
+    onOpenProfile: (User) -> Unit,
+    onStartCall: (Conversation) -> Unit,
+    onRemoveFriend: (String) -> Unit,
     modifier: Modifier = Modifier,
     unreads: Map<String, UnreadState> = emptyMap(),
 ) {
@@ -60,6 +86,16 @@ fun HomePane(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("Direct Messages", color = c.ink, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.weight(1f))
+            Icon(
+                Icons.Default.GroupAdd,
+                contentDescription = "New group",
+                tint = c.inkSecondary,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(OrangRadius.md))
+                    .clickable(onClick = onNewGroup)
+                    .padding(4.dp)
+                    .size(22.dp),
+            )
         }
         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(c.border))
 
@@ -86,7 +122,12 @@ fun HomePane(
                     presenceActivities = presenceActivities,
                     unread = unreads[convo.id]?.unread == true,
                     unreadCount = unreads[convo.id]?.unreadCount ?: 0,
+                    friendIds = friendIds,
                     onClick = onOpenConversation,
+                    onMarkRead = onMarkRead,
+                    onOpenProfile = onOpenProfile,
+                    onStartCall = onStartCall,
+                    onRemoveFriend = onRemoveFriend,
                 )
             }
         }
@@ -95,6 +136,7 @@ fun HomePane(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ConversationRow(
     convo: Conversation,
@@ -103,19 +145,38 @@ private fun ConversationRow(
     presenceActivities: Map<String, List<UserActivity>>,
     unread: Boolean,
     unreadCount: Int,
+    friendIds: Set<String>,
     onClick: (Conversation) -> Unit,
+    onMarkRead: (String) -> Unit,
+    onOpenProfile: (User) -> Unit,
+    onStartCall: (Conversation) -> Unit,
+    onRemoveFriend: (String) -> Unit,
 ) {
     val c = OrangTheme.colors
     val others = convo.participants.filter { it.id != selfId }
     val title = convo.name ?: others.joinToString(", ") { it.displayName }.ifBlank { "Direct Message" }
     val lead = others.firstOrNull()
+    // A group DM has no single counterpart, so the person-shaped actions
+    // (profile, remove friend, copy user ID) only apply to a one-on-one.
+    val other = if (convo.type == ChannelType.GROUP_DM) null else lead
+    val haptics = LocalHapticFeedback.current
+    val clipboard = LocalClipboardManager.current
+    var menuOpen by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 1.dp)
             .clip(RoundedCornerShape(OrangRadius.md))
-            .clickable { onClick(convo) }
+            // Long-press stands in for the web client's right-click menu; the
+            // tap still opens the conversation.
+            .combinedClickable(
+                onClick = { onClick(convo) },
+                onLongClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    menuOpen = true
+                },
+            )
             .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -165,5 +226,43 @@ private fun ConversationRow(
             }
         }
         UnreadCountBadge(unreadCount)
+        // Anchored to the row's trailing edge so the menu never covers the
+        // avatar and name of what is being acted on.
+        Box {
+            OrangDropdownMenu(
+                expanded = menuOpen,
+                onDismiss = { menuOpen = false },
+                items = buildList {
+                    add(
+                        MenuItem("Mark as read", Icons.Default.Check, enabled = unread) {
+                            onMarkRead(convo.id)
+                        },
+                    )
+                    other?.let { user ->
+                        add(MenuItem("Profile", Icons.Default.Person) { onOpenProfile(user) })
+                    }
+                    add(MenuItem("Start a call", Icons.Default.Call) { onStartCall(convo) })
+                    if (other != null && other.id in friendIds) {
+                        add(
+                            MenuItem("Remove friend", Icons.Default.PersonRemove, destructive = true) {
+                                onRemoveFriend(other.id)
+                            },
+                        )
+                    }
+                    other?.let { user ->
+                        add(
+                            MenuItem("Copy user ID", Icons.Default.ContentCopy) {
+                                clipboard.setText(AnnotatedString(user.id))
+                            },
+                        )
+                    }
+                    add(
+                        MenuItem("Copy channel ID", Icons.Default.ContentCopy) {
+                            clipboard.setText(AnnotatedString(convo.id))
+                        },
+                    )
+                },
+            )
+        }
     }
 }

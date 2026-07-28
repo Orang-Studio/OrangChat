@@ -22,7 +22,7 @@ import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
 /**
- * Port of components/ui/Tabs.tsx — a bottom-bordered row of pill triggers; the
+ * Port of components/ui/Tabs.tsx - a bottom-bordered row of pill triggers; the
  * active tab gets a primary-soft background and primary text.
  */
 @Composable

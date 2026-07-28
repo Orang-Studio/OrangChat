@@ -55,6 +55,12 @@ struct SendPayload {
     /// Which of the above to hide behind a spoiler cover. Presentation only.
     #[serde(default)]
     spoiler_attachment_ids: Vec<String>,
+    #[serde(default)]
+    ciphertext: Option<String>,
+    #[serde(default)]
+    enc_epoch: Option<i32>,
+    #[serde(default)]
+    enc_version: Option<i32>,
 }
 
 #[derive(Deserialize)]
@@ -63,6 +69,12 @@ struct EditPayload {
     channel_id: String,
     message_id: String,
     content: String,
+    #[serde(default)]
+    ciphertext: Option<String>,
+    #[serde(default)]
+    enc_epoch: Option<i32>,
+    #[serde(default)]
+    enc_version: Option<i32>,
 }
 
 #[derive(Deserialize)]
@@ -181,7 +193,9 @@ async fn emit_voice_state(
 /// Tell every one of this user's own sockets which of them are in voice, so each
 /// can work out whether the *other* ones are.
 async fn emit_voice_devices(io: &SocketIo, state: &AppState, user_id: &str) {
-    let devices = voice::list_devices(state, user_id).await.unwrap_or_default();
+    let devices = voice::list_devices(state, user_id)
+        .await
+        .unwrap_or_default();
     let _ = io
         .to(format!("user:{user_id}"))
         .emit("voice:devices", &devices);
@@ -244,7 +258,12 @@ fn arm_ring_timeout(state: AppState, io: SocketIo, channel_id: String, started_a
 }
 
 /// Emit a user's presence to shared servers and directly to their friends.
-pub(crate) async fn broadcast_presence(io: &SocketIo, state: &AppState, user_id: &str, status: &str) {
+pub(crate) async fn broadcast_presence(
+    io: &SocketIo,
+    state: &AppState,
+    user_id: &str,
+    status: &str,
+) {
     let devices = presence::get_devices(state, user_id)
         .await
         .unwrap_or_default();
@@ -255,7 +274,11 @@ pub(crate) async fn broadcast_presence(io: &SocketIo, state: &AppState, user_id:
     // device/activity set even when they share no server with anyone yet.
     let mut rooms = vec![format!("user:{user_id}")];
     if let Ok(servers) = server::get_user_servers(state, user_id).await {
-        rooms.extend(servers.into_iter().map(|server| format!("server:{}", server.id)));
+        rooms.extend(
+            servers
+                .into_iter()
+                .map(|server| format!("server:{}", server.id)),
+        );
     }
     if let Ok(friend_rows) = friends::list_friends(state, user_id).await {
         rooms.extend(
@@ -328,9 +351,7 @@ pub async fn deliver_message(
             .emit("unread:activity", &payload);
     } else if let Ok(members) = read_state::channel_member_ids(state, channel).await {
         for m in &members {
-            let _ = io
-                .to(format!("user:{m}"))
-                .emit("unread:activity", &payload);
+            let _ = io.to(format!("user:{m}")).emit("unread:activity", &payload);
         }
     }
 
@@ -369,6 +390,8 @@ pub async fn deliver_message(
     let author_name = msg.author.display_name.clone();
     let author_avatar = msg.author.avatar_url.clone();
     let preview = msg.content.clone();
+    let sealed = msg.ciphertext.clone();
+    let enc_epoch = msg.enc_epoch;
     tokio::spawn(async move {
         crate::services::push::notify_message(
             &push_state,
@@ -380,6 +403,8 @@ pub async fn deliver_message(
             author_avatar.as_deref(),
             &preview,
             &push_targets,
+            sealed.as_deref(),
+            enc_epoch,
         )
         .await;
     });
@@ -641,6 +666,12 @@ fn register_handlers(
                             channel::require_channel_access(&state, &p.channel_id, &uid).await?;
                         channel::enforce_slowmode(&state, &ch, &uid).await?;
                         membership::assert_not_timed_out(&state, &ch, &uid).await?;
+                        let sealed = message::parse_sealed(
+                            &ch,
+                            p.ciphertext.as_deref(),
+                            p.enc_epoch,
+                            p.enc_version,
+                        )?;
                         message::send_message(
                             &state,
                             &p.channel_id,
@@ -649,6 +680,7 @@ fn register_handlers(
                             p.reply_to_id.as_deref(),
                             &p.attachment_ids,
                             &p.spoiler_attachment_ids,
+                            sealed.as_ref(),
                         )
                         .await
                     }
@@ -688,8 +720,22 @@ fn register_handlers(
                             rate_limit::MESSAGE_EDIT_PER_USER,
                         )
                         .await?;
-                        channel::require_channel_access(&state, &p.channel_id, &uid).await?;
-                        message::edit_message(&state, &p.message_id, &uid, &p.content).await
+                        let ch =
+                            channel::require_channel_access(&state, &p.channel_id, &uid).await?;
+                        let sealed = message::parse_sealed(
+                            &ch,
+                            p.ciphertext.as_deref(),
+                            p.enc_epoch,
+                            p.enc_version,
+                        )?;
+                        message::edit_message(
+                            &state,
+                            &p.message_id,
+                            &uid,
+                            &p.content,
+                            sealed.as_ref(),
+                        )
+                        .await
                     }
                     .await;
                     match res {
@@ -729,8 +775,14 @@ fn register_handlers(
                                 can_manage = permissions::has_permission(perms, MANAGE_MESSAGES);
                             }
                         }
-                        message::delete_message(&state, &p.channel_id, &p.message_id, &uid, can_manage)
-                            .await
+                        message::delete_message(
+                            &state,
+                            &p.channel_id,
+                            &p.message_id,
+                            &uid,
+                            can_manage,
+                        )
+                        .await
                     }
                     .await;
                     match res {
@@ -798,11 +850,15 @@ fn register_handlers(
                     return;
                 };
                 // A timeout that still let you react would not be a timeout.
-                if membership::assert_not_timed_out(&state, &ch, &uid).await.is_err() {
+                if membership::assert_not_timed_out(&state, &ch, &uid)
+                    .await
+                    .is_err()
+                {
                     return;
                 }
                 if let Ok((_, true)) =
-                    message::add_reaction(&state, &p.channel_id, &p.message_id, &uid, &p.emoji).await
+                    message::add_reaction(&state, &p.channel_id, &p.message_id, &uid, &p.emoji)
+                        .await
                 {
                     let _ = io.to(format!("channel:{}", p.channel_id)).emit(
                         "reaction",
@@ -923,9 +979,8 @@ fn register_handlers(
                     match res {
                         Ok(((token, url), voice_state)) => {
                             let _ = s.join(format!("voice:{channel_id}"));
-                            let _ =
-                                voice::add_device(&state, &uid, &s.id.to_string(), &channel_id)
-                                    .await;
+                            let _ = voice::add_device(&state, &uid, &s.id.to_string(), &channel_id)
+                                .await;
                             emit_voice_state(&io, &state, &channel_id, &voice_state).await;
                             emit_voice_devices(&io, &state, &uid).await;
                             ack_ok(ack, &json!({ "token": token, "url": url }));
@@ -1090,12 +1145,10 @@ fn register_handlers(
                         // the sound's origin server is the gate; SPEAK and actually
                         // being in this voice room (checked above) are what bound
                         // where it can be fired.
-                        let owns = membership::is_server_member(&state, &snd.server_id, &uid)
-                            .await?;
+                        let owns =
+                            membership::is_server_member(&state, &snd.server_id, &uid).await?;
                         if !owns {
-                            return Err(crate::error::AppError::NotFound(
-                                "Sound not found".into(),
-                            ));
+                            return Err(crate::error::AppError::NotFound("Sound not found".into()));
                         }
                         Ok::<_, crate::error::AppError>(snd)
                     }
@@ -1308,6 +1361,37 @@ fn register_handlers(
                 async move {
                     end_call_for(&io, &state, &channel_id, &uid, "cancelled").await;
                     ack_void(ack);
+                }
+            },
+        );
+    }
+
+    // e2ee:transfer:signal - WebRTC offer/answer/ICE between two devices of the
+    // *same* account while one enrols the other (docs/E2EE.md §4).
+    //
+    // The server carries opaque signalling and nothing else: the payload it
+    // relays cannot be used to derive the pairing key, because `pairSecret`
+    // only ever existed on the QR code a camera read. Scoping delivery to the
+    // sender's own room is what keeps this from being a way to reach anybody
+    // else's devices - the room comes from the authenticated session, never
+    // from the payload.
+    {
+        let io = io.clone();
+        let uid = user_id.clone();
+        let sid = s.id;
+        s.on(
+            "e2ee:transfer:signal",
+            move |Data(mut payload): Data<serde_json::Value>| {
+                let io = io.clone();
+                let uid = uid.clone();
+                async move {
+                    if let Some(object) = payload.as_object_mut() {
+                        object.insert("from".into(), json!(sid.to_string()));
+                    }
+                    let _ = io
+                        .to(format!("user:{uid}"))
+                        .except(sid)
+                        .emit("e2ee:transfer:signal", &payload);
                 }
             },
         );

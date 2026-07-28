@@ -10,12 +10,13 @@ pub const MAX_DRAFT_LEN: usize = 4_000;
 /// The viewer's draft for one channel, if any. Access-checked.
 pub async fn get(state: &AppState, user_id: &str, channel_id: &str) -> AppResult<Option<String>> {
     channel::require_channel_access(state, channel_id, user_id).await?;
-    let content: Option<String> =
-        sqlx::query_scalar(r#"SELECT content FROM "Draft" WHERE "userId" = $1 AND "channelId" = $2"#)
-            .bind(user_id)
-            .bind(channel_id)
-            .fetch_optional(&state.pool)
-            .await?;
+    let content: Option<String> = sqlx::query_scalar(
+        r#"SELECT content FROM "Draft" WHERE "userId" = $1 AND "channelId" = $2"#,
+    )
+    .bind(user_id)
+    .bind(channel_id)
+    .fetch_optional(&state.pool)
+    .await?;
     Ok(content)
 }
 
@@ -30,7 +31,12 @@ pub async fn list(state: &AppState, user_id: &str) -> AppResult<Vec<(String, Str
 }
 
 /// Upsert a draft. Access-checked.
-pub async fn set(state: &AppState, user_id: &str, channel_id: &str, content: &str) -> AppResult<()> {
+pub async fn set(
+    state: &AppState,
+    user_id: &str,
+    channel_id: &str,
+    content: &str,
+) -> AppResult<()> {
     channel::require_channel_access(state, channel_id, user_id).await?;
     sqlx::query(
         r#"INSERT INTO "Draft" ("userId", "channelId", content, "updatedAt")

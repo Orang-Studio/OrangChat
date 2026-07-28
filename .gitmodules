@@ -1,3 +1,3 @@
-[submodule "packages/plugins"]
-	path = packages/plugins
-	url = https://github.com/adasjuskevicius/orangchat-plugins.git
+[submodule "packages/marketplace"]
+	path = packages/marketplace
+	url = https://github.com/Orang-Studio/orangchat-marketplace.git

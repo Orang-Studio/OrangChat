@@ -4,15 +4,18 @@ pub mod channels;
 pub mod connections;
 pub mod dms;
 pub mod drafts;
+pub mod e2ee;
 pub mod emojis;
+pub mod events;
 pub mod friends;
 pub mod link_previews;
+pub mod media_proxy;
 pub mod push;
+pub mod reports;
 pub mod roles;
 pub mod security;
 pub mod servers;
 pub mod sounds;
-pub mod themes;
 pub mod uploads;
 
 use std::convert::Infallible;
@@ -54,6 +57,16 @@ impl FromRequestParts<AppState> for AuthUser {
             .and_then(|h| h.strip_prefix("Bearer "))
             .ok_or_else(|| AppError::Unauthorized("Missing access token".into()))?;
         let claims = verify_access_token(&state.config, token)?;
+        let verified: Option<bool> =
+            sqlx::query_scalar(r#"SELECT "emailVerifiedAt" IS NOT NULL FROM "User" WHERE id = $1"#)
+                .bind(&claims.sub)
+                .fetch_optional(&state.pool)
+                .await?;
+        if verified != Some(true) {
+            return Err(AppError::Unauthorized(
+                "Verify your email before accessing OrangChat".into(),
+            ));
+        }
         Ok(AuthUser {
             user_id: claims.sub,
         })
@@ -124,40 +137,6 @@ impl<S: Send + Sync> FromRequestParts<S> for ClientIp {
     }
 }
 
-/// A request that reached the backend directly on the host, not through the
-/// public proxy. nginx sets `X-Real-IP`/`X-Forwarded-For` on everything it
-/// forwards, so their *absence* means the request never went through nginx -
-/// and since the backend isn't publicly bound, that only happens from the
-/// server itself (SSH, a local shell, a tunnel). The peer must also be loopback.
-///
-/// This is how the theme admin panel stays "in the server, not outside" without
-/// any admin account: there is no header an outside client can drop to look
-/// local, because nginx always adds one.
-pub struct LocalOnly;
-
-#[axum::async_trait]
-impl<S: Send + Sync> FromRequestParts<S> for LocalOnly {
-    type Rejection = AppError;
-
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let forwarded = parts.headers.contains_key("x-real-ip")
-            || parts.headers.contains_key("x-forwarded-for");
-        if forwarded {
-            return Err(AppError::NotFound("Not found".into()));
-        }
-        let peer_local = parts
-            .extensions
-            .get::<ConnectInfo<SocketAddr>>()
-            .map(|ci| ci.0.ip().is_loopback())
-            // No ConnectInfo (e.g. tests) counts as local.
-            .unwrap_or(true);
-        if !peer_local {
-            return Err(AppError::NotFound("Not found".into()));
-        }
-        Ok(LocalOnly)
-    }
-}
-
 /// Coarse per-address ceiling over the whole API. Individual routes layer their
 /// own tighter quotas on top; this one only exists to stop blunt hammering.
 pub async fn api_rate_limit(
@@ -213,13 +192,16 @@ pub fn router(state: AppState) -> Router {
         .merge(connections::routes())
         .merge(dms::routes())
         .merge(drafts::routes())
+        .merge(e2ee::routes())
         .merge(emojis::routes())
+        .merge(events::routes())
         .merge(friends::routes())
         .merge(link_previews::routes())
+        .merge(media_proxy::routes())
         .merge(push::routes())
         .merge(roles::routes())
+        .merge(reports::routes())
         .merge(sounds::routes())
-        .merge(themes::routes())
         .merge(uploads::routes())
         .merge(attachments::routes())
         .layer(axum::middleware::from_fn_with_state(
@@ -248,6 +230,7 @@ async fn health(State(state): State<AppState>) -> impl IntoResponse {
         "db": if db_ok { "up" } else { "down" },
         "redis": if redis_ok { "up" } else { "down" },
         "uptime": crate::uptime_seconds(),
+        "version": env!("CARGO_PKG_VERSION"),
     }))
 }
 

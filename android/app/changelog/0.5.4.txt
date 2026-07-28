@@ -1,0 +1,6 @@
+Encryption safety and control polish.
+
+- Report a message with a clear privacy explanation; encrypted reports disclose only that one message and include proof of who sent it.
+- Scan contact-verification codes with the camera built into OrangChat.
+- Revoke an old encryption device directly from Android's Encryption settings.
+- Keeps the fixed PC-to-phone QR transfer and post-scan confirmation introduced in 0.5.3.

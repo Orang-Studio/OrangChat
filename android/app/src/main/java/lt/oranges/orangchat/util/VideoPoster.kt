@@ -6,7 +6,7 @@ import lt.oranges.orangchat.data.model.Attachment
  * Where a video's still frame comes from.
  *
  * [decodeFrame] means [url] is the clip itself and coil-video has to pull a
- * frame out of it locally — which costs a download of the whole file. False
+ * frame out of it locally - which costs a download of the whole file. False
  * means [url] is already an image.
  */
 data class VideoPoster(val url: String, val decodeFrame: Boolean)
@@ -25,8 +25,8 @@ private const val CLOUDINARY_VIDEO_UPLOAD = "/video/upload/"
  * A still to show for [attachment] before anyone presses play, or null to leave
  * it dark.
  *
- * Cloudinary renders stills on demand — `so_0` is its seek-offset-zero
- * transform — so those cost one small jpg instead of the clip. Nothing else has
+ * Cloudinary renders stills on demand - `so_0` is its seek-offset-zero
+ * transform - so those cost one small jpg instead of the clip. Nothing else has
  * a server-side thumbnail, so the frame has to be decoded on the device, and
  * that is only worth doing for clips small enough that fetching them early is
  * not a real cost.

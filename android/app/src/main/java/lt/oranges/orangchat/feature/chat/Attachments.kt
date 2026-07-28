@@ -284,7 +284,7 @@ private fun ExpiredCard(attachment: Attachment) {
                 overflow = TextOverflow.Ellipsis,
                 textDecoration = TextDecoration.LineThrough,
             )
-            Text("Expired — large files are only kept for an hour", color = c.inkMuted, fontSize = 11.sp)
+            Text("Expired - large files are only kept for an hour", color = c.inkMuted, fontSize = 11.sp)
         }
     }
 }
@@ -294,7 +294,7 @@ internal fun FileCard(attachment: Attachment, expiresAt: Instant?, now: Instant)
     val c = OrangTheme.colors
     val shape = RoundedCornerShape(OrangRadius.lg)
     val download = rememberAttachmentDownloader()
-    val href = absoluteUrl(attachment.url)
+    val href = rememberResolvedAttachmentUrl(attachment)
 
     Row(
         modifier = Modifier
@@ -335,27 +335,45 @@ internal fun FileCard(attachment: Attachment, expiresAt: Instant?, now: Instant)
 private fun ImagePreview(attachment: Attachment, expiresAt: Instant?, now: Instant) {
     val c = OrangTheme.colors
     var broken by remember(attachment.id) { mutableStateOf(false) }
-    if (broken) {
+    val source = rememberAttachmentSource(attachment)
+    // A sealed image has no url until it has been decrypted. Only a real failure
+    // falls back to the download card - handing the loader a null model and
+    // reading the error it raises would condemn every encrypted image on sight.
+    if (broken || source.unavailable) {
         FileCard(attachment, expiresAt, now)
         return
     }
-    val href = absoluteUrl(attachment.url)
+    val href = source.url
     var expanded by remember(attachment.id) { mutableStateOf(false) }
 
     Column {
-        AsyncImage(
-            model = href,
-            contentDescription = attachment.filename,
-            contentScale = ContentScale.Fit,
-            onError = { broken = true },
-            modifier = Modifier
-                .widthIn(max = 280.dp)
-                .height(200.dp)
-                .background(c.surface1, RoundedCornerShape(OrangRadius.lg))
-                // Expands in place: the file's own URL is served as a download,
-                // so handing it to the browser is the one thing a tap must not do.
-                .clickable(enabled = href != null) { expanded = true },
-        )
+        if (href == null) {
+            Box(
+                modifier = Modifier
+                    .widthIn(max = 280.dp)
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .background(c.surface1, RoundedCornerShape(OrangRadius.lg)),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(color = c.primary, modifier = Modifier.size(20.dp))
+            }
+        } else {
+            AsyncImage(
+                model = href,
+                contentDescription = attachment.filename,
+                contentScale = ContentScale.Fit,
+                onError = { broken = true },
+                modifier = Modifier
+                    .widthIn(max = 280.dp)
+                    .height(200.dp)
+                    .background(c.surface1, RoundedCornerShape(OrangRadius.lg))
+                    // Expands in place: the file's own URL is served as a
+                    // download, so handing it to the browser is the one thing a
+                    // tap must not do.
+                    .clickable { expanded = true },
+            )
+        }
         expiresAt?.let {
             Spacer(Modifier.height(2.dp))
             Text(expiryLabel(it, now), color = c.warning, fontSize = 11.sp)
@@ -369,14 +387,14 @@ private fun ImagePreview(attachment: Attachment, expiresAt: Instant?, now: Insta
 
 /**
  * An audio attachment, playable where it sits. Loading is deferred to the first
- * tap — a channel with a dozen clips in it should not open a dozen streams.
+ * tap - a channel with a dozen clips in it should not open a dozen streams.
  */
 @Composable
 internal fun AudioCard(attachment: Attachment, expiresAt: Instant?, now: Instant) {
     val c = OrangTheme.colors
     val shape = RoundedCornerShape(OrangRadius.lg)
     val download = rememberAttachmentDownloader()
-    val href = absoluteUrl(attachment.url)
+    val href = rememberResolvedAttachmentUrl(attachment)
 
     var broken by remember(attachment.id) { mutableStateOf(false) }
     if (broken || href == null) {
@@ -391,7 +409,7 @@ internal fun AudioCard(attachment: Attachment, expiresAt: Instant?, now: Instant
     val durationMs = if (active) MediaPlayback.durationMs else 0L
     val seekable = active && MediaPlayback.ready
 
-    // The player is the only one who knows where it's got to, so ask it — but
+    // The player is the only one who knows where it's got to, so ask it - but
     // only while it's actually moving.
     LaunchedEffect(active, isPlaying) {
         while (active && isPlaying) {
@@ -468,8 +486,8 @@ internal fun AudioCard(attachment: Attachment, expiresAt: Instant?, now: Instant
             )
         }
         Spacer(Modifier.width(6.dp))
-        // Unlike the other cards, the row itself doesn't download here — tapping
-        // it is how you scrub — so this icon is the only way out and needs to be
+        // Unlike the other cards, the row itself doesn't download here - tapping
+        // it is how you scrub - so this icon is the only way out and needs to be
         // big enough to actually hit.
         Box(
             modifier = Modifier.size(32.dp).tapToToggle { download(attachment) },

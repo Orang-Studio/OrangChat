@@ -24,6 +24,23 @@ pub fn routes() -> Router<AppState> {
         .route("/account", delete(delete_account))
         .route("/standing", get(standing))
         .route("/messages", delete(delete_all_messages))
+        .route("/confirm", post(confirm_identity))
+}
+
+/// Proves whoever is holding this session is the account owner, without changing
+/// anything. Used where a setting can only be *relaxed* by a person rather than
+/// by a session - turning off strict verification (docs/E2EE.md §6.5) is the
+/// case it exists for, so a hijacked session cannot quietly lower the bar.
+async fn confirm_identity(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Json(body): Json<Value>,
+) -> AppResult<Json<Value>> {
+    limit(&state, &user.user_id).await?;
+    let row = fetch_user(&state, &user.user_id).await?;
+    check_password(&row, &body)?;
+    check_totp(&state, &row, &body).await?;
+    Ok(Json(json!({ "ok": true })))
 }
 
 /// Wipes the user's entire message history everywhere, including servers and

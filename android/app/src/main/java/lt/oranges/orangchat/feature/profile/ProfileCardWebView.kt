@@ -31,7 +31,7 @@ private const val HEIGHT_POLL_INTERVAL_MS = 40L
  * behaves exactly as it does on the web client.
  *
  * The WebView is the sandbox: it contains only this one card, so user CSS has
- * no surrounding app to escape into and no sibling card to leak onto — the two
+ * no surrounding app to escape into and no sibling card to leak onto - the two
  * things the web sanitizer's scoping exists to prevent. What is left is network
  * egress (an external url() would leak the viewer's IP to the profile owner),
  * blocked here three ways: sanitizeProfileCss strips external url()/@import, the

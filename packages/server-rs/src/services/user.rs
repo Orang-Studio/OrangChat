@@ -24,6 +24,7 @@ pub struct UserPatch {
     pub dm_privacy: Option<String>,
     pub friend_request_privacy: Option<String>,
     pub typing_indicators: Option<bool>,
+    pub e2ee_strict: Option<bool>,
 }
 
 pub async fn update_profile(
@@ -87,6 +88,9 @@ pub async fn update_profile(
     if let Some(v) = patch.typing_indicators {
         sep.push(r#""typingIndicators" = "#)
             .push_bind_unseparated(v);
+    }
+    if let Some(v) = patch.e2ee_strict {
+        sep.push(r#""e2eeStrict" = "#).push_bind_unseparated(v);
     }
     sep.push(r#""updatedAt" = now()"#);
     qb.push(r#" WHERE id = "#)
@@ -230,6 +234,16 @@ pub async fn find_or_create_oauth_user(
             .bind(&user.id)
             .execute(&state.pool)
             .await?;
+            // The provider just proved this address belongs to them, which is
+            // exactly what our own verification mail asks for. Sending one
+            // anyway would strand an account that has no password to log in
+            // with and re-request it.
+            let user: UserRow = sqlx::query_as(
+                r#"UPDATE "User" SET "emailVerifiedAt" = COALESCE("emailVerifiedAt", now()) WHERE id = $1 RETURNING *"#,
+            )
+            .bind(&user.id)
+            .fetch_one(&state.pool)
+            .await?;
             return Ok(user);
         }
     }
@@ -254,12 +268,19 @@ pub async fn find_or_create_oauth_user(
         })
         .to_lowercase();
 
+    // Signing in through the provider already proved the address (or there is
+    // no real address to prove, for a provider that hands back none), so these
+    // accounts skip our verification mail. Without this every OAuth signup is
+    // locked out by the email-verified check on the way back in, and having no
+    // password there is no other route in.
+    let email_verified = profile.email_verified || profile.email.is_none();
+
     let user_id = cuid();
-    let badges = badge::initial_badges(state).await?;
+    let badges = badge::initial_badges();
     let mut tx = state.pool.begin().await?;
     let user: UserRow = sqlx::query_as(
-        r#"INSERT INTO "User" (id, email, username, "displayName", "avatarUrl", "passwordHash", badges, "updatedAt")
-           VALUES ($1, $2, $3, $4, $5, NULL, $6, now()) RETURNING *"#,
+        r#"INSERT INTO "User" (id, email, username, "displayName", "avatarUrl", "passwordHash", badges, "emailVerifiedAt", "updatedAt")
+           VALUES ($1, $2, $3, $4, $5, NULL, $6, CASE WHEN $7 THEN now() ELSE NULL END, now()) RETURNING *"#,
     )
     .bind(&user_id)
     .bind(&email)
@@ -267,6 +288,7 @@ pub async fn find_or_create_oauth_user(
     .bind(&profile.display_name)
     .bind(&profile.avatar_url)
     .bind(&badges)
+    .bind(email_verified)
     .fetch_one(&mut *tx)
     .await?;
     sqlx::query(

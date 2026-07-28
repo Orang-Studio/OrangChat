@@ -32,7 +32,7 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
 private val TABS = listOf("Create", "Join")
 
 /**
- * Create a server, or join one from an invite link — the two things the rail's
+ * Create a server, or join one from an invite link - the two things the rail's
  * plus button can mean. Joining previews the server first, so nobody accepts a
  * link without seeing where it goes.
  */

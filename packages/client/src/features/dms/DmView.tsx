@@ -6,9 +6,12 @@ import { cn } from "../../lib/cn";
 import { useAuthStore } from "../../stores/auth";
 import { Avatar } from "../../components/Avatar";
 import { ChatView } from "../chat/ChatView";
+import { EncryptionBadge } from "../e2ee/EncryptionBadge";
+import { PlaintextNotice } from "../e2ee/PlaintextNotice";
+import { VerificationNotice } from "../e2ee/VerificationNotice";
 import { callActions, useCallStore } from "../voice/callStore";
 import { useOtherDeviceIn, voiceActions } from "../voice/store";
-import { conversationName, useConversations } from "./queries";
+import { conversationToChannel, useConversations } from "./queries";
 import { DmIntro } from "./DmIntro";
 import { NewDmDialog } from "./NewDmDialog";
 import { ActivityStatus } from "../../components/ActivityStatus";
@@ -64,25 +67,10 @@ export function DmView() {
     [conversation, selfId],
   );
 
-  const channel: Channel | null = useMemo(() => {
-    if (!conversation) return null;
-    return {
-      id: conversation.id,
-      serverId: null,
-      name: conversationName(conversation, selfId),
-      type: conversation.type,
-      topic: null,
-      position: 0,
-      parentCategoryId: null,
-      // A DM has no moderator, so none of the channel settings apply: no NSFW
-      // gate, no slowmode, and the voice fields are unused for a text-shaped
-      // conversation. These are the "off" values the server also stores.
-      nsfw: false,
-      rateLimitPerUser: 0,
-      userLimit: 0,
-      bitrate: 64000,
-    };
-  }, [conversation, selfId]);
+  const channel: Channel | null = useMemo(
+    () => (conversation ? conversationToChannel(conversation, selfId) : null),
+    [conversation, selfId],
+  );
 
   // ChatView resolves typing/display names through ServerMember rows; wrap the
   // conversation's participants in that shape.
@@ -164,6 +152,21 @@ export function DmView() {
         }
         headerSubtitle={
           others.length === 1 ? <ActivityStatus activities={others[0]?.activities} /> : undefined
+        }
+        encryptionBadge={
+          others.length > 0 ? (
+            <EncryptionBadge
+              peers={others}
+              groupName={conversation.type === "group_dm" ? channel.name : null}
+              channelId={channel.id}
+            />
+          ) : undefined
+        }
+        encryptionNotice={
+          <>
+            <PlaintextNotice channelId={channel.id} peers={others} />
+            <VerificationNotice channelId={channel.id} peers={others} />
+          </>
         }
         intro={
           <DmIntro

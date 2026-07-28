@@ -38,3 +38,4 @@ pnpm-debug.log*
 
 # Uploads (local dev)
 uploads/
+.claude/

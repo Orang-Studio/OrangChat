@@ -1,6 +1,7 @@
-import type { Attachment } from "@orangchat/shared";
+import type { Attachment, SealedAttachmentRef } from "@orangchat/shared";
 import { useAuthStore } from "../../stores/auth";
 import { refreshSession } from "../auth/session";
+import { imageSize, makePreview, sealForUpload } from "../e2ee/attachments";
 
 /**
  * Where a file goes depends only on its size:
@@ -82,11 +83,11 @@ function errorFrom(res: RawResponse, fallback: string): Error {
   return new Error(text.length > 0 && text.length < 200 ? text : fallback);
 }
 
-async function uploadLocal(file: File, handle: UploadHandle): Promise<Attachment> {
+async function uploadLocal(file: File, handle: UploadHandle, sealed = false): Promise<Attachment> {
   const send = () => {
     const form = new FormData();
     form.append("file", file);
-    return post("/api/uploads/attachment", form, {
+    return post(`/api/uploads/attachment${sealed ? "?sealed=1" : ""}`, form, {
       token: useAuthStore.getState().accessToken,
       ...handle,
     });
@@ -143,6 +144,84 @@ export async function uploadAttachment(file: File, handle: UploadHandle = {}): P
   return file.size > MAX_LOCAL_ATTACHMENT
     ? uploadToOrangMove(file, handle)
     : uploadLocal(file, handle);
+}
+
+export interface SealedAttachmentUpload {
+  /** The row the server wrote; its filename and type are placeholders. */
+  attachment: Attachment;
+  /** Supporting opaque rows (currently the encrypted image thumbnail). */
+  supportingAttachments: Attachment[];
+  /** What the message payload has to carry for anyone to read the file. */
+  ref: SealedAttachmentRef;
+}
+
+async function uploadSealedBlob(
+  bytes: Uint8Array,
+  handle: UploadHandle,
+): Promise<{ attachment: Attachment; fileId: string; key: string; nonce: string }> {
+  const sealed = await sealForUpload(bytes);
+  const attachment =
+    sealed.file.size > MAX_LOCAL_ATTACHMENT
+      ? await uploadToOrangMove(sealed.file, handle)
+      : await uploadLocal(sealed.file, handle, true);
+  return { attachment, fileId: sealed.fileId, key: sealed.key, nonce: sealed.nonce };
+}
+
+/**
+ * Uploads a file into an end-to-end encrypted conversation. Everything the
+ * server would normally learn from an upload - the name, the type, the pixels -
+ * is sealed here first, so the row it writes describes a blob and a length.
+ *
+ * Images additionally get a locally generated preview, sealed as its own blob
+ * under its own key: Cloudinary cannot transform bytes it cannot read, so a
+ * client-made thumbnail is the only preview an encrypted image will ever have.
+ */
+export async function uploadSealedAttachment(
+  file: File,
+  handle: UploadHandle = {},
+): Promise<SealedAttachmentUpload> {
+  if (file.size === 0) throw new Error(`"${file.name}" is empty`);
+  if (file.size > MAX_ATTACHMENT) throw new Error(`"${file.name}" is over the 1GB limit`);
+
+  const preview = await makePreview(file);
+  const dims = preview ?? (await imageSize(file));
+
+  const main = await uploadSealedBlob(new Uint8Array(await file.arrayBuffer()), handle);
+
+  let thumb: SealedAttachmentRef["thumb"];
+  const supportingAttachments: Attachment[] = [];
+  if (preview) {
+    try {
+      const uploaded = await uploadSealedBlob(preview.bytes, {});
+      supportingAttachments.push(uploaded.attachment);
+      thumb = {
+        fileId: uploaded.fileId,
+        attachmentId: uploaded.attachment.id,
+        key: uploaded.key,
+        nonce: uploaded.nonce,
+        contentType: preview.contentType,
+        size: preview.bytes.length,
+      };
+    } catch {
+      // A preview that failed to upload costs a thumbnail, not the message.
+    }
+  }
+
+  return {
+    attachment: main.attachment,
+    supportingAttachments,
+    ref: {
+      fileId: main.fileId,
+      attachmentId: main.attachment.id,
+      key: main.key,
+      nonce: main.nonce,
+      filename: file.name,
+      contentType: file.type || "application/octet-stream",
+      size: file.size,
+      ...(dims ? { width: dims.width, height: dims.height } : {}),
+      ...(thumb ? { thumb } : {}),
+    },
+  };
 }
 
 /** True for files that will be stored on OrangMove, and so will expire. */

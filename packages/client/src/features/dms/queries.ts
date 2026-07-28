@@ -1,5 +1,5 @@
 import { useQuery, type QueryClient } from "@tanstack/react-query";
-import type { Conversation } from "@orangchat/shared";
+import type { Channel, Conversation } from "@orangchat/shared";
 import { listConversations } from "./api";
 
 export const dmKeys = {
@@ -19,6 +19,30 @@ export function conversationName(
   const others = conversation.participants.filter((p) => p.id !== selfId);
   if (others.length === 0) return "Just you";
   return others.map((p) => p.displayName).join(", ");
+}
+
+/**
+ * A conversation seen as a Channel, the shape ChatView and the call actions
+ * consume. A DM has no moderator, so every channel-settings field takes its
+ * "off" value - the same ones the server stores for a text-shaped DM.
+ */
+export function conversationToChannel(
+  conversation: Conversation,
+  selfId: string | undefined,
+): Channel {
+  return {
+    id: conversation.id,
+    serverId: null,
+    name: conversationName(conversation, selfId),
+    type: conversation.type,
+    topic: null,
+    position: 0,
+    parentCategoryId: null,
+    nsfw: false,
+    rateLimitPerUser: 0,
+    userLimit: 0,
+    bitrate: 64000,
+  };
 }
 
 /** Everyone in the conversation except the current user. */

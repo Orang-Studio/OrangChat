@@ -33,9 +33,11 @@ pub const MODERATE_MEMBERS: i64 = 1 << 23;
 pub const VIEW_AUDIT_LOG: i64 = 1 << 24;
 /// Upload, rename and delete the server's custom emoji and soundboard sounds.
 pub const MANAGE_EXPRESSIONS: i64 = 1 << 25;
+/// Create, edit and cancel the server's scheduled events.
+pub const MANAGE_EVENTS: i64 = 1 << 26;
 
-/// Every permission bit set - the owner/admin superset (bits 0..=25).
-pub const ALL_PERMISSIONS: i64 = (1 << 26) - 1;
+/// Every permission bit set - the owner/admin superset (bits 0..=26).
+pub const ALL_PERMISSIONS: i64 = (1 << 27) - 1;
 
 /// Default permissions granted to @everyone on a new server.
 pub const DEFAULT_EVERYONE_PERMISSIONS: i64 = VIEW_CHANNEL

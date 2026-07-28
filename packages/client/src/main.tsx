@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App } from "./app/App";
 import { registerRealtime } from "./features/chat/realtime";
+import { registerE2eeBootstrap } from "./features/e2ee/bootstrap";
 import { initPrefs } from "./lib/prefs";
 import { initTheme } from "./lib/theme";
 import { initViewport } from "./lib/viewport";
@@ -19,6 +20,10 @@ initViewport();
 initInstalledTheme();
 initPlugins();
 
+// Right-click interactions belong to the app's context-menu components. Keep
+// the browser (and Electron's embedded Chromium) from opening a competing menu.
+document.addEventListener("contextmenu", (event) => event.preventDefault());
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -30,6 +35,10 @@ const queryClient = new QueryClient({
 
 // Socket events → query cache sync (messages, presence, channels, members).
 registerRealtime(queryClient);
+
+// Enrol this device's encryption identity if the account has none, and audit
+// the account's own device log on every start.
+registerE2eeBootstrap();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

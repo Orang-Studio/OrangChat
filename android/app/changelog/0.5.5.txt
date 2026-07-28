@@ -1,0 +1,6 @@
+Fixed encryption-device transfer and revocation.
+
+- Normal PC-to-phone transfer polling no longer hits the production relay limit.
+- A phone that has not finished authorization no longer shows a revoke action it cannot sign.
+- Transfer and revocation failures are shown beside the affected device controls.
+- Successful revocation is confirmed visibly.

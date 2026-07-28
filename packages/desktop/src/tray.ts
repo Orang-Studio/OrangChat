@@ -2,6 +2,7 @@ import { app, Menu, nativeImage, Tray, type BrowserWindow } from "electron";
 import { join } from "node:path";
 import { getSettings, updateSettings } from "./settings";
 import { applyAutoLaunch } from "./autoLaunch";
+import { checkForUpdates } from "./updater";
 
 let tray: Tray | null = null;
 
@@ -51,6 +52,7 @@ export function createTray(getWindow: () => BrowserWindow | null, onQuit: () => 
           },
         },
         { type: "separator" },
+        { label: "Check for updates…", click: () => checkForUpdates() },
         { label: "Reload", click: () => getWindow()?.reload() },
         { label: "Quit OrangChat", click: onQuit },
       ]),
@@ -63,7 +65,7 @@ export function createTray(getWindow: () => BrowserWindow | null, onQuit: () => 
 }
 
 export function setTrayAttention(active: boolean): void {
-  tray?.setToolTip(active ? "OrangChat — new activity" : "OrangChat");
+  tray?.setToolTip(active ? "OrangChat - new activity" : "OrangChat");
 }
 
 export function destroyTray(): void {

@@ -27,7 +27,7 @@ import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
 /**
- * Port of components/ui/TextField.tsx — label above, bordered surface-1 input,
+ * Port of components/ui/TextField.tsx - label above, bordered surface-1 input,
  * optional trailing slot, error/hint line below. Corner = rounded-lg.
  */
 @Composable

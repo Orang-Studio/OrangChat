@@ -27,7 +27,7 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
  * An invite link posted in chat, unfurled into the server it leads to.
  *
  * Tapping hands the code to [PendingInviteStore] rather than joining outright,
- * so the join goes through the same confirm sheet a tapped link raises — the
+ * so the join goes through the same confirm sheet a tapped link raises - the
  * embed previews, the sheet commits. That also spares the whole chat tree a
  * callback it would otherwise have to carry just to reach the server rail.
  */

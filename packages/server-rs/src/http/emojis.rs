@@ -31,7 +31,10 @@ pub fn routes() -> Router<AppState> {
 }
 
 /// Every emoji the caller can type, across all their servers.
-async fn list_usable(user: AuthUser, State(state): State<AppState>) -> AppResult<Json<Vec<EmojiDto>>> {
+async fn list_usable(
+    user: AuthUser,
+    State(state): State<AppState>,
+) -> AppResult<Json<Vec<EmojiDto>>> {
     let rows = emoji::list_usable_emojis(&state, &user.user_id).await?;
     Ok(Json(rows.iter().map(to_emoji).collect()))
 }
@@ -77,7 +80,9 @@ async fn create(
                     .await
                     .map_err(|_| AppError::BadRequest("Emoji is too large (max 256 kB)".into()))?;
                 if data.len() > MAX_EMOJI_UPLOAD {
-                    return Err(AppError::BadRequest("Emoji is too large (max 256 kB)".into()));
+                    return Err(AppError::BadRequest(
+                        "Emoji is too large (max 256 kB)".into(),
+                    ));
                 }
                 bytes = Some(data.to_vec());
             }

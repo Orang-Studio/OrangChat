@@ -18,7 +18,7 @@ tokens, and data keep working unchanged.
 | IDs          | Prisma `cuid()`      | `cuid` crate (cuid v1)   |
 
 Compatibility notes:
-- **Passwords**: argon2id PHC strings are cross-compatible — hashes made by either
+- **Passwords**: argon2id PHC strings are cross-compatible - hashes made by either
   server verify on the other.
 - **JWT**: HS256, issuer `orangchat`, identical claims (`sub`, `username`, `jti`).
   Tokens issued by the TS server validate here and vice-versa (shared secrets).
@@ -37,7 +37,7 @@ cargo run                 # binds 127.0.0.1:$PORT (default 3001)
 ```
 
 The dev database is the same one `../server` uses (`docker compose up -d` at the repo
-root). No migrations here — the schema is owned by Prisma in `../server/prisma`.
+root). No migrations here - the schema is owned by Prisma in `../server/prisma`.
 
 ## Build (release)
 

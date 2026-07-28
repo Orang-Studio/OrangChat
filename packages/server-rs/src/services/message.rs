@@ -2,6 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 
+use base64::Engine;
 use chrono::{NaiveDateTime, Utc};
 use serde_json::Value as Json;
 
@@ -9,7 +10,7 @@ use crate::dto::{to_message, MessageDto, Page};
 use crate::error::{AppError, AppResult};
 use crate::http::attachments::MAX_PER_MESSAGE;
 use crate::ids::cuid;
-use crate::models::{MessageRow, ReactionRow, UserRow};
+use crate::models::{ChannelRow, EmojiRow, MessageRow, ReactionRow, UserRow};
 use crate::state::AppState;
 use crate::timefmt::iso_opt;
 
@@ -24,6 +25,12 @@ async fn build_dtos(
     }
     let author_ids: Vec<String> = rows.iter().map(|m| m.author_id.clone()).collect();
     let message_ids: Vec<String> = rows.iter().map(|m| m.id.clone()).collect();
+    let emoji_ids: Vec<String> = rows
+        .iter()
+        .flat_map(|m| custom_emoji_ids(&m.content))
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect();
 
     let authors: Vec<UserRow> = sqlx::query_as(r#"SELECT * FROM "User" WHERE id = ANY($1)"#)
         .bind(&author_ids)
@@ -45,6 +52,22 @@ async fn build_dtos(
         });
     }
 
+    let emojis: Vec<EmojiRow> = if emoji_ids.is_empty() {
+        vec![]
+    } else {
+        sqlx::query_as(
+            r#"SELECT id, "serverId", name, url, animated, "creatorId", "createdAt"
+               FROM "Emoji" WHERE id = ANY($1)"#,
+        )
+        .bind(&emoji_ids)
+        .fetch_all(&state.pool)
+        .await?
+    };
+    let emoji_map: HashMap<&str, &EmojiRow> = emojis
+        .iter()
+        .map(|emoji| (emoji.id.as_str(), emoji))
+        .collect();
+
     let mut out = Vec::with_capacity(rows.len());
     for m in rows {
         let author = author_map
@@ -52,9 +75,75 @@ async fn build_dtos(
             .ok_or_else(|| AppError::Internal("message author missing".into()))?;
         let empty = Vec::new();
         let rs = reaction_map.get(&m.id).unwrap_or(&empty);
-        out.push(to_message(m, author, rs, viewer_id));
+        let message_emojis: Vec<EmojiRow> = custom_emoji_ids(&m.content)
+            .into_iter()
+            .filter_map(|id| emoji_map.get(id.as_str()).map(|emoji| (*emoji).clone()))
+            .collect();
+        out.push(to_message(m, author, rs, &message_emojis, viewer_id));
     }
     Ok(out)
+}
+
+/// Pull durable ids out of well-formed `<:name:id>` / `<a:name:id>` tokens.
+/// Parsing here mirrors the clients closely enough to avoid exposing unrelated
+/// emoji while still making every message independently renderable.
+fn custom_emoji_ids(content: &str) -> Vec<String> {
+    let bytes = content.as_bytes();
+    let mut ids = Vec::new();
+    let mut cursor = 0;
+
+    while cursor < bytes.len() {
+        let Some(relative_start) = content[cursor..].find('<') else {
+            break;
+        };
+        let start = cursor + relative_start;
+        let Some(relative_end) = content[start..].find('>') else {
+            break;
+        };
+        let end = start + relative_end;
+        let token = &content[start + 1..end];
+        let token = token
+            .strip_prefix("a:")
+            .or_else(|| token.strip_prefix("A:"))
+            .or_else(|| token.strip_prefix(':'));
+
+        if let Some(token) = token {
+            if let Some((name, id)) = token.rsplit_once(':') {
+                let valid_name = (2..=32).contains(&name.len())
+                    && name
+                        .bytes()
+                        .all(|c| c.is_ascii_alphanumeric() || c == b'_' || c == b'-');
+                let valid_id = !id.is_empty() && id.bytes().all(|c| c.is_ascii_alphanumeric());
+                if valid_name && valid_id && !ids.iter().any(|existing| existing == id) {
+                    ids.push(id.to_string());
+                }
+            }
+        }
+        cursor = end + 1;
+    }
+
+    ids
+}
+
+#[cfg(test)]
+mod custom_emoji_tests {
+    use super::custom_emoji_ids;
+
+    #[test]
+    fn extracts_static_and_animated_custom_emoji() {
+        assert_eq!(
+            custom_emoji_ids("hi <:orange:abc123> <a:dance:def456> <A:LOUD:GHI789>"),
+            vec!["abc123", "def456", "GHI789"]
+        );
+    }
+
+    #[test]
+    fn ignores_malformed_tokens_and_deduplicates_ids() {
+        assert_eq!(
+            custom_emoji_ids("<:x:nope> <:ok:abc123> <:old_name:abc123> <@user>"),
+            vec!["abc123"]
+        );
+    }
 }
 
 async fn load_one(state: &AppState, message_id: &str, viewer_id: &str) -> AppResult<MessageDto> {
@@ -98,11 +187,19 @@ async fn claim_attachments(
     author_id: &str,
     attachment_ids: &[String],
     spoiler_ids: &[String],
+    sealed: bool,
 ) -> AppResult<Json> {
     if attachment_ids.is_empty() {
         return Ok(Json::Array(vec![]));
     }
-    if attachment_ids.len() > MAX_PER_MESSAGE {
+    // Each logical encrypted image may carry one separately sealed thumbnail.
+    // The user-facing limit remains ten files; supporting blobs are not files.
+    let limit = if sealed {
+        MAX_PER_MESSAGE * 2
+    } else {
+        MAX_PER_MESSAGE
+    };
+    if attachment_ids.len() > limit {
         return Err(AppError::BadRequest(format!(
             "A message can carry at most {MAX_PER_MESSAGE} attachments"
         )));
@@ -163,6 +260,68 @@ async fn claim_attachments(
     Ok(Json::Array(out))
 }
 
+pub struct Sealed {
+    pub ciphertext: Vec<u8>,
+    pub epoch: i32,
+    pub version: i32,
+}
+
+const MAX_CIPHERTEXT_BYTES: usize = 256 * 1024;
+const ENVELOPE_VERSION: i32 = 1;
+
+/// Decides whether this send is encrypted, and refuses the two shapes that
+/// would quietly break the promise: plaintext into a channel that has latched
+/// on, and ciphertext into a channel where it means nothing.
+pub fn parse_sealed(
+    channel: &ChannelRow,
+    ciphertext: Option<&str>,
+    enc_epoch: Option<i32>,
+    enc_version: Option<i32>,
+) -> AppResult<Option<Sealed>> {
+    let Some(raw) = ciphertext.filter(|c| !c.is_empty()) else {
+        if channel.e2ee {
+            return Err(AppError::Permission(
+                "This conversation is end-to-end encrypted; plaintext cannot be sent to it".into(),
+            ));
+        }
+        return Ok(None);
+    };
+
+    if !matches!(channel.channel_type.as_str(), "dm" | "group_dm") {
+        return Err(AppError::BadRequest(
+            "Only direct conversations can be end-to-end encrypted".into(),
+        ));
+    }
+
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(raw)
+        .map_err(|_| AppError::BadRequest("ciphertext is not valid base64".into()))?;
+    if bytes.is_empty() || bytes.len() > MAX_CIPHERTEXT_BYTES {
+        return Err(AppError::BadRequest("ciphertext is out of range".into()));
+    }
+
+    let version = enc_version.unwrap_or(ENVELOPE_VERSION);
+    if version != ENVELOPE_VERSION {
+        return Err(AppError::BadRequest(
+            "Unsupported message envelope version".into(),
+        ));
+    }
+
+    let epoch = enc_epoch.ok_or_else(|| AppError::BadRequest("encEpoch is required".into()))?;
+    if epoch < 1 || epoch > channel.epoch_number {
+        return Err(AppError::BadRequest(
+            "encEpoch does not name a minted epoch of this conversation".into(),
+        ));
+    }
+
+    Ok(Some(Sealed {
+        ciphertext: bytes,
+        epoch,
+        version,
+    }))
+}
+
+#[allow(clippy::too_many_arguments)]
 pub async fn send_message(
     state: &AppState,
     channel_id: &str,
@@ -171,6 +330,7 @@ pub async fn send_message(
     reply_to_id: Option<&str>,
     attachment_ids: &[String],
     spoiler_ids: &[String],
+    sealed: Option<&Sealed>,
 ) -> AppResult<MessageDto> {
     if let Some(rid) = reply_to_id {
         let parent: Option<String> =
@@ -186,24 +346,41 @@ pub async fn send_message(
     }
 
     // Attachments are a message's whole content when there's no text, but a
-    // message with neither is nothing at all.
-    if content.trim().is_empty() && attachment_ids.is_empty() {
+    // message with neither is nothing at all. An encrypted message carries its
+    // body in the envelope, so `content` being empty there says nothing.
+    if sealed.is_none() && content.trim().is_empty() && attachment_ids.is_empty() {
         return Err(AppError::BadRequest("Message is empty".into()));
     }
 
-    let attachments = claim_attachments(state, author_id, attachment_ids, spoiler_ids).await?;
+    let attachments = claim_attachments(
+        state,
+        author_id,
+        attachment_ids,
+        spoiler_ids,
+        sealed.is_some(),
+    )
+    .await?;
+
+    // Encrypted rows keep `content` as "" so every existing plaintext query and
+    // DTO path stays valid and simply finds nothing.
+    let stored_content = if sealed.is_some() { "" } else { content };
 
     let id = cuid();
     sqlx::query(
-        r#"INSERT INTO "Message" (id, "channelId", "authorId", content, "replyToId", attachments)
-           VALUES ($1, $2, $3, $4, $5, $6)"#,
+        r#"INSERT INTO "Message"
+           (id, "channelId", "authorId", content, "replyToId", attachments,
+            ciphertext, "encEpoch", "encVersion")
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"#,
     )
     .bind(&id)
     .bind(channel_id)
     .bind(author_id)
-    .bind(content)
+    .bind(stored_content)
     .bind(reply_to_id)
     .bind(&attachments)
+    .bind(sealed.map(|s| s.ciphertext.as_slice()))
+    .bind(sealed.map(|s| s.epoch))
+    .bind(sealed.map(|s| s.version))
     .execute(&state.pool)
     .await?;
 
@@ -224,6 +401,7 @@ pub async fn edit_message(
     message_id: &str,
     user_id: &str,
     content: &str,
+    sealed: Option<&Sealed>,
 ) -> AppResult<MessageDto> {
     let existing: Option<(String, String)> =
         sqlx::query_as(r#"SELECT "authorId", "channelId" FROM "Message" WHERE id = $1"#)
@@ -238,11 +416,20 @@ pub async fn edit_message(
         ));
     }
 
-    sqlx::query(r#"UPDATE "Message" SET content = $1, "editedAt" = now() WHERE id = $2"#)
-        .bind(content)
-        .bind(message_id)
-        .execute(&state.pool)
-        .await?;
+    let stored_content = if sealed.is_some() { "" } else { content };
+    sqlx::query(
+        r#"UPDATE "Message"
+           SET content = $1, ciphertext = $2, "encEpoch" = $3, "encVersion" = $4,
+               "editedAt" = now()
+           WHERE id = $5"#,
+    )
+    .bind(stored_content)
+    .bind(sealed.map(|s| s.ciphertext.as_slice()))
+    .bind(sealed.map(|s| s.epoch))
+    .bind(sealed.map(|s| s.version))
+    .bind(message_id)
+    .execute(&state.pool)
+    .await?;
 
     load_one(state, message_id, user_id).await
 }
@@ -412,6 +599,7 @@ pub async fn list_pins(
 /// Full-text-ish search across the text channels of a server the viewer can
 /// see. Offset-paginated; `next_cursor` carries the next offset when more rows
 /// remain. `channel_id`/`author_id` narrow the scope when provided.
+#[allow(clippy::too_many_arguments)]
 pub async fn search_messages(
     state: &AppState,
     server_id: &str,
@@ -462,6 +650,7 @@ pub async fn search_messages(
     let rows: Vec<MessageRow> = sqlx::query_as(
         r#"SELECT * FROM "Message"
            WHERE "channelId" = ANY($1)
+             AND ciphertext IS NULL
              AND content ILIKE $2 ESCAPE '\'
              AND ($3::text IS NULL OR "authorId" = $3)
            ORDER BY "createdAt" DESC, id DESC

@@ -12,7 +12,7 @@ to the system installer. Server side is two static files behind nginx.
 
 **The keystore is the one irreplaceable artifact here.** Android only installs an
 update signed with the same key as the installed app. Lose it and no existing
-install can ever be updated again — every user has to uninstall and reinstall,
+install can ever be updated again - every user has to uninstall and reinstall,
 losing local data. It is deliberately kept outside the repo:
 
 ```
@@ -39,15 +39,15 @@ unsigned (`app-release-unsigned.apk`) and `publishUpdate` refuses to publish it.
 ## Cutting a release
 
 1. **Bump the version** in `android/app/build.gradle.kts`. `versionCode` must
-   increase — it is the *only* thing the updater compares. `versionName` is what
+   increase - it is the *only* thing the updater compares. `versionName` is what
    users see, and names the published file.
 
-   ```kotlin
-   versionCode = 2
-   versionName = "0.2.0"
-   ```
+2. **Write the changelog** at `android/app/changelog/<versionName>.txt`. This is
+   required by `publishUpdate`; it is shown in Android's startup update prompt
+   and to signed-in web users once. Keep it plain text (Markdown-like bullets are
+   fine), and do not edit a published file except to correct its wording.
 
-2. **Build and publish:**
+3. **Build and publish:**
 
    ```bash
    cd ~/orangchat/android
@@ -57,9 +57,12 @@ unsigned (`app-release-unsigned.apk`) and `publishUpdate` refuses to publish it.
    That assembles the signed release, hashes it, and writes both files to
    `/var/www/chat.oranges.lt/download/android/`:
 
-   - `orangchat-<versionName>.apk` — versioned filename, never overwritten, so a
+   - `orangchat-<versionName>.apk` - versioned filename, never overwritten, so a
      client mid-download still finishes the one it asked for.
-   - `update.json` — `versionCode`, `versionName`, `apkUrl`, `size`, `sha256`.
+   - `changelog-<versionName>.txt` - immutable release notes shown to Android
+     and web clients.
+   - `update.json` - `versionCode`, `versionName`, `apkUrl`, `changelogUrl`,
+     `size`, `sha256`.
 
 3. **Verify:**
 
@@ -67,14 +70,16 @@ unsigned (`app-release-unsigned.apk`) and `publishUpdate` refuses to publish it.
    curl -s https://chat.oranges.lt/download/android/update.json
    ```
 
-Existing installs pick it up from Settings → About → Updates. Nothing else needs
-restarting: the files are static and nginx serves them from the SPA web root.
+Existing installs check at startup and show a “New update available” prompt with
+that release's notes. Settings → About → Updates remains available for a manual
+check. Nothing else needs restarting: the files are static and nginx serves them
+from the SPA web root. Signed-in web users see the same notes once per release.
 
 ## Why it copies instead of serving the build directory
 
 nginx runs as `www-data`, which cannot traverse `/home/adasjusk` (0750). Serving
 Gradle's output in place would mean opening the home directory to the web
-server — a worse trade than copying two files on each release.
+server - a worse trade than copying two files on each release.
 
 ## Notes
 
@@ -82,7 +87,7 @@ server — a worse trade than copying two files on each release.
   the signature is what proves an APK genuine, not who may fetch it.
 - The `sha256` in the manifest only catches a corrupt or truncated download,
   earlier and with a clearer message than the installer's parse error. It is not
-  the security boundary — the signature is, and Android enforces that itself.
+  the security boundary - the signature is, and Android enforces that itself.
 - Installing requires the user to allow "install unknown apps" for OrangChat
   once (a system settings toggle; there is no runtime dialog for it). The app
   routes them there when needed. The system installer still confirms every

@@ -26,9 +26,9 @@ fun DeviceIndicators(
     if (status == PresenceStatus.OFFLINE || devices.isEmpty()) return
 
     val metadata: List<Triple<PresenceDevice, String, ImageVector>> = listOf(
-        Triple(PresenceDevice.MOBILE, "Mobile", Icons.Default.Smartphone),
-        Triple(PresenceDevice.BROWSER, "Browser", Icons.Default.Language),
         Triple(PresenceDevice.DESKTOP, "Desktop app", Icons.Default.Computer),
+        Triple(PresenceDevice.BROWSER, "Browser", Icons.Default.Language),
+        Triple(PresenceDevice.MOBILE, "Mobile", Icons.Default.Smartphone),
     )
     Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
         metadata.filter { (device) -> device in devices }.forEach { (_, label, icon) ->

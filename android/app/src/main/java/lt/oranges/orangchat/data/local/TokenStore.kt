@@ -61,7 +61,7 @@ class TokenStore(context: Context) {
 
     /**
      * A content:// URI for a user-picked call ringtone, or null for the device
-     * default. Device-local by design — the file is never uploaded, and only
+     * default. Device-local by design - the file is never uploaded, and only
      * this URI is stored, so nothing about it reaches the server.
      */
     var ringtoneUri: String?

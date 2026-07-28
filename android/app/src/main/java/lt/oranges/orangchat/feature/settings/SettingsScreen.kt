@@ -43,7 +43,7 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.ui.theme.ThemePreference
 
 private enum class SettingsPage {
-    ROOT, PROFILE, APPEARANCE, PRIVACY, SHARING, RINGTONE, SECURITY, DEVICES, ACCESSIBILITY, SYSTEM, ABOUT
+    ROOT, PROFILE, PROFILE_THEMES, APPEARANCE, PRIVACY, SHARING, RINGTONE, SECURITY, DEVICES, ENCRYPTION, ACCESSIBILITY, SYSTEM, ABOUT
 }
 
 @Composable
@@ -78,12 +78,14 @@ fun SettingsScreen(
             modifier = modifier,
         )
         SettingsPage.PROFILE -> ProfilePage(self, toRoot, modifier)
+        SettingsPage.PROFILE_THEMES -> ProfileThemesScreen(self, toRoot, modifier)
         SettingsPage.APPEARANCE -> AppearancePage(themePreference, onThemeChange, toRoot, modifier)
         SettingsPage.PRIVACY -> PrivacyScreen(self, toRoot)
         SettingsPage.SHARING -> SharingScreen(toRoot)
         SettingsPage.RINGTONE -> RingtonePage(toRoot, modifier)
         SettingsPage.SECURITY -> SecurityScreen(self = self, hasPassword = self.hasPassword, onBack = toRoot)
         SettingsPage.DEVICES -> DevicesScreen(onBack = toRoot)
+        SettingsPage.ENCRYPTION -> EncryptionScreen(onBack = toRoot)
         SettingsPage.ACCESSIBILITY -> AccessibilityScreen(toRoot)
         SettingsPage.SYSTEM -> SystemScreen(connected = connected, onBack = toRoot)
         SettingsPage.ABOUT -> AboutScreen(toRoot)
@@ -137,6 +139,16 @@ private fun SettingsRoot(
 
             SettingSection("Settings") {
                 SettingsNavRow(
+                    "Profile",
+                    "Display name, avatar, bio, accent, CSS",
+                    onClick = { onOpen(SettingsPage.PROFILE) },
+                )
+                SettingsNavRow(
+                    "Profile themes",
+                    "Ready-made styles for your profile card",
+                    onClick = { onOpen(SettingsPage.PROFILE_THEMES) },
+                )
+                SettingsNavRow(
                     "Appearance",
                     "Theme",
                     onClick = { onOpen(SettingsPage.APPEARANCE) },
@@ -167,6 +179,11 @@ private fun SettingsRoot(
                     "Devices",
                     "Where you're signed in",
                     onClick = { onOpen(SettingsPage.DEVICES) },
+                )
+                SettingsNavRow(
+                    "Encryption",
+                    "Keys, device log, verifying people",
+                    onClick = { onOpen(SettingsPage.ENCRYPTION) },
                 )
                 SettingsNavRow(
                     "Accessibility",
@@ -258,7 +275,7 @@ private fun RingtonePage(onBack: () -> Unit, modifier: Modifier = Modifier) {
 }
 
 /**
- * Pick an audio file to ring with. The file stays on the device — only its URI
+ * Pick an audio file to ring with. The file stays on the device - only its URI
  * is stored locally, and nothing is uploaded.
  */
 @Composable
@@ -282,7 +299,7 @@ private fun RingtoneSetting() {
             fontWeight = FontWeight.Medium,
         )
         Text(
-            text = "Stored on this device only — never uploaded.",
+            text = "Stored on this device only - never uploaded.",
             color = c.inkMuted,
             fontSize = 11.sp,
         )

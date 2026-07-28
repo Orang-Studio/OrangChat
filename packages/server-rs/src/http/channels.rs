@@ -17,8 +17,12 @@ use crate::state::AppState;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/channels/:channelId/messages", get(history).post(post_message))
+        .route(
+            "/channels/:channelId/messages",
+            get(history).post(post_message),
+        )
         .route("/channels/:channelId/read", post(mark_read))
+        .route("/channels/:channelId/unread", post(mark_unread))
         .route("/me/unreads", get(unreads))
         .route(
             "/channels/:channelId",
@@ -53,6 +57,45 @@ async fn mark_read(
     Ok(Json(json!({ "ok": true })))
 }
 
+async fn mark_unread(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Path(channel_id): Path<String>,
+    Json(body): Json<MarkUnreadBody>,
+) -> AppResult<Json<Value>> {
+    channel::require_channel_access(&state, &channel_id, &user.user_id).await?;
+    let owned: Option<String> =
+        sqlx::query_scalar(r#"SELECT id FROM "Message" WHERE id = $1 AND "channelId" = $2"#)
+            .bind(&body.message_id)
+            .bind(&channel_id)
+            .fetch_optional(&state.pool)
+            .await?;
+    if owned.is_none() {
+        return Err(bad_request("Unknown message"));
+    }
+
+    read_state::mark_unread(&state, &user.user_id, &channel_id, &body.message_id).await?;
+    let unread = read_state::get_channel_unread(&state, &user.user_id, &channel_id).await?;
+    let wire = json!({
+        "channelId": unread.channel_id,
+        "serverId": unread.server_id,
+        "unread": unread.unread,
+        "unreadCount": unread.unread_count,
+        "mentionCount": unread.mention_count,
+    });
+    let _ = state
+        .io()
+        .to(format!("user:{}", user.user_id))
+        .emit("unread:state", &wire);
+    Ok(Json(wire))
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MarkUnreadBody {
+    message_id: String,
+}
+
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SendMessageBody {
@@ -63,6 +106,16 @@ struct SendMessageBody {
     attachment_ids: Vec<String>,
     #[serde(default)]
     spoiler_attachment_ids: Vec<String>,
+    /// docs/E2EE.md §2. A quick reply into an encrypted conversation seals on
+    /// the device exactly as the app does; the server refuses plaintext into a
+    /// latched channel either way, so this is what makes the path work rather
+    /// than what makes it safe.
+    #[serde(default)]
+    ciphertext: Option<String>,
+    #[serde(default)]
+    enc_epoch: Option<i32>,
+    #[serde(default)]
+    enc_version: Option<i32>,
 }
 
 /// REST twin of the socket `message:send`. Exists for callers with no live
@@ -86,6 +139,12 @@ async fn post_message(
     let ch = channel::require_channel_access(&state, &channel_id, &user.user_id).await?;
     channel::enforce_slowmode(&state, &ch, &user.user_id).await?;
     membership::assert_not_timed_out(&state, &ch, &user.user_id).await?;
+    let sealed = message::parse_sealed(
+        &ch,
+        body.ciphertext.as_deref(),
+        body.enc_epoch,
+        body.enc_version,
+    )?;
     let msg = message::send_message(
         &state,
         &channel_id,
@@ -94,6 +153,7 @@ async fn post_message(
         body.reply_to_id.as_deref(),
         &body.attachment_ids,
         &body.spoiler_attachment_ids,
+        sealed.as_ref(),
     )
     .await?;
     crate::socket::deliver_message(state.io(), &state, &ch, &msg, &user.user_id, &body.content)

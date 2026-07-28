@@ -1,22 +1,28 @@
-import { useState } from "react";
-import { Settings } from "lucide-react";
-import { useAuthStore } from "../stores/auth";
-import { UserSettingsDialog } from "../features/settings/UserSettingsDialog";
-import { Avatar } from "./Avatar";
-import { DeviceIndicators } from "./DeviceIndicators";
-import { ActivityStatus } from "./ActivityStatus";
-import { clientDevice } from "../features/auth/session";
+import { useState } from 'react';
+import { Settings } from 'lucide-react';
+import { useAuthStore } from '../stores/auth';
+import { UserSettingsDialog } from '../features/settings/UserSettingsDialog';
+import { Avatar } from './Avatar';
+import { DeviceIndicators } from './DeviceIndicators';
+import { ActivityStatus } from './ActivityStatus';
+import { clientDevice } from '../features/auth/session';
 
 /** A connection callback bounces the browser back to `/?connection=…`; reopen
  * settings where the user left off. Read once at mount - ConnectionsTab strips
  * the param after showing the result. */
-const returningFromLink = () =>
-  new URLSearchParams(window.location.search).has("connection");
+const returningFromLink = () => new URLSearchParams(window.location.search).has('connection');
+
+/** The cancel link in a key-erasure warning email lands here the same way, and
+ * has to show its result somewhere - the person following it was told their
+ * encryption was about to be destroyed. */
+const returningFromKeyErasure = () => new URLSearchParams(window.location.search).has('keyErasure');
 
 /** Bottom-of-sidebar current-user strip with the settings gear. */
 export function UserFooter() {
   const user = useAuthStore((s) => s.user);
-  const [settingsOpen, setSettingsOpen] = useState(returningFromLink);
+  const [settingsOpen, setSettingsOpen] = useState(
+    () => returningFromLink() || returningFromKeyErasure(),
+  );
 
   if (!user) return null;
 
@@ -43,7 +49,9 @@ export function UserFooter() {
       <UserSettingsDialog
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
-        initialSection={returningFromLink() ? "connections" : undefined}
+        initialSection={
+          returningFromKeyErasure() ? 'encryption' : returningFromLink() ? 'connections' : undefined
+        }
       />
     </div>
   );

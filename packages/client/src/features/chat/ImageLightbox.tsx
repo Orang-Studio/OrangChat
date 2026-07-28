@@ -3,6 +3,7 @@ import { Bookmark, Download, X } from "lucide-react";
 import type { Attachment } from "@orangchat/shared";
 import { formatBytes } from "./attachments";
 import { isGif, isGifFavorite, useFavoriteGifs } from "./favoriteGifs";
+import { ImageContextMenu } from "./ImageContextMenu";
 
 /**
  * Full-bleed viewer for an image attachment.
@@ -31,7 +32,12 @@ export function ImageLightbox({
   // Only GIFs are bookmarkable - the picker they feed is a GIF picker, so a
   // saved PNG would have nowhere to appear.
   const gif = isGif(attachment.contentType, attachment.filename);
-  const saved = gif && isGifFavorite(favoriteGifs, attachment.url);
+  // Self-hosted/Cloudinary uploads carry a relative url (`/api/attachments/...`).
+  // A GIF is sent by putting its url in the message, but the media embed pipeline
+  // only renders absolute http(s) urls - so bookmark the resolved absolute form,
+  // the same shape a Tenor GIF already has.
+  const gifUrl = new URL(attachment.url, window.location.origin).toString();
+  const saved = gif && isGifFavorite(favoriteGifs, gifUrl);
 
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
@@ -59,7 +65,7 @@ export function ImageLightbox({
                 aria-pressed={saved}
                 aria-label={saved ? "Remove from favourites" : "Favourite this GIF"}
                 onClick={() =>
-                  toggleFavorite({ url: attachment.url, label: attachment.filename })
+                  toggleFavorite({ url: gifUrl, label: attachment.filename })
                 }
                 className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-white/15"
               >
@@ -94,12 +100,15 @@ export function ImageLightbox({
             className="flex min-h-0 flex-1 items-center justify-center p-4"
             onClick={() => onOpenChange(false)}
           >
-            <img
-              src={attachment.url}
-              alt={attachment.filename}
-              onClick={(e) => e.stopPropagation()}
-              className="max-h-full max-w-full object-contain"
-            />
+            <ImageContextMenu attachment={attachment}>
+              <img
+                src={attachment.url}
+                alt={attachment.filename}
+                onClick={(e) => e.stopPropagation()}
+                onContextMenu={(e) => e.stopPropagation()}
+                className="max-h-full max-w-full object-contain"
+              />
+            </ImageContextMenu>
           </div>
         </RadixDialog.Content>
       </RadixDialog.Portal>

@@ -184,7 +184,7 @@ fun CallBar(
     onSelectAudioOutput: (String) -> Unit,
     onHangUp: () -> Unit,
     onOpen: (() -> Unit)? = null,
-    /** Null in DMs — the soundboard belongs to a server. */
+    /** Null in DMs - the soundboard belongs to a server. */
     onSoundboard: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {

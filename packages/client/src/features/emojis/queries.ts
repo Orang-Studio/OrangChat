@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { Emoji } from "@orangchat/shared";
+import { emojiToken, resolveShortcodes, type Emoji } from "@orangchat/shared";
 import { listServerEmojis, listUsableEmojis } from "./api";
+
+export { emojiToken };
 
 export const emojiKeys = {
   usable: ["emojis", "usable"] as const,
@@ -34,6 +36,25 @@ export function useEmojiMap(): Record<string, Emoji> {
   );
 }
 
-/** The token that goes into message content. */
-export const emojiToken = (emoji: Emoji) =>
-  `<${emoji.animated ? "a" : ""}:${emoji.name}:${emoji.id}>`;
+/** Add a message's display-only emoji to the viewer's picker-scoped map. */
+export function withMessageEmojis(
+  usable: Record<string, Emoji>,
+  messageEmojis: Emoji[] | undefined,
+): Record<string, Emoji> {
+  if (!messageEmojis?.length) return usable;
+  return {
+    ...usable,
+    ...Object.fromEntries(messageEmojis.map((emoji) => [emoji.id, emoji])),
+  };
+}
+
+/** Convert manually typed `:name:` references to durable message tokens. */
+export function normalizeCustomEmojiNames(
+  content: string,
+  emojis: Record<string, Emoji>,
+): string {
+  const byName = new Map(
+    Object.values(emojis).map((emoji) => [emoji.name.toLowerCase(), emoji]),
+  );
+  return resolveShortcodes(content, (name) => byName.get(name));
+}

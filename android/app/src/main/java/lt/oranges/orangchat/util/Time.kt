@@ -26,7 +26,7 @@ fun formatDateTime(iso: String?): String {
     return dateTimeFmt.format(inst.atZone(ZoneId.systemDefault()))
 }
 
-/** Date only — for "member since", where the time of day is noise. */
+/** Date only - for "member since", where the time of day is noise. */
 fun formatDate(iso: String?): String {
     val inst = parseInstant(iso) ?: return ""
     return dateFmt.format(inst.atZone(ZoneId.systemDefault()))

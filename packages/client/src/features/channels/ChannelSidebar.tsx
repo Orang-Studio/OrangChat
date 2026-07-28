@@ -22,9 +22,15 @@ import {
 import { useMyPermissions } from "../servers/queries";
 import { ServerSettingsDialog } from "../servers/ServerSettingsDialog";
 import { useVoiceChannels } from "../voice/useVoiceChannels";
-import { useOtherDeviceIn, useVoiceParticipants, useVoiceStore, voiceActions } from "../voice/store";
+import {
+  useOtherDeviceIn,
+  useVoiceParticipants,
+  useVoiceStore,
+  voiceActions,
+} from "../voice/store";
 import { VoicePanel } from "../voice/VoicePanel";
 import { CreateChannelDialog } from "./CreateChannelDialog";
+import { toggleCategoryCollapsed, useCollapsedCategories } from "./collapsedCategories";
 import { InviteDialog } from "./InviteDialog";
 
 interface ChannelSidebarProps {
@@ -68,6 +74,26 @@ function TextChannelLink({ channel, active }: { channel: Channel; active: boolea
         </span>
       )}
     </Link>
+  );
+}
+
+const EMPTY_COLLAPSED: string[] = [];
+
+function ChannelRow({
+  channel,
+  activeId,
+  members,
+  canConnect,
+}: {
+  channel: Channel;
+  activeId: string | undefined;
+  members: ServerMember[];
+  canConnect: boolean;
+}) {
+  return channel.type === "voice" ? (
+    <VoiceChannelRow channel={channel} members={members} canConnect={canConnect} />
+  ) : (
+    <TextChannelLink channel={channel} active={channel.id === activeId} />
   );
 }
 
@@ -130,9 +156,7 @@ function VoiceChannelRow({
         <ul className="ml-6 space-y-0.5 py-0.5">
           {participants.map((p) => {
             const member = resolve(p.userId);
-            const name = member
-              ? (member.nickname ?? member.user.displayName)
-              : "Someone";
+            const name = member ? (member.nickname ?? member.user.displayName) : "Someone";
             return (
               <li
                 key={p.userId}
@@ -167,6 +191,8 @@ function VoiceChannelRow({
 export function ChannelSidebar({ server, channels, members, roles }: ChannelSidebarProps) {
   const { channelId } = useParams();
   const { data: perms } = useMyPermissions(server.id);
+  const collapsedIds = useCollapsedCategories((s) => s.byServer[server.id] ?? EMPTY_COLLAPSED);
+  const toggleCategory = (id: string) => toggleCategoryCollapsed(server.id, id);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -181,7 +207,21 @@ export function ChannelSidebar({ server, channels, members, roles }: ChannelSide
     can(Permissions.BAN_MEMBERS) ||
     can(Permissions.MANAGE_EXPRESSIONS);
 
-  const sorted = [...channels].sort((a, b) => a.position - b.position);
+  const { uncategorized, categories } = useMemo(() => {
+    const sorted = [...channels].sort((a, b) => a.position - b.position);
+    const cats = sorted.filter((c) => c.type === "category");
+    const rest = sorted.filter((c) => c.type !== "category");
+    return {
+      uncategorized: rest.filter(
+        (c) => !c.parentCategoryId || !cats.some((cat) => cat.id === c.parentCategoryId),
+      ),
+      categories: cats.map((category) => ({
+        category,
+        children: rest.filter((c) => c.parentCategoryId === category.id),
+      })),
+    };
+  }, [channels]);
+
   const voiceChannelIds = useMemo(
     () => channels.filter((c) => c.type === "voice").map((c) => c.id),
     [channels],
@@ -235,23 +275,54 @@ export function ChannelSidebar({ server, channels, members, roles }: ChannelSide
             </button>
           )}
         </div>
-        {sorted.map((channel) =>
-          channel.type === "voice" ? (
-            <VoiceChannelRow
-              key={channel.id}
-              channel={channel}
-              members={members}
-              canConnect={canConnect}
-            />
-          ) : (
-            <TextChannelLink
-              key={channel.id}
-              channel={channel}
-              active={channel.id === channelId}
-            />
-          ),
-        )}
-        {sorted.length === 0 && (
+
+        {uncategorized.map((channel) => (
+          <ChannelRow
+            key={channel.id}
+            channel={channel}
+            activeId={channelId}
+            members={members}
+            canConnect={canConnect}
+          />
+        ))}
+
+        {categories.map(({ category, children }) => {
+          const collapsed = collapsedIds.includes(category.id);
+          return (
+            <div key={category.id} className="pt-2">
+              <button
+                type="button"
+                aria-expanded={!collapsed}
+                onClick={() => toggleCategory(category.id)}
+                className="flex w-full items-center gap-1 px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted transition-colors hover:text-ink"
+              >
+                <ChevronDown
+                  aria-hidden
+                  className={cn("size-3 shrink-0 transition-transform", collapsed && "-rotate-90")}
+                />
+                <span className="truncate">{category.name}</span>
+              </button>
+              {!collapsed && (
+                <div className="space-y-0.5">
+                  {children.map((channel) => (
+                    <ChannelRow
+                      key={channel.id}
+                      channel={channel}
+                      activeId={channelId}
+                      members={members}
+                      canConnect={canConnect}
+                    />
+                  ))}
+                  {children.length === 0 && (
+                    <p className="px-2 py-1 text-xs text-ink-muted">Empty</p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {channels.length === 0 && (
           <p className="px-2 py-4 text-sm text-ink-muted">No channels yet.</p>
         )}
       </nav>
@@ -264,6 +335,7 @@ export function ChannelSidebar({ server, channels, members, roles }: ChannelSide
         serverId={server.id}
         open={createOpen}
         onOpenChange={setCreateOpen}
+        categories={categories.map((c) => c.category)}
       />
       <ServerSettingsDialog
         server={server}

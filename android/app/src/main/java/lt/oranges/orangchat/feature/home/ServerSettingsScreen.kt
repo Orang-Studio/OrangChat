@@ -50,7 +50,7 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
  * Server management: rename, invite, leave, delete. Counterpart of the web
  * client's ServerSettingsDialog Overview tab.
  *
- * Owners see Delete and cannot leave (the backend refuses — a server without an
+ * Owners see Delete and cannot leave (the backend refuses - a server without an
  * owner would be orphaned); everyone else sees Leave.
  */
 @Composable
@@ -185,7 +185,7 @@ fun ServerSettingsScreen(
             Section("Danger zone") {
                 if (isOwner) {
                     Text(
-                        text = "As the owner you cannot leave — delete the server instead.",
+                        text = "As the owner you cannot leave - delete the server instead.",
                         color = c.inkMuted,
                         fontSize = 12.sp,
                     )

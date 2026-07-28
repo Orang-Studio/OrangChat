@@ -52,6 +52,20 @@ export const unreadActions = {
     });
   },
 
+  set(state: UnreadState) {
+    useUnreadStore.setState((s) => ({
+      channels: {
+        ...s.channels,
+        [state.channelId]: {
+          serverId: state.serverId,
+          unread: state.unread,
+          unreadCount: state.unreadCount,
+          mentionCount: state.mentionCount,
+        },
+      },
+    }));
+  },
+
   /** The user opened / read a channel - clear its unread + mentions. */
   clear(channelId: string) {
     useUnreadStore.setState((s) => {

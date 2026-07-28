@@ -1,0 +1,7 @@
+Adding a phone from a PC now works the natural way around.
+
+- The PC shows a one-time QR code; scan it with the phone's Camera app.
+- Clear four-step progress on both devices: scan, compare, 2FA, finish.
+- Better waiting, retry, fallback, and error states during pairing.
+- The phone still creates its own protected identity; private keys never move.
+- Pasting or scanning a code shown by the new device remains available as a fallback.

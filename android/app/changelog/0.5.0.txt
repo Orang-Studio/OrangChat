@@ -1,0 +1,7 @@
+# OrangChat 0.5.0
+
+- End-to-end encryption for direct messages and group direct messages.
+- Encryption identities, device enrollment, revocation, and device transfer.
+- Safety numbers, QR verification, strict verification mode, and security alerts.
+- Encrypted attachments, local encrypted search, drafts, and notification decryption.
+- Notification quick replies now encrypt before sending.

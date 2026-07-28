@@ -10,16 +10,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
-import androidx.compose.ui.draw.alpha
-import lt.oranges.orangchat.ui.components.Badge
 import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -52,7 +47,7 @@ private val ACCENT_COLORS = listOf(
 )
 
 /**
- * Edit your own profile — display name, pronouns, bio, avatar and banner.
+ * Edit your own profile - display name, pronouns, bio, avatar and banner.
  * Port of the web client's UserSettingsDialog Profile tab; images go through
  * the same POST /uploads/image the web client uses, which resizes and strips
  * EXIF server-side.
@@ -177,10 +172,15 @@ fun ProfileSettingsSection(
 
         ProfileSectionTitle("Profile CSS")
         Text(
-            text = "Style your card for everyone who views it. Target .oc-profile-card, " +
-                ".oc-pf-banner, .oc-pf-avatar, .oc-pf-body, .oc-pf-name, .oc-pf-pronouns, " +
-                ".oc-pf-username, .oc-pf-bio and .oc-pf-member. External images, fonts and " +
-                "@import are blocked; the preview above shows what others see.",
+            text = "Style your card for everyone who views it. Every part has a hook: " +
+                ".oc-profile-card, .oc-pf-banner(-img), .oc-pf-avatar(-frame/-img/-fallback), " +
+                ".oc-pf-body, .oc-pf-head, .oc-pf-name, .oc-pf-pronouns, .oc-pf-identity, " +
+                ".oc-pf-username, .oc-pf-devices/-device, .oc-pf-activity(-name), " +
+                ".oc-pf-badges/-badge(-label), .oc-pf-section, .oc-pf-heading, " +
+                ".oc-pf-bio(-text) and .oc-pf-member(-text) - plus [data-status] and " +
+                "var(--oc-pf-accent) on the card. @media, @container, @starting-style, " +
+                "@layer and @keyframes work; external images, fonts and @import are blocked. " +
+                "The preview above shows what others see.",
             color = c.inkMuted,
             fontSize = 12.sp,
         )
@@ -200,9 +200,6 @@ fun ProfileSettingsSection(
             )
         }
 
-        ProfileSectionTitle("Badges")
-        BadgeCatalog(self.badges)
-
         state.error?.let { Text(it, color = c.danger, fontSize = 12.sp) }
 
         OrangButton(
@@ -221,45 +218,6 @@ fun ProfileSettingsSection(
             enabled = dirty,
             modifier = Modifier.fillMaxWidth(),
         )
-    }
-}
-
-/**
- * The whole badge catalog with the held ones lit up and the rest dimmed. Badges
- * are awarded server-side, so this is read-only - it exists to say what each one
- * is and how it's earned.
- */
-@Composable
-private fun BadgeCatalog(owned: List<String>) {
-    val c = OrangTheme.colors
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Badge.entries.forEach { badge ->
-            val has = badge.slug in owned
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(OrangRadius.lg))
-                    .background(c.surface1)
-                    .padding(horizontal = 12.dp, vertical = 10.dp)
-                    .alpha(if (has) 1f else 0.5f),
-            ) {
-                Icon(
-                    imageVector = badge.icon,
-                    contentDescription = null,
-                    tint = if (has) badge.color else c.inkMuted,
-                    modifier = Modifier.size(20.dp),
-                )
-                Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(badge.label, color = c.ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                    Text(badge.description, color = c.inkMuted, fontSize = 12.sp)
-                }
-                if (has) {
-                    Text("Earned", color = c.success, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                }
-            }
-        }
     }
 }
 

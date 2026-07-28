@@ -25,7 +25,7 @@ internal object CallTones {
     /** One note: layered [freqs], starting [at] seconds in, lasting [dur]. */
     data class Note(val freqs: List<Double>, val at: Double, val dur: Double, val gain: Double)
 
-    /** Classic ringback pair, one second on and three off — matches the web. */
+    /** Classic ringback pair, one second on and three off - matches the web. */
     fun ringbackCycle(): ShortArray = render(
         totalSeconds = 4.0,
         notes = listOf(Note(listOf(440.0, 480.0), at = 0.0, dur = 1.0, gain = 0.35)),

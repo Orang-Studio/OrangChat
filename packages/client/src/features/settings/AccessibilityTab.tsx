@@ -1,12 +1,110 @@
-import {
-  DEFAULT_PREFS,
-  FONT_SCALE_MAX,
-  FONT_SCALE_MIN,
-  setPref,
-  usePrefs,
-} from "../../lib/prefs";
+import { Reply } from "lucide-react";
+import { DEFAULT_PREFS, FONT_SCALE_MAX, FONT_SCALE_MIN, setPref, usePrefs } from "../../lib/prefs";
+import { Avatar } from "../../components/Avatar";
 import { Button } from "../../components/ui/Button";
+import { cn } from "../../lib/cn";
+import { useAuthStore } from "../../stores/auth";
 import { SectionTitle, SegmentedControl, Toggle } from "./controls";
+
+const SAMPLE_AUTHOR = { displayName: "Rasa", avatarUrl: null };
+
+/**
+ * A miniature of the real chat pane. It reuses the same `oc-message` hooks the
+ * message list carries, so text size, density, contrast and link underlines all
+ * change it exactly the way they change the actual conversation - no need to
+ * close settings to see what a setting did.
+ */
+function ChatPreview() {
+  const me = useAuthStore((s) => s.user);
+  const self = {
+    displayName: me?.displayName ?? "You",
+    avatarUrl: me?.avatarUrl ?? null,
+  };
+
+  const Row = ({
+    author,
+    time,
+    lead = true,
+    children,
+  }: {
+    author: { displayName: string; avatarUrl: string | null };
+    time: string;
+    lead?: boolean;
+    children: React.ReactNode;
+  }) => (
+    <div className={cn("oc-message px-3 py-0.5", lead && "oc-message-lead mt-3")}>
+      <div className="flex gap-3">
+        {lead ? (
+          <Avatar user={author} className="mt-0.5 size-10 shrink-0" />
+        ) : (
+          <span className="w-10 shrink-0 pt-1 text-right text-[10px] leading-5 text-ink-muted">
+            {time.slice(-5)}
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          {lead && (
+            <p className="flex items-baseline gap-2">
+              <span className="font-semibold">{author.displayName}</span>
+              <span className="text-xs text-ink-muted">{time}</span>
+            </p>
+          )}
+          <div className="break-words text-sm leading-relaxed">{children}</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div
+      aria-label="Chat preview"
+      className="overflow-hidden rounded-lg border border-border bg-surface-2 pb-2"
+    >
+      <div className="flex h-9 items-center gap-2 border-b border-border px-3 text-sm font-semibold">
+        <span aria-hidden className="text-ink-muted">
+          #
+        </span>
+        preview
+      </div>
+
+      <Row author={SAMPLE_AUTHOR} time="Today at 14:02">
+        The quick brown fox jumps over the lazy dog.
+      </Row>
+      <Row author={SAMPLE_AUTHOR} time="Today at 14:02" lead={false}>
+        This second line is grouped under the same author - it's the gap here that Cozy and Compact
+        change.
+      </Row>
+
+      <div className="oc-message oc-message-lead mt-3 px-3 py-0.5">
+        <div className="mb-0.5 flex items-center gap-1.5 pl-[3.25rem] text-xs text-ink-muted">
+          <Reply aria-hidden className="size-3.5 -scale-x-100" />
+          <span className="font-medium text-ink-secondary">{SAMPLE_AUTHOR.displayName}</span>
+          <span className="truncate">The quick brown fox jumps over the lazy dog.</span>
+        </div>
+        <div className="flex gap-3">
+          <Avatar user={self} className="mt-0.5 size-10 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="flex items-baseline gap-2">
+              <span className="font-semibold">{self.displayName}</span>
+              <span className="text-xs text-ink-muted">Today at 14:03</span>
+            </p>
+            <div className="break-words text-sm leading-relaxed">
+              Looks readable at this size.{" "}
+              <a href="#preview" onClick={(e) => e.preventDefault()} className="oc-link text-info">
+                A link
+              </a>{" "}
+              shows the underline setting.
+            </div>
+            <div className="mt-1 flex flex-wrap gap-1">
+              <span className="flex items-center gap-1 rounded-md border border-primary bg-primary-soft px-2 py-0.5 text-sm">
+                👍 <span className="text-xs font-semibold text-ink-secondary">2</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function AccessibilityTab() {
   const prefs = usePrefs();
@@ -33,13 +131,16 @@ export function AccessibilityTab() {
           <span>{Math.round(prefs.fontScale * 100)}%</span>
           <span>Larger</span>
         </div>
-        <p className="mt-3 rounded-lg border border-border bg-surface-1 px-3 py-2 text-sm">
-          The quick brown fox jumps over the lazy dog.
-        </p>
+        <div className="mt-3">
+          <ChatPreview />
+        </div>
       </div>
 
       <div className="border-t border-border pt-5">
         <SectionTitle>Message density</SectionTitle>
+        <p className="mb-3 text-sm text-ink-secondary">
+          Compact tightens the spacing between messages. The preview above follows it.
+        </p>
         <SegmentedControl
           value={prefs.messageDensity}
           onChange={(v) => setPref("messageDensity", v)}

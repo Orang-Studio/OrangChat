@@ -51,16 +51,28 @@ async fn load_conversation(state: &AppState, channel_id: &str) -> AppResult<Opti
     .bind(channel_id)
     .fetch_all(&state.pool)
     .await?;
-    Ok(Some(json!(with_presence(state, to_conversation(&ch, &users)).await?)))
+    Ok(Some(json!(
+        with_presence(state, to_conversation(&ch, &users)).await?
+    )))
 }
 
-async fn with_presence(state: &AppState, mut conversation: ConversationDto) -> AppResult<ConversationDto> {
-    let ids: Vec<String> = conversation.participants.iter().map(|user| user.id.clone()).collect();
+async fn with_presence(
+    state: &AppState,
+    mut conversation: ConversationDto,
+) -> AppResult<ConversationDto> {
+    let ids: Vec<String> = conversation
+        .participants
+        .iter()
+        .map(|user| user.id.clone())
+        .collect();
     let statuses = presence::get_statuses(state, &ids).await?;
     let devices = presence::get_device_sets(state, &ids).await?;
     let activities = presence::get_activity_sets(state, &ids).await?;
     for user in &mut conversation.participants {
-        user.status = statuses.get(&user.id).cloned().unwrap_or_else(|| "offline".into());
+        user.status = statuses
+            .get(&user.id)
+            .cloned()
+            .unwrap_or_else(|| "offline".into());
         user.devices = devices.get(&user.id).cloned().unwrap_or_default();
         user.activities = activities.get(&user.id).cloned().unwrap_or_default();
     }
@@ -71,7 +83,9 @@ async fn list_dms(State(state): State<AppState>, user: AuthUser) -> AppResult<Js
     let rows = dm::list_conversations(&state, &user.user_id).await?;
     let mut out = Vec::with_capacity(rows.len());
     for (channel, users) in &rows {
-        out.push(json!(with_presence(&state, to_conversation(channel, users)).await?));
+        out.push(json!(
+            with_presence(&state, to_conversation(channel, users)).await?
+        ));
     }
     Ok(Json(json!(out)))
 }

@@ -1,0 +1,8 @@
+End-to-end encryption device transfer is now complete.
+
+- Add this phone from an authorized PC with QR, six-digit SAS, and TOTP.
+- Authorize a new PC or phone from Android.
+- Copy encrypted conversation history without copying identity private keys.
+- Rotate conversation keys after device/membership changes, 30 days, or 10,000 messages.
+- Encrypt message edits, local drafts, attachments, and Android notification payloads.
+- Add strict verification controls, safety numbers, group safety numbers, and manual key reset.

@@ -1,6 +1,5 @@
 import { create } from "zustand";
-import type { MarketplaceTheme } from "@orangchat/shared";
-import { api } from "../../lib/api";
+import type { Theme } from "@orangchat/marketplace";
 
 /**
  * Installed colour themes. A theme overrides `--oc-*` custom properties; the
@@ -63,7 +62,7 @@ function applyVars(vars: Record<string, string> | null): void {
 
 interface ThemeStore {
   installed: InstalledTheme | null;
-  install: (theme: MarketplaceTheme | InstalledTheme) => void;
+  install: (theme: Theme | InstalledTheme) => void;
   uninstall: () => void;
 }
 
@@ -88,21 +87,3 @@ export const useInstalledTheme = create<ThemeStore>((set) => ({
 export function initInstalledTheme(): void {
   applyVars(read()?.vars ?? null);
 }
-
-// ── Marketplace API ─────────────────────────────────────
-
-export const listThemes = () => api<{ themes: MarketplaceTheme[] }>("/themes");
-export const listMyThemes = () => api<{ themes: MarketplaceTheme[] }>("/themes/mine");
-
-export const createTheme = (name: string, vars: Record<string, string>, submitted: boolean) =>
-  api<MarketplaceTheme>("/themes", { method: "POST", json: { name, vars, submitted } });
-
-export const updateTheme = (id: string, patch: { name?: string; submitted?: boolean }) =>
-  api<MarketplaceTheme>(`/themes/${id}`, { method: "PATCH", json: patch });
-
-export const deleteTheme = (id: string) =>
-  api<{ deleted: boolean }>(`/themes/${id}`, { method: "DELETE" });
-
-/** Records the install server-side and returns the theme to apply. */
-export const installTheme = (id: string) =>
-  api<MarketplaceTheme>(`/themes/${id}/install`, { method: "POST" });

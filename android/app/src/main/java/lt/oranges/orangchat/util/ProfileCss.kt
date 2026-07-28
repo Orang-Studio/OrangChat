@@ -10,11 +10,13 @@ private val DANGEROUS_TOKEN = Regex(
     RegexOption.IGNORE_CASE,
 )
 private val PROPERTY_NAME = Regex("""^-{0,2}[a-zA-Z][a-zA-Z0-9-]*$""")
+private val LAYER_NAME = Regex("""^[\w-]+(\.[\w-]+)*$""")
+private val CONTAINER_QUERY = Regex("""^[\w\s.,()<>=:%+*/-]+$""")
 private val COMMENT = Regex("""/\*.*?\*/""", RegexOption.DOT_MATCHES_ALL)
 
 /**
  * The result is embedded in a <style> element, whose raw-text content ends at
- * the first literal `</style` — so a profile could otherwise close the element
+ * the first literal `</style` - so a profile could otherwise close the element
  * and inject markup after it. Nothing else in CSS is affected by this sequence,
  * so stripping it costs valid stylesheets nothing (an inline SVG data: URI
  * keeps working; it contains </svg, not </style).
@@ -25,11 +27,12 @@ private val STYLE_CLOSE = Regex("""</style""", RegexOption.IGNORE_CASE)
  * Kotlin counterpart of packages/client/src/lib/profileCss.ts. The web version
  * re-parses through the browser's CSSOM; there is no CSSOM here before the
  * WebView has already committed to rendering, so this hand-parses instead and
- * keeps the same allowlist: style / @media / @supports / @keyframes only, no
- * external url(), no position:fixed|sticky, no legacy scripting hooks.
+ * keeps the same allowlist: style rules plus @media / @supports / @container /
+ * @starting-style / @layer / @keyframes only, no external url(), no
+ * position:fixed|sticky, no legacy scripting hooks.
  *
  * This is one of three layers. The card WebView also ships a CSP that forbids
- * every non-image load, and intercepts requests against an allowlist — so a
+ * every non-image load, and intercepts requests against an allowlist - so a
  * miss here still cannot reach the network.
  */
 fun sanitizeProfileCss(css: String?, scopeSelector: String = ".oc-profile-card"): String {
@@ -46,7 +49,7 @@ private fun processRules(input: String, scope: String, depth: Int): String {
     while (i < input.length) {
         val (terminator, at) = nextTopLevel(input, i) ?: break
         // Statement at-rules (@import, @charset) end at ';' with no block. Skip
-        // the statement only — the rules after it are still valid CSS.
+        // the statement only - the rules after it are still valid CSS.
         if (terminator == ';') {
             i = at + 1
             continue
@@ -66,6 +69,24 @@ private fun processRules(input: String, scope: String, depth: Int): String {
                 name == "@media" || name == "@supports" -> {
                     val inner = processRules(body, scope, depth + 1)
                     if (inner.isNotBlank()) out.append("$name $params {\n").append(inner).append("}\n")
+                }
+                // Grouping at-rules whose prelude is a plain query or ident. The
+                // preludes are checked rather than trusted: an ident may carry
+                // \XX escapes, and those must not reach the sheet unexamined.
+                name == "@container" && CONTAINER_QUERY.matches(params) -> {
+                    val inner = processRules(body, scope, depth + 1)
+                    if (inner.isNotBlank()) out.append("$name $params {\n").append(inner).append("}\n")
+                }
+                name == "@starting-style" && params.isBlank() -> {
+                    val inner = processRules(body, scope, depth + 1)
+                    if (inner.isNotBlank()) out.append("$name {\n").append(inner).append("}\n")
+                }
+                name == "@layer" && (params.isBlank() || LAYER_NAME.matches(params)) -> {
+                    val inner = processRules(body, scope, depth + 1)
+                    if (inner.isNotBlank()) {
+                        out.append(if (params.isBlank()) "$name {\n" else "$name $params {\n")
+                            .append(inner).append("}\n")
+                    }
                 }
                 name.endsWith("keyframes") -> {
                     val frames = processKeyframes(body)

@@ -16,11 +16,11 @@ import javax.inject.Singleton
 /**
  * Call audio. Inbound calls ring with the user's chosen tone from settings, or
  * the device ringtone if they have not picked one. Everything the app generates
- * itself — the outgoing ringback and the join/leave/decline cues — is
+ * itself - the outgoing ringback and the join/leave/decline cues - is
  * synthesised by [CallTones] to match the web client, deliberately in place of
  * Android's own ToneGenerator call sounds.
  *
- * Deliberately independent of the notification permission — a call is happening
+ * Deliberately independent of the notification permission - a call is happening
  * now and must be audible to be answerable, and the full-screen popup is the
  * fallback if audio is unavailable.
  */
@@ -45,7 +45,7 @@ class RingtonePlayer @Inject constructor(
     @Synchronized
     fun startIncoming() {
         stop()
-        // A custom tone can rot — the file gets deleted, or the persisted URI
+        // A custom tone can rot - the file gets deleted, or the persisted URI
         // permission is lost on restore. Never let that mean a silent call.
         if (play(ringtoneUri())) return
         val fallback = defaultUri()

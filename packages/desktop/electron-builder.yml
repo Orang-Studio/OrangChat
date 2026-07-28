@@ -4,8 +4,7 @@ copyright: Copyright © 2026 Oranges.LT
 directories:
   output: release
   buildResources: build
-# No native modules here, and the rebuild scan walks every workspace link —
-# including stale ones left in node_modules/.pnpm by removed packages.
+
 npmRebuild: false
 files:
   - dist/**/*
@@ -20,9 +19,7 @@ win:
       arch: [x64]
   icon: build/icon.ico
   artifactName: OrangChat-${version}-${arch}.${ext}
-# Static-file update feed: the build emits latest.yml next to the artifacts and
-# electron-updater polls it. nginx must serve latest.yml with no-cache, or
-# clients stay blind to a release for as long as the cache lives.
+
 publish:
   provider: generic
   url: https://chat.oranges.lt/download/windows

@@ -18,7 +18,7 @@ class ProfileCardOriginTest {
         )
     }
 
-    /** A non-default port is part of the origin — dropping it would block the load. */
+    /** A non-default port is part of the origin - dropping it would block the load. */
     @Test
     fun `keeps an explicit port`() {
         assertEquals("http://localhost:3000", originOf("http://localhost:3000/uploads/a.png"))

@@ -1,0 +1,5 @@
+- Fixed the app hanging and closing when you sent a photo or file with no message attached.
+- Attachments in encrypted chats now keep their real name and open as pictures again, instead of arriving as a file called "sealed".
+- Encrypted images show a preview while they are being decrypted rather than only a download button.
+- A sent attachment no longer stays greyed out after it has gone through.
+- Opening a conversation with encrypted files in it is smoother.

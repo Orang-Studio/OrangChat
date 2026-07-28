@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import lt.oranges.orangchat.data.model.Attachment
 import lt.oranges.orangchat.data.remote.AttachmentUploader
+import lt.oranges.orangchat.data.repository.E2eeRepository
+import lt.oranges.orangchat.crypto.SealedAttachmentRef
 import java.util.UUID
 import javax.inject.Inject
 
@@ -27,6 +29,7 @@ import javax.inject.Inject
 @HiltViewModel
 class AttachmentDraftViewModel @Inject constructor(
     private val uploader: AttachmentUploader,
+    private val e2ee: E2eeRepository,
 ) : ViewModel() {
 
     data class PendingUpload(
@@ -39,6 +42,8 @@ class AttachmentDraftViewModel @Inject constructor(
         val progress: Float = 0f,
         /** Set once uploaded; its id is what the message references. */
         val attachment: Attachment? = null,
+        /** Present only for E2EE uploads; sealed into the message payload. */
+        val sealed: SealedAttachmentRef? = null,
         val error: String? = null,
         /** The content uri, for thumbnailing images before they're up. */
         val previewUri: Uri? = null,
@@ -56,12 +61,16 @@ class AttachmentDraftViewModel @Inject constructor(
     private val jobs = mutableMapOf<String, Job>()
 
     val uploading: Boolean get() = _uploads.value.any { !it.settled }
-    val readyIds: List<String> get() = _uploads.value.mapNotNull { it.attachment?.id }
+    val readyIds: List<String>
+        get() = _uploads.value.flatMap { upload ->
+            listOfNotNull(upload.attachment?.id, upload.sealed?.thumb?.attachmentId)
+        }
+    val readySealed: List<SealedAttachmentRef> get() = _uploads.value.mapNotNull { it.sealed }
     val hasFailures: Boolean get() = _uploads.value.any { it.error != null }
 
     fun dismissError() { _error.value = null }
 
-    fun add(uris: List<Uri>) {
+    fun add(uris: List<Uri>, channelId: String?) {
         if (uris.isEmpty()) return
         _error.value = null
 
@@ -99,9 +108,26 @@ class AttachmentDraftViewModel @Inject constructor(
 
             jobs[key] = viewModelScope.launch {
                 runCatching {
-                    uploader.upload(uri, info) { fraction -> patch(key) { it.copy(progress = fraction) } }
+                    if (channelId != null && e2ee.shouldEncrypt(channelId)) {
+                        val sealed = uploader.uploadSealed(uri, info) { fraction ->
+                            patch(key) { it.copy(progress = fraction) }
+                        }
+                        sealed.attachment to sealed.ref
+                    } else {
+                        uploader.upload(uri, info) { fraction ->
+                            patch(key) { it.copy(progress = fraction) }
+                        } to null
+                    }
                 }
-                    .onSuccess { attachment -> patch(key) { it.copy(attachment = attachment, progress = 1f) } }
+                    .onSuccess { (attachment, sealed) ->
+                        patch(key) {
+                            it.copy(
+                                attachment = attachment,
+                                sealed = sealed,
+                                progress = 1f,
+                            )
+                        }
+                    }
                     .onFailure { cause ->
                         // Cancelling is the user's own doing; remove() already
                         // dropped the chip, so there's nothing to report.
@@ -117,7 +143,7 @@ class AttachmentDraftViewModel @Inject constructor(
         _uploads.update { list -> list.filterNot { it.key == key } }
     }
 
-    /** Drop the whole draft — sent, or the channel changed under it. */
+    /** Drop the whole draft - sent, or the channel changed under it. */
     fun clear() {
         jobs.values.forEach { it.cancel() }
         jobs.clear()

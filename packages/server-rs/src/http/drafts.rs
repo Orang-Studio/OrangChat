@@ -11,12 +11,10 @@ use crate::services::draft;
 use crate::state::AppState;
 
 pub fn routes() -> Router<AppState> {
-    Router::new()
-        .route("/me/drafts", get(list_drafts))
-        .route(
-            "/channels/:channelId/draft",
-            get(get_draft).put(put_draft).delete(delete_draft),
-        )
+    Router::new().route("/me/drafts", get(list_drafts)).route(
+        "/channels/:channelId/draft",
+        get(get_draft).put(put_draft).delete(delete_draft),
+    )
 }
 
 async fn list_drafts(State(state): State<AppState>, user: AuthUser) -> AppResult<Json<Value>> {

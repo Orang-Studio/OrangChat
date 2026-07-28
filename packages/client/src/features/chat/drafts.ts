@@ -1,10 +1,17 @@
 import { api } from "../../lib/api";
+import { isEncrypted } from "../e2ee/store";
 
 /**
  * Composer drafts. Written to localStorage first so an unsent message survives
  * a reload or an offline moment, then mirrored to the server (debounced) so it
  * follows the user to another device. The server copy is authoritative only
  * when this device has no local draft, e.g. a fresh login.
+ *
+ * Encrypted conversations opt out of the server half entirely (docs/E2EE.md §9).
+ * A plaintext draft of a message we are about to encrypt would hand the server
+ * the very thing the encryption exists to withhold, and it would do it before
+ * the message was even sent. Drafts there are local to the device that typed
+ * them; following you to another device is not worth that.
  */
 
 const SYNC_DEBOUNCE_MS = 800;
@@ -32,6 +39,10 @@ function writeLocal(channelId: string, content: string): void {
 }
 
 async function pushToServer(channelId: string): Promise<void> {
+  if (isEncrypted(channelId)) {
+    dirty.delete(channelId);
+    return;
+  }
   const content = readLocal(channelId);
   try {
     await api(`/channels/${channelId}/draft`, { method: "PUT", json: { content } });
@@ -65,6 +76,8 @@ export function clearDraft(channelId: string): void {
   writeLocal(channelId, "");
   dirty.delete(channelId);
   clearTimeout(timers.get(channelId));
+  // Still issued for encrypted channels: a draft written before this device
+  // knew the conversation was encrypted has to be cleaned off the server.
   void api(`/channels/${channelId}/draft`, { method: "DELETE" }).catch(() => {});
 }
 
@@ -72,6 +85,7 @@ export function clearDraft(channelId: string): void {
 export async function loadDraft(channelId: string): Promise<string> {
   const local = readLocal(channelId);
   if (local) return local;
+  if (isEncrypted(channelId)) return "";
   try {
     const { content } = await api<{ content: string | null }>(
       `/channels/${channelId}/draft`,

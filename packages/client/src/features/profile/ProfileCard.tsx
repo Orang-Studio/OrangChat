@@ -1,4 +1,4 @@
-import { useId, useMemo } from "react";
+import { useId, useMemo, type CSSProperties } from "react";
 import type { Connection, PresenceDevice, PresenceStatus, UserActivity } from "@orangchat/shared";
 import { Avatar } from "../../components/Avatar";
 import { DeviceIndicators } from "../../components/DeviceIndicators";
@@ -54,28 +54,37 @@ export function ProfileCard({ data }: { data: ProfileCardData }) {
         "oc-profile-card relative isolate overflow-hidden rounded-lg border border-border bg-surface-2 [contain:layout_paint_style]",
         scopeClass,
       )}
+      // Attribute hooks let a theme react to state it can't otherwise see, e.g.
+      // `.oc-profile-card[data-status="dnd"] .oc-pf-name { color: … }`.
+      data-status={data.status ?? "offline"}
+      data-has-banner={data.bannerUrl ? "true" : "false"}
+      data-has-avatar={data.avatarUrl ? "true" : "false"}
+      style={{ "--oc-pf-accent": accent ?? "var(--oc-surface-4)" } as CSSProperties}
     >
       {themeCss && <style dangerouslySetInnerHTML={{ __html: themeCss }} />}
-      <div
-        className="oc-pf-banner h-20 w-full"
-        style={{ backgroundColor: accent ?? "var(--oc-surface-4)" }}
-      >
+      <div className="oc-pf-banner h-20 w-full bg-[var(--oc-pf-accent)]">
         {data.bannerUrl && (
-          <img src={data.bannerUrl} alt="" className="size-full object-cover" />
+          <img
+            src={data.bannerUrl}
+            alt=""
+            className="oc-pf-banner-img size-full object-cover"
+          />
         )}
       </div>
-      <div className="px-4 pb-4">
+      <div className="oc-pf-inner px-4 pb-4">
         <div className="oc-pf-avatar -mt-9 mb-2">
-          <span className="inline-block rounded-md bg-surface-2 p-1.5">
+          <span className="oc-pf-avatar-frame inline-block rounded-md bg-surface-2 p-1.5">
             <Avatar
               user={{ displayName: data.displayName, avatarUrl: data.avatarUrl }}
-              className="size-14 [&_img]:rounded-md [&>span:first-child]:rounded-md"
+              className="size-14"
+              imgClassName="oc-pf-avatar-img rounded-md"
+              fallbackClassName="oc-pf-avatar-fallback rounded-md"
             />
           </span>
         </div>
 
         <div className="oc-pf-body rounded-lg bg-surface-1 p-3">
-          <div className="flex items-baseline gap-2">
+          <div className="oc-pf-head flex items-baseline gap-2">
             <h2 className="oc-pf-name truncate text-base font-bold">
               {data.displayName || "-"}
             </h2>
@@ -83,35 +92,42 @@ export function ProfileCard({ data }: { data: ProfileCardData }) {
               <span className="oc-pf-pronouns text-xs text-ink-muted">{data.pronouns}</span>
             )}
           </div>
-          <div className="flex min-w-0 items-center gap-1.5">
+          <div className="oc-pf-identity flex min-w-0 items-center gap-1.5">
             <p className="oc-pf-username truncate text-sm text-ink-secondary">
               @{data.username || "username"}
             </p>
             {data.status && (
-              <DeviceIndicators status={data.status} devices={data.devices ?? []} />
+              <DeviceIndicators
+                status={data.status}
+                devices={data.devices ?? []}
+                className="oc-pf-devices"
+                itemClassName="oc-pf-device"
+              />
             )}
           </div>
-          <ActivityStatus activities={data.activities ?? []} className="mt-1" />
+          <ActivityStatus activities={data.activities ?? []} className="oc-pf-activity mt-1" />
 
           <ProfileBadges badges={data.badges ?? []} className="mt-2" />
 
           {data.bio && (
-            <div className="oc-pf-bio mt-2.5 border-t border-border pt-2.5">
-              <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            <div className="oc-pf-bio oc-pf-section mt-2.5 border-t border-border pt-2.5">
+              <h3 className="oc-pf-heading mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
                 About me
               </h3>
-              <p className="whitespace-pre-wrap break-words text-sm">{data.bio}</p>
+              <p className="oc-pf-bio-text whitespace-pre-wrap break-words text-sm">
+                {data.bio}
+              </p>
             </div>
           )}
 
           <ConnectionCards connections={data.connections ?? []} />
 
           {data.createdAt && (
-            <div className="oc-pf-member mt-2.5 border-t border-border pt-2.5">
-              <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            <div className="oc-pf-member oc-pf-section mt-2.5 border-t border-border pt-2.5">
+              <h3 className="oc-pf-heading mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
                 Member since
               </h3>
-              <p className="text-sm">{formatFullTime(data.createdAt)}</p>
+              <p className="oc-pf-member-text text-sm">{formatFullTime(data.createdAt)}</p>
             </div>
           )}
         </div>

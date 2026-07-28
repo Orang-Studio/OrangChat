@@ -17,9 +17,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -223,8 +223,9 @@ private fun linkedAttachment(url: String, contentType: String): Attachment {
 
 @Composable
 private fun PageEmbed(url: String, host: String, viewModel: LinkPreviewViewModel) {
-    val preview by produceState<LinkPreviewData?>(initialValue = null, url) {
-        value = viewModel.preview(url)
+    var preview by remember(url) { mutableStateOf<LinkPreviewData?>(null) }
+    LaunchedEffect(url) {
+        preview = viewModel.preview(url)
     }
     val c = OrangTheme.colors
     val uriHandler = LocalUriHandler.current

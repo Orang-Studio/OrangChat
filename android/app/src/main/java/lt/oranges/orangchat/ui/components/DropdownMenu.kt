@@ -25,11 +25,12 @@ data class MenuItem(
     val label: String,
     val icon: ImageVector? = null,
     val destructive: Boolean = false,
+    val enabled: Boolean = true,
     val onClick: () -> Unit,
 )
 
 /**
- * Port of components/ui/DropdownMenu.tsx — a surface-3 popover with bordered
+ * Port of components/ui/DropdownMenu.tsx - a surface-3 popover with bordered
  * corners; destructive items render in the danger color.
  */
 @Composable
@@ -48,9 +49,11 @@ fun OrangDropdownMenu(
             .border(1.dp, c.border, RoundedCornerShape(OrangRadius.xl)),
     ) {
         items.forEach { item ->
-            val tint = if (item.destructive) c.danger else c.ink
+            val base = if (item.destructive) c.danger else c.ink
+            val tint = if (item.enabled) base else base.copy(alpha = 0.4f)
             DropdownMenuItem(
                 text = { Text(item.label, color = tint, fontSize = 14.sp) },
+                enabled = item.enabled,
                 leadingIcon = item.icon?.let {
                     {
                         Icon(it, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))

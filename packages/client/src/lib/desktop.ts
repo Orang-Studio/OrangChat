@@ -11,7 +11,8 @@ export interface DesktopBridge {
   version: string | null;
   setBadgeCount: (count: number) => void;
   flashFrame: () => void;
-  checkForUpdates: () => Promise<UpdateCheckResult>;
+  /** Absent in shells built before the updater IPC existed (≤ 0.1.3). */
+  checkForUpdates?: () => Promise<UpdateCheckResult>;
 }
 
 export const desktop: DesktopBridge | undefined = (

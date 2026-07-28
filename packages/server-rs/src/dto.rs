@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value as Json;
 
+use crate::http::media_proxy::same_origin_asset;
 use crate::models::*;
 use crate::permissions;
 use crate::services::server;
@@ -61,31 +62,16 @@ pub struct SelfUserDto {
     pub dm_privacy: String,
     pub friend_request_privacy: String,
     pub typing_indicators: bool,
+    /// "Require verification before messaging anyone new" (docs/E2EE.md §6.5).
+    /// Enforced entirely on the owner's own clients; the server stores it so the
+    /// choice follows the account rather than the browser.
+    pub e2ee_strict: bool,
     /// Whether TOTP is active. The secret itself is never serialized.
     pub two_factor_enabled: bool,
     /// False for OAuth-only accounts, which have no password to re-confirm.
     pub has_password: bool,
     /// True while the account is frozen; see services::account.
     pub lockdown: bool,
-}
-
-/// A shareable colour theme in the marketplace.
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ThemeDto {
-    pub id: String,
-    pub author_id: String,
-    /// Author's display name; only populated for marketplace listings.
-    pub author_name: Option<String>,
-    pub name: String,
-    /// { "--oc-*": "colour" } - keys allow-listed, values colour-validated.
-    pub vars: Json,
-    /// The author has asked for it to be listed; awaits admin review.
-    pub submitted: bool,
-    /// Approved by an admin and live in the marketplace.
-    pub published: bool,
-    pub installs: i32,
-    pub created_at: String,
 }
 
 /// A linked external account, as shown on a profile card.
@@ -182,6 +168,23 @@ pub struct EmojiDto {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ScheduledEventDto {
+    pub id: String,
+    pub server_id: String,
+    pub channel_id: Option<String>,
+    pub creator_id: Option<String>,
+    pub name: String,
+    pub description: Option<String>,
+    pub location: Option<String>,
+    pub starts_at: String,
+    pub ends_at: Option<String>,
+    pub created_at: String,
+    pub interested_count: i64,
+    pub interested: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SoundDto {
     pub id: String,
     pub server_id: String,
@@ -234,6 +237,9 @@ pub struct MessageDto {
     pub channel_id: String,
     pub author: UserDto,
     pub content: String,
+    /// Existing custom emoji referenced by `content`. This is message display
+    /// data, not a list of emoji the viewer is allowed to pick.
+    pub emojis: Vec<EmojiDto>,
     pub created_at: String,
     pub edited_at: Option<String>,
     pub reply_to_id: Option<String>,
@@ -241,6 +247,122 @@ pub struct MessageDto {
     pub reactions: Vec<ReactionDto>,
     pub pinned: bool,
     pub pinned_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ciphertext: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enc_epoch: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enc_version: Option<i32>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeviceDto {
+    pub id: String,
+    pub user_id: String,
+    pub name: String,
+    pub platform: String,
+    pub ik_sig_pub: String,
+    pub ik_dh_pub: String,
+    pub bundle_sig: String,
+    pub authorized_by: Option<String>,
+    pub authorization_sig: Option<String>,
+    pub created_at: String,
+    pub last_seen_at: String,
+    pub revoked_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeviceLogEntryDto {
+    pub seq: i32,
+    pub kind: String,
+    pub payload: String,
+    pub entry_hash: String,
+    pub prev_hash: Option<String>,
+    pub signature: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EpochDto {
+    pub id: String,
+    pub channel_id: String,
+    pub epoch: i32,
+    pub created_by: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnvelopeDto {
+    pub epoch_id: String,
+    pub device_id: String,
+    pub ephemeral_pub: String,
+    pub wrap_nonce: String,
+    pub wrapped: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EpochKeyDto {
+    pub epoch: EpochDto,
+    pub envelope: EnvelopeDto,
+}
+
+fn b64(bytes: &[u8]) -> String {
+    use base64::Engine;
+    base64::engine::general_purpose::STANDARD.encode(bytes)
+}
+
+pub fn to_device(d: &DeviceRow) -> DeviceDto {
+    DeviceDto {
+        id: d.id.clone(),
+        user_id: d.user_id.clone(),
+        name: d.name.clone(),
+        platform: d.platform.clone(),
+        ik_sig_pub: b64(&d.ik_sig_pub),
+        ik_dh_pub: b64(&d.ik_dh_pub),
+        bundle_sig: b64(&d.bundle_sig),
+        authorized_by: d.authorized_by.clone(),
+        authorization_sig: d.authorization_sig.as_deref().map(b64),
+        created_at: iso(d.created_at),
+        last_seen_at: iso(d.last_seen_at),
+        revoked_at: iso_opt(d.revoked_at),
+    }
+}
+
+pub fn to_device_log_entry(e: &DeviceLogEntryRow) -> DeviceLogEntryDto {
+    DeviceLogEntryDto {
+        seq: e.seq,
+        kind: e.kind.clone(),
+        payload: b64(&e.payload),
+        entry_hash: b64(&e.entry_hash),
+        prev_hash: e.prev_hash.as_deref().map(b64),
+        signature: b64(&e.signature),
+        created_at: iso(e.created_at),
+    }
+}
+
+pub fn to_epoch(e: &ChannelEpochRow) -> EpochDto {
+    EpochDto {
+        id: e.id.clone(),
+        channel_id: e.channel_id.clone(),
+        epoch: e.epoch,
+        created_by: e.created_by.clone(),
+        created_at: iso(e.created_at),
+    }
+}
+
+pub fn to_envelope(e: &KeyEnvelopeRow) -> EnvelopeDto {
+    EnvelopeDto {
+        epoch_id: e.epoch_id.clone(),
+        device_id: e.device_id.clone(),
+        ephemeral_pub: b64(&e.ephemeral_pub),
+        wrap_nonce: b64(&e.wrap_nonce),
+        wrapped: b64(&e.wrapped),
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -295,12 +417,12 @@ pub fn to_user(u: &UserRow) -> UserDto {
         id: u.id.clone(),
         username: u.username.clone(),
         display_name: u.display_name.clone(),
-        avatar_url: u.avatar_url.clone(),
+        avatar_url: same_origin_asset(u.avatar_url.as_deref(), "avatar", &u.id),
         status: u.status.clone(),
         devices: Vec::new(),
         activities: Vec::new(),
         bio: u.bio.clone(),
-        banner_url: u.banner_url.clone(),
+        banner_url: same_origin_asset(u.banner_url.as_deref(), "banner", &u.id),
         accent_color: u.accent_color,
         pronouns: u.pronouns.clone(),
         profile_css: u.profile_css.clone(),
@@ -314,12 +436,12 @@ pub fn to_self_user(u: &UserRow) -> SelfUserDto {
         id: u.id.clone(),
         username: u.username.clone(),
         display_name: u.display_name.clone(),
-        avatar_url: u.avatar_url.clone(),
+        avatar_url: same_origin_asset(u.avatar_url.as_deref(), "avatar", &u.id),
         status: u.status.clone(),
         devices: Vec::new(),
         activities: Vec::new(),
         bio: u.bio.clone(),
-        banner_url: u.banner_url.clone(),
+        banner_url: same_origin_asset(u.banner_url.as_deref(), "banner", &u.id),
         accent_color: u.accent_color,
         pronouns: u.pronouns.clone(),
         profile_css: u.profile_css.clone(),
@@ -330,6 +452,7 @@ pub fn to_self_user(u: &UserRow) -> SelfUserDto {
         dm_privacy: u.dm_privacy.clone(),
         friend_request_privacy: u.friend_request_privacy.clone(),
         typing_indicators: u.typing_indicators,
+        e2ee_strict: u.e2ee_strict,
         two_factor_enabled: u.totp_enabled,
         has_password: u.password_hash.is_some(),
         lockdown: u.lockdown_at.is_some(),
@@ -369,9 +492,9 @@ pub fn to_server(s: &ServerRow) -> ServerDto {
     ServerDto {
         id: s.id.clone(),
         name: s.name.clone(),
-        icon_url: s.icon_url.clone(),
+        icon_url: same_origin_asset(s.icon_url.as_deref(), "server-icon", &s.id),
         description: s.description.clone(),
-        banner_url: s.banner_url.clone(),
+        banner_url: same_origin_asset(s.banner_url.as_deref(), "server-banner", &s.id),
         system_channel_id: s.system_channel_id.clone(),
         afk_channel_id: s.afk_channel_id.clone(),
         afk_timeout: s.afk_timeout,
@@ -413,10 +536,27 @@ pub fn to_emoji(e: &EmojiRow) -> EmojiDto {
         id: e.id.clone(),
         server_id: e.server_id.clone(),
         name: e.name.clone(),
-        url: e.url.clone(),
+        url: same_origin_asset(Some(&e.url), "emoji", &e.id).unwrap_or_default(),
         animated: e.animated,
         creator_id: e.creator_id.clone(),
         created_at: iso(e.created_at),
+    }
+}
+
+pub fn to_scheduled_event(e: &ScheduledEventRow) -> ScheduledEventDto {
+    ScheduledEventDto {
+        id: e.id.clone(),
+        server_id: e.server_id.clone(),
+        channel_id: e.channel_id.clone(),
+        creator_id: e.creator_id.clone(),
+        name: e.name.clone(),
+        description: e.description.clone(),
+        location: e.location.clone(),
+        starts_at: iso(e.starts_at),
+        ends_at: e.ends_at.map(iso),
+        created_at: iso(e.created_at),
+        interested_count: e.interested_count,
+        interested: e.interested,
     }
 }
 
@@ -425,7 +565,7 @@ pub fn to_sound(s: &SoundRow) -> SoundDto {
         id: s.id.clone(),
         server_id: s.server_id.clone(),
         name: s.name.clone(),
-        url: s.url.clone(),
+        url: same_origin_asset(Some(&s.url), "sound", &s.id).unwrap_or_default(),
         duration: s.duration,
         emoji: s.emoji.clone(),
         volume: s.volume,
@@ -526,6 +666,7 @@ pub fn to_message(
     m: &MessageRow,
     author: &UserRow,
     reactions: &[ReactionRow],
+    emojis: &[EmojiRow],
     viewer_id: &str,
 ) -> MessageDto {
     let attachments = if m.attachments.is_array() {
@@ -538,6 +679,7 @@ pub fn to_message(
         channel_id: m.channel_id.clone(),
         author: to_user(author),
         content: m.content.clone(),
+        emojis: emojis.iter().map(to_emoji).collect(),
         created_at: iso(m.created_at),
         edited_at: iso_opt(m.edited_at),
         reply_to_id: m.reply_to_id.clone(),
@@ -545,5 +687,8 @@ pub fn to_message(
         reactions: to_reactions(reactions, viewer_id),
         pinned: m.pinned,
         pinned_at: iso_opt(m.pinned_at),
+        ciphertext: m.ciphertext.as_deref().map(b64),
+        enc_epoch: m.enc_epoch,
+        enc_version: m.enc_version,
     }
 }

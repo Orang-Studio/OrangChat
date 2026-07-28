@@ -97,7 +97,7 @@ fun MembersScreen(
     }
 
     Column(modifier = modifier.fillMaxSize().background(c.surface2)) {
-        Header(title = "Members — ${detail.members.size}", onBack = onBack)
+        Header(title = "Members - ${detail.members.size}", onBack = onBack)
 
         Box(modifier = Modifier.padding(16.dp)) {
             OrangTextField(

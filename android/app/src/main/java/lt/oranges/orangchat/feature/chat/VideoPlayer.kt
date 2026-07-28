@@ -85,7 +85,7 @@ private val INLINE_VIDEO_WIDTH = 150.dp
 fun VideoAttachment(attachment: Attachment, expiresAt: Instant?, now: Instant) {
     val c = OrangTheme.colors
     val context = LocalContext.current
-    val href = absoluteUrl(attachment.url)
+    val href = rememberResolvedAttachmentUrl(attachment)
     var broken by remember(attachment.id) { mutableStateOf(false) }
     var expanded by remember(attachment.id) { mutableStateOf(false) }
 
@@ -261,7 +261,7 @@ private fun InlineOverlay(
 
 /**
  * A TextureView stretches its content to its own bounds, so the surface has to
- * be given exactly the video's ratio and centred — otherwise the picture
+ * be given exactly the video's ratio and centred - otherwise the picture
  * distorts to fill rather than letterboxing.
  */
 @OptIn(UnstableApi::class)
@@ -300,7 +300,7 @@ private fun VideoLightbox(
 ) {
     val context = LocalContext.current
     val download = rememberAttachmentDownloader()
-    val href = absoluteUrl(attachment.url) ?: return
+    val href = rememberResolvedAttachmentUrl(attachment) ?: return
 
     val active = MediaPlayback.currentId == attachment.id
     val player = if (active) MediaPlayback.playerFor(attachment.id) else null

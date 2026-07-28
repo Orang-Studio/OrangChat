@@ -10,8 +10,15 @@
  * Direction: cool graphite neutrals so the single warm tangerine accent reads
  * as the hero, plus a tight, architectural corner scale (edges are crisp, not
  * bubbly). Change the feel of the whole app from the two blocks below.
+ *
+ * The token blocks live in a cascade layer on purpose. User CSS (an uploaded
+ * theme, or a marketplace install) is injected unlayered, and unlayered rules
+ * outrank every layer regardless of specificity - so a plain
+ * `:root { --oc-primary: ... }` override actually lands. Without the layer it
+ * loses to `:root[data-theme="dark"]`, which is always on <html>, and nothing
+ * the user writes appears to do anything.
  */
-
+@layer oc-tokens {
 /* Dark - the default. Cool graphite base, vivid tangerine accent. */
 :root,
 :root[data-theme="dark"] {
@@ -72,6 +79,7 @@
   --oc-warning: #b3821d;
   --oc-danger: #d13b32;
   --oc-info: #2f7fc2;
+}
 }
 
 @theme inline {
@@ -159,6 +167,26 @@ body {
 :root[data-underline-links="true"] a,
 :root[data-underline-links="true"] .oc-link {
   text-decoration: underline;
+}
+
+/* Floating menus start invisible and fade in once Radix has measured where the
+ * cursor is. Radix pins `animation: none` on the content until it is positioned,
+ * so during that first frame the opacity below is what renders - no flash in the
+ * top-left corner before the menu jumps to the pointer. */
+@keyframes oc-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.oc-menu-surface {
+  opacity: 0;
+  animation: oc-menu-in 90ms ease-out forwards;
 }
 
 /* Compact density tightens the gaps only; nothing reflows or disappears. */

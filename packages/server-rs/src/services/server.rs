@@ -363,19 +363,22 @@ pub async fn update_server(
         sep.push(r#""iconUrl" = "#).push_bind_unseparated(icon);
     }
     if let Some(description) = patch.description {
-        sep.push(r#"description = "#).push_bind_unseparated(description);
+        sep.push(r#"description = "#)
+            .push_bind_unseparated(description);
     }
     if let Some(banner) = patch.banner_url {
         sep.push(r#""bannerUrl" = "#).push_bind_unseparated(banner);
     }
     if let Some(cid) = patch.system_channel_id {
-        sep.push(r#""systemChannelId" = "#).push_bind_unseparated(cid);
+        sep.push(r#""systemChannelId" = "#)
+            .push_bind_unseparated(cid);
     }
     if let Some(cid) = patch.afk_channel_id {
         sep.push(r#""afkChannelId" = "#).push_bind_unseparated(cid);
     }
     if let Some(timeout) = patch.afk_timeout {
-        sep.push(r#""afkTimeout" = "#).push_bind_unseparated(timeout);
+        sep.push(r#""afkTimeout" = "#)
+            .push_bind_unseparated(timeout);
     }
     if let Some(notif) = patch.default_message_notifications {
         sep.push(r#""defaultMessageNotifications" = "#)

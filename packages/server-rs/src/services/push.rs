@@ -85,7 +85,22 @@ pub struct PushPayload {
     /// Distinguishes a ring from a message so the client can route it to the
     /// calls channel and take over the screen.
     pub kind: PushKind,
+    /// docs/E2EE.md §8: for an encrypted conversation there is no body to
+    /// compose here, so the envelope travels instead and the client decrypts it
+    /// in its own notification path. Absent when the conversation is plaintext,
+    /// or when the ciphertext would not fit inside the transport's payload
+    /// ceiling - in which case the client shows a placeholder rather than
+    /// nothing, because a truncated GCM ciphertext cannot be opened at all.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ciphertext: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enc_epoch: Option<i32>,
 }
+
+/// Web Push caps a payload at about 4 KB once encrypted, and the rest of the
+/// notification has to fit alongside. Anything larger is sent without its
+/// ciphertext.
+const MAX_PUSH_CIPHERTEXT_CHARS: usize = 2600;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -96,6 +111,10 @@ pub enum PushKind {
     /// on another device, so any lingering notification for it should be
     /// dismissed. Carries no title/body - the client just cancels by channel.
     Read,
+    /// Something happened to the account itself rather than to a conversation.
+    /// Shown insistently: these are the ones where reading it late is the same
+    /// as not reading it at all.
+    Security,
 }
 
 // ── Web Push ─────────────────────────────────────────────
@@ -443,8 +462,11 @@ async fn send_fcm(push: &Push, sub: &Subscription, payload: &PushPayload) -> Res
                 "kind": match payload.kind {
                     PushKind::Call => "call",
                     PushKind::Read => "read",
+                    PushKind::Security => "security",
                     PushKind::Message => "message",
                 },
+                "ciphertext": payload.ciphertext.clone().unwrap_or_default(),
+                "encEpoch": payload.enc_epoch.map(|value| value.to_string()).unwrap_or_default(),
             },
             "android": {
                 // Anything less can be held until the device next wakes, which
@@ -603,6 +625,10 @@ pub async fn notify_message(
     author_avatar: Option<&str>,
     preview: &str,
     recipients: &[String],
+    // `ciphertext` is the base64 message envelope for an encrypted conversation;
+    // see docs/E2EE.md §8. None for a plaintext one.
+    ciphertext: Option<&str>,
+    enc_epoch: Option<i32>,
 ) {
     if state.push.is_none() {
         return;
@@ -616,6 +642,13 @@ pub async fn notify_message(
         Some(server_id) => format!("/servers/{server_id}/channels/{channel_id}"),
         None => format!("/dms/{channel_id}"),
     };
+    // An encrypted conversation has no body here to compose from: `content` is
+    // the empty string by construction. The envelope goes instead and the client
+    // opens it; a ciphertext too large for the transport is dropped rather than
+    // truncated, because half a GCM ciphertext decrypts to nothing at all.
+    let sealed = ciphertext.filter(|c| c.len() <= MAX_PUSH_CIPHERTEXT_CHARS);
+    let encrypted = ciphertext.is_some();
+
     let payload = PushPayload {
         title: if is_dm {
             author_name.to_string()
@@ -624,7 +657,11 @@ pub async fn notify_message(
         },
         // Matches the 140 the web client truncates its local notification to,
         // and keeps us clear of the 4 KB Web Push payload ceiling.
-        body: preview.chars().take(140).collect(),
+        body: if encrypted {
+            String::new()
+        } else {
+            preview.chars().take(140).collect()
+        },
         href,
         tag: channel_id.to_string(),
         icon: author_avatar.map(str::to_string),
@@ -634,6 +671,8 @@ pub async fn notify_message(
         sender_name: author_name.to_string(),
         is_group: !is_dm,
         kind: PushKind::Message,
+        ciphertext: sealed.map(str::to_string),
+        enc_epoch: sealed.and(enc_epoch),
     };
 
     for target in targets {
@@ -671,6 +710,37 @@ pub async fn notify_read(state: &AppState, user_id: &str, channel_id: &str) {
         sender_name: String::new(),
         is_group: false,
         kind: PushKind::Read,
+        ciphertext: None,
+        enc_epoch: None,
+    };
+    send_to_user(state, user_id, &payload).await;
+}
+
+/// Tell every device something happened to the account. No channel, no sender,
+/// no collapsing against conversation notifications - `tag` is the event so a
+/// second security notice never silently replaces the first.
+pub async fn notify_security(
+    state: &AppState,
+    user_id: &str,
+    tag: &str,
+    title: &str,
+    body: &str,
+    href: &str,
+) {
+    let payload = PushPayload {
+        title: title.to_string(),
+        body: body.to_string(),
+        href: href.to_string(),
+        tag: format!("security:{tag}"),
+        icon: None,
+        channel_id: String::new(),
+        message_id: None,
+        sender_id: String::new(),
+        sender_name: String::new(),
+        is_group: false,
+        kind: PushKind::Security,
+        ciphertext: None,
+        enc_epoch: None,
     };
     send_to_user(state, user_id, &payload).await;
 }
@@ -701,6 +771,8 @@ pub async fn notify_call(
         sender_name: caller_name.to_string(),
         is_group: targets.len() > 1,
         kind: PushKind::Call,
+        ciphertext: None,
+        enc_epoch: None,
     };
     for target in targets {
         send_to_user(state, target, &payload).await;

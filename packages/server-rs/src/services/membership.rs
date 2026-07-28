@@ -308,7 +308,9 @@ pub async fn require_permission(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::permissions::{ADMINISTRATOR, BAN_MEMBERS, KICK_MEMBERS, MANAGE_ROLES, SEND_MESSAGES};
+    use crate::permissions::{
+        ADMINISTRATOR, BAN_MEMBERS, KICK_MEMBERS, MANAGE_ROLES, SEND_MESSAGES,
+    };
 
     #[test]
     fn grants_only_permissions_the_actor_holds() {
@@ -349,7 +351,9 @@ mod tests {
 
     #[test]
     fn owner_position_outranks_every_real_role() {
-        assert!(OWNER_POSITION > i32::MAX - 1);
-        assert!(OWNER_POSITION > 100_000);
+        const {
+            assert!(OWNER_POSITION > i32::MAX - 1);
+            assert!(OWNER_POSITION > 100_000);
+        }
     }
 }

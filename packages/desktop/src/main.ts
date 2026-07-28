@@ -20,12 +20,16 @@ import {
 import { loadWindowState, saveWindowState, type WindowState } from "./windowState";
 import { getSettings, updateSettings, clampZoom } from "./settings";
 import { registerScreenPicker } from "./screenPicker";
-import { registerContextMenu } from "./contextMenu";
 import { registerDownloads } from "./downloads";
 import { createTray, setTrayAttention } from "./tray";
 import { syncAutoLaunch } from "./autoLaunch";
 import { setUnreadBadge } from "./badge";
-import { registerUpdater } from "./updater";
+import {
+  registerUpdater,
+  checkForUpdates,
+  checkForUpdatesReport,
+  type UpdateCheckReport,
+} from "./updater";
 
 let mainWindow: BrowserWindow | null = null;
 let quitting = false;
@@ -157,7 +161,6 @@ function createWindow(startHidden: boolean): BrowserWindow {
     if (mainWindow === window) mainWindow = null;
   });
 
-  registerContextMenu(window);
   void window.loadURL(APP_URL);
   return window;
 }
@@ -215,6 +218,10 @@ function buildMenu(): void {
           { role: "toggleDevTools" },
         ],
       },
+      {
+        label: "&Help",
+        submenu: [{ label: "Check for Updates…", click: () => checkForUpdates() }],
+      },
     ]),
   );
 }
@@ -249,18 +256,31 @@ void app.whenReady().then(() => {
     "clipboard-sanitized-write",
   ]);
 
-  defaultSession.setPermissionRequestHandler((contents, permission, callback) => {
-    let origin = "";
-    try {
-      origin = new URL(contents.getURL()).origin;
-    } catch {
-      origin = "";
+  // The window is hard-locked to APP_ORIGIN by the navigation guards, so our
+  // own page is the only thing that can ever ask. Electron still reports the
+  // requesting origin inconsistently across checks - notably it hands the
+  // `notifications` permission an empty origin, which made Notification.permission
+  // read as "denied" in the packaged app even though the request handler grants
+  // it. Resolve the origin from the frame's own URL when Electron doesn't give
+  // us one, and treat "unknown" as the app rather than rejecting it.
+  const isAppRequester = (origin: string, contents: Electron.WebContents | null) => {
+    let resolved = origin && origin !== "null" ? origin : "";
+    if (!resolved) {
+      try {
+        resolved = new URL(contents?.getURL() ?? "").origin;
+      } catch {
+        resolved = "";
+      }
     }
-    callback(origin === APP_ORIGIN && ALLOWED_PERMISSIONS.has(permission));
+    return resolved === "" || resolved === APP_ORIGIN;
+  };
+
+  defaultSession.setPermissionRequestHandler((contents, permission, callback) => {
+    callback(ALLOWED_PERMISSIONS.has(permission) && isAppRequester("", contents));
   });
 
-  defaultSession.setPermissionCheckHandler((_contents, permission, origin) => {
-    return origin === APP_ORIGIN && ALLOWED_PERMISSIONS.has(permission);
+  defaultSession.setPermissionCheckHandler((contents, permission, origin) => {
+    return ALLOWED_PERMISSIONS.has(permission) && isAppRequester(origin, contents);
   });
 
   registerScreenPicker(defaultSession, () => mainWindow);
@@ -279,6 +299,15 @@ void app.whenReady().then(() => {
     setTrayAttention(true);
   });
 
+  // Settings → System runs the check from the page and renders the outcome, so
+  // this one answers the caller instead of opening a dialog.
+  ipcMain.handle("updates:check", async (event): Promise<UpdateCheckReport> => {
+    if (!isTrustedSender(event)) {
+      return { status: "error", message: "Untrusted sender" };
+    }
+    return checkForUpdatesReport();
+  });
+
   const settings = getSettings();
   syncAutoLaunch(settings.autoLaunch);
 
@@ -288,7 +317,12 @@ void app.whenReady().then(() => {
   mainWindow = createWindow(startHidden);
 
   createTray(() => mainWindow, quitApp);
-  registerUpdater(() => mainWindow);
+  registerUpdater(
+    () => mainWindow,
+    () => {
+      quitting = true;
+    },
+  );
 
   if (settings.toggleShortcut) {
     try {
@@ -305,7 +339,9 @@ void app.whenReady().then(() => {
   if (link) void mainWindow.loadURL(link);
 });
 
-function isTrustedSender(event: Electron.IpcMainEvent): boolean {
+function isTrustedSender(
+  event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent,
+): boolean {
   try {
     return new URL(event.senderFrame?.url ?? "").origin === APP_ORIGIN;
   } catch {

@@ -8,6 +8,9 @@ import { messageKeys } from "../messages/queries";
 import { unreadActions } from "../../stores/unread";
 import { clearConversationNotifications } from "../../lib/notifications";
 import { queueMessage, type OutgoingMessagePayload } from "./outbox";
+import { seal } from "../e2ee/conversation";
+import { sealedAttachmentsOf } from "../e2ee/decrypt";
+import { isEncrypted } from "../e2ee/store";
 
 export const sendMessage = async (payload: OutgoingMessagePayload) => {
   const message = queueMessage(payload);
@@ -16,11 +19,36 @@ export const sendMessage = async (payload: OutgoingMessagePayload) => {
   return message;
 };
 
-export const editMessage = (payload: {
-  channelId: string;
-  messageId: string;
-  content: string;
-}) => withAck<Message>((ack) => socket.emit("message:edit", payload, ack));
+export const editMessage = async (message: Message, content: string) => {
+  if (!isEncrypted(message.channelId)) {
+    return withAck<Message>((ack) =>
+      socket.emit("message:edit", {
+        channelId: message.channelId,
+        messageId: message.id,
+        content,
+      }, ack),
+    );
+  }
+
+  const attachments = message.attachments
+    .map((attachment) => sealedAttachmentsOf(attachment.id))
+    .filter((value) => value !== null);
+  const sealed = await seal(message.channelId, {
+    text: content,
+    clientId: crypto.randomUUID(),
+    sentAt: message.createdAt,
+    replyTo: message.replyToId,
+    attachments: attachments.length > 0 ? attachments : undefined,
+  });
+  return withAck<Message>((ack) =>
+    socket.emit("message:edit", {
+      channelId: message.channelId,
+      messageId: message.id,
+      content: "",
+      ...sealed,
+    }, ack),
+  );
+};
 
 export const deleteMessage = (payload: { channelId: string; messageId: string }) =>
   withAck<void>((ack) => socket.emit("message:delete", payload, ack));

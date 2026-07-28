@@ -19,9 +19,12 @@ export function ActivityStatus({
   const label = activity.kind === "spotify" ? "Listening to" : "Playing";
   const content = (
     <>
-      <Icon aria-hidden className="size-3 shrink-0" />
-      <span className="truncate">
-        {label} <span className="font-medium text-ink-secondary">{activity.name}</span>
+      <Icon aria-hidden className="oc-pf-activity-icon size-3 shrink-0" />
+      <span className="oc-pf-activity-text truncate">
+        {label}{" "}
+        <span className="oc-pf-activity-name font-medium text-ink-secondary">
+          {activity.name}
+        </span>
         {activity.details ? ` - ${activity.details}` : ""}
       </span>
     </>
@@ -33,12 +36,16 @@ export function ActivityStatus({
       target="_blank"
       rel="noreferrer"
       title={`${label} ${activity.name}`}
+      data-kind={activity.kind}
       className={cn("flex min-w-0 items-center gap-1 text-xs text-ink-muted hover:text-ink", className)}
     >
       {content}
     </a>
   ) : (
-    <span className={cn("flex min-w-0 items-center gap-1 text-xs text-ink-muted", className)}>
+    <span
+      data-kind={activity.kind}
+      className={cn("flex min-w-0 items-center gap-1 text-xs text-ink-muted", className)}
+    >
       {content}
     </span>
   );

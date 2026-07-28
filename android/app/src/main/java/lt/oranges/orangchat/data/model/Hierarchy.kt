@@ -25,7 +25,7 @@ object Hierarchy {
 
     /**
      * @everyone always applies, whether or not it appears in the member's
-     * roleIds — the server ORs it in unconditionally.
+     * roleIds - the server ORs it in unconditionally.
      */
     fun effectivePermissions(detail: ServerDetail, userId: String): Long {
         if (detail.server.ownerId == userId) return Permissions.ALL

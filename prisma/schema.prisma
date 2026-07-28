@@ -22,8 +22,15 @@ model User {
   dmPrivacy            String   @default("everyone") // "everyone" | "friends" | "none"
   friendRequestPrivacy String   @default("everyone") // "everyone" | "mutual" | "none"
   typingIndicators     Boolean  @default(true)
+  /// "Require verification before messaging anyone new" (docs/E2EE.md §6.5).
+  /// A per-user policy that only ever blocks this account's own sending; it
+  /// never mutates anybody else's settings.
+  e2eeStrict           Boolean  @default(false)
   totpSecret           String? // base32 secret
   totpEnabled          Boolean  @default(false)
+  emailVerifiedAt      DateTime?
+  emailVerifications   EmailVerification[]
+  emailLoginCodes      EmailLoginCode[]
   /// Awarded profile badges, as catalog slugs (see services::badge). Denormalized
   /// onto the user so every `SELECT * FROM "User"` already carries them.
   badges               String[] @default([])
@@ -54,8 +61,37 @@ model User {
   pushSubscriptions      PushSubscription[]
   auditLogEntries        AuditLog[]           @relation("AuditLogActor")
   createdEmojis          Emoji[]              @relation("EmojiCreator")
-  themes                 Theme[]
   createdSounds          Sound[]              @relation("SoundCreator")
+  createdEvents          ScheduledEvent[]     @relation("EventCreator")
+  eventInterests         EventInterest[]
+  devices                Device[]
+  deviceLog              DeviceLogEntry[]
+  keyDeletionRequests    KeyDeletionRequest[]
+  messageReports         MessageReport[]
+}
+
+model EmailVerification {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+
+model EmailLoginCode {
+  id        String   @id @default(cuid())
+  userId    String
+  codeHash  String
+  loginTokenHash String @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt])
 }
 
 model PushSubscription {
@@ -90,29 +126,6 @@ model Connection {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([userId, provider, providerId])
   @@index([userId])
-}
-
-/// A shareable colour theme: a map of allow-listed --oc-* CSS variables to
-/// colour values. No freeform CSS and no code - values are validated as colours
-/// server-side (see services::theme), so installing someone else's theme can
-/// only ever recolour, never script or overlay.
-model Theme {
-  id        String   @id @default(cuid())
-  authorId  String
-  name      String
-  /// { "--oc-primary": "#ff6a1a", ... } - keys allow-listed, values colour-checked.
-  vars      Json     @default("{}")
-  /// The author has asked for this to be listed; awaits admin review.
-  submitted Boolean  @default(false)
-  /// Approved by an admin and live in the marketplace.
-  published Boolean  @default(false)
-  /// How many times it's been installed; the marketplace sorts on it.
-  installs  Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  @@index([authorId])
-  @@index([published, installs])
 }
 
 model TotpBackupCode {
@@ -170,6 +183,7 @@ model Server {
   auditLogs AuditLog[]
   emojis    Emoji[]
   sounds    Sound[]
+  events    ScheduledEvent[]
   @@index([ownerId])
 }
 
@@ -189,6 +203,35 @@ model Sound {
   creator User?  @relation("SoundCreator", fields: [creatorId], references: [id], onDelete: SetNull)
   @@unique([serverId, name])
   @@index([serverId])
+}
+
+model ScheduledEvent {
+  id          String    @id @default(cuid())
+  serverId    String
+  channelId   String?
+  creatorId   String?
+  name        String
+  description String?
+  location    String?
+  startsAt    DateTime
+  endsAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  server    Server          @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  channel   Channel?        @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  creator   User?           @relation("EventCreator", fields: [creatorId], references: [id], onDelete: SetNull)
+  interests EventInterest[]
+  @@index([serverId, startsAt])
+}
+
+model EventInterest {
+  eventId   String
+  userId    String
+  createdAt DateTime @default(now())
+  event ScheduledEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([eventId, userId])
+  @@index([userId])
 }
 
 model Emoji {
@@ -287,6 +330,8 @@ model Channel {
   rateLimitPerUser Int      @default(0)
   userLimit        Int      @default(0)
   bitrate          Int      @default(64000)
+  e2ee             Boolean  @default(false)
+  epochNumber      Int      @default(0)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   server         Server?              @relation(fields: [serverId], references: [id], onDelete: Cascade)
@@ -296,7 +341,9 @@ model Channel {
   participants   ChannelParticipant[]
   overwrites     ChannelOverwrite[]
   readStates     ReadState[]
+  events         ScheduledEvent[]
   drafts         Draft[]
+  epochs         ChannelEpoch[]
   @@index([serverId])
   @@index([parentCategoryId])
 }
@@ -340,6 +387,9 @@ model Message {
   channelId   String
   authorId    String
   content     String
+  ciphertext  Bytes?
+  encEpoch    Int?
+  encVersion  Int?
   createdAt   DateTime  @default(now())
   editedAt    DateTime?
   replyToId   String?
@@ -353,6 +403,29 @@ model Message {
   reactions Reaction[]
   @@index([channelId, createdAt])
   @@index([authorId])
+}
+
+/// A recipient-created abuse report. For E2EE messages `plaintext` is accepted
+/// only after the server opens the original ciphertext with a deliberately
+/// disclosed one-message key and verifies the sender-device signature.
+model MessageReport {
+  id             String   @id @default(cuid())
+  messageId      String
+  channelId      String
+  reporterId     String
+  authorId       String
+  reason         String?
+  plaintext      String
+  encrypted      Boolean  @default(false)
+  ciphertext     Bytes?
+  encEpoch       Int?
+  senderDeviceId String?
+  signature      Bytes?
+  createdAt      DateTime @default(now())
+  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  @@unique([reporterId, messageId])
+  @@index([channelId, createdAt])
+  @@index([authorId, createdAt])
 }
 
 model PendingAttachment {
@@ -395,6 +468,87 @@ model ReadState {
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
   @@id([userId, channelId])
   @@index([channelId])
+}
+
+model Device {
+  id               String    @id @default(cuid())
+  userId           String
+  name             String
+  platform         String // "web" | "android" | "desktop"
+  ikSigPub         Bytes
+  ikDhPub          Bytes
+  bundleSig        Bytes
+  authorizedBy     String?
+  authorizationSig Bytes?
+  createdAt        DateTime  @default(now())
+  lastSeenAt       DateTime  @default(now())
+  revokedAt        DateTime?
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  keyEnvelopes KeyEnvelope[]
+  @@index([userId])
+}
+
+/// A standing request to wipe an account's encryption identity, for the one case
+/// the protocol cannot solve: every device holding the key is gone, so no
+/// signature that could revoke them exists. Deliberately slow and loud - the
+/// same request from somebody who stole the password ends with the real owner
+/// reading about it while there is still time to stop it.
+model KeyDeletionRequest {
+  id          String    @id @default(cuid())
+  userId      String
+  requestedAt DateTime  @default(now())
+  /// Not before this instant, and only if no keyed device checked in meanwhile.
+  executeAfter DateTime
+  /// SHA-256 of the cancel token; the raw value only ever exists in the email.
+  cancelTokenHash String @unique
+  requestedIp String?
+  cancelledAt DateTime?
+  /// Set when a device holding the key checked in during the wait, which is the
+  /// account answering for itself: somebody still has it, so nothing is wiped.
+  abortedAt   DateTime?
+  executedAt  DateTime?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([executeAfter])
+}
+
+model DeviceLogEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  seq       Int
+  kind      String // "genesis" | "add-device" | "revoke"
+  payload   Bytes
+  entryHash Bytes
+  prevHash  Bytes?
+  signature Bytes
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, seq])
+  @@index([userId])
+}
+
+model ChannelEpoch {
+  id        String   @id @default(cuid())
+  channelId String
+  epoch     Int
+  createdAt DateTime @default(now())
+  createdBy String
+  channel   Channel       @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  envelopes KeyEnvelope[]
+  @@unique([channelId, epoch])
+}
+
+model KeyEnvelope {
+  id           String @id @default(cuid())
+  epochId      String
+  deviceId     String
+  ephemeralPub Bytes
+  wrapNonce    Bytes
+  wrapped      Bytes
+  epoch  ChannelEpoch @relation(fields: [epochId], references: [id], onDelete: Cascade)
+  device Device       @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  @@unique([epochId, deviceId])
+  @@index([deviceId])
 }
 
 model Invite {

@@ -9,6 +9,10 @@ use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use serde_json::{json, Value};
 
 use crate::auth::*;
+use crate::auth_security::{
+    captcha_required, random_email_code, random_token, token_hash, valid_email_code,
+    verify_recaptcha,
+};
 use crate::dto::{to_self_user, to_user, SelfUserDto};
 use crate::error::{AppError, AppResult};
 use crate::http::{bad_request, valid_email, valid_username, AuthUser, ClientIp};
@@ -24,6 +28,11 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/signup", post(signup))
         .route("/login", post(login))
+        .route("/login/email-2fa", post(verify_email_2fa))
+        .route("/login/email-2fa/resend", post(resend_email_2fa))
+        .route("/verify-email", get(verify_email))
+        .route("/verify-email/resend", post(resend_verification))
+        .route("/recaptcha/config", get(recaptcha_config))
         .route("/refresh", post(refresh))
         .route("/logout", post(logout))
         .route("/me", get(get_me).patch(patch_me))
@@ -38,7 +47,10 @@ pub fn routes() -> Router<AppState> {
         // Under /auth rather than /security so the refresh cookie is in scope -
         // it's path-scoped to /api/auth, and its jti is the only way to tell
         // which of the listed sessions is the one asking.
-        .route("/sessions", get(list_sessions).delete(revoke_other_sessions))
+        .route(
+            "/sessions",
+            get(list_sessions).delete(revoke_other_sessions),
+        )
         .route("/sessions/:jti", axum::routing::delete(revoke_session))
         // Also here rather than under /security: turning lockdown on has to
         // spare the session doing it, which means reading the refresh cookie.
@@ -78,10 +90,7 @@ async fn set_lockdown(
 
 /// Web, logged out: mint a code to render as a QR. Rate-limited per IP so it
 /// can't be used to churn Redis.
-async fn qr_start(
-    State(state): State<AppState>,
-    ClientIp(ip): ClientIp,
-) -> AppResult<Json<Value>> {
+async fn qr_start(State(state): State<AppState>, ClientIp(ip): ClientIp) -> AppResult<Json<Value>> {
     rate_limit::check(&state, "qr:start", &ip, rate_limit::LOGIN_PER_IP).await?;
     let (token, expires_in) = qr::start(&state).await?;
     Ok(Json(json!({ "token": token, "expiresIn": expires_in })))
@@ -102,9 +111,7 @@ async fn qr_poll(
     match qr::poll(&state, token).await? {
         qr::PollResult::Pending => Ok((jar, Json(json!({ "status": "pending" }))).into_response()),
         qr::PollResult::Scanned => Ok((jar, Json(json!({ "status": "scanned" }))).into_response()),
-        qr::PollResult::Expired => {
-            Ok((jar, Json(json!({ "status": "expired" }))).into_response())
-        }
+        qr::PollResult::Expired => Ok((jar, Json(json!({ "status": "expired" }))).into_response()),
         qr::PollResult::Approved(user_id) => {
             let user: UserRow = sqlx::query_as(r#"SELECT * FROM "User" WHERE id = $1"#)
                 .bind(&user_id)
@@ -117,7 +124,10 @@ async fn qr_poll(
             }
             let (result, cookie) =
                 issue_session(&state, &user, DeviceInfo::new(&headers, &ip)).await?;
-            Ok((jar.add(cookie), Json(json!({ "status": "approved", "session": result })))
+            Ok((
+                jar.add(cookie),
+                Json(json!({ "status": "approved", "session": result })),
+            )
                 .into_response())
         }
     }
@@ -129,7 +139,10 @@ async fn qr_scan(
     user: AuthUser,
     Json(body): Json<Value>,
 ) -> AppResult<Json<Value>> {
-    let token = body.get("token").and_then(Value::as_str).unwrap_or_default();
+    let token = body
+        .get("token")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
     qr::scan(&state, token, &user.user_id).await?;
     Ok(Json(json!({ "ok": true })))
 }
@@ -141,7 +154,10 @@ async fn qr_approve(
     user: AuthUser,
     Json(body): Json<Value>,
 ) -> AppResult<Json<Value>> {
-    let token = body.get("token").and_then(Value::as_str).unwrap_or_default();
+    let token = body
+        .get("token")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
     qr::approve(&state, token, &user.user_id).await?;
     Ok(Json(json!({ "ok": true })))
 }
@@ -151,7 +167,9 @@ async fn qr_approve(
 /// marked "this device" rather than something being marked wrongly.
 fn current_jti(state: &AppState, jar: &CookieJar) -> Option<String> {
     let token = jar.get(REFRESH_COOKIE)?.value().to_string();
-    verify_refresh_token(&state.config, &token).ok().map(|c| c.jti)
+    verify_refresh_token(&state.config, &token)
+        .ok()
+        .map(|c| c.jti)
 }
 
 async fn list_sessions(
@@ -199,8 +217,7 @@ async fn revoke_other_sessions(
     jar: CookieJar,
 ) -> AppResult<Json<Value>> {
     let current = current_jti(&state, &jar);
-    let revoked =
-        revoke_all_refresh_tokens(&state, &user.user_id, current.as_deref()).await?;
+    let revoked = revoke_all_refresh_tokens(&state, &user.user_id, current.as_deref()).await?;
     Ok(Json(json!({ "revoked": revoked })))
 }
 
@@ -257,14 +274,160 @@ async fn issue_session(
     Ok((result, cookie))
 }
 
-async fn signup(
+async fn issue_email_verification(state: &AppState, user: &UserRow) -> AppResult<()> {
+    let token = random_token();
+    sqlx::query(r#"UPDATE "EmailVerification" SET "usedAt" = now() WHERE "userId" = $1 AND "usedAt" IS NULL"#)
+        .bind(&user.id).execute(&state.pool).await?;
+    sqlx::query(r#"INSERT INTO "EmailVerification" (id, "userId", "tokenHash", "expiresAt") VALUES ($1, $2, $3, now() + interval '24 hours')"#)
+        .bind(cuid()).bind(&user.id).bind(token_hash(&token)).execute(&state.pool).await?;
+    crate::services::email::send_verification(&state.config, &user.email, &token).await
+}
+
+async fn issue_email_login_code(
+    state: &AppState,
+    user: &UserRow,
+    login_token: &str,
+) -> AppResult<()> {
+    let code = random_email_code();
+    sqlx::query(
+        r#"UPDATE "EmailLoginCode" SET "usedAt" = now() WHERE "userId" = $1 AND "usedAt" IS NULL"#,
+    )
+    .bind(&user.id)
+    .execute(&state.pool)
+    .await?;
+    sqlx::query(r#"INSERT INTO "EmailLoginCode" (id, "userId", "codeHash", "loginTokenHash", "expiresAt") VALUES ($1, $2, $3, $4, now() + interval '10 minutes')"#)
+        .bind(cuid()).bind(&user.id).bind(hash_password(&code)?).bind(token_hash(login_token)).execute(&state.pool).await?;
+    crate::services::email::send_login_code(&state.config, &user.email, &code).await
+}
+
+async fn recaptcha_config(State(state): State<AppState>) -> AppResult<Json<Value>> {
+    let enabled =
+        state.config.recaptcha_site_key.is_some() && state.config.recaptcha_secret_key.is_some();
+    Ok(Json(json!({
+        "enabled": enabled,
+        "siteKey": enabled.then(|| state.config.recaptcha_site_key.clone()).flatten(),
+    })))
+}
+
+async fn verify_email(
+    State(state): State<AppState>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> AppResult<Redirect> {
+    let token = params.get("token").map(String::as_str).unwrap_or_default();
+    let updated = sqlx::query(r#"UPDATE "User" SET "emailVerifiedAt" = COALESCE("emailVerifiedAt", now()) WHERE id = (SELECT "userId" FROM "EmailVerification" WHERE "tokenHash" = $1 AND "usedAt" IS NULL AND "expiresAt" > now())"#)
+        .bind(token_hash(token)).execute(&state.pool).await?;
+    if updated.rows_affected() == 0 {
+        return Err(AppError::BadRequest(
+            "This verification link is invalid or expired".into(),
+        ));
+    }
+    sqlx::query(r#"UPDATE "EmailVerification" SET "usedAt" = now() WHERE "tokenHash" = $1"#)
+        .bind(token_hash(token))
+        .execute(&state.pool)
+        .await?;
+    Ok(Redirect::to(&format!(
+        "{}/login?verified=1",
+        state.config.client_origin.trim_end_matches('/')
+    )))
+}
+
+async fn resend_verification(
+    State(state): State<AppState>,
+    ClientIp(ip): ClientIp,
+    Json(body): Json<Value>,
+) -> AppResult<Json<Value>> {
+    rate_limit::check(&state, "verify:resend", &ip, rate_limit::EMAIL_PER_IP).await?;
+    let email = body
+        .get("email")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    if valid_email(email) {
+        if let Some(user) = sqlx::query_as::<_, UserRow>(
+            r#"SELECT * FROM "User" WHERE lower(email) = lower($1) AND "emailVerifiedAt" IS NULL"#,
+        )
+        .bind(email)
+        .fetch_optional(&state.pool)
+        .await?
+        {
+            issue_email_verification(&state, &user).await?;
+        }
+    }
+    Ok(Json(json!({ "ok": true })))
+}
+
+async fn verify_email_2fa(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
     headers: axum::http::HeaderMap,
     jar: CookieJar,
     Json(body): Json<Value>,
 ) -> AppResult<impl IntoResponse> {
+    rate_limit::check(&state, "email-2fa", &ip, rate_limit::EMAIL_2FA_PER_IP).await?;
+    let token = body
+        .get("loginToken")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let code = body.get("code").and_then(Value::as_str).unwrap_or_default();
+    if !valid_email_code(code) || token.is_empty() {
+        return Err(bad_request("Invalid or expired code"));
+    }
+    let row: Option<UserRow> = sqlx::query_as(r#"SELECT u.* FROM "User" u JOIN "EmailLoginCode" c ON c."userId" = u.id WHERE c."loginTokenHash" = $1 AND c."usedAt" IS NULL AND c."expiresAt" > now() AND c.attempts < 5 AND u."emailVerifiedAt" IS NOT NULL"#).bind(token_hash(token)).fetch_optional(&state.pool).await?;
+    let user = row.ok_or_else(|| AppError::Unauthorized("Invalid or expired code".into()))?;
+    let hash: String = sqlx::query_scalar(
+        r#"SELECT "codeHash" FROM "EmailLoginCode" WHERE "loginTokenHash" = $1"#,
+    )
+    .bind(token_hash(token))
+    .fetch_one(&state.pool)
+    .await?;
+    if !verify_password(&hash, code) {
+        sqlx::query(
+            r#"UPDATE "EmailLoginCode" SET attempts = attempts + 1 WHERE "loginTokenHash" = $1"#,
+        )
+        .bind(token_hash(token))
+        .execute(&state.pool)
+        .await?;
+        return Err(AppError::Unauthorized("Invalid or expired code".into()));
+    }
+    sqlx::query(r#"UPDATE "EmailLoginCode" SET "usedAt" = now() WHERE "loginTokenHash" = $1"#)
+        .bind(token_hash(token))
+        .execute(&state.pool)
+        .await?;
+    let (result, cookie) = issue_session(&state, &user, DeviceInfo::new(&headers, &ip)).await?;
+    Ok((jar.add(cookie), Json(result)))
+}
+
+async fn resend_email_2fa(
+    State(state): State<AppState>,
+    ClientIp(ip): ClientIp,
+    Json(body): Json<Value>,
+) -> AppResult<Json<Value>> {
+    rate_limit::check(&state, "email-2fa:resend", &ip, rate_limit::EMAIL_PER_IP).await?;
+    let token = body
+        .get("loginToken")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    if !token.is_empty() {
+        if let Some(user) = sqlx::query_as::<_, UserRow>(r#"SELECT u.* FROM "User" u JOIN "EmailLoginCode" c ON c."userId" = u.id WHERE c."loginTokenHash" = $1 AND c."usedAt" IS NULL AND c."expiresAt" > now()"#).bind(token_hash(token)).fetch_optional(&state.pool).await? {
+            issue_email_login_code(&state, &user, token).await?;
+        }
+    }
+    Ok(Json(json!({ "ok": true })))
+}
+
+async fn signup(
+    State(state): State<AppState>,
+    ClientIp(ip): ClientIp,
+    _headers: axum::http::HeaderMap,
+    _jar: CookieJar,
+    Json(body): Json<Value>,
+) -> AppResult<impl IntoResponse> {
     rate_limit::check(&state, "signup", &ip, rate_limit::SIGNUP_PER_IP).await?;
+    verify_recaptcha(
+        &state.config,
+        body.get("recaptchaToken").and_then(Value::as_str),
+        &ip,
+    )
+    .await?;
 
     let email = body
         .get("email")
@@ -314,7 +477,7 @@ async fn signup(
     }
 
     let hash = hash_password(password)?;
-    let badges = badge::initial_badges(&state).await?;
+    let badges = badge::initial_badges();
     let user: UserRow = sqlx::query_as(
         r#"INSERT INTO "User" (id, email, username, "displayName", "passwordHash", badges, "updatedAt")
            VALUES ($1, $2, $3, $4, $5, $6, now()) RETURNING *"#,
@@ -328,15 +491,18 @@ async fn signup(
     .fetch_one(&state.pool)
     .await?;
 
-    let (result, cookie) = issue_session(&state, &user, DeviceInfo::new(&headers, &ip)).await?;
-    Ok((StatusCode::CREATED, jar.add(cookie), Json(result)))
+    issue_email_verification(&state, &user).await?;
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({ "emailVerificationRequired": true })),
+    ))
 }
 
 async fn login(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
-    headers: axum::http::HeaderMap,
-    jar: CookieJar,
+    _headers: axum::http::HeaderMap,
+    _jar: CookieJar,
     Json(body): Json<Value>,
 ) -> AppResult<impl IntoResponse> {
     rate_limit::check(&state, "login", &ip, rate_limit::LOGIN_PER_IP).await?;
@@ -375,6 +541,22 @@ async fn login(
             rate_limit::LOGIN_FAILURES_PER_ACCOUNT,
         )
         .await?;
+        if captcha_required(
+            rate_limit::current(
+                &state,
+                "login:fail",
+                &u.id,
+                rate_limit::LOGIN_FAILURES_PER_ACCOUNT,
+            )
+            .await,
+        ) {
+            verify_recaptcha(
+                &state.config,
+                body.get("recaptchaToken").and_then(Value::as_str),
+                &ip,
+            )
+            .await?;
+        }
     }
 
     // A tombstoned account keeps its row so its messages stay readable, but the
@@ -428,6 +610,11 @@ async fn login(
         }
     }
 
+    if user.email_verified_at.is_none() {
+        return Err(AppError::Unauthorized(
+            "Verify your email before signing in".into(),
+        ));
+    }
     rate_limit::reset(
         &state,
         "login:fail",
@@ -435,8 +622,11 @@ async fn login(
         rate_limit::LOGIN_FAILURES_PER_ACCOUNT,
     )
     .await;
-    let (result, cookie) = issue_session(&state, &user, DeviceInfo::new(&headers, &ip)).await?;
-    Ok((jar.add(cookie), Json(result)))
+    let login_token = random_token();
+    issue_email_login_code(&state, &user, &login_token).await?;
+    Ok(Json(
+        json!({ "email2faRequired": true, "loginToken": login_token }),
+    ))
 }
 
 async fn record_login_failure(state: &AppState, user_id: &str) {
@@ -623,6 +813,9 @@ async fn patch_me(
     if let Some(v) = obj.get("typingIndicators") {
         patch.typing_indicators = Some(v.as_bool().ok_or_else(|| bad_request("Invalid input"))?);
     }
+    if let Some(v) = obj.get("e2eeStrict") {
+        patch.e2ee_strict = Some(v.as_bool().ok_or_else(|| bad_request("Invalid input"))?);
+    }
 
     let updated = user::update_profile(&state, &user.user_id, patch).await?;
 
@@ -652,7 +845,7 @@ async fn oauth_start(
     }
     if !oauth::is_provider_configured(&state.config, &provider) {
         return Err(AppError::Internal(format!(
-            ":provider OAuth is not configured"
+            "{provider} OAuth is not configured"
         )));
     }
     let csrf = uuid::Uuid::new_v4().to_string();
@@ -714,7 +907,8 @@ async fn oauth_callback(
                         Redirect::to(&format!("{origin}/login?error=totp_required")),
                     ));
                 }
-                let (_result, cookie) = issue_session(&state, &user, DeviceInfo::new(&headers, &ip)).await?;
+                let (_result, cookie) =
+                    issue_session(&state, &user, DeviceInfo::new(&headers, &ip)).await?;
                 Ok((
                     jar.add(cookie),
                     Redirect::to(&format!("{origin}/auth/callback")),

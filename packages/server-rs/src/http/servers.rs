@@ -12,9 +12,7 @@ use crate::dto::*;
 use crate::error::{AppError, AppResult};
 use crate::http::{bad_request, AuthUser, ClientIp, OptionalAuthUser};
 use crate::permissions::{self, MANAGE_CHANNELS, MANAGE_INVITES, MANAGE_SERVER, VIEW_AUDIT_LOG};
-use crate::services::{
-    account, audit, channel, membership, message, presence, rate_limit, server,
-};
+use crate::services::{account, audit, channel, membership, message, presence, rate_limit, server};
 use crate::state::AppState;
 
 pub fn routes() -> Router<AppState> {
@@ -99,7 +97,10 @@ async fn audit_log(
     if offset < 0 {
         return Err(bad_request("Invalid offset"));
     }
-    let action = q.get("action").map(String::as_str).filter(|s| !s.is_empty());
+    let action = q
+        .get("action")
+        .map(String::as_str)
+        .filter(|s| !s.is_empty());
 
     let entries = audit::list(&state, &server_id, action, limit + 1, offset).await?;
     let has_more = entries.len() as i64 > limit;
@@ -192,7 +193,10 @@ async fn get_server(
                 .cloned()
                 .unwrap_or_else(|| "offline".into());
             dto.user.devices = devices.get(&m.member.user_id).cloned().unwrap_or_default();
-            dto.user.activities = activities.get(&m.member.user_id).cloned().unwrap_or_default();
+            dto.user.activities = activities
+                .get(&m.member.user_id)
+                .cloned()
+                .unwrap_or_default();
             dto
         })
         .collect();
@@ -548,7 +552,13 @@ async fn invite_preview(
     OptionalAuthUser(viewer): OptionalAuthUser,
     Path(code): Path<String>,
 ) -> AppResult<Json<Value>> {
-    rate_limit::check(&state, "invite-preview", &ip, rate_limit::INVITE_PREVIEW_PER_IP).await?;
+    rate_limit::check(
+        &state,
+        "invite-preview",
+        &ip,
+        rate_limit::INVITE_PREVIEW_PER_IP,
+    )
+    .await?;
     let preview = server::get_invite_preview(&state, &code, viewer.as_deref()).await?;
     Ok(Json(json!(to_invite_preview(&preview))))
 }

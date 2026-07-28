@@ -63,7 +63,7 @@ data class CallNotice(val displayName: String, val reason: String) {
 }
 
 /**
- * Whatever media session we are in — a DM/group call or a server voice channel.
+ * Whatever media session we are in - a DM/group call or a server voice channel.
  * Both ride the same LiveKit room, so they share one state; [call] is null for a
  * voice channel, which has no ringing and no roster to track.
  */
@@ -199,7 +199,7 @@ class CallManager @Inject constructor(
     /**
      * Ring everyone else in a DM / group DM, then join the room ourselves.
      * [roster] is the conversation's participants, kept only to put a name to
-     * whoever declines — signalling itself carries ids.
+     * whoever declines - signalling itself carries ids.
      */
     fun startCall(channelId: String, video: Boolean = false, roster: List<User> = emptyList()) {
         // Promote while the permission-backed UI action is still foreground;
@@ -233,7 +233,7 @@ class CallManager @Inject constructor(
     }
 
     /**
-     * Walk into a server voice channel. No ringing and no roster — just media,
+     * Walk into a server voice channel. No ringing and no roster - just media,
      * so it skips the dm:call:* handshake entirely and goes straight to
      * voice:join.
      */
@@ -296,7 +296,7 @@ class CallManager @Inject constructor(
         scope.launch { runCatching { socketManager.declineCall(incoming.channelId) } }
     }
 
-    /** Hang up — cancels if it never connected, otherwise leaves. */
+    /** Hang up - cancels if it never connected, otherwise leaves. */
     /**
      * The clip is not played locally here: the server echoes it back to the
      * whole voice room, us included, so playing on send would double it.
@@ -313,7 +313,7 @@ class CallManager @Inject constructor(
         val active = _current.value ?: return
         ringtonePlayer.stop()
         val channelId = active.channelId
-        // A voice channel has no call to cancel or end — you just walk out.
+        // A voice channel has no call to cancel or end - you just walk out.
         if (active.kind == SessionKind.CALL) {
             if (active.phase == CallPhase.OUTGOING) socketManager.cancelCall(channelId)
             else socketManager.endCall(channelId)
@@ -567,7 +567,7 @@ class CallManager @Inject constructor(
 
     /**
      * Tear the media session down. [silent] suppresses the leave cue for callers
-     * already playing a more specific one — a decline should not also sound like
+     * already playing a more specific one - a decline should not also sound like
      * a departure.
      */
     private fun disconnectMedia(channelId: String, silent: Boolean = false) {
@@ -675,7 +675,7 @@ class CallManager @Inject constructor(
         _videoTracks.value = tiles
     }
 
-    /** Silence (0.0) or restore (1.0) everyone else — this is what deafen means. */
+    /** Silence (0.0) or restore (1.0) everyone else - this is what deafen means. */
     private fun setRemoteVolume(volume: Double) {
         room?.remoteParticipants?.values?.forEach { participant ->
             participant.audioTrackPublications.forEach { (_, track) ->

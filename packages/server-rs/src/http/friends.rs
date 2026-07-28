@@ -108,12 +108,30 @@ async fn send_request(
     )
     .await?;
 
-    let username = body
-        .get("username")
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| bad_request("Username is required"))?;
+    // A scanned contact code carries a user id, not a username (docs/E2EE.md
+    // §6.7), so resolve one into the other rather than teaching the QR payload
+    // to carry a second name for the same person.
+    let by_id = match body.get("userId").and_then(Value::as_str) {
+        Some(id) if !id.trim().is_empty() => {
+            let name: Option<String> =
+                sqlx::query_scalar(r#"SELECT username FROM "User" WHERE id = $1"#)
+                    .bind(id.trim())
+                    .fetch_optional(&state.pool)
+                    .await?;
+            Some(name.ok_or_else(|| AppError::NotFound("No such user".into()))?)
+        }
+        _ => None,
+    };
+
+    let username = match by_id.as_deref() {
+        Some(name) => name,
+        None => body
+            .get("username")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .ok_or_else(|| bad_request("Username is required"))?,
+    };
 
     let outcome = friends::send_request(&state, &user.user_id, username).await?;
 

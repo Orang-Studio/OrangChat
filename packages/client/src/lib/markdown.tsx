@@ -1,5 +1,13 @@
 import { Fragment, useState, type ReactNode } from "react";
+import { EMOJI_SHORTCODE_SOURCE, EMOJI_TOKEN_SOURCE } from "@orangchat/shared";
 import { cn } from "./cn";
+
+// Anchored forms of the shared emoji grammar, so the renderer and the send-time
+// normalizer can never drift on what a token is. The token rule runs before the
+// shortcode rule below, so `<:name:id>` is matched whole and its inner `:name:`
+// is never re-read as a shortcode.
+const EMOJI_TOKEN_RE = new RegExp("^" + EMOJI_TOKEN_SOURCE, "i");
+const EMOJI_SHORTCODE_RE = new RegExp("^" + EMOJI_SHORTCODE_SOURCE, "i");
 
 /**
  * Discord-style markdown, rendered to React nodes (never raw HTML - safe from
@@ -177,13 +185,34 @@ const INLINE_RULES: {
   },
   // <:name:id> / <a:name:id> custom emoji
   {
-    re: /^<(a?):([a-z0-9_-]{2,32}):([a-z0-9]+)>/i,
+    re: EMOJI_TOKEN_RE,
     render: (m, ctx) => {
       const name = m[2] ?? "";
       const emoji = ctx.emojis?.[m[3] ?? ""];
-      // Deleted, or from a server the viewer is not in. Discord shows the raw
-      // name rather than a broken image, and so do we.
+      // Deleted emoji show their raw name rather than a broken image.
       if (!emoji) return <Fragment key={nextKey()}>:{name}:</Fragment>;
+      return (
+        <img
+          key={nextKey()}
+          src={emoji.url}
+          alt={`:${emoji.name}:`}
+          title={`:${emoji.name}:`}
+          loading="lazy"
+          draggable={false}
+          className="oc-emoji inline-block size-8 align-text-bottom"
+        />
+      );
+    },
+  },
+  // Manually typed :name: custom emoji (legacy/draft-friendly fallback).
+  {
+    re: EMOJI_SHORTCODE_RE,
+    render: (m, ctx) => {
+      const name = m[1] ?? "";
+      const emoji = Object.values(ctx.emojis ?? {}).find(
+        (candidate) => candidate.name.toLowerCase() === name.toLowerCase(),
+      );
+      if (!emoji) return <Fragment key={nextKey()}>{m[0] ?? `:${name}:`}</Fragment>;
       return (
         <img
           key={nextKey()}

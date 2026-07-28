@@ -114,21 +114,13 @@ async fn upload_image(
 
 /// Put already-encoded bytes wherever this deployment keeps images, and return
 /// the url to persist. Cloudinary when configured, UPLOAD_DIR otherwise.
-pub(crate) async fn store_image(
-    state: &AppState,
-    out: Vec<u8>,
-    ext: &str,
-) -> AppResult<String> {
+pub(crate) async fn store_image(state: &AppState, out: Vec<u8>, ext: &str) -> AppResult<String> {
     store_media(state, out, ext, "images", "image").await
 }
 
 /// As `store_image`, for audio. Cloudinary files audio under `video` - that is
 /// its own naming, not a mistake here.
-pub(crate) async fn store_audio(
-    state: &AppState,
-    out: Vec<u8>,
-    ext: &str,
-) -> AppResult<String> {
+pub(crate) async fn store_audio(state: &AppState, out: Vec<u8>, ext: &str) -> AppResult<String> {
     store_media(state, out, ext, "sounds", "video").await
 }
 

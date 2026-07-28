@@ -1,8 +1,9 @@
 import { useEffect } from "react";
-import { Outlet, Route, Routes } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { bootstrapSession } from "../features/auth/session";
 import { LoginPage } from "../features/auth/LoginPage";
 import { SignupPage } from "../features/auth/SignupPage";
+import { OAuthCallbackPage } from "../features/auth/OAuthCallbackPage";
 import { HomePane } from "../features/chat/HomePane";
 import { FriendsPage } from "../features/friends/FriendsPage";
 import { DmSidebar } from "../features/dms/DmSidebar";
@@ -13,6 +14,7 @@ import { AppShell } from "./AppShell";
 import { PanelShell } from "./PanelShell";
 import { GuestOnly, RequireAuth } from "./guards";
 import { AndroidAppBanner } from "../components/AndroidAppBanner";
+import { LegalPage } from "../features/legal/LegalPage";
 
 /** Home area: DM conversation list beside whatever the route renders. */
 function HomeLayout() {
@@ -36,10 +38,19 @@ export function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
         </Route>
+        {/* Outside GuestOnly: the session cookie is already set when the OAuth
+            callback lands here, but the store still says "loading", and the
+            guard would bounce the redirect before it can be claimed. */}
+        <Route path="/auth/callback" element={<OAuthCallbackPage />} />
         {/* Outside both guards: an invite is the one link that has to mean
             something to a stranger, and a member following it shouldn't be
             bounced to the home page either. */}
         <Route path="/invite/:code" element={<InvitePage />} />
+        <Route path="/terms" element={<LegalPage document="terms" />} />
+        <Route path="/privacy" element={<LegalPage document="privacy" />} />
+        <Route path="/cookies" element={<LegalPage document="cookies" />} />
+        <Route path="/guidelines" element={<LegalPage document="guidelines" />} />
+        <Route path="/legal-notice" element={<LegalPage document="notice" />} />
         <Route element={<RequireAuth />}>
           <Route element={<AppShell />}>
             <Route element={<HomeLayout />}>
@@ -54,6 +65,8 @@ export function App() {
             />
           </Route>
         </Route>
+        {/* Never leave a stray URL rendering an empty page. */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
   );

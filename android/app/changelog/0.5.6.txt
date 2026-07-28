@@ -1,0 +1,4 @@
+Fixed the in-person verification screen.
+
+- “Verifying someone in person” now displays the contact verification payload as a scannable QR image instead of raw text.
+- The screen clearly explains where the other person should scan it.

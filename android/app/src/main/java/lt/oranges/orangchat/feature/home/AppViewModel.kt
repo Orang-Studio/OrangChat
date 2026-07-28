@@ -6,8 +6,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import lt.oranges.orangchat.data.model.Channel
 import lt.oranges.orangchat.data.model.ChannelType
 import lt.oranges.orangchat.data.model.Conversation
@@ -26,6 +28,7 @@ import lt.oranges.orangchat.data.remote.PatchChannelRequest
 import lt.oranges.orangchat.data.remote.UpdateRoleRequest
 import lt.oranges.orangchat.data.remote.UpdateServerRequest
 import lt.oranges.orangchat.data.repository.AuthRepository
+import lt.oranges.orangchat.data.repository.E2eeRepository
 import lt.oranges.orangchat.data.repository.ServerRepository
 import lt.oranges.orangchat.data.repository.SessionState
 import lt.oranges.orangchat.data.repository.SocialRepository
@@ -34,11 +37,13 @@ import lt.oranges.orangchat.feature.qrlogin.PendingQrLoginStore
 import lt.oranges.orangchat.feature.share.PendingShareStore
 import lt.oranges.orangchat.feature.unread.UnreadStore
 import lt.oranges.orangchat.notifications.NotificationHelper
+import lt.oranges.orangchat.notifications.ReplyOutbox
 import lt.oranges.orangchat.realtime.SocketEvent
 import lt.oranges.orangchat.realtime.SocketManager
 import lt.oranges.orangchat.util.AppForegroundState
 import lt.oranges.orangchat.util.EmojiRef
 import lt.oranges.orangchat.util.Mentions
+import lt.oranges.orangchat.util.normalizeCustomEmojiNames
 import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
@@ -55,11 +60,31 @@ class AppViewModel @Inject constructor(
     private val socialRepository: SocialRepository,
     private val socketManager: SocketManager,
     private val notificationHelper: NotificationHelper,
+    private val replyOutbox: ReplyOutbox,
     private val unreadStore: UnreadStore,
     private val pendingInviteStore: PendingInviteStore,
     private val pendingQrLoginStore: PendingQrLoginStore,
     private val pendingShareStore: PendingShareStore,
+    private val pendingVerifyStore: lt.oranges.orangchat.feature.verify.PendingVerifyStore,
+    private val pendingTransferStore: lt.oranges.orangchat.feature.transfer.PendingTransferStore,
+    private val e2eeRepository: lt.oranges.orangchat.data.repository.E2eeRepository,
 ) : ViewModel() {
+
+    data class ConversationEncryptionInfo(
+        val safetyNumber: String? = null,
+        val verified: Boolean = false,
+        val group: Boolean = false,
+        val myCode: String? = null,
+        val strictHere: Boolean = false,
+        val error: String? = null,
+        /**
+         * Participants with no device that can hold a key, which is the only
+         * reason a direct conversation is still plaintext (docs/E2EE.md §10.1).
+         * Non-empty means the conversation must be labelled plaintext rather
+         * than dressed up as encrypted-and-pending.
+         */
+        val waitingOn: List<String> = emptyList(),
+    )
 
     /** Unread dots + mention badges; hydrated on login, then kept live. */
     val unreads = unreadStore.states
@@ -70,6 +95,13 @@ class AppViewModel @Inject constructor(
 
     /** A QR sign-in token the app was opened with, once there's a signed-in shell. */
     val pendingQrLogin = pendingQrLoginStore.token
+
+    /** A contact code the app was opened with (docs/E2EE.md §6.7). */
+    val pendingVerify = pendingVerifyStore.code
+    val pendingTransfer = pendingTransferStore.code
+
+    fun clearPendingVerify() = pendingVerifyStore.consume()
+    fun clearPendingTransfer() = pendingTransferStore.consume()
 
     fun clearPendingInvite() = pendingInviteStore.consume()
     fun clearPendingShare() = pendingShareStore.consume()
@@ -129,6 +161,7 @@ class AppViewModel @Inject constructor(
         val content: String,
         val replyToId: String?,
         val attachmentIds: List<String>,
+        val sealedAttachments: List<lt.oranges.orangchat.crypto.SealedAttachmentRef>,
     )
 
     private val pendingOutbox = mutableListOf<PendingOutgoing>()
@@ -185,6 +218,217 @@ class AppViewModel @Inject constructor(
         refreshFriends()
         refreshUnreads()
         refreshEmojis()
+        restorePendingMessages()
+        flushQueuedReplies()
+        syncEncryptionIdentity()
+    }
+
+    private val _e2eeError = MutableStateFlow<String?>(null)
+
+    /** Whatever is currently wrong with this device's encryption identity. */
+    val e2eeError: StateFlow<String?> = _e2eeError.asStateFlow()
+    private val _conversationEncryption =
+        MutableStateFlow<Map<String, ConversationEncryptionInfo>>(emptyMap())
+    val conversationEncryption: StateFlow<Map<String, ConversationEncryptionInfo>> =
+        _conversationEncryption.asStateFlow()
+
+    /**
+     * Gives a signed-in account an encryption identity if it has none, and
+     * audits its own device log on every start.
+     *
+     * Self-monitoring is the part that matters: if the server ever mints a
+     * device or a whole identity in this account's name, this is where the
+     * account's own devices see something they never created. Catching it here
+     * is what lets a conversation be protected without asking the other person
+     * to do anything (docs/E2EE.md §6.1).
+     */
+    private fun syncEncryptionIdentity() = viewModelScope.launch {
+        val userId = authRepository.currentUser?.id ?: return@launch
+        e2eeRepository.setGlobalStrict(authRepository.currentUser?.e2eeStrict == true)
+        val local = e2eeRepository.identity()
+        if (local == null || local.userId != userId) {
+            val enrolled = runCatching { e2eeRepository.enrol(userId) }
+            if (enrolled.isSuccess) return@launch
+            // An account that already has devices is the normal case here: this
+            // phone simply is not one of them yet, and adding it needs the
+            // transfer flow and a code from a device that is.
+        }
+        runCatching { e2eeRepository.selfMonitor(userId) }
+            .onFailure { _e2eeError.value = it.message }
+    }
+
+    fun clearE2eeError() {
+        _e2eeError.value = null
+    }
+
+    /** Contact verification scanned in from a code (§6.7). */
+    fun verifyScannedContact(raw: String, onDone: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            runCatching { e2eeRepository.acceptScannedContact(raw) }
+                .onSuccess {
+                    onDone(true, null)
+                    flushPendingMessages()
+                }
+                .onFailure { onDone(false, it.message) }
+        }
+    }
+
+    /** DM-scoped scanner: never verify a different account than the header names. */
+    fun verifyScannedContactFor(
+        raw: String,
+        expectedUserId: String,
+        onDone: (Boolean, String?) -> Unit,
+    ) {
+        val scanned = runCatching {
+            lt.oranges.orangchat.crypto.E2eeQr.decodeContactVerify(raw)
+        }.getOrElse {
+            onDone(false, it.message ?: "That verification code is invalid.")
+            return
+        }
+        if (scanned.userId != expectedUserId) {
+            onDone(false, "That code belongs to a different account. Ask this contact to show their own code.")
+            return
+        }
+        verifyScannedContact(raw, onDone)
+    }
+
+    fun safetyNumberWith(userId: String): String? = e2eeRepository.safetyNumberWith(userId)
+
+    fun isContactVerified(userId: String): Boolean = e2eeRepository.isVerified(userId)
+
+    fun myContactQr(): String? = e2eeRepository.myContactQr()
+
+    /** How a typed safety code compared with the one this device derived (§6.6). */
+    enum class SafetyNumberVerdict { MATCH, MISMATCH, INCOMPLETE, UNAVAILABLE }
+
+    /**
+     * The half of verification that works at a distance. Reading sixty digits
+     * down a phone call was already the documented way out, but with nowhere to
+     * type the answer it ended in a comparison the app never learned the result
+     * of - so a remote pair could never reach verified, and verify-first mode
+     * was reachable only by people standing next to each other.
+     *
+     * A group's number stays informational (§6.3): a match confirms everyone is
+     * in the same group with the same people, and pins nothing.
+     */
+    fun compareSafetyNumber(
+        channelId: String,
+        peerUserIds: List<String>,
+        group: Boolean,
+        typed: String,
+        onDone: (SafetyNumberVerdict) -> Unit,
+    ) = viewModelScope.launch {
+        val expected = _conversationEncryption.value[channelId]?.safetyNumber
+        when {
+            expected == null -> onDone(SafetyNumberVerdict.UNAVAILABLE)
+            lt.oranges.orangchat.crypto.E2ee.normalizeSafetyNumber(typed) == null ->
+                onDone(SafetyNumberVerdict.INCOMPLETE)
+            !lt.oranges.orangchat.crypto.E2ee.safetyNumbersMatch(typed, expected) ->
+                onDone(SafetyNumberVerdict.MISMATCH)
+            group -> onDone(SafetyNumberVerdict.MATCH)
+            else -> {
+                val recorded = runCatching { peerUserIds.forEach(e2eeRepository::markVerified) }
+                if (recorded.isFailure) {
+                    _error.value = recorded.exceptionOrNull()?.message
+                        ?: "Could not record that check."
+                    onDone(SafetyNumberVerdict.UNAVAILABLE)
+                } else {
+                    loadConversationEncryption(channelId, peerUserIds, group)
+                    flushPendingMessages()
+                    onDone(SafetyNumberVerdict.MATCH)
+                }
+            }
+        }
+    }
+
+    fun loadConversationEncryption(
+        channelId: String,
+        peerUserIds: List<String>,
+        group: Boolean,
+    ) = viewModelScope.launch {
+        runCatching {
+            // A conversation still in plaintext has to say so and name who it is
+            // waiting on; treating "no lock yet" as an absent icon leaves people
+            // assuming a protection they do not have.
+            val channel = runCatching { e2eeRepository.channelState(channelId) }.getOrNull()
+            val waitingOn = if (channel != null && !channel.e2ee && !channel.capable) {
+                val withDevices = channel.memberDevices.map { it.userId }.toSet()
+                peerUserIds.filterNot { it in withDevices }
+            } else {
+                emptyList()
+            }
+            ConversationEncryptionInfo(
+                safetyNumber = e2eeRepository.conversationSafetyNumber(peerUserIds, group),
+                verified = peerUserIds.isNotEmpty() && peerUserIds.all(e2eeRepository::isVerified),
+                group = group,
+                myCode = e2eeRepository.myContactQr(),
+                strictHere = e2eeRepository.strictFor(
+                    channelId,
+                    if (group) "group_dm" else "dm",
+                ),
+                waitingOn = waitingOn,
+            )
+        }.onSuccess { info ->
+            _conversationEncryption.update { it + (channelId to info) }
+        }.onFailure { error ->
+            _conversationEncryption.update {
+                it + (channelId to ConversationEncryptionInfo(
+                    group = group,
+                    error = error.message,
+                ))
+            }
+        }
+    }
+
+    fun resetConversationEncryption(channelId: String) = viewModelScope.launch {
+        runCatching { e2eeRepository.rotate(channelId) }
+            .onFailure { _error.value = it.message ?: "Could not reset encryption" }
+    }
+
+    fun setConversationStrict(channelId: String, enabled: Boolean) {
+        e2eeRepository.setStrictFor(channelId, enabled)
+        _conversationEncryption.update { current ->
+            val info = current[channelId] ?: ConversationEncryptionInfo()
+            current + (channelId to info.copy(strictHere = enabled))
+        }
+        if (enabled) {
+            // §6.5: a fresh key wrapped only to checked devices. It legitimately
+            // cannot be minted until this contact *is* checked, and that is the
+            // state the user just asked for - reporting it as a failure would
+            // make the setting look broken at the moment it started working.
+            viewModelScope.launch {
+                runCatching { e2eeRepository.rotate(channelId) }.onFailure { error ->
+                    if (error !is E2eeRepository.VerificationRequiredException) {
+                        _error.value = error.message ?: "Could not reset encryption"
+                    }
+                }
+            }
+        } else {
+            // §6.5 requires the other person to see a downgrade. This ordinary
+            // message is encrypted and signed like any other conversation row.
+            sendMessage(
+                channelId,
+                "Turned off the requirement to verify before messaging in this conversation.",
+            )
+        }
+    }
+
+    /**
+     * Quick replies still in the outbox when the app opens. The retry job
+     * normally gets there first; this only matters when the app is opened
+     * before the system has run it.
+     */
+    private fun flushQueuedReplies() = viewModelScope.launch {
+        replyOutbox.all().forEach { entry ->
+            runCatching { serverRepository.sendMessage(entry.channelId, entry.text) }
+                .onSuccess { sent ->
+                    replyOutbox.remove(entry)
+                    // Only into a channel already held: seeding a cache with one
+                    // message would make opening it skip its history load.
+                    if (_messages.value.containsKey(sent.channelId)) appendMessage(sent)
+                    notificationHelper.clearUnsentMarkers(entry.channelId)
+                }
+        }
     }
 
     fun refreshUnreads() = viewModelScope.launch {
@@ -203,7 +447,7 @@ class AppViewModel @Inject constructor(
     }
 
     /**
-     * Every emoji the viewer can type, across all their servers — messages carry
+     * Every emoji the viewer can type, across all their servers - messages carry
      * ids, so a DM can legitimately show an emoji from a shared server.
      */
     fun refreshEmojis() = viewModelScope.launch {
@@ -261,6 +505,13 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch { runCatching { serverRepository.markChannelRead(channelId) } }
     }
 
+    /** Read a conversation without opening it - the long-press menu's action. */
+    fun markChannelRead(channelId: String) = viewModelScope.launch {
+        unreadStore.markRead(channelId)
+        notificationHelper.clearConversationNotifications(channelId)
+        runCatching { serverRepository.markChannelRead(channelId) }
+    }
+
     /** The chat pane closed; activity in that channel counts as unread again. */
     fun clearActiveChannel() {
         unreadStore.setActiveChannel(null)
@@ -279,8 +530,9 @@ class AppViewModel @Inject constructor(
                 if (page.items.isEmpty()) {
                     exhaustedChannels += channelId
                 } else {
+                    val items = e2eeRepository.decryptAll(page.items.reversed())
                     _messages.update { m ->
-                        m + (channelId to (page.items.reversed() + m[channelId].orEmpty()))
+                        m + (channelId to (items + m[channelId].orEmpty()))
                     }
                 }
             }
@@ -292,10 +544,14 @@ class AppViewModel @Inject constructor(
             .onSuccess { page ->
                 // History comes newest-first from the cursor API. Keep any
                 // optimistic rows created while this request was in flight.
+                // Encrypted rows arrive with an empty `content`; opening them
+                // here means everything downstream keeps working on plain
+                // messages and never has to know about envelopes.
+                val items = e2eeRepository.decryptAll(page.items.reversed())
                 _messages.update { current ->
                     val pending = current[channelId].orEmpty()
                         .filter { it.id in _pendingMessageIds.value }
-                    current + (channelId to (page.items.reversed() + pending))
+                    current + (channelId to (items + pending))
                 }
             }
             .onFailure { _error.value = it.message }
@@ -306,18 +562,35 @@ class AppViewModel @Inject constructor(
         content: String,
         replyToId: String? = null,
         attachmentIds: List<String> = emptyList(),
+        sealedAttachments: List<lt.oranges.orangchat.crypto.SealedAttachmentRef> = emptyList(),
     ) {
         val author = authRepository.currentUser?.asUser() ?: return
+        val normalizedContent = normalizeCustomEmojiNames(content, _emojis.value)
         val localId = "pending:${UUID.randomUUID()}"
-        val pending = PendingOutgoing(localId, channelId, content, replyToId, attachmentIds)
+        val pending = PendingOutgoing(
+            localId,
+            channelId,
+            normalizedContent,
+            replyToId,
+            attachmentIds,
+            sealedAttachments,
+        )
         pendingOutbox += pending
+        e2eeRepository.saveQueuedMessage(
+            localId,
+            channelId,
+            normalizedContent,
+            replyToId,
+            attachmentIds,
+            sealedAttachments,
+        )
         _pendingMessageIds.update { it + localId }
         _messages.update { current ->
             val optimistic = Message(
                 id = localId,
                 channelId = channelId,
                 author = author,
-                content = content,
+                content = normalizedContent,
                 createdAt = Instant.now().toString(),
                 replyToId = replyToId,
             )
@@ -331,29 +604,53 @@ class AppViewModel @Inject constructor(
     private fun flushPendingMessages() {
         if (!_connected.value || !socketManager.isConnected || outboxJob?.isActive == true) return
         outboxJob = viewModelScope.launch {
+            var heldForVerification = false
             try {
                 while (_connected.value && socketManager.isConnected) {
                     val pending = pendingOutbox.firstOrNull() ?: break
+                    // Sealing happens here rather than when the row is queued, so
+                    // a message that waited out a disconnect is encrypted under
+                    // the epoch current when it actually goes.
                     val result = runCatching {
+                        val sealed = if (e2eeRepository.shouldEncrypt(pending.channelId)) {
+                            e2eeRepository.seal(
+                                pending.channelId,
+                                pending.content,
+                                pending.replyToId,
+                                attachments = pending.sealedAttachments.ifEmpty { null },
+                            )
+                        } else {
+                            null
+                        }
                         socketManager.sendMessage(
                             pending.channelId,
                             pending.content,
                             pending.replyToId,
                             pending.attachmentIds,
+                            ciphertext = sealed?.ciphertext,
+                            encEpoch = sealed?.encEpoch,
+                            encVersion = sealed?.encVersion,
                         )
                     }
                     result.onSuccess { sent ->
                         confirmPendingMessage(pending.localId, sent)
                         pendingOutbox.removeAll { it.localId == pending.localId }
+                        e2eeRepository.removeQueuedMessage(pending.localId)
                         unreadStore.markRead(pending.channelId)
                         notificationHelper.clearConversationNotifications(pending.channelId)
                     }.onFailure { error ->
                         if (!_connected.value || !socketManager.isConnected) return@launch
+                        if (error is E2eeRepository.VerificationRequiredException) {
+                            _error.value = error.message
+                            heldForVerification = true
+                            return@launch
+                        }
                         // A live server rejection (permissions, slowmode, etc.)
                         // will not improve after reconnecting; remove that row
                         // and surface the actual error instead of retrying it.
                         rejectPendingMessage(pending.localId)
                         pendingOutbox.removeAll { it.localId == pending.localId }
+                        e2eeRepository.removeQueuedMessage(pending.localId)
                         _error.value = error.message ?: "Failed to send"
                     }
                 }
@@ -362,12 +659,61 @@ class AppViewModel @Inject constructor(
                 // A message can be queued after the loop observes an empty
                 // outbox but before this job completes. Do not leave that race
                 // waiting for a future reconnect that may never happen.
-                if (_connected.value && pendingOutbox.isNotEmpty()) flushPendingMessages()
+                if (!heldForVerification && _connected.value && pendingOutbox.isNotEmpty()) {
+                    flushPendingMessages()
+                }
             }
         }
     }
 
-    private fun confirmPendingMessage(localId: String, sent: Message) {
+    private fun restorePendingMessages() = viewModelScope.launch {
+        val author = authRepository.currentUser?.asUser() ?: return@launch
+        val known = pendingOutbox.map(PendingOutgoing::localId).toSet()
+        // Reading the queue walks every entry in the encrypted preference store
+        // and decrypts each one, and that store grows with the message cache.
+        // On the main thread it is a startup freeze that gets worse with use.
+        val queued = withContext(Dispatchers.IO) { e2eeRepository.queuedMessages() }
+        for (saved in queued) {
+            if (saved.id in known) continue
+            pendingOutbox += PendingOutgoing(
+                saved.id,
+                saved.channelId,
+                saved.content,
+                saved.replyToId,
+                saved.attachmentIds,
+                saved.sealedAttachments,
+            )
+            _pendingMessageIds.update { it + saved.id }
+            _messages.update { current ->
+                val optimistic = Message(
+                    id = saved.id,
+                    channelId = saved.channelId,
+                    author = author,
+                    content = saved.content,
+                    createdAt = Instant.now().toString(),
+                    replyToId = saved.replyToId,
+                )
+                current + (saved.channelId to (current[saved.channelId].orEmpty() + optimistic))
+            }
+        }
+        flushPendingMessages()
+    }
+
+    private fun confirmPendingMessage(localId: String, sent: Message, opened: Boolean = false) {
+        // Socket acks contain the persisted wire row. In an encrypted
+        // conversation that row has empty `content`, so replacing the optimistic
+        // plaintext with it makes the message disappear until history reloads.
+        //
+        // `opened` is what ends this, rather than the row having gained text: a
+        // message that is only an attachment has no text to gain, so testing for
+        // that looped - decrypt, still empty, decrypt again - and never confirmed
+        // the send.
+        if (!opened && sent.ciphertext != null) {
+            viewModelScope.launch {
+                confirmPendingMessage(localId, e2eeRepository.decrypt(sent), opened = true)
+            }
+            return
+        }
         _pendingMessageIds.update { it - localId }
         _messages.update { current ->
             val existing = current[sent.channelId].orEmpty()
@@ -385,13 +731,39 @@ class AppViewModel @Inject constructor(
     }
 
     fun editMessage(channelId: String, messageId: String, content: String) = viewModelScope.launch {
-        runCatching { socketManager.editMessage(channelId, messageId, content) }
+        val normalizedContent = normalizeCustomEmojiNames(content, _emojis.value)
+        runCatching {
+            val message = _messages.value[channelId].orEmpty().firstOrNull { it.id == messageId }
+            val sealed = if (message != null && e2eeRepository.isEncrypted(channelId)) {
+                e2eeRepository.sealEdit(message, normalizedContent)
+            } else {
+                null
+            }
+            socketManager.editMessage(
+                channelId,
+                messageId,
+                normalizedContent,
+                ciphertext = sealed?.ciphertext,
+                encEpoch = sealed?.encEpoch,
+                encVersion = sealed?.encVersion,
+            )
+        }
             .onFailure { _error.value = it.message }
     }
 
     fun deleteMessage(channelId: String, messageId: String) = viewModelScope.launch {
         runCatching { socketManager.deleteMessage(channelId, messageId) }
             .onFailure { _error.value = it.message }
+    }
+
+    fun reportMessage(
+        message: Message,
+        reason: String,
+        onDone: (String?) -> Unit,
+    ) = viewModelScope.launch {
+        runCatching { e2eeRepository.reportMessage(message, reason) }
+            .onSuccess { onDone(null) }
+            .onFailure { onDone(it.message ?: "The report could not be sent.") }
     }
 
     fun toggleReaction(channelId: String, message: Message, emoji: String) {
@@ -408,7 +780,7 @@ class AppViewModel @Inject constructor(
             .onFailure { _error.value = it.message }
     }
 
-    /** Adopt a server just joined by invite — the rail hasn't heard of it yet. */
+    /** Adopt a server just joined by invite - the rail hasn't heard of it yet. */
     fun serverJoined(serverId: String) {
         refreshServers()
         selectServer(serverId)
@@ -573,6 +945,22 @@ class AppViewModel @Inject constructor(
             .onFailure { _error.value = it.message }
     }
 
+    /** Start a group DM with the picked friends. Needs at least two people. */
+    fun createGroupDm(userIds: List<String>, onOpened: (String) -> Unit) = viewModelScope.launch {
+        if (userIds.size < 2) return@launch
+        runCatching { socialRepository.createDm(userIds) }
+            .onSuccess { convo -> refreshDms(); selectChannel(convo.id); onOpened(convo.id) }
+            .onFailure { _error.value = it.message }
+    }
+
+    /** Add friends to an existing group DM. */
+    fun addGroupParticipants(channelId: String, userIds: List<String>, onDone: () -> Unit) = viewModelScope.launch {
+        if (userIds.isEmpty()) return@launch
+        runCatching { socialRepository.addDmParticipants(channelId, userIds) }
+            .onSuccess { refreshDms(); onDone() }
+            .onFailure { _error.value = it.message }
+    }
+
     fun updateStatus(status: PresenceStatus) = viewModelScope.launch {
         val wire = when (status) {
             PresenceStatus.ONLINE -> "online"
@@ -584,7 +972,10 @@ class AppViewModel @Inject constructor(
         runCatching { authRepository.updateMe(lt.oranges.orangchat.data.remote.UpdateMeRequest(status = wire)) }
     }
 
-    fun logout() = viewModelScope.launch { authRepository.logout() }
+    fun logout() = viewModelScope.launch {
+        e2eeRepository.signOut()
+        authRepository.logout()
+    }
 
     fun clearError() { _error.value = null }
 
@@ -615,21 +1006,24 @@ class AppViewModel @Inject constructor(
                 }
             }
             is SocketEvent.MessageNew -> {
-                // The server broadcasts before acknowledging message:send. Use
-                // that broadcast as confirmation of the matching queued row so
-                // it never appears twice and is not retried after an ack loss.
-                val selfId = authRepository.currentUser?.id
-                val pending = pendingOutbox.firstOrNull {
-                    event.message.author.id == selfId &&
-                        it.channelId == event.message.channelId &&
-                        it.content == event.message.content &&
-                        it.replyToId == event.message.replyToId
-                }
-                if (pending != null) {
-                    confirmPendingMessage(pending.localId, event.message)
-                    pendingOutbox.removeAll { it.localId == pending.localId }
-                } else {
-                    appendMessage(event.message)
+                viewModelScope.launch {
+                    // Encrypted broadcasts carry an empty wire `content`.
+                    // Decrypt before matching so the echo can confirm the
+                    // pending plaintext even if the socket ack is lost.
+                    val message = e2eeRepository.decrypt(event.message)
+                    val selfId = authRepository.currentUser?.id
+                    val pending = pendingOutbox.firstOrNull {
+                        message.author.id == selfId &&
+                            it.channelId == message.channelId &&
+                            it.content == message.content &&
+                            it.replyToId == message.replyToId
+                    }
+                    if (pending != null) {
+                        confirmPendingMessage(pending.localId, message)
+                        pendingOutbox.removeAll { it.localId == pending.localId }
+                    } else {
+                        appendMessage(message)
+                    }
                 }
             }
             is SocketEvent.UnreadActivityEvent -> {
@@ -695,8 +1089,9 @@ class AppViewModel @Inject constructor(
         val channelId = _currentChannelId.value ?: return
         viewModelScope.launch {
             runCatching { serverRepository.getHistory(channelId) }.onSuccess { page ->
+                val items = e2eeRepository.decryptAll(page.items)
                 _messages.update { map ->
-                    val merged = (map[channelId].orEmpty() + page.items)
+                    val merged = (map[channelId].orEmpty() + items)
                         .associateBy { it.id }
                         .values
                         .sortedBy { it.createdAt }
@@ -742,6 +1137,17 @@ class AppViewModel @Inject constructor(
     }
 
     private fun appendMessage(message: Message) {
+        // An encrypted message arrives with an empty `content`, so it has to be
+        // opened before it is stored or notified on - otherwise it lands as a
+        // blank bubble and a blank notification.
+        if (message.ciphertext != null) {
+            viewModelScope.launch { insertMessage(e2eeRepository.decrypt(message)) }
+            return
+        }
+        insertMessage(message)
+    }
+
+    private fun insertMessage(message: Message) {
         var isNew = false
         _messages.update { map ->
             val list = map[message.channelId].orEmpty()
@@ -794,6 +1200,10 @@ class AppViewModel @Inject constructor(
     }
 
     private fun replaceMessage(message: Message) {
+        if (message.ciphertext != null) {
+            viewModelScope.launch { replaceMessage(e2eeRepository.decrypt(message)) }
+            return
+        }
         _messages.update { map ->
             val list = map[message.channelId] ?: return@update map
             map + (message.channelId to list.map { if (it.id == message.id) message else it })

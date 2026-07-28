@@ -1,4 +1,5 @@
 mod auth;
+mod auth_security;
 mod config;
 mod connections;
 mod dto;
@@ -22,7 +23,7 @@ use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 
 use crate::config::Config;
-use crate::services::{badge, presence, spotify};
+use crate::services::{badge, key_deletion, presence, spotify};
 use crate::state::AppState;
 
 static START: OnceLock<Instant> = OnceLock::new();
@@ -91,9 +92,9 @@ async fn main() {
         }
     }
 
-    // Hand-awarded badges are declared in the env, so reconcile them here rather
-    // than leaving the database as the only record of who has one.
-    match badge::sync_configured(&state).await {
+    // Hand-awarded badges are declared in the badges file, so reconcile them
+    // here rather than leaving the database as the only record of who has one.
+    match badge::sync_from_file(&state).await {
         Ok((0, 0)) => {}
         Ok((granted, revoked)) => {
             tracing::info!("badges reconciled: {granted} granted, {revoked} revoked")
@@ -113,6 +114,26 @@ async fn main() {
                     Ok(n) if n > 0 => tracing::info!("swept {n} unsent attachment(s)"),
                     Ok(_) => {}
                     Err(e) => tracing::warn!("attachment sweep failed: {e}"),
+                }
+            }
+        });
+    }
+
+    // Key erasures come due on a wall clock nobody is watching. Five minutes
+    // rather than the hourly cadence above because the delay the user was quoted
+    // should mean roughly what it said, and because every tick that passes after
+    // a request comes due is another tick in which a device could check in and
+    // abort a wipe the owner already stopped caring about.
+    {
+        let state = state.clone();
+        tokio::spawn(async move {
+            let mut ticker = tokio::time::interval(Duration::from_secs(300));
+            loop {
+                ticker.tick().await;
+                match key_deletion::sweep(&state).await {
+                    Ok(n) if n > 0 => tracing::info!("erased encryption keys for {n} account(s)"),
+                    Ok(_) => {}
+                    Err(e) => tracing::warn!("key erasure sweep failed: {e}"),
                 }
             }
         });

@@ -96,7 +96,7 @@ fun DmCallScreen(
     // it, rather than stranding a black rectangle over the call.
     LaunchedEffect(focusedTrack) { if (focusedId != null && focusedTrack == null) focusedId = null }
 
-    // Back closes the expanded camera first — minimizing the whole call out from
+    // Back closes the expanded camera first - minimizing the whole call out from
     // under it would be the wrong thing to undo.
     BackHandler { if (focusedId != null) focusedId = null else onMinimize() }
 
@@ -271,8 +271,8 @@ private fun ParticipantTile(
             Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)))
         }
 
-        // Muted and deafened are independent — you can be deafened and still
-        // talk — so neither icon stands in for the other.
+        // Muted and deafened are independent - you can be deafened and still
+        // talk - so neither icon stands in for the other.
         if (muted || deafened) {
             Row(
                 modifier = Modifier
@@ -327,7 +327,7 @@ private fun VoiceStateBadge(icon: ImageVector, label: String) {
  * One camera filling the screen, over everything else.
  *
  * A LiveKit track renders into as many views as you like, so this is a second
- * view of the same track rather than a handover — the grid tile underneath keeps
+ * view of the same track rather than a handover - the grid tile underneath keeps
  * playing and is still there on the way back.
  */
 @Composable

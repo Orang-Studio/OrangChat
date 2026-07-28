@@ -15,11 +15,7 @@ function ConnectionRow() {
   const status = useConnectionStore((s) => s.status);
   const socketId = useConnectionStore((s) => s.socketId);
   const dot =
-    status === "connected"
-      ? "bg-success"
-      : status === "connecting"
-        ? "bg-warning"
-        : "bg-danger";
+    status === "connected" ? "bg-success" : status === "connecting" ? "bg-warning" : "bg-danger";
   const label =
     status === "connected" ? "Connected" : status === "connecting" ? "Connecting…" : "Disconnected";
   return (
@@ -112,13 +108,19 @@ function StorageRow() {
 
 function UpdatesRow() {
   const [state, setState] = useState<UpdateCheckResult | "checking" | null>(null);
+  // Shells older than the updater IPC expose no checkForUpdates at all; calling
+  // it would just throw and report a failure that isn't one.
+  const supported = typeof desktop?.checkForUpdates === "function";
 
   const check = async () => {
     setState("checking");
     try {
-      setState((await desktop!.checkForUpdates()) ?? { status: "error" });
-    } catch {
-      setState({ status: "error" });
+      setState((await desktop!.checkForUpdates!()) ?? { status: "error" });
+    } catch (error) {
+      setState({
+        status: "error",
+        message: error instanceof Error ? error.message : undefined,
+      });
     }
   };
 
@@ -127,11 +129,16 @@ function UpdatesRow() {
     if (!state || typeof state === "string") return null;
     switch (state.status) {
       case "available":
-        return `Update ${state.version ?? ""} found — downloading. You'll be asked to restart.`;
+      case "downloading":
+        return `Update ${state.version ?? ""} found - downloading. You'll be asked to restart.`;
       case "current":
         return `You're on the latest version${state.version ? ` (${state.version})` : ""}.`;
+      case "dev":
+        return state.message ?? "Update checks only run in the installed app.";
       case "error":
-        return "Couldn't check right now. Try again later.";
+        return `Couldn't check right now. Try again later.${
+          state.message ? ` (${state.message})` : ""
+        }`;
       default:
         return null;
     }
@@ -142,16 +149,25 @@ function UpdatesRow() {
       <p className="text-sm text-ink-secondary">
         OrangChat {desktop?.version ? `${desktop.version} ` : ""}for {desktop?.platform}.
       </p>
-      <Button
-        type="button"
-        variant="secondary"
-        size="sm"
-        loading={state === "checking"}
-        onClick={() => void check()}
-      >
-        Check for updates
-      </Button>
-      {message && <p className="text-sm text-ink-muted">{message}</p>}
+      {supported ? (
+        <>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            loading={state === "checking"}
+            onClick={() => void check()}
+          >
+            Check for updates
+          </Button>
+          {message && <p className="text-sm text-ink-muted">{message}</p>}
+        </>
+      ) : (
+        <p className="text-sm text-ink-muted">
+          This app build can't check from here - use Help → Check for Updates… in the window menu,
+          or the tray icon.
+        </p>
+      )}
     </div>
   );
 }

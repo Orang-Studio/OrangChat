@@ -7,8 +7,15 @@ import {
   applyReaction,
   removeMessage,
   replaceMessage,
+  setMessagePinnedInCache,
 } from "../messages/queries";
 import { serverKeys } from "../servers/queries";
+import {
+  applyEventBroadcast,
+  removeEvent,
+  setEventInterestCount,
+} from "../events/queries";
+import { getServerNotificationPrefs } from "../servers/notificationPrefs";
 import type { ServerDetail } from "../servers/api";
 import { dmKeys, touchConversation } from "../dms/queries";
 import {
@@ -29,8 +36,24 @@ import { markChannelRead } from "../unread/api";
 import { clearConversationNotifications, notify } from "../../lib/notifications";
 import { bumpTyping, clearTyping } from "./typing";
 import { confirmPendingFromBroadcast, registerMessageOutbox } from "./outbox";
+import { decryptMessage, forgetDecrypted } from "../e2ee/decrypt";
+import { syncEpochKeys } from "../e2ee/conversation";
+import { noteEpoch, refreshChannelState, useE2eeStore } from "../e2ee/store";
 
 let registered = false;
+
+/**
+ * A device joining or leaving any account we share a conversation with
+ * invalidates the current epoch for those conversations: the key would be
+ * readable by a device that should no longer have it, or unreadable by one that
+ * should. Refreshing state is enough - the next send mints the new epoch.
+ */
+async function onDeviceGraphChanged(client: QueryClient, userId: string): Promise<void> {
+  void client;
+  void userId;
+  const channels = Object.keys(useE2eeStore.getState().channels);
+  await Promise.all(channels.map((id) => refreshChannelState(id).catch(() => undefined)));
+}
 
 /**
  * Wire server→client socket events into the TanStack Query caches. Called once
@@ -39,7 +62,10 @@ let registered = false;
 export function registerRealtime(client: QueryClient): void {
   if (registered) return;
   registered = true;
-  registerMessageOutbox((message) => appendMessage(client, message));
+  registerMessageOutbox(async (message) => {
+    const decrypted = await decryptMessage(message.channelId, message);
+    appendMessage(client, decrypted);
+  });
 
   const selfId = () => useAuthStore.getState().user?.id;
 
@@ -60,8 +86,12 @@ export function registerRealtime(client: QueryClient): void {
 
   // ── Messages ──────────────────────────────────────────
   socket.on("message:new", (message) => {
-    confirmPendingFromBroadcast(message);
-    appendMessage(client, message);
+    void decryptMessage(message.channelId, message).then((decrypted) => {
+      appendMessage(client, decrypted);
+      // Do not remove the optimistic plaintext until its confirmed replacement
+      // is renderable. Otherwise a slower E2EE open leaves a blank gap.
+      confirmPendingFromBroadcast(message);
+    });
     // Their message landed - stop showing them as typing.
     clearTyping(message.channelId, message.author.id);
     // DM traffic reorders the conversation list.
@@ -85,11 +115,22 @@ export function registerRealtime(client: QueryClient): void {
 
     unreadActions.bump(p.channelId, p.serverId, mentioned);
 
-    // Notify only for DMs and @mentions - never for every server message.
+    // DMs always alert. A server alerts per its own notification setting, which
+    // defaults to @mentions only - and a muted server never does.
     const isDm = p.serverId === null;
-    if (isDm || mentioned) {
+    const prefs = isDm ? null : getServerNotificationPrefs(p.serverId!);
+    const shouldNotify = isDm
+      ? true
+      : prefs!.mutedUntil === null &&
+        (prefs!.level === "all" || (prefs!.level === "mentions" && mentioned));
+
+    if (shouldNotify) {
       notify({
-        title: isDm ? p.author.displayName : `${p.author.displayName} mentioned you`,
+        title: isDm
+          ? p.author.displayName
+          : mentioned
+            ? `${p.author.displayName} mentioned you`
+            : p.author.displayName,
         body: p.preview.slice(0, 140),
         icon: p.author.avatarUrl ?? undefined,
         href: isDm
@@ -100,15 +141,45 @@ export function registerRealtime(client: QueryClient): void {
     }
   });
 
+  socket.on("unread:state", (state) => unreadActions.set(state));
+
+  socket.on("event:created", (event) => applyEventBroadcast(client, event));
+  socket.on("event:updated", (event) => applyEventBroadcast(client, event));
+  socket.on("event:interest", ({ serverId, eventId, interestedCount }) =>
+    setEventInterestCount(client, serverId, eventId, interestedCount),
+  );
+  socket.on("event:deleted", ({ serverId, eventId }) =>
+    removeEvent(client, serverId, eventId),
+  );
+
   socket.on("read:state", ({ channelId }) => {
     unreadActions.clear(channelId);
     void clearConversationNotifications(channelId).catch(() => {});
   });
 
-  socket.on("message:updated", (message) => replaceMessage(client, message));
+  socket.on("message:updated", (message) => {
+    forgetDecrypted(message.id);
+    void decryptMessage(message.channelId, message).then((decrypted) =>
+      replaceMessage(client, decrypted),
+    );
+  });
+
+  socket.on("e2ee:epoch", ({ channelId, epoch }) => {
+    noteEpoch(channelId, epoch.epoch);
+    void syncEpochKeys(channelId).catch(() => {});
+  });
+
+  // A device appearing or leaving an account changes who a conversation key may
+  // be wrapped to, so the next send has to rotate rather than reuse the epoch.
+  socket.on("e2ee:device:added", ({ userId }) => void onDeviceGraphChanged(client, userId));
+  socket.on("e2ee:device:revoked", ({ userId }) => void onDeviceGraphChanged(client, userId));
 
   socket.on("message:deleted", ({ channelId, messageId }) =>
     removeMessage(client, channelId, messageId),
+  );
+
+  socket.on("message:pins", ({ channelId, messageId, pinned }) =>
+    setMessagePinnedInCache(client, channelId, messageId, pinned),
   );
 
   socket.on("reaction", (payload) =>

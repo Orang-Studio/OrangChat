@@ -60,6 +60,32 @@ class ProfileCssTest {
     }
 
     @Test
+    fun `recurses into container starting-style and layer`() {
+        assertKeeps(
+            "@container (min-width: 300px) { .oc-pf-name { color: blue } }",
+            "@container (min-width: 300px)",
+            ".oc-profile-card .oc-pf-name",
+        )
+        assertKeeps(
+            "@starting-style { .oc-pf-body { opacity: 0 } }",
+            "@starting-style {",
+            ".oc-profile-card .oc-pf-body",
+        )
+        assertKeeps(
+            "@layer theme.base { .oc-pf-body { color: red } }",
+            "@layer theme.base",
+            ".oc-profile-card .oc-pf-body",
+        )
+    }
+
+    @Test
+    fun `drops grouping at rules with an unparseable prelude`() {
+        assertDrops("@layer a\\7B x { .oc-pf-name { color: red } }", "@layer")
+        assertDrops("@starting-style bogus { .oc-pf-name { color: red } }", "@starting-style")
+        assertDrops("""@container "q" { .oc-pf-name { color: red } }""", "@container")
+    }
+
+    @Test
     fun `keeps keyframes`() {
         assertKeeps(
             "@keyframes pulse { 0% { opacity: 0 } 100% { opacity: 1 } }",

@@ -11,6 +11,10 @@ import type {
   User,
   Friend,
   FriendRequest,
+  UnreadState,
+  ScheduledEvent,
+  E2eeDevice,
+  E2eeEpoch,
 } from './types.js';
 export type Ack<T = void> = (
   response: { ok: true; data: T } | { ok: false; error: string },
@@ -144,6 +148,30 @@ export interface ServerToClientEvents {
   'dm:call:ended': (payload: DmCallEndedPayload) => void;
   'unread:activity': (payload: UnreadActivityPayload) => void;
   'read:state': (payload: { channelId: string }) => void;
+  'unread:state': (payload: UnreadState) => void;
+  'event:created': (event: ScheduledEvent) => void;
+  'event:updated': (event: ScheduledEvent) => void;
+  'event:deleted': (payload: { serverId: string; eventId: string }) => void;
+  'event:interest': (payload: {
+    serverId: string;
+    eventId: string;
+    interestedCount: number;
+  }) => void;
+  'e2ee:device:added': (payload: { userId: string; device: E2eeDevice }) => void;
+  'e2ee:device:revoked': (payload: { userId: string; deviceId: string }) => void;
+  'e2ee:log:head': (payload: { userId: string; seq: number; entryHash: string }) => void;
+  'e2ee:epoch': (payload: { channelId: string; epoch: E2eeEpoch }) => void;
+  /**
+   * WebRTC signalling between two devices of the same account during a transfer
+   * (docs/E2EE.md §4). Opaque to the server, and never routed outside the
+   * sender's own account.
+   */
+  'e2ee:transfer:signal': (payload: {
+    transferId: string;
+    kind: 'offer' | 'answer' | 'ice' | 'ready';
+    data: unknown;
+    from: string;
+  }) => void;
   error: (payload: ErrorPayload) => void;
 }
 
@@ -157,11 +185,21 @@ export interface ClientToServerEvents {
       replyToId?: string;
       attachmentIds?: string[];
       spoilerAttachmentIds?: string[];
+      ciphertext?: string;
+      encEpoch?: number;
+      encVersion?: number;
     },
     ack?: Ack<Message>,
   ) => void;
   'message:edit': (
-    payload: { channelId: string; messageId: string; content: string },
+    payload: {
+      channelId: string;
+      messageId: string;
+      content: string;
+      ciphertext?: string;
+      encEpoch?: number;
+      encVersion?: number;
+    },
     ack?: Ack<Message>,
   ) => void;
   'message:delete': (
@@ -196,6 +234,11 @@ export interface ClientToServerEvents {
   ) => void;
   'dm:call:cancel': (channelId: string, ack?: Ack) => void;
   'dm:call:end': (channelId: string, ack?: Ack) => void;
+  'e2ee:transfer:signal': (payload: {
+    transferId: string;
+    kind: 'offer' | 'answer' | 'ice' | 'ready';
+    data: unknown;
+  }) => void;
 }
 
 export interface SocketData {

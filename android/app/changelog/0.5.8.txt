@@ -1,0 +1,2 @@
+- Made encrypted conversation settings and verification choices easier to understand.
+- Added a plain-language guide explaining how message encryption, device keys, and safety codes work.

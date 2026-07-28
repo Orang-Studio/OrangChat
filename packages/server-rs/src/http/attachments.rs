@@ -26,7 +26,7 @@ use std::io::Cursor;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use axum::extract::{DefaultBodyLimit, Multipart, Path, State};
+use axum::extract::{DefaultBodyLimit, Multipart, Path, Query, State};
 use axum::http::header::{
     CACHE_CONTROL, CONTENT_DISPOSITION, CONTENT_LENGTH, CONTENT_SECURITY_POLICY, CONTENT_TYPE,
 };
@@ -79,6 +79,73 @@ pub fn routes() -> Router<AppState> {
             "/attachments/encrypted/:asset",
             get(deliver_encrypted_attachment),
         )
+        .route("/attachments/sealed/:asset", get(deliver_sealed_attachment))
+}
+
+const SEALED_PUBLIC_ID_PREFIX: &str = "orangchat/sealed/";
+
+fn sealed_public_id(storage_id: &str) -> String {
+    format!("{SEALED_PUBLIC_ID_PREFIX}{storage_id}.{ENCRYPTED_BLOB_EXTENSION}")
+}
+
+fn sealed_delivery_url(storage_id: &str) -> String {
+    format!("/api/attachments/sealed/{storage_id}.{ENCRYPTED_BLOB_EXTENSION}")
+}
+
+pub fn sealed_storage_id_from_delivery_url(url: &str) -> Option<&str> {
+    let asset = url.strip_prefix("/api/attachments/sealed/")?;
+    let (storage_id, _) = asset.split_once('.')?;
+    valid_storage_id(storage_id).then_some(storage_id)
+}
+
+/// Hands back exactly the bytes the client uploaded. An attachment in an
+/// end-to-end encrypted conversation is sealed under a key only the
+/// conversation's devices hold (docs/E2EE.md §7), so there is nothing here to
+/// decrypt and nothing worth guessing a content type for: the real filename and
+/// type travel inside the message, not beside the blob.
+async fn deliver_sealed_attachment(
+    State(state): State<AppState>,
+    Path(asset): Path<String>,
+) -> AppResult<Response> {
+    let storage_id = asset
+        .split_once('.')
+        .map(|(id, _)| id)
+        .filter(|id| valid_storage_id(id))
+        .ok_or_else(|| AppError::NotFound("Attachment not found".into()))?;
+
+    let bytes = match state.cloudinary.as_ref() {
+        Some(cloudinary) => {
+            cloudinary
+                .download_raw(&sealed_public_id(storage_id))
+                .await?
+        }
+        None => tokio::fs::read(
+            attachments_dir().join(format!("{storage_id}.{ENCRYPTED_BLOB_EXTENSION}")),
+        )
+        .await
+        .map_err(|_| AppError::NotFound("Attachment not found".into()))?,
+    };
+
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        CONTENT_TYPE,
+        HeaderValue::from_static("application/octet-stream"),
+    );
+    headers.insert(
+        CONTENT_LENGTH,
+        HeaderValue::from_str(&bytes.len().to_string())
+            .map_err(|_| AppError::Internal("Invalid attachment length".into()))?,
+    );
+    headers.insert(CONTENT_DISPOSITION, HeaderValue::from_static("attachment"));
+    headers.insert(
+        CACHE_CONTROL,
+        HeaderValue::from_static("private, max-age=3600"),
+    );
+    headers.insert(
+        CONTENT_SECURITY_POLICY,
+        HeaderValue::from_static("default-src 'none'; sandbox"),
+    );
+    Ok((headers, bytes).into_response())
 }
 
 const ENCRYPTED_PUBLIC_ID_PREFIX: &str = "orangchat/attachments/";
@@ -223,6 +290,7 @@ fn image_dims(bytes: &[u8]) -> Option<(u32, u32)> {
 }
 
 /// The wire shape from shared/src/types.ts (`Attachment`).
+#[allow(clippy::too_many_arguments)]
 fn descriptor(
     id: &str,
     url: &str,
@@ -316,11 +384,23 @@ fn clean_filename(raw: &str) -> String {
     trimmed.chars().take(200).collect()
 }
 
+#[derive(Deserialize, Default)]
+struct UploadQuery {
+    /// Set by clients uploading bytes they have already sealed themselves. The
+    /// server then stores an opaque blob and learns only its length.
+    #[serde(default)]
+    sealed: Option<u8>,
+}
+
 async fn upload_attachment(
     user: AuthUser,
     State(state): State<AppState>,
+    Query(q): Query<UploadQuery>,
     mut multipart: Multipart,
 ) -> AppResult<Json<Value>> {
+    if q.sealed == Some(1) {
+        return upload_sealed(user, state, multipart).await;
+    }
     rate_limit::check(
         &state,
         "upload:attachment",
@@ -436,6 +516,103 @@ async fn upload_attachment(
     Ok(Json(result?))
 }
 
+/// The E2EE path (docs/E2EE.md §7). The client has already encrypted the bytes,
+/// the filename and the content type under a key we do not have, so there is
+/// nothing here to moderate, no dimensions to read, and no reason to seal it a
+/// second time under a key we *do* hold. What the row keeps is a storage id and
+/// a byte length, which is all §7 allows it to know.
+async fn upload_sealed(
+    user: AuthUser,
+    state: AppState,
+    mut multipart: Multipart,
+) -> AppResult<Json<Value>> {
+    rate_limit::check(
+        &state,
+        "upload:attachment",
+        &user.user_id,
+        rate_limit::UPLOAD_ATTACHMENT_PER_USER,
+    )
+    .await?;
+
+    let mut bytes: Option<Vec<u8>> = None;
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|_| AppError::BadRequest("Invalid upload".into()))?
+    {
+        if field.name() != Some("file") {
+            continue;
+        }
+        let data = field.bytes().await.map_err(|_| {
+            AppError::BadRequest("File is too large (max 10 MB for a direct upload)".into())
+        })?;
+        bytes = Some(data.to_vec());
+        break;
+    }
+
+    let bytes = bytes.ok_or_else(|| AppError::BadRequest("No file provided".into()))?;
+    if bytes.is_empty() {
+        return Err(AppError::BadRequest("File is empty".into()));
+    }
+    if bytes.len() > MAX_LOCAL_ATTACHMENT {
+        return Err(AppError::BadRequest(
+            "File is too large (max 10 MB for a direct upload)".into(),
+        ));
+    }
+
+    let id = cuid();
+    let size = bytes.len() as i32;
+
+    if let Some(cloudinary) = state.cloudinary.clone() {
+        let public_id = sealed_public_id(&id);
+        cloudinary.upload(bytes, &public_id, "raw").await?;
+        let result = insert_pending(
+            &state,
+            &user.user_id,
+            &sealed_delivery_url(&id),
+            "sealed",
+            "application/octet-stream",
+            size,
+            None,
+            "cloudinary",
+            false,
+            None,
+        )
+        .await;
+        if result.is_err() {
+            let _ = cloudinary.destroy(&public_id, "raw").await;
+        }
+        return Ok(Json(result?));
+    }
+
+    let stored = format!("{id}.{ENCRYPTED_BLOB_EXTENSION}");
+    let dir = attachments_dir();
+    tokio::fs::create_dir_all(&dir)
+        .await
+        .map_err(|_| AppError::Internal("Failed to store attachment".into()))?;
+    tokio::fs::write(dir.join(&stored), &bytes)
+        .await
+        .map_err(|_| AppError::Internal("Failed to store attachment".into()))?;
+
+    let result = insert_pending(
+        &state,
+        &user.user_id,
+        &sealed_delivery_url(&id),
+        "sealed",
+        "application/octet-stream",
+        size,
+        None,
+        "local",
+        false,
+        None,
+    )
+    .await;
+    if result.is_err() {
+        let _ = tokio::fs::remove_file(dir.join(&stored)).await;
+    }
+    Ok(Json(result?))
+}
+
 /// How long an unsent upload is kept before the sweeper takes it. Long enough to
 /// cover someone picking a file and leaving the tab open over lunch.
 const PENDING_TTL_HOURS: i64 = 24;
@@ -485,6 +662,10 @@ pub async fn sweep_pending(state: &AppState) -> AppResult<u64> {
                     if let Some(storage_id) = encrypted_storage_id_from_delivery_url(url) {
                         let _ = cloudinary
                             .destroy(&encrypted_public_id(storage_id), "raw")
+                            .await;
+                    } else if let Some(storage_id) = sealed_storage_id_from_delivery_url(url) {
+                        let _ = cloudinary
+                            .destroy(&sealed_public_id(storage_id), "raw")
                             .await;
                     } else if let Some((public_id, resource_type)) = public_id_from_url(url) {
                         // Compatibility for pending uploads created before

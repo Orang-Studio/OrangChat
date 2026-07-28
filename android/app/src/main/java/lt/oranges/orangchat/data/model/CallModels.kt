@@ -3,7 +3,7 @@ package lt.oranges.orangchat.data.model
 import kotlinx.serialization.Serializable
 
 /**
- * Mirrors of the call half of the shared Socket.IO contract — see
+ * Mirrors of the call half of the shared Socket.IO contract - see
  * VoiceStatePayload / DmCallPayload / DmCallEndedPayload in
  * packages/shared/src/events.ts. The Rust server serialises camelCase, so the
  * field names carry over as-is.
@@ -63,7 +63,7 @@ data class UnreadState(
 /** Server-side counting stops here; the UI renders the cap as "99+". */
 const val UNREAD_COUNT_CAP = 100
 
-/** Mirror of UnreadActivityPayload — drives unread dots and mention badges. */
+/** Mirror of UnreadActivityPayload - drives unread dots and mention badges. */
 @Serializable
 data class UnreadActivity(
     val channelId: String,

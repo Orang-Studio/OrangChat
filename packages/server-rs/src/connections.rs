@@ -1,4 +1,5 @@
-//! Profile connections: linking external accounts (GitHub, Steam, Spotify, …)
+//! Profile connections: linking external accounts for display on a user's
+//! profile card.
 //! for display on a user's profile card.
 //!
 //! Deliberately separate from `oauth.rs`, which logs people in. The two never
@@ -69,15 +70,6 @@ pub const PROVIDERS: &[Provider] = &[
         pkce: false,
     },
     Provider {
-        key: "spotify",
-        label: "Spotify",
-        auth_url: "https://accounts.spotify.com/authorize",
-        token_url: "https://accounts.spotify.com/api/token",
-        scopes: "user-read-private user-read-currently-playing",
-        basic_auth: true,
-        pkce: false,
-    },
-    Provider {
         key: "twitch",
         label: "Twitch",
         auth_url: "https://id.twitch.tv/oauth2/authorize",
@@ -141,10 +133,6 @@ pub fn creds<'a>(cfg: &'a Config, provider: &str) -> (Option<&'a String>, Option
         "gitlab" => (
             cfg.gitlab_client_id.as_ref(),
             cfg.gitlab_client_secret.as_ref(),
-        ),
-        "spotify" => (
-            cfg.spotify_client_id.as_ref(),
-            cfg.spotify_client_secret.as_ref(),
         ),
         "twitch" => (
             cfg.twitch_client_id.as_ref(),
@@ -278,9 +266,18 @@ pub async fn exchange_code_for_profile(
         profile,
         grant: OAuthGrant {
             access_token,
-            refresh_token: token.get("refresh_token").and_then(Value::as_str).map(str::to_string),
-            expires_in: token.get("expires_in").and_then(Value::as_i64).unwrap_or(3600),
-            scope: token.get("scope").and_then(Value::as_str).map(str::to_string),
+            refresh_token: token
+                .get("refresh_token")
+                .and_then(Value::as_str)
+                .map(str::to_string),
+            expires_in: token
+                .get("expires_in")
+                .and_then(Value::as_i64)
+                .unwrap_or(3600),
+            scope: token
+                .get("scope")
+                .and_then(Value::as_str)
+                .map(str::to_string),
         },
     })
 }

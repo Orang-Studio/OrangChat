@@ -1,0 +1,5 @@
+# OrangChat 0.4.7
+
+- Improvements and fixes across chat, calls, and settings.
+- Native Android updates now show these release notes before installation.
+- Web users see this “What’s new” message once after signing in.

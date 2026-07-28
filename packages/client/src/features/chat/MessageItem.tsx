@@ -1,18 +1,23 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
-import { Pencil, Reply, SmilePlus, Trash2 } from "lucide-react";
+import { Pencil, Pin, Reply, SmilePlus, Trash2 } from "lucide-react";
 import type { Message } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
+import { ContextMenu, ContextMenuTrigger } from "../../components/ui/ContextMenu";
+import { setMessagePinned } from "../messages/api";
 import { formatFullTime, formatMessageTime } from "../../lib/time";
 import { Avatar } from "../../components/Avatar";
 import { RichText, mentionsViewer } from "../../lib/markdown";
 import { useAuthStore } from "../../stores/auth";
-import { useEmojiMap } from "../emojis/queries";
+import { useEmojiMap, withMessageEmojis } from "../emojis/queries";
 import { ProfileDialog } from "../profile/ProfileDialog";
 import { isDirectMediaMessage, LinkEmbeds } from "./LinkEmbeds";
 import { MessageAttachments } from "./MessageAttachments";
 import { deleteMessage, editMessage, toggleReaction } from "./socket-actions";
 import { QUICK_EMOJIS } from "./emoji-data";
+import { MessageContextMenu } from "./MessageContextMenu";
+import { ForwardDialog } from "./ForwardDialog";
+import { ReportMessageDialog } from "./ReportMessageDialog";
 
 export interface MessageItemProps {
   message: Message;
@@ -26,6 +31,10 @@ export interface MessageItemProps {
   /** Current user may delete others' messages (MANAGE_MESSAGES). */
   canManage: boolean;
   onReply: (message: Message) => void;
+  /** Scroll the list to another message (the one this replies to). */
+  onJumpTo?: (messageId: string) => void;
+  /** Briefly highlighted because something just jumped to it. */
+  flash?: boolean;
   /** userId → display name, for resolving `<@id>` mentions in content. */
   mentionNames?: Record<string, string>;
   /** username → user, for resolving `@username` mentions in content. */
@@ -94,7 +103,7 @@ function EditForm({ message, onDone }: { message: Message; onDone: () => void })
     const content = draft.trim();
     if (!content || content === message.content) return onDone();
     try {
-      await editMessage({ channelId: message.channelId, messageId: message.id, content });
+      await editMessage(message, content);
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Edit failed");
@@ -134,6 +143,8 @@ export function MessageItem({
   isOwn,
   canManage,
   onReply,
+  onJumpTo,
+  flash = false,
   mentionNames,
   mentionUsers,
   selfId,
@@ -141,7 +152,13 @@ export function MessageItem({
   const [editing, setEditing] = useState(false);
   const [touchActions, setTouchActions] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const emojis = useEmojiMap();
+  const [forwardOpen, setForwardOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const usableEmojis = useEmojiMap();
+  const emojis = useMemo(
+    () => withMessageEmojis(usableEmojis, message.emojis),
+    [usableEmojis, message.emojis],
+  );
   const selfUsername = useAuthStore((s) => s.user?.username);
   // highlight the whole row when the message pings us (but never our own).
   const pinged = !isOwn && !pending && mentionsViewer(message.content, selfId, selfUsername);
@@ -154,186 +171,226 @@ export function MessageItem({
   };
 
   return (
-    <div
-      onClick={pending ? undefined : onTap}
-      aria-label={pending ? "Sending message" : undefined}
-      className={cn(
-        "oc-message group relative px-4 py-0.5 hover:bg-surface-3/40",
-        !compact && "oc-message-lead mt-3",
-        touchActions && "bg-surface-3/40",
-        pending && "pointer-events-none opacity-50",
-        pinged && "border-l-2 border-primary bg-primary/[0.06] hover:bg-primary/10",
-      )}
-    >
-      {/* Reply reference line */}
-      {message.replyToId && (
-        <div className="mb-0.5 flex items-center gap-1.5 pl-12 text-xs text-ink-muted">
-          <Reply aria-hidden className="size-3.5 -scale-x-100" />
-          {replyTo ? (
-            <>
-              <span className="font-medium text-ink-secondary">
-                {replyTo.author.displayName}
-              </span>
-              <span className="truncate">{replyTo.content}</span>
-            </>
-          ) : (
-            <span className="italic">Original message</span>
-          )}
-        </div>
-      )}
-
-      <div className="flex gap-3">
-        {compact ? (
-          <span className="w-9 shrink-0 pt-1 text-right text-[10px] leading-5 text-ink-muted opacity-0 group-hover:opacity-100">
-            {formatMessageTime(message.createdAt).slice(-5)}
-          </span>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setProfileOpen(true)}
-            aria-label={`View ${message.author.displayName}'s profile`}
-            className="mt-0.5 shrink-0"
+    <>
+      <ContextMenu>
+        <ContextMenuTrigger asChild disabled={pending}>
+          <div
+            data-message-id={message.id}
+            onClick={pending ? undefined : onTap}
+            aria-label={pending ? "Sending message" : undefined}
+            className={cn(
+              "oc-message group relative px-4 py-0.5 hover:bg-surface-3/40",
+              !compact && "oc-message-lead mt-3",
+              touchActions && "bg-surface-3/40",
+              pending && "pointer-events-none opacity-50",
+              pinged && "border-l-2 border-primary bg-primary/[0.06] hover:bg-primary/10",
+              // Static rather than animated so it still lands under reduced motion.
+              flash && "bg-primary/15 hover:bg-primary/15",
+            )}
           >
-            <Avatar user={message.author} />
-          </button>
-        )}
+            {message.pinned && (
+              <p className="mb-0.5 flex items-center gap-1.5 pl-12 text-xs text-ink-muted">
+                <Pin aria-hidden className="size-3.5" />
+                Pinned
+              </p>
+            )}
 
-        <div className="min-w-0 flex-1">
-          {!compact && (
-            <p className="flex items-baseline gap-2">
+            {/* Reply reference line - clicking it walks back to what was replied to. */}
+            {message.replyToId && (
               <button
                 type="button"
-                onClick={() => setProfileOpen(true)}
-                className="font-semibold hover:underline"
+                onClick={() => onJumpTo?.(message.replyToId!)}
+                title="Jump to the replied message"
+                className="mb-0.5 flex w-full items-center gap-1.5 pl-12 pr-2 text-left text-xs text-ink-muted transition-colors hover:text-ink"
               >
-                {message.author.displayName}
+                <Reply aria-hidden className="size-3.5 shrink-0 -scale-x-100" />
+                {replyTo ? (
+                  <>
+                    <span className="shrink-0 font-medium text-ink-secondary">
+                      {replyTo.author.displayName}
+                    </span>
+                    <span className="truncate">{replyTo.content}</span>
+                  </>
+                ) : (
+                  <span className="italic">Original message</span>
+                )}
               </button>
-              <time
-                dateTime={message.createdAt}
-                title={formatFullTime(message.createdAt)}
-                className="text-xs text-ink-muted"
-              >
-                {formatMessageTime(message.createdAt)}
-              </time>
-            </p>
-          )}
+            )}
 
-          {editing ? (
-            <EditForm message={message} onDone={() => setEditing(false)} />
-          ) : (
-            <div className="break-words text-sm leading-relaxed">
-              {!isDirectMediaMessage(message.content) && (
-                <RichText
-                  content={message.content}
-                  mentions={mentionNames}
-                  mentionUsers={mentionUsers}
-                  selfId={selfId}
-                  emojis={emojis}
-                />
-              )}
-              {message.editedAt && (
-                <span
-                  title={formatFullTime(message.editedAt)}
-                  className="ml-1.5 text-[10px] text-ink-muted"
-                >
-                  (edited)
+            <div className="flex gap-3">
+              {compact ? (
+                <span className="w-9 shrink-0 pt-1 text-right text-[10px] leading-5 text-ink-muted opacity-0 group-hover:opacity-100">
+                  {formatMessageTime(message.createdAt).slice(-5)}
                 </span>
-              )}
-            </div>
-          )}
-
-          {!editing && <MessageAttachments attachments={message.attachments} />}
-
-          {!editing && <LinkEmbeds content={message.content} />}
-
-          {/* Reactions */}
-          {message.reactions.length > 0 && (
-            <div className="mt-1 flex flex-wrap gap-1">
-              {message.reactions.map((r) => (
+              ) : (
                 <button
-                  key={r.emoji}
                   type="button"
-                  aria-pressed={r.me}
-                  onClick={() =>
-                    toggleReaction(
-                      {
+                  onClick={() => setProfileOpen(true)}
+                  aria-label={`View ${message.author.displayName}'s profile`}
+                  className="mt-0.5 shrink-0"
+                >
+                  <Avatar user={message.author} />
+                </button>
+              )}
+
+              <div className="min-w-0 flex-1">
+                {!compact && (
+                  <p className="flex items-baseline gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setProfileOpen(true)}
+                      className="font-semibold hover:underline"
+                    >
+                      {message.author.displayName}
+                    </button>
+                    <time
+                      dateTime={message.createdAt}
+                      title={formatFullTime(message.createdAt)}
+                      className="text-xs text-ink-muted"
+                    >
+                      {formatMessageTime(message.createdAt)}
+                    </time>
+                  </p>
+                )}
+
+                {editing ? (
+                  <EditForm message={message} onDone={() => setEditing(false)} />
+                ) : (
+                  <div className="break-words text-sm leading-relaxed">
+                    {!isDirectMediaMessage(message.content) && (
+                      <RichText
+                        content={message.content}
+                        mentions={mentionNames}
+                        mentionUsers={mentionUsers}
+                        selfId={selfId}
+                        emojis={emojis}
+                      />
+                    )}
+                    {message.editedAt && (
+                      <span
+                        title={formatFullTime(message.editedAt)}
+                        className="ml-1.5 text-[10px] text-ink-muted"
+                      >
+                        (edited)
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {!editing && <MessageAttachments attachments={message.attachments} />}
+
+                {!editing && <LinkEmbeds content={message.content} />}
+
+                {/* Reactions */}
+                {message.reactions.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {message.reactions.map((r) => (
+                      <button
+                        key={r.emoji}
+                        type="button"
+                        aria-pressed={r.me}
+                        onClick={() =>
+                          toggleReaction(
+                            {
+                              channelId: message.channelId,
+                              messageId: message.id,
+                              emoji: r.emoji,
+                            },
+                            r.me,
+                          )
+                        }
+                        className={cn(
+                          "flex items-center gap-1 rounded-md border px-2 py-0.5 text-sm transition-colors",
+                          r.me
+                            ? "border-primary bg-primary-soft"
+                            : "border-border bg-surface-2 hover:border-border-strong",
+                        )}
+                      >
+                        <span>{r.emoji}</span>
+                        <span className="text-xs font-semibold text-ink-secondary">{r.count}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Hover actions (tap-toggled on touch) */}
+            {!editing && !pending && (
+              <div
+                className={cn(
+                  "absolute -top-3 right-4 hidden items-center gap-0.5 rounded-lg border border-border bg-surface-2 p-0.5 shadow group-hover:flex",
+                  touchActions && "flex",
+                )}
+              >
+                <ReactionPicker message={message} />
+                <button
+                  type="button"
+                  aria-label="Reply"
+                  onClick={() => onReply(message)}
+                  className="rounded p-1.5 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink md:p-1"
+                >
+                  <Reply aria-hidden className="size-4" />
+                </button>
+                {isOwn && (
+                  <button
+                    type="button"
+                    aria-label="Edit message"
+                    onClick={() => setEditing(true)}
+                    className="rounded p-1.5 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink md:p-1"
+                  >
+                    <Pencil aria-hidden className="size-4" />
+                  </button>
+                )}
+                {(isOwn || canManage) && (
+                  <button
+                    type="button"
+                    aria-label="Delete message"
+                    onClick={() =>
+                      void deleteMessage({
                         channelId: message.channelId,
                         messageId: message.id,
-                        emoji: r.emoji,
-                      },
-                      r.me,
-                    )
-                  }
-                  className={cn(
-                    "flex items-center gap-1 rounded-md border px-2 py-0.5 text-sm transition-colors",
-                    r.me
-                      ? "border-primary bg-primary-soft"
-                      : "border-border bg-surface-2 hover:border-border-strong",
-                  )}
-                >
-                  <span>{r.emoji}</span>
-                  <span className="text-xs font-semibold text-ink-secondary">
-                    {r.count}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+                      })
+                    }
+                    className="rounded p-1.5 text-ink-muted transition-colors hover:bg-surface-3 hover:text-danger md:p-1"
+                  >
+                    <Trash2 aria-hidden className="size-4" />
+                  </button>
+                )}
+              </div>
+            )}
 
-      {/* Hover actions (tap-toggled on touch) */}
-      {!editing && !pending && (
-        <div
-          className={cn(
-            "absolute -top-3 right-4 hidden items-center gap-0.5 rounded-lg border border-border bg-surface-2 p-0.5 shadow group-hover:flex",
-            touchActions && "flex",
-          )}
-        >
-          <ReactionPicker message={message} />
-          <button
-            type="button"
-            aria-label="Reply"
-            onClick={() => onReply(message)}
-            className="rounded p-1.5 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink md:p-1"
-          >
-            <Reply aria-hidden className="size-4" />
-          </button>
-          {isOwn && (
-            <button
-              type="button"
-              aria-label="Edit message"
-              onClick={() => setEditing(true)}
-              className="rounded p-1.5 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink md:p-1"
-            >
-              <Pencil aria-hidden className="size-4" />
-            </button>
-          )}
-          {(isOwn || canManage) && (
-            <button
-              type="button"
-              aria-label="Delete message"
-              onClick={() =>
-                void deleteMessage({
-                  channelId: message.channelId,
-                  messageId: message.id,
-                })
-              }
-              className="rounded p-1.5 text-ink-muted transition-colors hover:bg-surface-3 hover:text-danger md:p-1"
-            >
-              <Trash2 aria-hidden className="size-4" />
-            </button>
-          )}
-        </div>
-      )}
+            {profileOpen && (
+              <ProfileDialog
+                user={message.author}
+                open={profileOpen}
+                onOpenChange={setProfileOpen}
+              />
+            )}
+          </div>
+        </ContextMenuTrigger>
+        {!pending && (
+          <MessageContextMenu
+            message={message}
+            isOwn={isOwn}
+            canManage={canManage}
+            onReply={() => onReply(message)}
+            onEdit={() => setEditing(true)}
+            onForward={() => setForwardOpen(true)}
+            onReport={() => setReportOpen(true)}
+            onTogglePin={() =>
+              void setMessagePinned(message.channelId, message.id, !message.pinned).catch(() => {})
+            }
+          />
+        )}
+      </ContextMenu>
 
-      {profileOpen && (
-        <ProfileDialog
-          user={message.author}
-          open={profileOpen}
-          onOpenChange={setProfileOpen}
-        />
+      {forwardOpen && (
+        <ForwardDialog message={message} open={forwardOpen} onOpenChange={setForwardOpen} />
       )}
-    </div>
+      {reportOpen && (
+        <ReportMessageDialog message={message} open={reportOpen} onOpenChange={setReportOpen} />
+      )}
+    </>
   );
 }

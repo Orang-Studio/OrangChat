@@ -18,14 +18,14 @@ const BASE = "https://chat.oranges.lt/download";
 // Bump these when cutting a release. Filenames are versioned on purpose: the
 // /download/ nginx blocks cache immutably, so a stable name would strand
 // clients on an old build.
-const ANDROID_VER = "0.4.0";
-const DESKTOP_VER = "0.1.0";
+const ANDROID_VER = "0.5.8";
+const DESKTOP_VER = "0.1.5";
 
 const PLATFORMS: Platform[] = [
   {
     id: "android",
     label: "Android",
-    detail: "APK · Android 8.0+",
+    detail: "APK · Android 12+",
     href: `${BASE}/android/orangchat-${ANDROID_VER}.apk`,
     Icon: FaAndroid,
     iconClass: "text-[#3ddc84]",

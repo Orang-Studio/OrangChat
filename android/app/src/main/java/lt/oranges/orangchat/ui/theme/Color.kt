@@ -38,7 +38,7 @@ data class OrangColors(
     val isDark: Boolean,
 )
 
-// Dark — the default. Cool graphite base, vivid tangerine accent.
+// Dark - the default. Cool graphite base, vivid tangerine accent.
 val DarkOrangColors = OrangColors(
     surface0 = Color(0xFF08090C),
     surface1 = Color(0xFF0E0F13),

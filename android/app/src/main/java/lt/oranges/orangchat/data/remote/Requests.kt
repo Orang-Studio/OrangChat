@@ -27,6 +27,19 @@ data class LoginRequest(
     val totpCode: String? = null,
 )
 
+/** Second half of a login: the token from /auth/login plus the mailed code. */
+@Serializable
+data class EmailTwoFactorRequest(
+    val loginToken: String,
+    val code: String,
+)
+
+@Serializable
+data class ResendEmailTwoFactorRequest(val loginToken: String)
+
+@Serializable
+data class OkResult(val ok: Boolean = false)
+
 @Serializable
 data class UpdateMeRequest(
     val username: String? = null,
@@ -42,6 +55,7 @@ data class UpdateMeRequest(
     val dmPrivacy: String? = null,
     val friendRequestPrivacy: String? = null,
     val typingIndicators: Boolean? = null,
+    val e2eeStrict: Boolean? = null,
 )
 
 @Serializable
@@ -57,6 +71,16 @@ data class TwoFactorDisableRequest(val password: String? = null, val code: Strin
 data class TwoFactorStatus(
     val enabled: Boolean = false,
     val backupCodesRemaining: Int = 0,
+)
+
+/** `/health` payload - reports the running backend's build and dependencies. */
+@Serializable
+data class HealthDto(
+    val status: String = "ok",
+    val version: String? = null,
+    val db: String? = null,
+    val redis: String? = null,
+    val uptime: Double = 0.0,
 )
 
 @Serializable
@@ -225,7 +249,31 @@ data class CreateDmRequest(val userIds: List<String>)
 data class SendFriendRequest(val username: String)
 
 @Serializable
-data class SendMessageRequest(val content: String)
+data class SendMessageRequest(
+    val content: String,
+    /**
+     * Set for an end-to-end encrypted conversation (docs/E2EE.md §2). `content`
+     * then goes as the empty string the server stores, and the real text only
+     * exists inside this envelope.
+     */
+    val ciphertext: String? = null,
+    val encEpoch: Int? = null,
+    val encVersion: Int? = null,
+)
+
+@Serializable
+data class ReportMessageRequest(
+    val reason: String? = null,
+    /** One HKDF-derived message key, never the conversation key. */
+    val messageKey: String? = null,
+)
+
+@Serializable
+data class MessageReportReceipt(
+    val id: String,
+    val status: String,
+    val encrypted: Boolean,
+)
 
 @Serializable
 data class CreateRoleRequest(

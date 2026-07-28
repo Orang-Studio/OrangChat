@@ -135,7 +135,7 @@ fun CallHost(modifier: Modifier = Modifier) {
         )
     }
 
-    // "Already on a call", "Everyone else is busy" — otherwise the ack error is
+    // "Already on a call", "Everyone else is busy" - otherwise the ack error is
     // swallowed and tapping call just appears to do nothing. An outright failure
     // to start is the more actionable of the two, so it wins the banner slot.
     val banner = error ?: notice?.message

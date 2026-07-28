@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import type { DmPrivacy, FriendRequestPrivacy, UpdateProfileInput } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
 import { authStoreActions, useAuthStore } from "../../stores/auth";
 import { updateProfile } from "../auth/api";
+import { ConfirmIdentityDialog } from "../e2ee/ConfirmIdentityDialog";
+import { HowEncryptionWorksLink } from "../e2ee/HowEncryptionWorks";
 import { SectionTitle, Toggle } from "./controls";
 
 const DM_OPTIONS: { value: DmPrivacy; label: string; hint: string }[] = [
@@ -62,6 +65,7 @@ function ChoiceList<T extends string>({
 
 export function PrivacyTab() {
   const user = useAuthStore((s) => s.user);
+  const [confirmingOff, setConfirmingOff] = useState(false);
 
   const mutation = useMutation({
     mutationFn: (input: UpdateProfileInput) => updateProfile(input),
@@ -92,6 +96,39 @@ export function PrivacyTab() {
           value={user.friendRequestPrivacy}
           options={REQUEST_OPTIONS}
           onChange={(friendRequestPrivacy) => mutation.mutate({ friendRequestPrivacy })}
+        />
+      </div>
+
+      <div className="space-y-3 border-t border-border pt-5">
+        <SectionTitle>Encryption</SectionTitle>
+        <p className="text-sm leading-relaxed text-ink-secondary">
+          Every direct message is encrypted, always, and that part cannot be switched off. This
+          setting is about how carefully the other person's lock is checked before your messages
+          are sent to it.
+        </p>
+        <Toggle
+          checked={user.e2eeStrict}
+          // Turning it on is free; turning it off is the direction that costs
+          // something, so a session alone must not be able to do it (§6.5).
+          onChange={(e2eeStrict) =>
+            e2eeStrict ? mutation.mutate({ e2eeStrict: true }) : setConfirmingOff(true)
+          }
+          label="Check people before messaging them"
+          hint="With someone new, your messages wait on this device - locked, sent nowhere - until you have seen their code in person or read the numbers to each other on a call. Worth turning on only if you can realistically meet or ring the people you message."
+        />
+        <p className="text-xs leading-relaxed text-ink-muted">
+          Leaving it off is not "unprotected". Every lock is still checked against a logbook that
+          can only be added to, which your own devices read on every start. The difference is
+          whether a swapped lock is stopped before it can be used, or caught right after. Group
+          conversations always send straight away, either way.
+        </p>
+        <HowEncryptionWorksLink />
+        <ConfirmIdentityDialog
+          open={confirmingOff}
+          onOpenChange={setConfirmingOff}
+          onConfirmed={() => mutation.mutate({ e2eeStrict: false })}
+          title="Stop requiring verification"
+          explanation="Turning this off lowers the bar for every new conversation, so it takes more than an open session."
         />
       </div>
 

@@ -6,8 +6,10 @@
  * Strategy:
  *  1. Parse through the browser's CSSOM (a detached document) and re-serialize.
  *     Malformed break-outs like `} body {` cannot survive a real parser.
- *  2. Keep only style / @media / @supports / @keyframes rules - drop @import,
- *     @font-face, @page, etc. (no external stylesheet or font loads).
+ *  2. Keep only style rules and the grouping at-rules that can't reach outside
+ *     the sheet - @media, @supports, @container, @starting-style, @layer and
+ *     @keyframes. Drop @import, @font-face, @page, etc. (no external stylesheet
+ *     or font loads).
  *  3. Prefix every selector with a unique per-card scope class, so rules can
  *     only ever match that card's own (public) DOM - never the surrounding app.
  *  4. Strip declarations that enable escape / exfiltration / legacy scripting:
@@ -24,6 +26,23 @@ const MAX_LEN = 100_000;
 // url(...) where the argument is not a data: URI.
 const EXTERNAL_URL = /url\(\s*['"]?(?!data:)/i;
 const DANGEROUS_TOKEN = /(expression\(|javascript:|-moz-binding|behavior\s*:|@import|@charset)/i;
+
+/** Plain dotted ident, e.g. `card` or `theme.dark`; anything else is refused. */
+const LAYER_NAME = /^[\w-]+(\.[\w-]+)*$/;
+
+/** Grouping rules that only exist in newer engines, so they can't be named directly. */
+type GroupingRule = CSSRule & {
+  cssRules: CSSRuleList;
+  containerName?: string;
+  containerQuery?: string;
+  name?: string;
+};
+
+/** `rule instanceof <name>` for a constructor that may not exist in this browser. */
+function isRule(name: string, rule: CSSRule): rule is GroupingRule {
+  const ctor = (globalThis as Record<string, unknown>)[name];
+  return typeof ctor === "function" && rule instanceof (ctor as new () => CSSRule);
+}
 
 /** Split a selector list on top-level commas (ignoring commas inside :is()/:not()). */
 function splitSelectorList(selector: string): string[] {
@@ -81,6 +100,23 @@ function processRules(rules: CSSRuleList, scope: string): string {
     } else if (rule instanceof CSSSupportsRule) {
       const inner = processRules(rule.cssRules, scope);
       if (inner) css += `@supports ${rule.conditionText} { ${inner} }\n`;
+    } else if (isRule("CSSContainerRule", rule)) {
+      // Container queries let a card react to its own width - the profile popup
+      // and the settings preview render it at different sizes.
+      const inner = processRules(rule.cssRules, scope);
+      const name = LAYER_NAME.test(rule.containerName ?? "") ? `${rule.containerName} ` : "";
+      if (inner) css += `@container ${name}${rule.containerQuery} { ${inner} }\n`;
+    } else if (isRule("CSSStartingStyleRule", rule)) {
+      // Entry animations without keyframes. Carries no prelude, so nothing to sanitize.
+      const inner = processRules(rule.cssRules, scope);
+      if (inner) css += `@starting-style { ${inner} }\n`;
+    } else if (isRule("CSSLayerBlockRule", rule)) {
+      // Cascade layers are purely local ordering. The name is an ident that can
+      // encode braces via \XX escapes, so an unrecognised one becomes anonymous
+      // rather than being spliced back into the sheet.
+      const inner = processRules(rule.cssRules, scope);
+      const name = LAYER_NAME.test(rule.name ?? "") ? ` ${rule.name}` : "";
+      if (inner) css += `@layer${name} { ${inner} }\n`;
     } else if (rule instanceof CSSKeyframesRule) {
       // Keyframes are keyed by name and can only affect elements that reference
       // them (which are all scoped). Rebuild frames through the declaration

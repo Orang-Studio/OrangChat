@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ExternalLink } from 'lucide-react';
 import type { Attachment } from '@orangchat/shared';
 import { getLinkPreview } from './link-preview-api';
+import { getMediaProxyUrl } from './media-proxy-api';
 import { InviteCard } from '../servers/InviteCard';
 import { parseInviteUrl } from '../servers/invite-url';
 import { AudioAttachment, ImagePreview, VideoAttachment } from './MessageAttachments';
@@ -109,13 +110,29 @@ function YoutubeEmbed({ url, video }: { url: URL; video: { id: string; start?: n
 }
 
 function DirectMediaEmbed({ url }: { url: URL }) {
+  const href = url.toString();
+  // The bytes are fetched through our signed same-origin proxy, never straight
+  // from the remote host, so rendering the media can't hand the poster a log of
+  // every viewer's IP. Until the signed URL arrives there's nothing to load.
+  const { data: proxied, isError } = useQuery({
+    queryKey: ['media-proxy', href],
+    queryFn: ({ signal }) => getMediaProxyUrl(href, signal),
+    staleTime: 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    retry: false,
+  });
+  // Not proxyable (private host, too large, not really media): fall back to a
+  // plain link card, which only ever touches our origin.
+  if (isError) return <PageEmbed url={url} />;
+  if (!proxied) return null;
+
   const filename = (() => {
     const raw = url.pathname.split('/').filter(Boolean).at(-1) ?? 'media';
     try { return decodeURIComponent(raw); } catch { return raw; }
   })();
   const attachment = (contentType: string): Attachment => ({
-    id: `link-${url.toString()}`,
-    url: url.toString(),
+    id: `link-${href}`,
+    url: proxied,
     filename,
     contentType,
     size: 0,

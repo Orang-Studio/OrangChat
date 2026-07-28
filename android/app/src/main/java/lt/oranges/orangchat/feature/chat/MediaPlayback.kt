@@ -26,7 +26,7 @@ import androidx.media3.exoplayer.ExoPlayer
  * channel with a dozen attachments opens one stream rather than a dozen, and
  * playback survives its row being recycled out of the list. Handing the same
  * player between the inline surface and the full-screen one is what makes
- * expanding seamless — the surface changes, the playback does not.
+ * expanding seamless - the surface changes, the playback does not.
  *
  * Main-thread only.
  */

@@ -40,7 +40,7 @@ class GifFavoritesStore @Inject constructor(@ApplicationContext context: Context
     }
 
     // A store written by an older build, or hand-edited, is not worth crashing
-    // over — an empty favorites tab is recoverable, a boot loop is not.
+    // over - an empty favorites tab is recoverable, a boot loop is not.
     private fun read(): List<KlipyGif> = runCatching {
         prefs.getString(KEY_FAVORITES, null)?.let { json.decodeFromString<List<KlipyGif>>(it) }
     }.getOrNull().orEmpty()

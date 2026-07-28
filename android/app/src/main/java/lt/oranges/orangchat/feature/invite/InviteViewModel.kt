@@ -19,7 +19,7 @@ import javax.inject.Inject
 data class InviteUiState(
     val resolving: Boolean = false,
     val preview: InvitePreview? = null,
-    /** The invite doesn't resolve at all — expired, revoked, or never existed. */
+    /** The invite doesn't resolve at all - expired, revoked, or never existed. */
     val invalid: Boolean = false,
     val joining: Boolean = false,
     val error: String? = null,

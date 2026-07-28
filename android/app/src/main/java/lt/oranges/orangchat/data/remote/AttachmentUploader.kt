@@ -4,12 +4,16 @@ import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.graphics.BitmapFactory
+import android.graphics.Bitmap
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import lt.oranges.orangchat.data.model.Attachment
+import lt.oranges.orangchat.crypto.E2ee
+import lt.oranges.orangchat.crypto.SealedAttachmentRef
 import lt.oranges.orangchat.util.BACKEND_ORIGIN
 import okhttp3.Call
 import okhttp3.Callback
@@ -20,10 +24,19 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.Response
 import okio.BufferedSink
+import okio.buffer
 import org.json.JSONObject
 import java.io.IOException
+import java.io.File
+import java.io.FileOutputStream
+import java.io.FileInputStream
+import javax.crypto.Cipher
+import javax.crypto.CipherOutputStream
+import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
@@ -34,12 +47,12 @@ import kotlin.coroutines.resumeWithException
  * Turns a picked file into an attachment id that [SocketManager.sendMessage] can
  * reference. Which route it takes depends only on size:
  *
- * * **<= 10MB** — posted to OrangChat, which keeps it as long as the message.
- * * **> 10MB** — posted straight to OrangMove, then registered with OrangChat by
+ * * **<= 10MB** - posted to OrangChat, which keeps it as long as the message.
+ * * **> 10MB** - posted straight to OrangMove, then registered with OrangChat by
  *   token. The bytes never pass through OrangChat, so a big file is only
  *   uploaded once.
  *
- * OrangMove is an ephemeral store — an hour is the longest it keeps anything —
+ * OrangMove is an ephemeral store - an hour is the longest it keeps anything -
  * so large attachments come back with an `expiresAt` and stop resolving after
  * it. Nothing here can extend that; the UI shows the deadline instead.
  */
@@ -114,6 +127,171 @@ class AttachmentUploader @Inject constructor(
         else uploadToChat(uri, info, onProgress)
     }
 
+    data class SealedUpload(
+        val attachment: Attachment,
+        val ref: SealedAttachmentRef,
+    )
+
+    /**
+     * Encrypts before upload. The temporary file contains ciphertext only; the
+     * filename, MIME type, key and nonce travel inside the E2EE message payload.
+     * Streaming through CipherOutputStream avoids holding a large file in heap.
+     */
+    suspend fun uploadSealed(
+        uri: Uri,
+        info: FileInfo = describe(uri),
+        onProgress: (Float) -> Unit = {},
+    ): SealedUpload = withContext(Dispatchers.IO) {
+        if (info.size <= 0L) throw IOException("\"${info.name}\" is empty")
+        if (info.size > MAX_ATTACHMENT) throw IOException("\"${info.name}\" is over the 1GB limit")
+
+        val fileId = E2ee.toHex(E2ee.randomBytes(16))
+        val key = E2ee.randomBytes(32)
+        val nonce = E2ee.randomBytes(12)
+        val temp = File.createTempFile("sealed-", ".ocf", context.cacheDir)
+        try {
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(
+                Cipher.ENCRYPT_MODE,
+                SecretKeySpec(key, "AES"),
+                GCMParameterSpec(128, nonce),
+            )
+            cipher.updateAAD(E2ee.attachmentAad(fileId))
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                CipherOutputStream(FileOutputStream(temp), cipher).use { output ->
+                    input.copyTo(output, 64 * 1024)
+                }
+            } ?: throw IOException("Could not open \"${info.name}\"")
+
+            val sealedInfo = FileInfo("sealed.ocf", temp.length(), "application/octet-stream")
+            val attachment = if (sealedInfo.isEphemeral) {
+                uploadFileViaOrangMove(temp, sealedInfo, onProgress)
+            } else {
+                uploadSealedFileToChat(temp, sealedInfo, onProgress)
+            }
+            val dimensions = imageDimensions(uri, info.mimeType)
+            val thumbnail = createThumbnail(uri, info.mimeType)?.let { plain ->
+                try {
+                    sealThumbnail(plain)
+                } catch (_: Exception) {
+                    null
+                } finally {
+                    plain.delete()
+                }
+            }
+            SealedUpload(
+                attachment,
+                SealedAttachmentRef(
+                    fileId = fileId,
+                    attachmentId = attachment.id,
+                    key = E2ee.toBase64(key),
+                    nonce = E2ee.toBase64(nonce),
+                    filename = info.name,
+                    contentType = info.mimeType ?: "application/octet-stream",
+                    size = info.size,
+                    width = dimensions?.first,
+                    height = dimensions?.second,
+                    thumb = thumbnail,
+                ),
+            )
+        } finally {
+            temp.delete()
+        }
+    }
+
+    /**
+     * Makes the preview on-device. Cloudinary never receives readable pixels in
+     * an E2EE conversation, so it cannot make this transformation for us.
+     */
+    private fun createThumbnail(uri: Uri, mimeType: String?): File? {
+        if (mimeType?.startsWith("image/") != true) return null
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        context.contentResolver.openInputStream(uri)?.use {
+            BitmapFactory.decodeStream(it, null, bounds)
+        }
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
+        var sample = 1
+        while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 800) sample *= 2
+        val decoded = context.contentResolver.openInputStream(uri)?.use {
+            BitmapFactory.decodeStream(
+                it,
+                null,
+                BitmapFactory.Options().apply { inSampleSize = sample },
+            )
+        } ?: return null
+        val scale = minOf(1f, 400f / maxOf(decoded.width, decoded.height))
+        val width = maxOf(1, (decoded.width * scale).toInt())
+        val height = maxOf(1, (decoded.height * scale).toInt())
+        val resized = if (width == decoded.width && height == decoded.height) {
+            decoded
+        } else {
+            Bitmap.createScaledBitmap(decoded, width, height, true)
+        }
+        val output = File.createTempFile("thumb-", ".jpg", context.cacheDir)
+        return try {
+            FileOutputStream(output).use {
+                if (!resized.compress(Bitmap.CompressFormat.JPEG, 80, it)) {
+                    throw IOException("Could not create image preview")
+                }
+            }
+            output
+        } catch (_: Exception) {
+            output.delete()
+            null
+        } finally {
+            if (resized !== decoded) resized.recycle()
+            decoded.recycle()
+        }
+    }
+
+    /** Seals and uploads a generated preview as a second opaque blob. */
+    private suspend fun sealThumbnail(plain: File): SealedAttachmentRef.Thumb {
+        val fileId = E2ee.toHex(E2ee.randomBytes(16))
+        val key = E2ee.randomBytes(32)
+        val nonce = E2ee.randomBytes(12)
+        val sealed = File.createTempFile("sealed-thumb-", ".ocf", context.cacheDir)
+        try {
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(
+                Cipher.ENCRYPT_MODE,
+                SecretKeySpec(key, "AES"),
+                GCMParameterSpec(128, nonce),
+            )
+            cipher.updateAAD(E2ee.attachmentAad(fileId))
+            FileInputStream(plain).use { input ->
+                CipherOutputStream(FileOutputStream(sealed), cipher).use { output ->
+                    input.copyTo(output, 32 * 1024)
+                }
+            }
+            val info = FileInfo("sealed.ocf", sealed.length(), "application/octet-stream")
+            val attachment = uploadSealedFileToChat(sealed, info) {}
+            return SealedAttachmentRef.Thumb(
+                fileId = fileId,
+                attachmentId = attachment.id,
+                key = E2ee.toBase64(key),
+                nonce = E2ee.toBase64(nonce),
+                contentType = "image/jpeg",
+                size = plain.length(),
+            )
+        } finally {
+            sealed.delete()
+        }
+    }
+
+    private fun imageDimensions(uri: Uri, mimeType: String?): Pair<Int, Int>? {
+        if (mimeType?.startsWith("image/") != true) return null
+        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        context.contentResolver.openInputStream(uri)?.use {
+            BitmapFactory.decodeStream(it, null, options)
+        }
+        return if (options.outWidth > 0 && options.outHeight > 0) {
+            options.outWidth to options.outHeight
+        } else {
+            null
+        }
+    }
+
     private fun body(uri: Uri, info: FileInfo, onProgress: (Float) -> Unit): RequestBody =
         UriRequestBody(
             resolver = context.contentResolver,
@@ -137,6 +315,31 @@ class AttachmentUploader @Inject constructor(
         return chatClient.newCall(request).await().use { response ->
             val text = response.body?.string().orEmpty()
             if (!response.isSuccessful) throw IOException(errorFrom(text, "Upload failed"))
+            json.decodeFromString<Attachment>(text)
+        }
+    }
+
+    private suspend fun uploadSealedFileToChat(
+        file: File,
+        info: FileInfo,
+        onProgress: (Float) -> Unit,
+    ): Attachment {
+        val requestBody = ProgressRequestBody(
+            file.asRequestBody(info.mimeType?.toMediaTypeOrNull()),
+            file.length(),
+            onProgress,
+        )
+        val form = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("file", "sealed.ocf", requestBody)
+            .build()
+        val request = Request.Builder()
+            .url("${baseUrl}uploads/attachment?sealed=1")
+            .post(form)
+            .build()
+        return chatClient.newCall(request).await().use { response ->
+            val text = response.body?.string().orEmpty()
+            if (!response.isSuccessful) throw IOException(errorFrom(text, "Encrypted upload failed"))
             json.decodeFromString<Attachment>(text)
         }
     }
@@ -172,6 +375,35 @@ class AttachmentUploader @Inject constructor(
         return registerExternal(token)
     }
 
+    private suspend fun uploadFileViaOrangMove(
+        file: File,
+        info: FileInfo,
+        onProgress: (Float) -> Unit,
+    ): Attachment {
+        val requestBody = ProgressRequestBody(
+            file.asRequestBody(info.mimeType?.toMediaTypeOrNull()),
+            file.length(),
+            onProgress,
+        )
+        val form = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("ttl", ORANGMOVE_TTL_SECONDS.toString())
+            .addFormDataPart("file", "sealed.ocf", requestBody)
+            .build()
+        val request = Request.Builder()
+            .url("$BACKEND_ORIGIN/orangmove/upload")
+            .post(form)
+            .build()
+        val token = orangMoveClient.newCall(request).await().use { response ->
+            val text = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                throw IOException(errorFrom(text, "The file service rejected the encrypted file"))
+            }
+            JSONObject(text).getString("token")
+        }
+        return registerExternal(token)
+    }
+
     /**
      * Hand the token to OrangChat, which reads the file's real name and size back
      * from OrangMove rather than trusting anything sent from here.
@@ -201,9 +433,31 @@ class AttachmentUploader @Inject constructor(
     }
 }
 
+private class ProgressRequestBody(
+    private val delegate: RequestBody,
+    private val size: Long,
+    private val onProgress: (Float) -> Unit,
+) : RequestBody() {
+    override fun contentType() = delegate.contentType()
+    override fun contentLength() = delegate.contentLength()
+    override fun writeTo(sink: BufferedSink) {
+        val forwarding = object : okio.ForwardingSink(sink) {
+            var sent = 0L
+            override fun write(source: okio.Buffer, byteCount: Long) {
+                super.write(source, byteCount)
+                sent += byteCount
+                onProgress((sent.toFloat() / size.coerceAtLeast(1L)).coerceIn(0f, 1f))
+            }
+        }
+        val buffered = forwarding.buffer()
+        delegate.writeTo(buffered)
+        buffered.flush()
+    }
+}
+
 /**
  * Streams the picked file straight from the content provider. Reading it into a
- * ByteArray first would mean holding up to a gigabyte in the heap — an OOM on
+ * ByteArray first would mean holding up to a gigabyte in the heap - an OOM on
  * any real device.
  */
 private class UriRequestBody(

@@ -1,0 +1,1 @@
+- Fixed newly sent messages disappearing from encrypted conversations until the app was reloaded.

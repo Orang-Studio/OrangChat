@@ -22,6 +22,13 @@ export const sendFriendRequest = (username: string) =>
     json: { username },
   });
 
+/** What a scanned contact code identifies someone by (docs/E2EE.md §6.7). */
+export const sendFriendRequestById = (userId: string) =>
+  api<SendFriendResult>("/friends/requests", {
+    method: "POST",
+    json: { userId },
+  });
+
 export const acceptFriendRequest = (id: string) =>
   api<Friend>(`/friends/requests/${id}/accept`, { method: "POST" });
 

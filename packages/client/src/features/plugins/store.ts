@@ -1,6 +1,12 @@
+import { useMemo } from "react";
 import { create } from "zustand";
 import { PLUGINS, pluginById } from "./registry";
-import { pluginDefaults, type PluginContext, type PluginSettingValues } from "./types";
+import {
+  pluginDefaults,
+  type PluginContext,
+  type PluginMessageAction,
+  type PluginSettingValues,
+} from "./types";
 
 /**
  * Which plugins are on, and what their settings hold. Device-local, like the
@@ -136,6 +142,46 @@ export const usePlugins = create<PluginStore>((set, get) => ({
     set({ settings });
   },
 }));
+
+/**
+ * Message-menu entries contributed by enabled plugins. The context passed to a
+ * handler is the same narrow one `start` gets, so an action can inject CSS or
+ * read its own settings and nothing more.
+ */
+export function usePluginMessageActions(): {
+  pluginId: string;
+  pluginName: string;
+  action: PluginMessageAction;
+  ctx: PluginContext;
+}[] {
+  const enabled = usePlugins((s) => s.enabled);
+  const settings = usePlugins((s) => s.settings);
+  return useMemo(
+    () =>
+      enabled.flatMap((id) => {
+        const plugin = pluginById(id);
+        if (!plugin?.messageActions?.length) return [];
+        const values = { ...pluginDefaults(plugin), ...(settings[id] ?? {}) };
+        const ctx: PluginContext = {
+          css: (text) => {
+            const el = document.createElement("style");
+            el.dataset.plugin = id;
+            el.textContent = text;
+            document.head.appendChild(el);
+            return () => el.remove();
+          },
+          setting: <T extends string | boolean>(key: string) => values[key] as T | undefined,
+        };
+        return plugin.messageActions.map((action) => ({
+          pluginId: id,
+          pluginName: plugin.name,
+          action,
+          ctx,
+        }));
+      }),
+    [enabled, settings],
+  );
+}
 
 /** Start every enabled plugin. Called once at app boot. */
 export function initPlugins(): void {

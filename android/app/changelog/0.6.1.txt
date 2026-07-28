@@ -1,0 +1,4 @@
+- Fixed logging in. Sign-in was failing outright with an error about missing fields; the app now follows the new two-step sign-in.
+- After your password, we email you a six-digit code to finish signing in. You can ask for a new code if the first one does not arrive.
+- Sign-in problems now say what actually went wrong - an unverified email or a locked-down account no longer shows up as "invalid email or password".
+- Creating an account now tells you to open the verification link in your email instead of silently failing.

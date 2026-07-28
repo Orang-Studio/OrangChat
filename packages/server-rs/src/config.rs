@@ -15,6 +15,12 @@ pub struct Config {
     pub jwt_refresh_secret: String,
     pub access_ttl_seconds: i64,
     pub refresh_ttl_seconds: i64,
+    /// Optional Google reCAPTCHA v2 keys. Both are required to enable it.
+    pub recaptcha_site_key: Option<String>,
+    pub recaptcha_secret_key: Option<String>,
+    /// Resend is used for account-verification and email sign-in codes.
+    pub resend_api_key: Option<String>,
+    pub email_from: String,
     pub google_client_id: Option<String>,
     pub google_client_secret: Option<String>,
     pub discord_client_id: Option<String>,
@@ -70,14 +76,12 @@ pub struct Config {
     /// verification shouldn't depend on DNS or TLS, and the token is a bearer
     /// secret better kept off the public internet.
     pub orangmove_api_url: String,
-    /// How many accounts get the `early_member` badge at signup. 0 disables the
-    /// automatic award entirely (the badge can still be granted by hand).
-    pub early_member_limit: i64,
-    /// Lowercased emails awarded the `early_developer` / `bonfire` badges,
-    /// reconciled at boot. `None` (env var unset) leaves the badge alone; an
-    /// empty list revokes it from everyone. See services::badge.
-    pub early_developer_emails: Option<Vec<String>>,
-    pub bonfire_emails: Option<Vec<String>>,
+    /// Path to the JSON file mapping each hand-awarded badge to the user IDs
+    /// that hold it, reconciled at boot. A badge key present in the file is the
+    /// whole truth for that badge (grant to the listed users, revoke from the
+    /// rest); a key that's absent - or a missing file - leaves the badge alone.
+    /// See services::badge.
+    pub badges_file: String,
 }
 
 impl Config {
@@ -116,6 +120,11 @@ impl Config {
                 .unwrap_or_else(|_| "dev-refresh-secret-change-me".into()),
             access_ttl_seconds: duration_to_seconds(&access_ttl)?,
             refresh_ttl_seconds: duration_to_seconds(&refresh_ttl)?,
+            recaptcha_site_key: opt("RECAPTCHA_SITE_KEY"),
+            recaptcha_secret_key: opt("RECAPTCHA_SECRET_KEY"),
+            resend_api_key: opt("RESEND_API_KEY"),
+            email_from: env::var("EMAIL_FROM")
+                .unwrap_or_else(|_| "OrangChat <noreply@oranges.lt>".into()),
             google_client_id: opt("GOOGLE_CLIENT_ID"),
             google_client_secret: opt("GOOGLE_CLIENT_SECRET"),
             discord_client_id: opt("DISCORD_CLIENT_ID"),
@@ -153,12 +162,10 @@ impl Config {
                 .unwrap_or_else(|_| "http://127.0.0.1:8080/api".into())
                 .trim_end_matches('/')
                 .to_string(),
-            early_member_limit: env::var("EARLY_MEMBER_LIMIT")
+            badges_file: env::var("BADGES_FILE")
                 .ok()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(1000),
-            early_developer_emails: email_list("EARLY_DEVELOPER_EMAILS"),
-            bonfire_emails: email_list("BONFIRE_EMAILS"),
+                .filter(|v| !v.is_empty())
+                .unwrap_or_else(|| "badges.json".into()),
         })
     }
 }
@@ -189,18 +196,6 @@ fn req(key: &str) -> Result<String, String> {
 
 fn opt(key: &str) -> Option<String> {
     env::var(key).ok().filter(|v| !v.is_empty())
-}
-
-/// Comma-separated emails, lowercased to match the `lower(email)` index.
-/// Distinguishes unset (None) from set-but-empty (Some(vec![])) — the two mean
-/// opposite things to badge reconciliation.
-fn email_list(key: &str) -> Option<Vec<String>> {
-    env::var(key).ok().map(|raw| {
-        raw.split(',')
-            .map(|e| e.trim().to_lowercase())
-            .filter(|e| !e.is_empty())
-            .collect()
-    })
 }
 
 /// Returns (public_key, private_key, subject), or None when Web Push is simply
@@ -300,6 +295,23 @@ fn parse_cloudinary_url(raw: &str) -> Result<(String, String, String), String> {
     ))
 }
 
+/// Parse a duration like "15m", "30d", "45s", "12h" into seconds. Matches tokens.ts.
+pub fn duration_to_seconds(input: &str) -> Result<i64, String> {
+    let s = input.trim();
+    let (num, unit) = s.split_at(s.len().saturating_sub(1));
+    let value: i64 = num
+        .parse()
+        .map_err(|_| format!("Invalid duration: {input}"))?;
+    let mult = match unit {
+        "s" => 1,
+        "m" => 60,
+        "h" => 3600,
+        "d" => 86_400,
+        _ => return Err(format!("Invalid duration: {input}")),
+    };
+    Ok(value * mult)
+}
+
 #[cfg(test)]
 mod cloudinary_url_tests {
     use super::{parse_attachment_encryption_key, parse_cloudinary_url, STANDARD};
@@ -351,21 +363,4 @@ mod cloudinary_url_tests {
         assert!(parse_attachment_encryption_key("not base64!").is_err());
         assert!(parse_attachment_encryption_key(&STANDARD.encode([1_u8; 31])).is_err());
     }
-}
-
-/// Parse a duration like "15m", "30d", "45s", "12h" into seconds. Matches tokens.ts.
-pub fn duration_to_seconds(input: &str) -> Result<i64, String> {
-    let s = input.trim();
-    let (num, unit) = s.split_at(s.len().saturating_sub(1));
-    let value: i64 = num
-        .parse()
-        .map_err(|_| format!("Invalid duration: {input}"))?;
-    let mult = match unit {
-        "s" => 1,
-        "m" => 60,
-        "h" => 3600,
-        "d" => 86_400,
-        _ => return Err(format!("Invalid duration: {input}")),
-    };
-    Ok(value * mult)
 }

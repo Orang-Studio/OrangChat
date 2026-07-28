@@ -71,12 +71,10 @@ pub async fn delete_channel(state: &AppState, channel_id: &str) -> AppResult<()>
     // systemChannelId/afkChannelId are soft pointers with no FK, so nothing else
     // clears them. Leaving a dangling id would make the setting silently inert
     // and show a blank in the settings UI.
-    sqlx::query(
-        r#"UPDATE "Server" SET "systemChannelId" = NULL WHERE "systemChannelId" = $1"#,
-    )
-    .bind(channel_id)
-    .execute(&mut *tx)
-    .await?;
+    sqlx::query(r#"UPDATE "Server" SET "systemChannelId" = NULL WHERE "systemChannelId" = $1"#)
+        .bind(channel_id)
+        .execute(&mut *tx)
+        .await?;
     sqlx::query(r#"UPDATE "Server" SET "afkChannelId" = NULL WHERE "afkChannelId" = $1"#)
         .bind(channel_id)
         .execute(&mut *tx)
@@ -113,7 +111,8 @@ pub async fn update_channel(
         sep.push(r#"nsfw = "#).push_bind_unseparated(nsfw);
     }
     if let Some(rate) = patch.rate_limit_per_user {
-        sep.push(r#""rateLimitPerUser" = "#).push_bind_unseparated(rate);
+        sep.push(r#""rateLimitPerUser" = "#)
+            .push_bind_unseparated(rate);
     }
     if let Some(limit) = patch.user_limit {
         sep.push(r#""userLimit" = "#).push_bind_unseparated(limit);
@@ -197,12 +196,12 @@ pub async fn reorder_channels(
     }
     tx.commit().await?;
 
-    Ok(sqlx::query_as(
-        r#"SELECT * FROM "Channel" WHERE "serverId" = $1 ORDER BY position ASC"#,
+    Ok(
+        sqlx::query_as(r#"SELECT * FROM "Channel" WHERE "serverId" = $1 ORDER BY position ASC"#)
+            .bind(server_id)
+            .fetch_all(&state.pool)
+            .await?,
     )
-    .bind(server_id)
-    .fetch_all(&state.pool)
-    .await?)
 }
 
 // ── Overwrites ──────────────────────────────────────────

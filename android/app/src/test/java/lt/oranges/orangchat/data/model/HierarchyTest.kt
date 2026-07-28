@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Mirrors the escalation cases covered by services/membership.rs's own tests —
+ * Mirrors the escalation cases covered by services/membership.rs's own tests -
  * these gates are what keeps a moderator from self-granting ADMINISTRATOR.
  */
 class HierarchyTest {

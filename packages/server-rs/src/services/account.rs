@@ -65,14 +65,16 @@ pub async fn standing(state: &AppState, user_id: &str) -> AppResult<Vec<Standing
 
     let mut out: Vec<StandingEntry> = bans
         .into_iter()
-        .map(|(server_id, server_name, reason, created_at)| StandingEntry {
-            kind: "ban".into(),
-            server_id,
-            server_name,
-            reason,
-            expires_at: None,
-            created_at: Some(crate::timefmt::iso(created_at)),
-        })
+        .map(
+            |(server_id, server_name, reason, created_at)| StandingEntry {
+                kind: "ban".into(),
+                server_id,
+                server_name,
+                reason,
+                expires_at: None,
+                created_at: Some(crate::timefmt::iso(created_at)),
+            },
+        )
         .collect();
 
     out.extend(
@@ -197,9 +199,6 @@ pub async fn delete_account(state: &AppState, user_id: &str) -> AppResult<()> {
         r#"DELETE FROM "ChannelParticipant" WHERE "userId" = $1"#,
         r#"DELETE FROM "Invite" WHERE "inviterId" = $1"#,
         r#"DELETE FROM "PendingAttachment" WHERE "uploaderId" = $1"#,
-        // Unpublished themes are personal; published ones are shared content and
-        // stay, like the user's messages.
-        r#"DELETE FROM "Theme" WHERE "authorId" = $1 AND published = false"#,
     ] {
         sqlx::query(stmt).bind(user_id).execute(&mut *tx).await?;
     }

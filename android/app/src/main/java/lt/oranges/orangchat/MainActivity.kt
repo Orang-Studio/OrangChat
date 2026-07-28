@@ -16,7 +16,11 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
@@ -26,6 +30,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import lt.oranges.orangchat.feature.invite.PendingInviteStore
 import lt.oranges.orangchat.feature.qrlogin.PendingQrLoginStore
+import lt.oranges.orangchat.feature.verify.PendingVerifyStore
+import lt.oranges.orangchat.feature.transfer.PendingTransferStore
 import lt.oranges.orangchat.feature.qrlogin.QrLoginLink
 import lt.oranges.orangchat.feature.share.PendingShare
 import lt.oranges.orangchat.feature.share.PendingShareStore
@@ -34,6 +40,9 @@ import lt.oranges.orangchat.feature.voice.CallHost
 import lt.oranges.orangchat.feature.voice.CallManager
 import lt.oranges.orangchat.navigation.OrangChatNavHost
 import lt.oranges.orangchat.feature.settings.ThemeViewModel
+import lt.oranges.orangchat.feature.updates.UpdateAvailableDialog
+import lt.oranges.orangchat.feature.updates.UpdateUiState
+import lt.oranges.orangchat.feature.updates.UpdateViewModel
 import lt.oranges.orangchat.ui.theme.OrangChatTheme
 import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.notifications.NotificationHelper
@@ -46,6 +55,8 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var pendingInviteStore: PendingInviteStore
     @Inject lateinit var pendingShareStore: PendingShareStore
     @Inject lateinit var pendingQrLoginStore: PendingQrLoginStore
+    @Inject lateinit var pendingVerifyStore: PendingVerifyStore
+    @Inject lateinit var pendingTransferStore: PendingTransferStore
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,6 +69,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             val themeVm: ThemeViewModel = hiltViewModel()
             val settingsVm: SettingsViewModel = hiltViewModel()
+            val updateVm: UpdateViewModel = hiltViewModel()
+            val updateState by updateVm.state.collectAsStateWithLifecycle()
+            var dismissedUpdateVersion by rememberSaveable { mutableStateOf<String?>(null) }
+            LaunchedEffect(Unit) { updateVm.check() }
             val pref by themeVm.preference.collectAsStateWithLifecycle()
             val devicePrefs by settingsVm.prefs.collectAsStateWithLifecycle()
             OrangChatTheme(preference = pref) {
@@ -83,6 +98,18 @@ class MainActivity : ComponentActivity() {
                     ) {
                         OrangChatNavHost()
                         CallHost()
+                        (updateState as? UpdateUiState.Available)?.let { available ->
+                            if (dismissedUpdateVersion != available.manifest.versionName) {
+                                UpdateAvailableDialog(
+                                    manifest = available.manifest,
+                                    onDismiss = { dismissedUpdateVersion = available.manifest.versionName },
+                                    onUpdate = {
+                                        if (updateVm.canInstall()) updateVm.download(available.manifest)
+                                        else startActivity(updateVm.installPermissionIntent())
+                                    },
+                                )
+                            }
+                        }
                     }
                 }
                 }
@@ -101,7 +128,7 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Show over the lockscreen and wake the screen only for a ringing call —
+     * Show over the lockscreen and wake the screen only for a ringing call -
      * that alone justifies taking over a locked phone. Every other launch (a
      * message tap, the launcher) must respect the keyguard, so the flags are set
      * per-intent here rather than declared statically in the manifest, where
@@ -122,7 +149,7 @@ class MainActivity : ComponentActivity() {
 
     /**
      * Park an invite link the app was opened with. The join UI lives inside the
-     * authenticated shell, which may not exist yet — the store holds the code
+     * authenticated shell, which may not exist yet - the store holds the code
      * until it does, even if that means waiting out a whole sign-in.
      */
     private fun captureInviteLink(intent: Intent?) {
@@ -137,7 +164,13 @@ class MainActivity : ComponentActivity() {
      */
     private fun captureQrLogin(intent: Intent?) {
         if (intent?.action != Intent.ACTION_VIEW) return
-        intent.data?.toString()?.let(QrLoginLink::tokenFrom)?.let(pendingQrLoginStore::offer)
+        val raw = intent.data?.toString() ?: return
+        QrLoginLink.tokenFrom(raw)?.let(pendingQrLoginStore::offer)
+        // A contact code scanned with the phone's own camera lands here too. The
+        // stores reject anything of the wrong kind by name, which is the whole
+        // point of the type tags: one of these three codes authorises a device.
+        pendingVerifyStore.offer(raw)
+        pendingTransferStore.offer(raw)
     }
 
     /** Capture text, links, and content URIs sent through Android's share sheet. */

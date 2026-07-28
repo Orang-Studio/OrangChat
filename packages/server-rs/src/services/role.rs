@@ -42,14 +42,17 @@ pub async fn create_role(
         .as_deref()
         .map(permissions::parse)
         .unwrap_or(0);
-    let actor_perms = membership::require_permission(state, server_id, actor_id, MANAGE_ROLES).await?;
+    let actor_perms =
+        membership::require_permission(state, server_id, actor_id, MANAGE_ROLES).await?;
     membership::assert_no_escalation(actor_perms, 0, perms)?;
 
     let mut tx = state.pool.begin().await?;
-    sqlx::query(r#"UPDATE "Role" SET position = position + 1 WHERE "serverId" = $1 AND position >= 1"#)
-        .bind(server_id)
-        .execute(&mut *tx)
-        .await?;
+    sqlx::query(
+        r#"UPDATE "Role" SET position = position + 1 WHERE "serverId" = $1 AND position >= 1"#,
+    )
+    .bind(server_id)
+    .execute(&mut *tx)
+    .await?;
     let row = sqlx::query_as::<_, RoleRow>(
         r#"INSERT INTO "Role" (id, "serverId", name, color, permissions, position, hoist, mentionable)
            VALUES ($1, $2, $3, $4, $5, 1, $6, $7) RETURNING *"#,
@@ -86,7 +89,8 @@ pub async fn update_role(
         ));
     }
 
-    let actor_perms = membership::require_permission(state, server_id, actor_id, MANAGE_ROLES).await?;
+    let actor_perms =
+        membership::require_permission(state, server_id, actor_id, MANAGE_ROLES).await?;
     // @everyone (position 0) is below everyone by construction, so the hierarchy
     // check would reject every edit to it; its permissions are still guarded by
     // the escalation check below.
@@ -131,7 +135,8 @@ pub async fn update_role(
         sep.push(r#"hoist = "#).push_bind_unseparated(hoist);
     }
     if let Some(mentionable) = patch.mentionable {
-        sep.push(r#"mentionable = "#).push_bind_unseparated(mentionable);
+        sep.push(r#"mentionable = "#)
+            .push_bind_unseparated(mentionable);
     }
     qb.push(r#" WHERE id = "#)
         .push_bind(role_id)
@@ -253,7 +258,8 @@ async fn assert_can_change_member_role(
     role: &RoleRow,
     granting: bool,
 ) -> AppResult<()> {
-    let actor_perms = membership::require_permission(state, server_id, actor_id, MANAGE_ROLES).await?;
+    let actor_perms =
+        membership::require_permission(state, server_id, actor_id, MANAGE_ROLES).await?;
     if target_id != actor_id {
         membership::assert_outranks(state, server_id, actor_id, target_id).await?;
     }

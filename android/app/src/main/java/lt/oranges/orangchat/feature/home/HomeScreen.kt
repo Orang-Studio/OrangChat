@@ -32,6 +32,7 @@ import lt.oranges.orangchat.data.model.SelfUser
 import lt.oranges.orangchat.data.model.ServerMember
 import lt.oranges.orangchat.data.model.User
 import lt.oranges.orangchat.feature.dms.HomePane
+import lt.oranges.orangchat.feature.dms.NewGroupScreen
 import lt.oranges.orangchat.feature.friends.FriendsScreen
 import lt.oranges.orangchat.feature.invite.AddServerDialog
 import lt.oranges.orangchat.feature.members.MembersScreen
@@ -41,6 +42,8 @@ import lt.oranges.orangchat.feature.profile.ProfileDialog
 import lt.oranges.orangchat.feature.profile.ProfileRelation
 import lt.oranges.orangchat.feature.invite.DeepLinkInviteDialog
 import lt.oranges.orangchat.feature.qrlogin.QrLoginConfirmDialog
+import lt.oranges.orangchat.feature.verify.VerifyContactDialog
+import lt.oranges.orangchat.feature.settings.ScannedDeviceTransferDialog
 import lt.oranges.orangchat.feature.search.SearchScreen
 import lt.oranges.orangchat.feature.settings.SettingsScreen
 import lt.oranges.orangchat.feature.settings.SettingsViewModel
@@ -53,11 +56,11 @@ import lt.oranges.orangchat.feature.voice.CallViewModel
 import lt.oranges.orangchat.feature.voice.rememberCallPermissionGate
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-private enum class Overlay { NONE, FRIENDS, SETTINGS, SEARCH, SERVER_SETTINGS, ROLES, MEMBERS }
+private enum class Overlay { NONE, FRIENDS, NEW_GROUP, SETTINGS, SEARCH, SERVER_SETTINGS, ROLES, MEMBERS }
 
 /**
  * The authenticated shell: a server rail plus a swapping content pane
- * (DM/home list, channel list, chat, friends, settings). Mobile-first — one
+ * (DM/home list, channel list, chat, friends, settings). Mobile-first - one
  * content pane at a time with back navigation, Discord-style rail on the left.
  * Once a chat is open it takes the full width and the rail plus its list move
  * into a swipe-from-the-left drawer, mirroring the web client.
@@ -88,6 +91,8 @@ fun HomeScreen(
     val connected by appViewModel.connected.collectAsStateWithLifecycle()
     val pendingInvite by appViewModel.pendingInvite.collectAsStateWithLifecycle()
     val pendingQrLogin by appViewModel.pendingQrLogin.collectAsStateWithLifecycle()
+    val pendingVerify by appViewModel.pendingVerify.collectAsStateWithLifecycle()
+    val pendingTransfer by appViewModel.pendingTransfer.collectAsStateWithLifecycle()
 
     // The authenticated user object is a login-time snapshot. Presence events
     // arrive separately, so fold their latest values into every self-facing UI.
@@ -96,6 +101,9 @@ fun HomeScreen(
         devices = presenceDevices[self.id]?.toList() ?: self.devices,
         activities = presenceActivities[self.id] ?: self.activities,
     )
+
+    // Who the conversation long-press menu may offer "Remove friend" for.
+    val friendIds = remember(friends) { friends.map { it.user.id }.toSet() }
 
     // Ask for notification permission once on Android 13+ so live-socket message
     // notifications can be posted while backgrounded.
@@ -118,6 +126,8 @@ fun HomeScreen(
     val emojis by appViewModel.emojis.collectAsStateWithLifecycle()
     val sounds by appViewModel.sounds.collectAsStateWithLifecycle()
     val loadingOlder by appViewModel.loadingOlder.collectAsStateWithLifecycle()
+    val conversationEncryption by appViewModel.conversationEncryption.collectAsStateWithLifecycle()
+    val e2eeError by appViewModel.e2eeError.collectAsStateWithLifecycle()
 
     // Seed each voice channel's roster when a server opens; voice:state keeps
     // them current from then on.
@@ -170,6 +180,8 @@ fun HomeScreen(
     var soundboardOpen by remember { mutableStateOf(false) }
     /** Whose profile card is open, if any. */
     var profileUser by remember { mutableStateOf<User?>(null) }
+    /** When set, the NEW_GROUP overlay grows this group instead of creating one. */
+    var groupAddTargetId by remember { mutableStateOf<String?>(null) }
 
     // A newly started/answered DM call opens its stage. Minimizing it does not
     // touch the call session; the persistent bar below can reopen it anytime.
@@ -177,7 +189,7 @@ fun HomeScreen(
         callExpanded = activeCall?.kind == SessionKind.CALL
     }
 
-    // An open chat takes over the whole width — the rail would only steal room
+    // An open chat takes over the whole width - the rail would only steal room
     // from the conversation, so it moves into a swipe-from-the-left drawer,
     // matching the web client's mobile layout.
     val chatOpen = openChat && currentChannelId != null
@@ -190,7 +202,7 @@ fun HomeScreen(
     LaunchedEffect(chatOpen) { if (!chatOpen) drawerState.close() }
 
     // The drawer slides in over an expanded call stage. Once it settles open the
-    // stage is fully hidden, so drop it then — closing the drawer should come
+    // stage is fully hidden, so drop it then - closing the drawer should come
     // back to the conversation, and the call bar can reopen the stage anytime.
     LaunchedEffect(drawerState.isOpen) { if (drawerState.isOpen) callExpanded = false }
 
@@ -198,9 +210,9 @@ fun HomeScreen(
         when {
             // Ahead of the drawer: opening an overlay always closes the drawer,
             // so a still-Open drawer here is a close mid-animation. Settings
-            // takes the drawer off screen outright — deferring to it would eat
+            // takes the drawer off screen outright - deferring to it would eat
             // the back press and strand the user.
-            overlay != Overlay.NONE -> overlay = Overlay.NONE
+            overlay != Overlay.NONE -> { overlay = Overlay.NONE; groupAddTargetId = null }
             drawerState.isOpen -> closeDrawer()
             else -> {
                 openChat = false
@@ -240,6 +252,7 @@ fun HomeScreen(
                 conversations = dms,
                 presence = presence,
                 presenceActivities = presenceActivities,
+                friendIds = friendIds,
                 unreads = unreads,
                 onOpenFriends = { overlay = Overlay.FRIENDS; closeDrawer() },
                 onOpenConversation = { convo ->
@@ -248,6 +261,13 @@ fun HomeScreen(
                     closeDrawer()
                 },
                 onOpenSettings = { overlay = Overlay.SETTINGS; closeDrawer() },
+                onNewGroup = { groupAddTargetId = null; overlay = Overlay.NEW_GROUP; closeDrawer() },
+                onMarkRead = appViewModel::markChannelRead,
+                onOpenProfile = { profileUser = it },
+                // Starting from the list has no call UI of its own to lean on,
+                // so it goes through the same permission gate as the chat header.
+                onStartCall = { convo -> requestAndStartCall(convo.id, false) },
+                onRemoveFriend = appViewModel::removeFriend,
             )
 
             detail != null -> ChannelListPane(
@@ -334,7 +354,7 @@ fun HomeScreen(
     }
 
     // Settings is a takeover: it owns the whole window, rail and sidebar
-    // included. An expanded call still outranks it — the call stage is the one
+    // included. An expanded call still outranks it - the call stage is the one
     // thing a user needs to get back to immediately.
     val settingsTakeover = overlay == Overlay.SETTINGS &&
         !(activeCall?.kind == SessionKind.CALL && callExpanded)
@@ -496,6 +516,36 @@ fun HomeScreen(
                                 },
                             )
 
+                            overlay == Overlay.NEW_GROUP -> {
+                                val addTarget = groupAddTargetId?.let { id -> dms.firstOrNull { it.id == id } }
+                                NewGroupScreen(
+                                    friends = friends,
+                                    presence = presence,
+                                    addMode = addTarget != null,
+                                    excludeUserIds = addTarget?.participants?.map { it.id }?.toSet() ?: emptySet(),
+                                    // 15-person cap: the seats a grow can still fill.
+                                    maxSelection = addTarget?.let {
+                                        (15 - it.participants.size).coerceAtLeast(0)
+                                    } ?: 14,
+                                    onBack = { overlay = Overlay.NONE; groupAddTargetId = null },
+                                    onConfirm = { userIds ->
+                                        val target = addTarget
+                                        if (target != null) {
+                                            appViewModel.addGroupParticipants(target.id, userIds) {
+                                                overlay = Overlay.NONE
+                                                groupAddTargetId = null
+                                            }
+                                        } else {
+                                            appViewModel.createGroupDm(userIds) {
+                                                overlay = Overlay.NONE
+                                                homeSelected = true
+                                                openChat = true
+                                            }
+                                        }
+                                    },
+                                )
+                            }
+
                             openChat && currentChannelId != null -> {
                                 val channelId = currentChannelId!!
                                 val chan = detail?.channels?.firstOrNull { it.id == channelId }
@@ -503,6 +553,15 @@ fun HomeScreen(
                                 val title = chan?.name
                                     ?: convo?.let { cv -> cv.name ?: cv.participants.filter { it.id != self.id }.joinToString(", ") { it.displayName } }
                                     ?: "Chat"
+                                LaunchedEffect(channelId, convo?.participants) {
+                                    if (convo != null) {
+                                        appViewModel.loadConversationEncryption(
+                                            channelId,
+                                            convo.participants.filter { it.id != self.id }.map { it.id },
+                                            convo.type == ChannelType.GROUP_DM,
+                                        )
+                                    }
+                                }
                                 lt.oranges.orangchat.feature.chat.ChatPane(
                                     title = title,
                                     topic = chan?.topic,
@@ -524,11 +583,20 @@ fun HomeScreen(
                                     presence = presence,
                                     typingUserIds = (typing[channelId].orEmpty() - self.id),
                                     onBack = { openChat = false; appViewModel.clearActiveChannel() },
-                                    onSend = { content, replyTo, attachmentIds ->
-                                        appViewModel.sendMessage(channelId, content, replyTo, attachmentIds)
+                                    onSend = { content, replyTo, attachmentIds, sealedAttachments ->
+                                        appViewModel.sendMessage(
+                                            channelId,
+                                            content,
+                                            replyTo,
+                                            attachmentIds,
+                                            sealedAttachments,
+                                        )
                                     },
                                     onEdit = { id, content -> appViewModel.editMessage(channelId, id, content) },
                                     onDelete = { id -> appViewModel.deleteMessage(channelId, id) },
+                                    onReport = { message, reason, done ->
+                                        appViewModel.reportMessage(message, reason, done)
+                                    },
                                     onReact = { message, emoji -> appViewModel.toggleReaction(channelId, message, emoji) },
                                     onTyping = { appViewModel.startTyping(channelId) },
                                     onLoadOlder = { appViewModel.loadOlderMessages(channelId) },
@@ -541,6 +609,12 @@ fun HomeScreen(
                                     } else {
                                         null
                                     },
+                                    // Only group DMs can grow; the button opens the friend picker.
+                                    onAddPeople = if (convo?.type == ChannelType.GROUP_DM) {
+                                        { groupAddTargetId = channelId; overlay = Overlay.NEW_GROUP }
+                                    } else {
+                                        null
+                                    },
                                     onCall = activeCall?.channelId == channelId,
                                     headerUser = convo?.participants?.firstOrNull { it.id != self.id },
                                     headerActivities = convo?.participants
@@ -549,6 +623,56 @@ fun HomeScreen(
                                         .orEmpty(),
                                     onOpenProfile = { profileUser = it },
                                     emojis = emojis,
+                                    encryptionInfo = conversationEncryption[channelId],
+                                    onResetEncryption = {
+                                        appViewModel.resetConversationEncryption(channelId)
+                                    },
+                                    onSetStrict = if (convo?.type == ChannelType.DM) {
+                                        { enabled ->
+                                            appViewModel.setConversationStrict(channelId, enabled)
+                                        }
+                                    } else {
+                                        null
+                                    },
+                                    // Groups get the same comparison, but §6.3
+                                    // keeps their number informational: a match
+                                    // confirms the membership and pins nothing.
+                                    onCompareSafetyNumber = if (convo != null) {
+                                        { typed, done ->
+                                            appViewModel.compareSafetyNumber(
+                                                channelId,
+                                                convo.participants
+                                                    .filter { it.id != self.id }
+                                                    .map { it.id },
+                                                convo.type == ChannelType.GROUP_DM,
+                                                typed,
+                                                done,
+                                            )
+                                        }
+                                    } else {
+                                        null
+                                    },
+                                    onVerifyContact = if (convo?.type == ChannelType.DM) {
+                                        { raw, expectedUserId, done ->
+                                            appViewModel.verifyScannedContactFor(
+                                                raw,
+                                                expectedUserId,
+                                            ) { ok, error ->
+                                                if (ok) {
+                                                    appViewModel.loadConversationEncryption(
+                                                        channelId,
+                                                        convo.participants
+                                                            .filter { it.id != self.id }
+                                                            .map { it.id },
+                                                        false,
+                                                    )
+                                                }
+                                                done(ok, error)
+                                            }
+                                        }
+                                    } else {
+                                        null
+                                    },
                                 )
                             }
 
@@ -631,6 +755,35 @@ fun HomeScreen(
     // shell, since approving a web session needs this phone's own account.
     pendingQrLogin?.let { token ->
         QrLoginConfirmDialog(token = token, appViewModel = appViewModel)
+    }
+
+    // Somebody's contact code, scanned with the phone's camera. Pinning their
+    // identity only means anything once this phone is signed in, so like the
+    // sign-in code above it is only ever raised here.
+    pendingVerify?.let { code ->
+        VerifyContactDialog(raw = code, appViewModel = appViewModel)
+    }
+    pendingTransfer?.let { code ->
+        ScannedDeviceTransferDialog(
+            raw = code,
+            onDismiss = appViewModel::clearPendingTransfer,
+        )
+    }
+    e2eeError?.let { error ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = {},
+            title = { androidx.compose.material3.Text("Encryption security alert") },
+            text = {
+                androidx.compose.material3.Text(
+                    "$error\n\nMessaging is blocked until this identity or device-log change is resolved.",
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = appViewModel::clearE2eeError) {
+                    androidx.compose.material3.Text("I understand")
+                }
+            },
+        )
     }
     if (showCreateChannel && detail != null) {
         CreateEntityDialog(

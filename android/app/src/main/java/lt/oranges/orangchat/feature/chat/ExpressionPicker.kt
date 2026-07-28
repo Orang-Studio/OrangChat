@@ -328,7 +328,7 @@ fun ExpressionPickerDialog(
                     Box(Modifier.weight(1f).fillMaxWidth()) {
                         if (favorites.isEmpty()) {
                             Text(
-                                "No saved GIFs yet — tap the bookmark on any GIF to keep it here.",
+                                "No saved GIFs yet - tap the bookmark on any GIF to keep it here.",
                                 color = c.inkMuted,
                                 fontSize = 12.sp,
                                 modifier = Modifier.align(Alignment.Center).padding(24.dp),
@@ -430,7 +430,7 @@ private fun CustomEmojiGrid(
  * The GIF tiles, shared by the search results and the favorites tab.
  *
  * Tapping a tile sends it; the bookmark saves it. They sit on top of each other
- * deliberately — that is where Discord puts it, and it keeps saving a GIF one
+ * deliberately - that is where Discord puts it, and it keeps saving a GIF one
  * gesture away from wherever you found it.
  */
 @Composable
