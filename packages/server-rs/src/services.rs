@@ -30,5 +30,6 @@ pub mod server;
 pub mod sound;
 pub mod spotify;
 pub mod totp;
+pub mod update_policy;
 pub mod user;
 pub mod voice;

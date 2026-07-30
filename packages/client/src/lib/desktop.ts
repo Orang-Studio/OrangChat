@@ -13,6 +13,11 @@ export interface DesktopBridge {
   flashFrame: () => void;
   /** Absent in shells built before the updater IPC existed (≤ 0.1.3). */
   checkForUpdates?: () => Promise<UpdateCheckResult>;
+  /**
+   * Replace the window/tray/taskbar icon with a data url, or null to restore
+   * the bundled mark. Absent in shells built before the custom-icon IPC.
+   */
+  setAppIcon?: (dataUrl: string | null) => void;
 }
 
 export const desktop: DesktopBridge | undefined = (

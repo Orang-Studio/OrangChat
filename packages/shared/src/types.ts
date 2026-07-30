@@ -52,9 +52,16 @@ export interface SelfUser extends User {
   email: string;
   /** The user's own client CSS override (private; only sent to the owner). */
   customCss: string | null;
+  /** Replaces the OrangChat mark on this user's own clients. Self-only. */
+  appIconUrl: string | null;
   dmPrivacy: DmPrivacy;
   friendRequestPrivacy: FriendRequestPrivacy;
   typingIndicators: boolean;
+  /** Which friend events raise a notification. Online is opt-in - it fires for
+      every friend on every app launch. */
+  notifyFriendRequests: boolean;
+  notifyFriendAccepted: boolean;
+  notifyFriendOnline: boolean;
   /**
    * "Require verification before messaging anyone new" (docs/E2EE.md §6.5).
    * Off by default. It gates only this account's own sending - it never changes
@@ -404,6 +411,13 @@ export interface Message {
   ciphertext?: string | null;
   encEpoch?: number | null;
   encVersion?: number | null;
+  /**
+   * The outbox id of the local row this message confirms. Stamped by the sender's
+   * own client when it recognises its send coming back, never sent over the wire.
+   * Rendering keys off it so a pending row becomes its confirmed self in place
+   * instead of being unmounted and replaced.
+   */
+  clientId?: string | null;
 }
 
 /** One entry in a server's audit log. `actor` is null when the account that made

@@ -9,6 +9,7 @@ import kotlinx.serialization.json.Json
 import lt.oranges.orangchat.BuildConfig
 import lt.oranges.orangchat.data.remote.ApiService
 import lt.oranges.orangchat.data.remote.AuthInterceptor
+import lt.oranges.orangchat.data.remote.ClientVersionInterceptor
 import lt.oranges.orangchat.data.remote.PersistentCookieJar
 import lt.oranges.orangchat.data.remote.TokenAuthenticator
 import okhttp3.MediaType.Companion.toMediaType
@@ -73,6 +74,7 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(
         authInterceptor: AuthInterceptor,
+        clientVersionInterceptor: ClientVersionInterceptor,
         authenticator: TokenAuthenticator,
         cookieJar: okhttp3.CookieJar,
     ): OkHttpClient {
@@ -83,6 +85,7 @@ object NetworkModule {
         return OkHttpClient.Builder()
             .cookieJar(cookieJar)
             .addInterceptor(authInterceptor)
+            .addInterceptor(clientVersionInterceptor)
             .authenticator(authenticator)
             .addInterceptor(logging)
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -105,12 +108,14 @@ object NetworkModule {
     @Named("upload")
     fun provideUploadClient(
         authInterceptor: AuthInterceptor,
+        clientVersionInterceptor: ClientVersionInterceptor,
         authenticator: TokenAuthenticator,
         cookieJar: okhttp3.CookieJar,
     ): OkHttpClient =
         OkHttpClient.Builder()
             .cookieJar(cookieJar)
             .addInterceptor(authInterceptor)
+            .addInterceptor(clientVersionInterceptor)
             .authenticator(authenticator)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)

@@ -59,9 +59,15 @@ pub struct SelfUserDto {
     pub created_at: String,
     pub email: String,
     pub custom_css: Option<String>,
+    /// Replaces the OrangChat mark on this user's own clients. Self-only: it is
+    /// deliberately absent from UserDto so it can never be fetched per-viewer.
+    pub app_icon_url: Option<String>,
     pub dm_privacy: String,
     pub friend_request_privacy: String,
     pub typing_indicators: bool,
+    pub notify_friend_requests: bool,
+    pub notify_friend_accepted: bool,
+    pub notify_friend_online: bool,
     /// "Require verification before messaging anyone new" (docs/E2EE.md §6.5).
     /// Enforced entirely on the owner's own clients; the server stores it so the
     /// choice follows the account rather than the browser.
@@ -449,9 +455,13 @@ pub fn to_self_user(u: &UserRow) -> SelfUserDto {
         created_at: iso(u.created_at),
         email: u.email.clone(),
         custom_css: u.custom_css.clone(),
+        app_icon_url: same_origin_asset(u.app_icon_url.as_deref(), "app-icon", &u.id),
         dm_privacy: u.dm_privacy.clone(),
         friend_request_privacy: u.friend_request_privacy.clone(),
         typing_indicators: u.typing_indicators,
+        notify_friend_requests: u.notify_friend_requests,
+        notify_friend_accepted: u.notify_friend_accepted,
+        notify_friend_online: u.notify_friend_online,
         e2ee_strict: u.e2ee_strict,
         two_factor_enabled: u.totp_enabled,
         has_password: u.password_hash.is_some(),

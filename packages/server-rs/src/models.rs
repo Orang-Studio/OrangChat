@@ -27,12 +27,20 @@ pub struct UserRow {
     pub custom_css: Option<String>,
     #[sqlx(rename = "profileCss")]
     pub profile_css: Option<String>,
+    #[sqlx(rename = "appIconUrl")]
+    pub app_icon_url: Option<String>,
     #[sqlx(rename = "dmPrivacy")]
     pub dm_privacy: String,
     #[sqlx(rename = "friendRequestPrivacy")]
     pub friend_request_privacy: String,
     #[sqlx(rename = "typingIndicators")]
     pub typing_indicators: bool,
+    #[sqlx(rename = "notifyFriendRequests")]
+    pub notify_friend_requests: bool,
+    #[sqlx(rename = "notifyFriendAccepted")]
+    pub notify_friend_accepted: bool,
+    #[sqlx(rename = "notifyFriendOnline")]
+    pub notify_friend_online: bool,
     #[sqlx(rename = "e2eeStrict")]
     pub e2ee_strict: bool,
     #[sqlx(rename = "totpSecret")]

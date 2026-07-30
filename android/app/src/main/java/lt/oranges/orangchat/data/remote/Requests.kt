@@ -52,6 +52,8 @@ data class UpdateMeRequest(
     val pronouns: String? = null,
     val customCss: String? = null,
     val profileCss: String? = null,
+    /** "" clears it; null is dropped by `explicitNulls = false` and means "leave". */
+    val appIconUrl: String? = null,
     val dmPrivacy: String? = null,
     val friendRequestPrivacy: String? = null,
     val typingIndicators: Boolean? = null,

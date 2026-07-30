@@ -11,6 +11,7 @@ import lt.oranges.orangchat.data.local.TokenStore
 import lt.oranges.orangchat.data.model.DmPrivacy
 import lt.oranges.orangchat.data.model.FriendRequestPrivacy
 import lt.oranges.orangchat.data.remote.AccountStanding
+import lt.oranges.orangchat.data.remote.UpdateMeRequest
 import lt.oranges.orangchat.data.remote.DeviceSession
 import lt.oranges.orangchat.data.remote.TwoFactorSetup
 import lt.oranges.orangchat.data.repository.AuthRepository
@@ -77,6 +78,7 @@ data class CredentialsUi(
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
+    @dagger.hilt.android.qualifiers.ApplicationContext private val appContext: android.content.Context,
     private val tokenStore: TokenStore,
     private val authRepository: AuthRepository,
     private val serverRepository: ServerRepository,
@@ -93,6 +95,40 @@ class SettingsViewModel @Inject constructor(
         ),
     )
     val prefs: StateFlow<DevicePrefs> = _prefs.asStateFlow()
+
+    private val _appIconUploading = MutableStateFlow(false)
+    val appIconUploading: StateFlow<Boolean> = _appIconUploading.asStateFlow()
+    private val _appIconError = MutableStateFlow<String?>(null)
+    val appIconError: StateFlow<String?> = _appIconError.asStateFlow()
+
+    /**
+     * Upload a picked image and adopt it as this account's app icon. Android
+     * cannot repoint its own launcher icon at an arbitrary image (only
+     * activity-alias entries with baked-in drawables can be toggled), so what
+     * this changes is the web tab favicon and the desktop window/tray icon.
+     */
+    fun uploadAppIcon(uri: android.net.Uri) {
+        viewModelScope.launch {
+            _appIconUploading.value = true
+            _appIconError.value = null
+            runCatching {
+                val part = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    lt.oranges.orangchat.util.buildImagePart(appContext, uri)
+                }
+                val uploaded = authRepository.uploadImage(part, "app-icon")
+                authRepository.updateMe(UpdateMeRequest(appIconUrl = uploaded.url))
+            }.onFailure { _appIconError.value = it.message ?: "Upload failed" }
+            _appIconUploading.value = false
+        }
+    }
+
+    /** "" clears it - a null field never reaches the wire; see UpdateMeRequest. */
+    fun removeAppIcon() {
+        viewModelScope.launch {
+            runCatching { authRepository.updateMe(UpdateMeRequest(appIconUrl = "")) }
+                .onFailure { _appIconError.value = it.message ?: "Could not remove the icon" }
+        }
+    }
 
     fun setFontScale(value: Float) {
         val clamped = value.coerceIn(FONT_SCALE_MIN, FONT_SCALE_MAX)

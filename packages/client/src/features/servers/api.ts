@@ -1,4 +1,5 @@
 import type {
+  AuditLogEntry,
   Channel,
   CreateChannelInput,
   CreateInviteInput,
@@ -56,3 +57,15 @@ export const deleteServer = (serverId: string) =>
 /** Leave a server you're a member of. The owner has to delete it instead. */
 export const leaveServer = (serverId: string) =>
   api<void>(`/servers/${serverId}/leave`, { method: "POST" });
+
+/** GET /servers/:id/audit-log - newest first, offset-paginated. */
+export interface AuditLogPage {
+  items: AuditLogEntry[];
+  nextCursor: string | null;
+}
+
+export const getAuditLog = (serverId: string, offset = 0, action?: string) => {
+  const query = new URLSearchParams({ limit: "50", offset: String(offset) });
+  if (action) query.set("action", action);
+  return api<AuditLogPage>(`/servers/${serverId}/audit-log?${query.toString()}`);
+};

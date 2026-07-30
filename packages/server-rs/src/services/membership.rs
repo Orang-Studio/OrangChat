@@ -102,13 +102,34 @@ pub async fn channel_permissions(
     .fetch_optional(&state.pool)
     .await?;
 
-    let mut perms = base;
     let role_id_set: std::collections::HashSet<&String> = role_ids.iter().collect();
+    Ok(Some(apply_overwrites(
+        base,
+        overwrites.iter(),
+        &role_id_set,
+        everyone_id.as_ref(),
+        user_id,
+    )))
+}
+
+/// Layers one channel's overwrites onto a server-wide bitfield, in Discord's
+/// order: @everyone, then the union of the member's other roles, then the
+/// member-specific entry. Shared so the per-channel and batched callers below
+/// cannot drift apart - a difference between them would silently show someone a
+/// channel they cannot open, or hide one they can.
+fn apply_overwrites<'a>(
+    base: i64,
+    mut overwrites: impl Iterator<Item = &'a ChannelOverwriteRow> + Clone,
+    role_id_set: &std::collections::HashSet<&String>,
+    everyone_id: Option<&String>,
+    user_id: &str,
+) -> i64 {
+    let mut perms = base;
 
     // 1. @everyone role overwrite.
-    if let Some(ref eid) = everyone_id {
+    if let Some(eid) = everyone_id {
         if let Some(ow) = overwrites
-            .iter()
+            .clone()
             .find(|o| o.ow_type == "role" && &o.target_id == eid)
         {
             perms = (perms & !ow.deny) | ow.allow;
@@ -118,9 +139,9 @@ pub async fn channel_permissions(
     // 2. Union of the member's other role overwrites.
     let mut role_allow = 0i64;
     let mut role_deny = 0i64;
-    for ow in &overwrites {
+    for ow in overwrites.clone() {
         if ow.ow_type == "role"
-            && Some(&ow.target_id) != everyone_id.as_ref()
+            && Some(&ow.target_id) != everyone_id
             && role_id_set.contains(&ow.target_id)
         {
             role_allow |= ow.allow;
@@ -130,14 +151,91 @@ pub async fn channel_permissions(
     perms = (perms & !role_deny) | role_allow;
 
     // 3. Member-specific overwrite.
-    if let Some(ow) = overwrites
-        .iter()
-        .find(|o| o.ow_type == "member" && o.target_id == user_id)
-    {
+    if let Some(ow) = overwrites.find(|o| o.ow_type == "member" && o.target_id == user_id) {
         perms = (perms & !ow.deny) | ow.allow;
     }
 
-    Ok(Some(perms))
+    perms
+}
+
+/// Ids of the server's text channels the user may read, resolved in a fixed
+/// number of queries.
+///
+/// The obvious spelling - `channel_permissions` in a loop - costs five or so
+/// round trips per channel and re-derives the same server-wide answer every
+/// time, so a large server spent hundreds of queries deciding what to search
+/// before searching anything.
+pub async fn viewable_text_channels(
+    state: &AppState,
+    server_id: &str,
+    user_id: &str,
+) -> AppResult<Vec<String>> {
+    let Some(base) = effective_permissions(state, server_id, user_id).await? else {
+        return Ok(vec![]);
+    };
+
+    let channels: Vec<String> =
+        sqlx::query_scalar(r#"SELECT id FROM "Channel" WHERE "serverId" = $1 AND type = 'text'"#)
+            .bind(server_id)
+            .fetch_all(&state.pool)
+            .await?;
+
+    // Admin/owner bypass, exactly as channel_permissions short-circuits.
+    if permissions::has_permission(base, ALL_PERMISSIONS) {
+        return Ok(channels);
+    }
+
+    let overwrites: Vec<ChannelOverwriteRow> = sqlx::query_as(
+        r#"SELECT o.* FROM "ChannelOverwrite" o
+           JOIN "Channel" c ON c.id = o."channelId"
+           WHERE c."serverId" = $1"#,
+    )
+    .bind(server_id)
+    .fetch_all(&state.pool)
+    .await?;
+
+    let role_ids: Vec<String> = sqlx::query_scalar(
+        r#"SELECT mr."roleId" FROM "MemberRole" mr
+           JOIN "ServerMember" sm ON sm.id = mr."memberId"
+           WHERE sm."serverId" = $1 AND sm."userId" = $2"#,
+    )
+    .bind(server_id)
+    .bind(user_id)
+    .fetch_all(&state.pool)
+    .await?;
+
+    let everyone_id: Option<String> = sqlx::query_scalar(
+        r#"SELECT id FROM "Role" WHERE "serverId" = $1 AND position = 0 LIMIT 1"#,
+    )
+    .bind(server_id)
+    .fetch_optional(&state.pool)
+    .await?;
+
+    let role_id_set: std::collections::HashSet<&String> = role_ids.iter().collect();
+    let mut by_channel: std::collections::HashMap<&str, Vec<&ChannelOverwriteRow>> =
+        std::collections::HashMap::new();
+    for ow in &overwrites {
+        by_channel
+            .entry(ow.channel_id.as_str())
+            .or_default()
+            .push(ow);
+    }
+
+    Ok(channels
+        .into_iter()
+        .filter(|cid| {
+            let empty: Vec<&ChannelOverwriteRow> = Vec::new();
+            let ows = by_channel.get(cid.as_str()).unwrap_or(&empty);
+            let perms = apply_overwrites(
+                base,
+                ows.iter().copied(),
+                &role_id_set,
+                everyone_id.as_ref(),
+                user_id,
+            );
+            permissions::has_permission(perms, permissions::VIEW_CHANNEL)
+        })
+        .collect())
 }
 
 pub async fn is_server_member(state: &AppState, server_id: &str, user_id: &str) -> AppResult<bool> {

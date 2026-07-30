@@ -265,6 +265,10 @@ interface ApiService {
     @POST("dms/{channelId}/participants")
     suspend fun addDmParticipants(@Path("channelId") channelId: String, @Body body: CreateDmRequest): Conversation
 
+    /** Leaves a group DM outright, or closes a one-on-one until it has something new. */
+    @DELETE("dms/{channelId}")
+    suspend fun leaveDm(@Path("channelId") channelId: String)
+
     // ── friends.rs ──────────────────────────────────────
     @GET("friends")
     suspend fun listFriends(): List<Friend>

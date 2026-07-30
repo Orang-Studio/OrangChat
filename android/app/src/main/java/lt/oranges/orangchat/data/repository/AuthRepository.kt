@@ -36,7 +36,9 @@ import lt.oranges.orangchat.data.remote.UpdateMeRequest
 import lt.oranges.orangchat.data.remote.UploadResponse
 import lt.oranges.orangchat.realtime.SocketManager
 import lt.oranges.orangchat.notifications.PushTokenRegistrar
+import kotlinx.serialization.json.Json
 import okhttp3.MultipartBody
+import retrofit2.HttpException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -52,6 +54,7 @@ class AuthRepository @Inject constructor(
     private val tokenStore: TokenStore,
     private val socketManager: SocketManager,
     private val pushTokenRegistrar: PushTokenRegistrar,
+    private val json: Json,
 ) {
     private val _session = MutableStateFlow<SessionState>(SessionState.Loading)
     val session: StateFlow<SessionState> = _session.asStateFlow()
@@ -71,15 +74,38 @@ class AuthRepository @Inject constructor(
                 val me = api.getMe()
                 onAuthenticated(me)
             }
+            return
         } catch (_: Exception) {
-            try {
-                val refreshed = api.refresh()
-                applyAuth(refreshed)
-            } catch (_: Exception) {
+            // Fall through to one refresh attempt; the access token may simply
+            // have expired while the app was closed.
+        }
+
+        try {
+            applyAuth(api.refresh())
+        } catch (e: Exception) {
+            // Only the server saying no ends a session. A dropped link, a DNS
+            // failure or a 5xx means the account is fine and unreachable, so the
+            // last known profile is restored and the socket reconnects behind it.
+            // Signing out here is what made a lost wifi look like a logout.
+            if (isSessionRejected(e)) {
+                tokenStore.clear()
                 _session.value = SessionState.Unauthenticated
+            } else {
+                val cached = cachedUser()
+                if (cached != null) onAuthenticated(cached)
+                else _session.value = SessionState.Unauthenticated
             }
         }
     }
+
+    /** True only for a definitive rejection from the server, never for reachability. */
+    private fun isSessionRejected(e: Exception): Boolean =
+        e is HttpException && (e.code() == 401 || e.code() == 403)
+
+    private fun cachedUser(): SelfUser? =
+        tokenStore.cachedUser?.let {
+            runCatching { json.decodeFromString(SelfUser.serializer(), it) }.getOrNull()
+        }
 
     /**
      * First half of a login. A correct password buys a mailed code, never a
@@ -263,6 +289,9 @@ class AuthRepository @Inject constructor(
 
     private fun onAuthenticated(user: SelfUser) {
         _session.value = SessionState.Authenticated(user)
+        // Kept for the offline cold start in restoreSession.
+        tokenStore.cachedUser =
+            runCatching { json.encodeToString(SelfUser.serializer(), user) }.getOrNull()
         socketManager.connect()
         pushTokenRegistrar.registerCurrentToken()
     }

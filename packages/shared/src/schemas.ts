@@ -38,10 +38,14 @@ export const updateProfileSchema = z
     accentColor: z.number().int().min(0).max(0xffffff).nullable().optional(),
     pronouns: z.string().max(40).nullable().optional(),
     customCss: z.string().max(100_000).nullable().optional(),
+    appIconUrl: z.string().nullable().optional(),
     profileCss: z.string().max(100_000).nullable().optional(),
     dmPrivacy: dmPrivacySchema.optional(),
     friendRequestPrivacy: friendRequestPrivacySchema.optional(),
     typingIndicators: z.boolean().optional(),
+    notifyFriendRequests: z.boolean().optional(),
+    notifyFriendAccepted: z.boolean().optional(),
+    notifyFriendOnline: z.boolean().optional(),
     e2eeStrict: z.boolean().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: 'No fields to update' });
@@ -60,6 +64,8 @@ export const updateServerSchema = z
   .object({
     name: z.string().min(1).max(100).optional(),
     iconUrl: z.string().url().nullable().optional(),
+    // 1024 to match the server's own cap in http::servers::parse_patch.
+    description: z.string().max(1024).nullable().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: 'No fields to update' });
 export type UpdateServerInput = z.infer<typeof updateServerSchema>;

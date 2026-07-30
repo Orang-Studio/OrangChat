@@ -64,6 +64,11 @@ export function createTray(getWindow: () => BrowserWindow | null, onQuit: () => 
   return tray;
 }
 
+/** Swap the tray image, e.g. when the user picks a custom app icon. */
+export function setTrayIcon(image: Electron.NativeImage): void {
+  tray?.setImage(image.resize({ width: 16, height: 16 }));
+}
+
 export function setTrayAttention(active: boolean): void {
   tray?.setToolTip(active ? "OrangChat - new activity" : "OrangChat");
 }

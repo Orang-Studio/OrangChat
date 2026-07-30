@@ -3,7 +3,7 @@
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 use axum::{Json, Router};
 use serde_json::{json, Value};
 
@@ -18,6 +18,40 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/dms", get(list_dms).post(create_dm))
         .route("/dms/:channelId/participants", post(add_participants))
+        .route("/dms/:channelId", delete(leave_dm))
+}
+
+/// Removes the conversation from the caller's list. For a group DM that is a
+/// real departure; for a one-to-one it only closes it (services::dm).
+async fn leave_dm(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Path(channel_id): Path<String>,
+) -> AppResult<Json<Value>> {
+    let outcome = dm::leave_conversation(&state, &channel_id, &user.user_id).await?;
+
+    match outcome {
+        dm::LeaveOutcome::Left => {
+            // Everyone still in the group needs the member list to shrink; the
+            // leaver is told separately, since they are no longer in the room.
+            let _ = state
+                .io()
+                .to(format!("channel:{channel_id}"))
+                .emit("dm:participantLeft", &json!({
+                    "channelId": channel_id,
+                    "userId": user.user_id,
+                }));
+            let _ = state
+                .io()
+                .to(format!("user:{}", user.user_id))
+                .leave(format!("channel:{channel_id}"));
+            Ok(Json(json!({ "status": "left" })))
+        }
+        // Nothing is broadcast for a close: it is invisible to the other side
+        // by design, and announcing it would leak that someone shut the
+        // conversation rather than simply gone quiet.
+        dm::LeaveOutcome::Closed => Ok(Json(json!({ "status": "closed" }))),
+    }
 }
 
 fn parse_user_ids(body: &Value) -> AppResult<Vec<String>> {

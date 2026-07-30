@@ -16,6 +16,7 @@ pub mod roles;
 pub mod security;
 pub mod servers;
 pub mod sounds;
+pub mod updates;
 pub mod uploads;
 
 use std::convert::Infallible;
@@ -34,6 +35,7 @@ use tower_http::cors::CorsLayer;
 use crate::auth::verify_access_token;
 use crate::error::AppError;
 use crate::services::rate_limit;
+use crate::services::update_policy;
 use crate::state::AppState;
 
 /// Authenticated user, extracted from the `Authorization: Bearer` header.
@@ -139,6 +141,40 @@ impl<S: Send + Sync> FromRequestParts<S> for ClientIp {
 
 /// Coarse per-address ceiling over the whole API. Individual routes layer their
 /// own tighter quotas on top; this one only exists to stop blunt hammering.
+/// Refuses any client build below its platform's `min_supported`.
+///
+/// This is the whole point of deciding severity on the server: a retired build
+/// is one whose own update prompt may be exactly what is broken, so the refusal
+/// has to happen where the client cannot route around it. Everything reachable
+/// through /api is covered; `/updates/policy` is excluded by the caller so a
+/// walled client can still discover what to install.
+pub async fn require_supported_client(
+    State(state): State<AppState>,
+    headers: axum::http::HeaderMap,
+    req: Request,
+    next: Next,
+) -> Result<Response, AppError> {
+    let header = |name: &str| {
+        headers
+            .get(name)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or_default()
+    };
+    let platform = header(updates::PLATFORM_HEADER);
+    let version = header(updates::VERSION_HEADER);
+
+    if let Some(policy) = state.config.update_policy.for_platform(platform) {
+        if policy.severity_for(version) == update_policy::Severity::Required {
+            return Err(AppError::UpgradeRequired {
+                message: "This version of OrangChat is no longer supported. Please update."
+                    .into(),
+                latest: policy.latest.clone(),
+            });
+        }
+    }
+    Ok(next.run(req).await)
+}
+
 pub async fn api_rate_limit(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
@@ -204,6 +240,15 @@ pub fn router(state: AppState) -> Router {
         .merge(sounds::routes())
         .merge(uploads::routes())
         .merge(attachments::routes())
+        // The version wall covers everything merged above it. `route_layer`
+        // rather than `layer` so it only runs for routes that actually matched,
+        // and so /updates/policy - merged after it - stays reachable: a client
+        // that was just refused still has to be able to ask what to upgrade to.
+        .route_layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            require_supported_client,
+        ))
+        .merge(updates::routes())
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
             api_rate_limit,

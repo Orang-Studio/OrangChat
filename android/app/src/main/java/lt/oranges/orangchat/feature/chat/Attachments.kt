@@ -294,7 +294,6 @@ internal fun FileCard(attachment: Attachment, expiresAt: Instant?, now: Instant)
     val c = OrangTheme.colors
     val shape = RoundedCornerShape(OrangRadius.lg)
     val download = rememberAttachmentDownloader()
-    val href = rememberResolvedAttachmentUrl(attachment)
 
     Row(
         modifier = Modifier
@@ -304,7 +303,13 @@ internal fun FileCard(attachment: Attachment, expiresAt: Instant?, now: Instant)
             // Straight to the download manager rather than out to the browser:
             // the URL is served as a download either way, so the round trip
             // through a second app bought nothing but a lost place in the chat.
-            .clickable(enabled = href != null) { download(attachment) }
+            //
+            // Deliberately not gated on the inline source resolving. That source
+            // is null for a sealed file past the inline cap - which is every
+            // large OrangMove upload - yet the downloader opens exactly those by
+            // streaming and decrypting them. Gating on it disabled the button on
+            // the files that needed it most.
+            .clickable { download(attachment) }
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

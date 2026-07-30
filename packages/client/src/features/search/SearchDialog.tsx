@@ -170,6 +170,14 @@ export function SearchDialog({
           ) : results.length === 0 ? (
             <p className="py-8 text-center text-sm text-ink-muted">
               No messages found for “{query}”.
+              {!local && (
+                // Server search matches whole words, so a partial one finds
+                // nothing and looks broken without saying why.
+                <span className="mt-1 block text-xs">
+                  Server search matches whole words. Try <code>"an exact phrase"</code> or{" "}
+                  <code>-exclude</code> a word.
+                </span>
+              )}
             </p>
           ) : (
             <ul className="flex flex-col gap-1">

@@ -13,6 +13,7 @@ import {
 } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
 import { Avatar } from "../../components/Avatar";
+import { ImageField } from "../../components/ImageField";
 import { Button } from "../../components/ui/Button";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { Dialog, DialogContent } from "../../components/ui/Dialog";
@@ -20,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/Ta
 import { TextField } from "../../components/ui/TextField";
 import { EmojiTab } from "../emojis/EmojiTab";
 import { SoundTab } from "../soundboard/SoundTab";
+import { AuditLogTab } from "./AuditLogTab";
 import { useAuthStore } from "../../stores/auth";
 import { createRole, deleteRole, listBans, unbanMember, updateRole } from "../roles/api";
 import { deleteServer, updateServer } from "./api";
@@ -55,6 +57,9 @@ function OverviewTab({ server, onClosed }: { server: Server; onClosed: () => voi
 
   const [name, setName] = useState(server.name);
   const [iconUrl, setIconUrl] = useState(server.iconUrl ?? "");
+  // Blob url of a just-uploaded icon, rendered until the form is saved.
+  const [iconPreview, setIconPreview] = useState("");
+  const [description, setDescription] = useState(server.description ?? "");
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const saveMutation = useMutation({
@@ -62,6 +67,7 @@ function OverviewTab({ server, onClosed }: { server: Server; onClosed: () => voi
       updateServer(server.id, {
         name: name.trim(),
         iconUrl: iconUrl.trim() ? iconUrl.trim() : null,
+        description: description.trim() ? description.trim() : null,
       }),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: serverKeys.detail(server.id) });
@@ -86,15 +92,34 @@ function OverviewTab({ server, onClosed }: { server: Server; onClosed: () => voi
         maxLength={100}
         disabled={!canManage}
       />
-      <TextField
-        label="Icon URL"
-        type="url"
+      <ImageField
+        label="Server icon"
+        kind="avatar"
+        rounded="md"
         value={iconUrl}
-        onChange={(e) => setIconUrl(e.target.value)}
-        placeholder="https://…"
+        preview={iconPreview}
+        onChange={(url, preview) => {
+          setIconUrl(url);
+          setIconPreview(preview);
+        }}
         hint="Leave empty for initials."
         disabled={!canManage}
       />
+      <label className="block">
+        <span className="mb-1.5 block text-sm font-medium text-ink-secondary">Description</span>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          maxLength={1024}
+          rows={3}
+          disabled={!canManage}
+          placeholder="What is this server about?"
+          className="w-full resize-y rounded-lg border border-border bg-surface-1 px-3 py-2 text-sm text-ink placeholder:text-ink-muted hover:border-border-strong disabled:opacity-60"
+        />
+        <span className="mt-1 block text-xs text-ink-muted">
+          Shown on the invite page. {description.length}/1024
+        </span>
+      </label>
       {saveMutation.isError && (
         <p role="alert" className="rounded-lg bg-primary-soft px-3 py-2 text-sm text-danger">
           {saveMutation.error.message}
@@ -378,6 +403,7 @@ export function ServerSettingsDialog({
   const canRoles = can(Permissions.MANAGE_ROLES);
   const canBans = can(Permissions.BAN_MEMBERS);
   const canExpressions = can(Permissions.MANAGE_EXPRESSIONS);
+  const canAudit = can(Permissions.VIEW_AUDIT_LOG);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -389,6 +415,7 @@ export function ServerSettingsDialog({
             {canExpressions && <TabsTrigger value="emojis">Emoji</TabsTrigger>}
             {canExpressions && <TabsTrigger value="sounds">Sounds</TabsTrigger>}
             {canBans && <TabsTrigger value="bans">Bans</TabsTrigger>}
+            {canAudit && <TabsTrigger value="audit">Audit log</TabsTrigger>}
           </TabsList>
           <TabsContent value="overview" className="pt-4">
             <OverviewTab server={server} onClosed={() => onOpenChange(false)} />
@@ -411,6 +438,11 @@ export function ServerSettingsDialog({
           {canBans && (
             <TabsContent value="bans" className="pt-4">
               <BansTab server={server} />
+            </TabsContent>
+          )}
+          {canAudit && (
+            <TabsContent value="audit" className="pt-4">
+              <AuditLogTab server={server} />
             </TabsContent>
           )}
         </Tabs>

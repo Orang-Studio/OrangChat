@@ -29,6 +29,14 @@ pub enum AppError {
     /// header and in the body so socket acks can surface it too.
     #[error("{message}")]
     TooManyRequests { message: String, retry_after: u64 },
+    /// The client build is below this server's minimum for its platform → 426.
+    /// Carries the newest version so the client can name it in the wall it
+    /// draws, without needing a second request it is not allowed to make.
+    #[error("{message}")]
+    UpgradeRequired {
+        message: String,
+        latest: Option<String>,
+    },
     #[error("{0}")]
     Internal(String),
 }
@@ -42,6 +50,7 @@ impl AppError {
             AppError::Unauthorized(_) | AppError::TwoFactorRequired(_) => StatusCode::UNAUTHORIZED,
             AppError::NotFound(_) => StatusCode::NOT_FOUND,
             AppError::TooManyRequests { .. } => StatusCode::TOO_MANY_REQUESTS,
+            AppError::UpgradeRequired { .. } => StatusCode::UPGRADE_REQUIRED,
             AppError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -60,6 +69,13 @@ impl IntoResponse for AppError {
         let mut body = json!({ "error": self.to_string() });
         if let AppError::TwoFactorRequired(_) = self {
             body["code"] = json!("2fa_required");
+        }
+        if let AppError::UpgradeRequired { ref latest, .. } = self {
+            // A distinct code so the client can tell a retired build apart from
+            // an ordinary refusal and draw the wall instead of a toast.
+            body["code"] = json!("upgrade_required");
+            body["severity"] = json!("required");
+            body["latest"] = json!(latest);
         }
         if let AppError::TooManyRequests { retry_after, .. } = self {
             body["code"] = json!("rate_limited");

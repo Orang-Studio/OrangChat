@@ -33,11 +33,20 @@ export function useMessages(channelId: string | undefined) {
     if (!query.data) return pending;
     // Pages: newest → oldest; items within a page: newest → oldest.
     const all: Message[] = [];
+    const confirmedLocalIds = new Set<string>();
     for (let p = query.data.pages.length - 1; p >= 0; p--) {
       const items = query.data.pages[p]?.items ?? [];
-      for (let i = items.length - 1; i >= 0; i--) all.push(items[i]!);
+      for (let i = items.length - 1; i >= 0; i--) {
+        const item = items[i]!;
+        all.push(item);
+        if (item.clientId) confirmedLocalIds.add(item.clientId);
+      }
     }
-    return [...all, ...pending].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    // A confirmed row lands in the cache a beat before its pending twin is
+    // retired. Both carry the same key, so the pending one has to drop out here
+    // or React sees a duplicate.
+    const stillPending = pending.filter((message) => !confirmedLocalIds.has(message.id));
+    return [...all, ...stillPending].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }, [query.data, pending]);
 
   const pendingMessageIds = useMemo(() => new Set(pending.map((message) => message.id)), [pending]);

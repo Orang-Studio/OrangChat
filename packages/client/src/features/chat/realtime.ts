@@ -34,8 +34,9 @@ import { unreadActions } from "../../stores/unread";
 import { getActiveChannel } from "../unread/active";
 import { markChannelRead } from "../unread/api";
 import { clearConversationNotifications, notify } from "../../lib/notifications";
+import { maybeNotifyFriendOnline } from "./friendPresence";
 import { bumpTyping, clearTyping } from "./typing";
-import { confirmPendingFromBroadcast, registerMessageOutbox } from "./outbox";
+import { matchPendingLocalId, registerMessageOutbox, resolvePending } from "./outbox";
 import { decryptMessage, forgetDecrypted } from "../e2ee/decrypt";
 import { syncEpochKeys } from "../e2ee/conversation";
 import { noteEpoch, refreshChannelState, useE2eeStore } from "../e2ee/store";
@@ -86,11 +87,15 @@ export function registerRealtime(client: QueryClient): void {
 
   // ── Messages ──────────────────────────────────────────
   socket.on("message:new", (message) => {
+    // Matched before the open: the row has to be stamped with the local id it
+    // replaces, so it renders under the same key and the pending styling simply
+    // falls away instead of the row being swapped out.
+    const localId = matchPendingLocalId(message);
     void decryptMessage(message.channelId, message).then((decrypted) => {
-      appendMessage(client, decrypted);
+      appendMessage(client, localId ? { ...decrypted, clientId: localId } : decrypted);
       // Do not remove the optimistic plaintext until its confirmed replacement
       // is renderable. Otherwise a slower E2EE open leaves a blank gap.
-      confirmPendingFromBroadcast(message);
+      if (localId) resolvePending(localId);
     });
     // Their message landed - stop showing them as typing.
     clearTyping(message.channelId, message.author.id);
@@ -191,7 +196,9 @@ export function registerRealtime(client: QueryClient): void {
   });
 
   // ── Presence ──────────────────────────────────────────
+
   socket.on("presence", ({ userId, status, devices, activities }) => {
+    maybeNotifyFriendOnline(client, userId, status);
     if (userId === selfId()) {
       useAuthStore.getState().user && useAuthStore.setState((state) => ({
         user: state.user ? { ...state.user, status, devices, activities } : null,
@@ -369,11 +376,31 @@ export function registerRealtime(client: QueryClient): void {
   });
 
   // ── Friends ───────────────────────────────────────────
-  socket.on("friend:request", (request) => addRequest(client, request));
+  socket.on("friend:request", (request) => {
+    addRequest(client, request);
+    if (useAuthStore.getState().user?.notifyFriendRequests) {
+      notify({
+        title: "New friend request",
+        body: `${request.user.displayName} wants to be friends.`,
+        icon: request.user.avatarUrl ?? undefined,
+        href: "/friends",
+        tag: `friend-request:${request.user.id}`,
+      });
+    }
+  });
   socket.on("friend:accepted", (friend) => {
     addFriend(client, friend);
     // Whichever pending request this resolved is now gone.
     removeRequestByUser(client, friend.user.id);
+    if (useAuthStore.getState().user?.notifyFriendAccepted) {
+      notify({
+        title: "Friend request accepted",
+        body: `${friend.user.displayName} is now your friend.`,
+        icon: friend.user.avatarUrl ?? undefined,
+        href: "/friends",
+        tag: `friend-accepted:${friend.user.id}`,
+      });
+    }
   });
   socket.on("friend:request:removed", ({ id }) => removeRequest(client, id));
   socket.on("friend:removed", ({ userId }) => removeFriendFromCache(client, userId));

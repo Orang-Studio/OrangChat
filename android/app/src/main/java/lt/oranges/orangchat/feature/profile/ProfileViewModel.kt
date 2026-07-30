@@ -13,9 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import lt.oranges.orangchat.data.repository.AuthRepository
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.toRequestBody
+import lt.oranges.orangchat.util.buildImagePart
 import javax.inject.Inject
 
 /** Which image slot an upload is filling. */
@@ -72,7 +70,7 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = _state.value.copy(uploading = kind, error = null)
             runCatching {
-                val part = withContext(Dispatchers.IO) { buildPart(uri) }
+                val part = withContext(Dispatchers.IO) { buildImagePart(context, uri) }
                 val uploaded = authRepository.uploadImage(part, kind.wire)
                 when (kind) {
                     ImageKind.AVATAR -> authRepository.updateProfile(avatarUrl = uploaded.url)
@@ -101,14 +99,4 @@ class ProfileViewModel @Inject constructor(
 
     fun dismissError() { _state.value = _state.value.copy(error = null) }
 
-    /** Read the picked content into a multipart part. */
-    private fun buildPart(uri: Uri): MultipartBody.Part {
-        val resolver = context.contentResolver
-        val bytes = resolver.openInputStream(uri)?.use { it.readBytes() }
-            ?: error("Could not read that image")
-        val mime = resolver.getType(uri) ?: "application/octet-stream"
-        val body = bytes.toRequestBody(mime.toMediaTypeOrNull())
-        // The server derives the real format from the bytes; the name is cosmetic.
-        return MultipartBody.Part.createFormData("file", "upload", body)
-    }
 }

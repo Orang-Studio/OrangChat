@@ -95,9 +95,15 @@ data class SelfUser(
     val createdAt: String = "",
     val email: String = "",
     val customCss: String? = null,
+    /** Replaces the OrangChat mark on this user's own clients. Self-only. */
+    val appIconUrl: String? = null,
     val dmPrivacy: DmPrivacy = DmPrivacy.EVERYONE,
     val friendRequestPrivacy: FriendRequestPrivacy = FriendRequestPrivacy.EVERYONE,
     val typingIndicators: Boolean = true,
+    /** Which friend events raise a notification; online is opt-in. */
+    val notifyFriendRequests: Boolean = true,
+    val notifyFriendAccepted: Boolean = true,
+    val notifyFriendOnline: Boolean = false,
     /** Refuse to mint a DM key until the peer was verified out of band. */
     val e2eeStrict: Boolean = false,
     val twoFactorEnabled: Boolean = false,
@@ -241,9 +247,37 @@ data class Attachment(
      */
     val expiresAt: String? = null,
 ) {
-    val isImage: Boolean get() = contentType.startsWith("image/")
-    val isAudio: Boolean get() = contentType.startsWith("audio/")
-    val isVideo: Boolean get() = contentType.startsWith("video/")
+    /**
+     * The declared type decides, but only when it says anything. Uploads whose
+     * type has not been settled yet - and everything routed through OrangMove,
+     * which records every file as application/octet-stream - arrive generic, and
+     * keying off that alone is what left previewable files sitting behind a
+     * download card until something re-sniffed them. The extension is the same
+     * evidence the server falls back to, so use it here rather than waiting.
+     */
+    val isImage: Boolean get() = matches("image/", IMAGE_EXTENSIONS)
+    val isAudio: Boolean get() = matches("audio/", AUDIO_EXTENSIONS)
+    val isVideo: Boolean get() = matches("video/", VIDEO_EXTENSIONS)
+
+    private fun matches(prefix: String, extensions: Set<String>): Boolean =
+        if (contentType.isNotBlank() && contentType != GENERIC_TYPE) {
+            contentType.startsWith(prefix)
+        } else {
+            filename.substringAfterLast('.', "").lowercase() in extensions
+        }
+
+    private companion object {
+        const val GENERIC_TYPE = "application/octet-stream"
+        val IMAGE_EXTENSIONS = setOf(
+            "png", "jpg", "jpeg", "gif", "webp", "bmp", "heic", "heif", "avif",
+        )
+        val AUDIO_EXTENSIONS = setOf(
+            "mp3", "m4a", "aac", "ogg", "oga", "opus", "wav", "flac",
+        )
+        val VIDEO_EXTENSIONS = setOf(
+            "mp4", "m4v", "webm", "mkv", "mov", "3gp",
+        )
+    }
 }
 
 @Serializable

@@ -27,6 +27,11 @@ export function KeyErasureSection({ stuck }: { stuck: boolean }) {
   const status = useQuery({
     queryKey: ['e2ee', 'key-deletion'],
     queryFn: getKeyDeletion,
+    // While one is pending the answer can change without this tab doing
+    // anything - another device checking in aborts it server-side. Leaving a
+    // stale "scheduled to be erased" banner up after that has been resolved is
+    // alarming for no reason.
+    refetchInterval: (query) => (query.state.data?.pending ? 15_000 : false),
   });
 
   const done = () => {

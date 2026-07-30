@@ -1,7 +1,12 @@
 import { useMemo } from "react";
 import { create } from "zustand";
 
-/** How long a `typing` event keeps a user in the indicator without a refresh. */
+/**
+ * How long a `typing` event keeps a user in the indicator without a refresh.
+ * Senders refresh every 4s (Composer's TYPING_THROTTLE_MS), so this is that
+ * window plus grace: long enough to survive a slow packet, short enough that
+ * someone who closes the tab mid-sentence fades out promptly.
+ */
 const TYPING_TTL_MS = 6_000;
 
 interface TypingState {

@@ -207,6 +207,13 @@ private suspend fun PointerInputScope.detectSwipeToReply(
 /** Consecutive messages within this window from the same author are grouped. */
 private const val GROUP_WINDOW_MS = 5 * 60 * 1000L
 
+/**
+ * Shortest gap between two typing packets from this device. Matches the web
+ * composer; receivers hold the indicator for a window plus grace, so a sender
+ * who backgrounds the app fades out instead of sticking.
+ */
+private const val TYPING_THROTTLE_MS = 4_000L
+
 /** A message plus its grouping flag, decided chronologically before the list is
  * reversed for display. */
 private data class MessageRowData(val message: Message, val grouped: Boolean)
@@ -1279,10 +1286,18 @@ private fun Composer(
     // the draft as it's typed. Keyed on channelId so a channel switch routes
     // saves to the right channel.
     LaunchedEffect(channelId) {
+        // One packet per window while they are actually typing, none in a window
+        // they typed nothing in. Per-keystroke emits were both needlessly chatty
+        // and enough to trip the server's typing rate limit on a fast typist.
+        var lastTypingSent = 0L
         snapshotFlow { textState.text.toString() }
             .drop(1)
             .collect { text ->
-                if (text.isNotEmpty()) onTyping()
+                val now = System.currentTimeMillis()
+                if (text.isNotEmpty() && now - lastTypingSent > TYPING_THROTTLE_MS) {
+                    lastTypingSent = now
+                    onTyping()
+                }
                 if (channelId != null) textDrafts.save(channelId, text.trim())
             }
     }

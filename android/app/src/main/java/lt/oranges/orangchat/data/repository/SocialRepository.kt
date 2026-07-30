@@ -18,6 +18,8 @@ class SocialRepository @Inject constructor(
     // DMs
     suspend fun listDms(): List<Conversation> = api.listDms()
 
+    suspend fun leaveDm(channelId: String) { api.leaveDm(channelId) }
+
     suspend fun createDm(userIds: List<String>): Conversation =
         api.createDm(CreateDmRequest(userIds))
 

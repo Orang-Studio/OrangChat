@@ -146,6 +146,9 @@ class ServerRepository @Inject constructor(
     suspend fun patchChannel(channelId: String, patch: PatchChannelRequest): Channel =
         api.patchChannel(channelId, patch)
 
+    suspend fun auditLog(serverId: String, offset: Int = 0): Page<AuditLogEntry> =
+        api.getAuditLog(serverId, offset = offset)
+
     suspend fun updateServerSettings(serverId: String, patch: UpdateServerRequest): Server =
         api.updateServer(serverId, patch)
 

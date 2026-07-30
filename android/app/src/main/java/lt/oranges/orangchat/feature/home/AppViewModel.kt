@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import lt.oranges.orangchat.data.model.AuditLogEntry
 import lt.oranges.orangchat.data.model.Channel
 import lt.oranges.orangchat.data.model.ChannelType
 import lt.oranges.orangchat.data.model.Conversation
@@ -43,6 +44,7 @@ import lt.oranges.orangchat.realtime.SocketManager
 import lt.oranges.orangchat.util.AppForegroundState
 import lt.oranges.orangchat.util.EmojiRef
 import lt.oranges.orangchat.util.Mentions
+import lt.oranges.orangchat.util.buildImagePart
 import lt.oranges.orangchat.util.normalizeCustomEmojiNames
 import java.time.Instant
 import java.util.UUID
@@ -53,8 +55,12 @@ import javax.inject.Inject
  * lists, per-channel message caches, DMs, friends, presence and typing. Applies
  * live Socket.IO events so the UI stays in sync with the backend.
  */
+/** Senders refresh every 4s (ChatPane's TYPING_THROTTLE_MS); this is that plus grace. */
+private const val TYPING_TTL_MS = 6_000L
+
 @HiltViewModel
 class AppViewModel @Inject constructor(
+    @dagger.hilt.android.qualifiers.ApplicationContext private val appContext: android.content.Context,
     private val authRepository: AuthRepository,
     private val serverRepository: ServerRepository,
     private val socialRepository: SocialRepository,
@@ -169,6 +175,9 @@ class AppViewModel @Inject constructor(
 
     private val _typing = MutableStateFlow<Map<String, Set<String>>>(emptyMap())
     val typing: StateFlow<Map<String, Set<String>>> = _typing.asStateFlow()
+
+    /** "channelId:userId" → the pending expiry, cancelled by every refresh. */
+    private val typingExpiry = mutableMapOf<String, Job>()
 
     private val _presence = MutableStateFlow<Map<String, PresenceStatus>>(emptyMap())
     val presence: StateFlow<Map<String, PresenceStatus>> = _presence.asStateFlow()
@@ -805,6 +814,46 @@ class AppViewModel @Inject constructor(
             .onFailure { _error.value = it.message }
     }
 
+    private val _auditLog = MutableStateFlow<List<AuditLogEntry>>(emptyList())
+    val auditLog: StateFlow<List<AuditLogEntry>> = _auditLog.asStateFlow()
+    private val _auditLogLoading = MutableStateFlow(false)
+    val auditLogLoading: StateFlow<Boolean> = _auditLogLoading.asStateFlow()
+
+    fun loadAuditLog(serverId: String) = viewModelScope.launch {
+        _auditLogLoading.value = true
+        runCatching { serverRepository.auditLog(serverId) }
+            .onSuccess { _auditLog.value = it.items }
+            .onFailure { _error.value = it.message }
+        _auditLogLoading.value = false
+    }
+
+    private val _serverIconUploading = MutableStateFlow(false)
+    val serverIconUploading: StateFlow<Boolean> = _serverIconUploading.asStateFlow()
+
+    /** Upload a picked image and point the server's icon at it. */
+    fun uploadServerIcon(serverId: String, uri: android.net.Uri) = viewModelScope.launch {
+        _serverIconUploading.value = true
+        runCatching {
+            val part = withContext(Dispatchers.IO) { buildImagePart(appContext, uri) }
+            val uploaded = authRepository.uploadImage(part, "avatar")
+            serverRepository.updateServerSettings(
+                serverId,
+                UpdateServerRequest(iconUrl = uploaded.url),
+            )
+        }
+            .onSuccess { refreshServers(); refreshServerDetail(serverId) }
+            .onFailure { _error.value = it.message ?: "Upload failed" }
+        _serverIconUploading.value = false
+    }
+
+    /**
+     * Clear the icon. "" rather than null: kotlinx is configured with
+     * `explicitNulls = false`, so a null field is dropped before it reaches the
+     * wire and the patch would be a no-op. The server reads "" as a clear.
+     */
+    fun removeServerIcon(serverId: String) =
+        updateServerSettings(serverId, UpdateServerRequest(iconUrl = ""))
+
     fun updateServerSettings(serverId: String, patch: UpdateServerRequest) = viewModelScope.launch {
         runCatching { serverRepository.updateServerSettings(serverId, patch) }
             .onSuccess { refreshServers(); refreshServerDetail(serverId) }
@@ -939,6 +988,21 @@ class AppViewModel @Inject constructor(
         runCatching { socialRepository.removeFriend(userId) }.onSuccess { refreshFriends() }
     }
 
+    /**
+     * Drops a conversation from the list. The server decides whether that means
+     * leaving a group for good or just closing a one-on-one, so nothing here
+     * needs to branch on the type - but the open channel does have to be let go
+     * of, or the pane keeps showing a conversation that is no longer listed.
+     */
+    fun leaveConversation(channelId: String) = viewModelScope.launch {
+        runCatching { socialRepository.leaveDm(channelId) }
+            .onSuccess {
+                if (_currentChannelId.value == channelId) _currentChannelId.value = null
+                refreshDms()
+            }
+            .onFailure { _error.value = it.message }
+    }
+
     fun openDmWith(userId: String, onOpened: (String) -> Unit) = viewModelScope.launch {
         runCatching { socialRepository.createDm(listOf(userId)) }
             .onSuccess { convo -> refreshDms(); selectChannel(convo.id); onOpened(convo.id) }
@@ -1024,6 +1088,8 @@ class AppViewModel @Inject constructor(
                     } else {
                         appendMessage(message)
                     }
+                    // Their message landed - stop showing them as typing.
+                    clearTyping(message.channelId, message.author.id)
                 }
             }
             is SocketEvent.UnreadActivityEvent -> {
@@ -1217,13 +1283,26 @@ class AppViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Senders refresh every 4s, so the expiry is a window plus grace. Each
+     * refresh cancels the pending removal: without that, the timer armed by the
+     * first packet still fires mid-sentence and blinks the indicator off.
+     */
     private fun addTyping(channelId: String, userId: String) {
         _typing.update { it + (channelId to (it[channelId].orEmpty() + userId)) }
-        // Auto-expire after ~5s.
-        viewModelScope.launch {
-            kotlinx.coroutines.delay(5000)
-            _typing.update { it + (channelId to (it[channelId].orEmpty() - userId)) }
+        val key = "$channelId:$userId"
+        typingExpiry.remove(key)?.cancel()
+        typingExpiry[key] = viewModelScope.launch {
+            kotlinx.coroutines.delay(TYPING_TTL_MS)
+            typingExpiry.remove(key)
+            clearTyping(channelId, userId)
         }
+    }
+
+    /** Expiry, or their message arriving - either way they stopped typing. */
+    private fun clearTyping(channelId: String, userId: String) {
+        typingExpiry.remove("$channelId:$userId")?.cancel()
+        _typing.update { it + (channelId to (it[channelId].orEmpty() - userId)) }
     }
 
     private fun applyReaction(e: SocketEvent.ReactionEvent) {

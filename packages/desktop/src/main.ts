@@ -4,6 +4,7 @@ import {
   globalShortcut,
   Menu,
   ipcMain,
+  nativeImage,
   session,
   dialog,
 } from "electron";
@@ -21,7 +22,7 @@ import { loadWindowState, saveWindowState, type WindowState } from "./windowStat
 import { getSettings, updateSettings, clampZoom } from "./settings";
 import { registerScreenPicker } from "./screenPicker";
 import { registerDownloads } from "./downloads";
-import { createTray, setTrayAttention } from "./tray";
+import { createTray, setTrayAttention, setTrayIcon } from "./tray";
 import { syncAutoLaunch } from "./autoLaunch";
 import { setUnreadBadge } from "./badge";
 import {
@@ -30,6 +31,22 @@ import {
   checkForUpdatesReport,
   type UpdateCheckReport,
 } from "./updater";
+
+/** Bounds an icon data url; 256px of PNG is comfortably under this. */
+const MAX_ICON_DATA_URL = 2 * 1024 * 1024;
+
+/**
+ * Point the window frame, taskbar and tray at `image`, or back at the bundled
+ * mark when it is null. macOS has no per-window icon, so the frame call is a
+ * no-op there and only the tray changes.
+ */
+function applyAppIcon(window: BrowserWindow | null, image: Electron.NativeImage | null): void {
+  const bundled = join(__dirname, "..", "build", "icon.png");
+  const resolved = image ?? nativeImage.createFromPath(bundled);
+  if (resolved.isEmpty()) return;
+  window?.setIcon(resolved);
+  setTrayIcon(resolved);
+}
 
 let mainWindow: BrowserWindow | null = null;
 let quitting = false;
@@ -297,6 +314,22 @@ void app.whenReady().then(() => {
     if (!mainWindow || mainWindow.isFocused()) return;
     mainWindow.flashFrame(true);
     setTrayAttention(true);
+  });
+
+  // The page owns the user's chosen icon; the frame, tray and taskbar are ours.
+  // Only a data url is accepted - a remote url would have main fetch on the
+  // page's behalf, outside the session and permission handlers set up above.
+  ipcMain.on("icon:set", (event, dataUrl: unknown) => {
+    if (!isTrustedSender(event)) return;
+    if (dataUrl === null) {
+      applyAppIcon(mainWindow, null);
+      return;
+    }
+    if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) return;
+    if (dataUrl.length > MAX_ICON_DATA_URL) return;
+    const image = nativeImage.createFromDataURL(dataUrl);
+    if (image.isEmpty()) return;
+    applyAppIcon(mainWindow, image);
   });
 
   // Settings → System runs the check from the page and renders the outcome, so

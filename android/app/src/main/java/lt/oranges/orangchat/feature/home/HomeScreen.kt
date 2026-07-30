@@ -28,6 +28,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import lt.oranges.orangchat.data.model.ChannelType
+import lt.oranges.orangchat.data.remote.UpdateServerRequest
 import lt.oranges.orangchat.data.model.SelfUser
 import lt.oranges.orangchat.data.model.ServerMember
 import lt.oranges.orangchat.data.model.User
@@ -56,7 +57,7 @@ import lt.oranges.orangchat.feature.voice.CallViewModel
 import lt.oranges.orangchat.feature.voice.rememberCallPermissionGate
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-private enum class Overlay { NONE, FRIENDS, NEW_GROUP, SETTINGS, SEARCH, SERVER_SETTINGS, ROLES, MEMBERS }
+private enum class Overlay { NONE, FRIENDS, NEW_GROUP, SETTINGS, SEARCH, SERVER_SETTINGS, ROLES, MEMBERS, AUDIT_LOG }
 
 /**
  * The authenticated shell: a server rail plus a swapping content pane
@@ -128,6 +129,9 @@ fun HomeScreen(
     val loadingOlder by appViewModel.loadingOlder.collectAsStateWithLifecycle()
     val conversationEncryption by appViewModel.conversationEncryption.collectAsStateWithLifecycle()
     val e2eeError by appViewModel.e2eeError.collectAsStateWithLifecycle()
+    val auditLog by appViewModel.auditLog.collectAsStateWithLifecycle()
+    val auditLogLoading by appViewModel.auditLogLoading.collectAsStateWithLifecycle()
+    val serverIconUploading by appViewModel.serverIconUploading.collectAsStateWithLifecycle()
 
     // Seed each voice channel's roster when a server opens; voice:state keeps
     // them current from then on.
@@ -268,6 +272,7 @@ fun HomeScreen(
                 // so it goes through the same permission gate as the chat header.
                 onStartCall = { convo -> requestAndStartCall(convo.id, false) },
                 onRemoveFriend = appViewModel::removeFriend,
+                onLeaveConversation = { convo -> appViewModel.leaveConversation(convo.id) },
             )
 
             detail != null -> ChannelListPane(
@@ -464,13 +469,32 @@ fun HomeScreen(
                                 onBan = { userId -> appViewModel.banMember(detail!!.server.id, userId) },
                             )
 
+                            overlay == Overlay.AUDIT_LOG && detail != null -> AuditLogScreen(
+                                entries = auditLog,
+                                loading = auditLogLoading,
+                                onBack = { overlay = Overlay.SERVER_SETTINGS },
+                                onLoad = { appViewModel.loadAuditLog(detail!!.server.id) },
+                            )
+
                             overlay == Overlay.SERVER_SETTINGS && detail != null -> ServerSettingsScreen(
                                 detail = detail!!,
                                 selfId = self.id,
                                 onBack = { overlay = Overlay.NONE },
                                 onRename = { name -> appViewModel.renameServer(detail!!.server.id, name) },
+                                onSaveDescription = { text ->
+                                    appViewModel.updateServerSettings(
+                                        detail!!.server.id,
+                                        UpdateServerRequest(description = text),
+                                    )
+                                },
+                                iconUploading = serverIconUploading,
+                                onUploadIcon = { uri ->
+                                    appViewModel.uploadServerIcon(detail!!.server.id, uri)
+                                },
+                                onRemoveIcon = { appViewModel.removeServerIcon(detail!!.server.id) },
                                 onOpenRoles = { overlay = Overlay.ROLES },
                                 onOpenMembers = { overlay = Overlay.MEMBERS },
+                                onOpenAuditLog = { overlay = Overlay.AUDIT_LOG },
                                 onCreateInvite = { onCode -> appViewModel.createInvite(detail!!.server.id, onCode) },
                                 onLeave = {
                                     appViewModel.leaveServer(detail!!.server.id) {

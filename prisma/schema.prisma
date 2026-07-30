@@ -19,9 +19,17 @@ model User {
   pronouns             String?
   customCss            String?
   profileCss           String?
+  /// Replaces the OrangChat mark on this user's own clients (favicon, in-app
+  /// branding, Electron window/tray icon). Self-only - never on the public DTO.
+  appIconUrl           String?
   dmPrivacy            String   @default("everyone") // "everyone" | "friends" | "none"
   friendRequestPrivacy String   @default("everyone") // "everyone" | "mutual" | "none"
   typingIndicators     Boolean  @default(true)
+  /// Which friend events raise a notification. Coming-online is opt-in: it
+  /// fires for every friend on every app launch.
+  notifyFriendRequests Boolean  @default(true)
+  notifyFriendAccepted Boolean  @default(true)
+  notifyFriendOnline   Boolean  @default(false)
   /// "Require verification before messaging anyone new" (docs/E2EE.md §6.5).
   /// A per-user policy that only ever blocks this account's own sending; it
   /// never mutates anybody else's settings.
@@ -376,6 +384,10 @@ model ChannelParticipant {
   channelId String
   userId    String
   joinedAt  DateTime @default(now())
+  /// When this user closed a one-to-one DM. Membership is kept so the history
+  /// and delivery survive; the conversation is simply not listed until a new
+  /// message arrives, which clears this. Group DMs delete the row instead.
+  hiddenAt  DateTime?
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([channelId, userId])
@@ -396,6 +408,11 @@ model Message {
   attachments Json      @default("[]")
   pinned      Boolean   @default(false)
   pinnedAt    DateTime?
+  /// Stored generated tsvector backing server-channel search. Declared only so
+  /// Prisma sees no drift - it is maintained by Postgres, never written here,
+  /// and `migrate dev` would recreate it as a plain column. Its real definition
+  /// lives in 20260730120000_message_search_fts.
+  searchVector Unsupported("tsvector")?
   channel   Channel    @relation(fields: [channelId], references: [id], onDelete: Cascade)
   author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
   replyTo   Message?   @relation("MessageReply", fields: [replyToId], references: [id], onDelete: SetNull)

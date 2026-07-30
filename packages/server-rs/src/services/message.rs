@@ -390,6 +390,10 @@ pub async fn send_message(
         .execute(&state.pool)
         .await?;
 
+    // A DM someone closed comes back the moment it has something new in it -
+    // otherwise the message is delivered to a conversation they cannot see.
+    let _ = super::dm::reopen_for_new_message(state, channel_id).await;
+
     // Sending is what a draft was building toward, so drop it. best-effort.
     let _ = super::draft::clear(state, author_id, channel_id).await;
 
@@ -610,24 +614,10 @@ pub async fn search_messages(
     limit: i64,
     offset: i64,
 ) -> AppResult<Page<MessageDto>> {
-    use crate::permissions::{has_permission, VIEW_CHANNEL};
     use crate::services::membership;
 
     // Channels in this server the viewer is allowed to read.
-    let text_channels: Vec<(String,)> =
-        sqlx::query_as(r#"SELECT id FROM "Channel" WHERE "serverId" = $1 AND type = 'text'"#)
-            .bind(server_id)
-            .fetch_all(&state.pool)
-            .await?;
-
-    let mut accessible: Vec<String> = Vec::new();
-    for (cid,) in text_channels {
-        if let Some(perms) = membership::channel_permissions(state, &cid, viewer_id).await? {
-            if has_permission(perms, VIEW_CHANNEL) {
-                accessible.push(cid);
-            }
-        }
-    }
+    let mut accessible = membership::viewable_text_channels(state, server_id, viewer_id).await?;
     // Narrow to a single channel when requested (only if the viewer can see it).
     if let Some(only) = channel_id {
         accessible.retain(|c| c == only);
@@ -639,30 +629,67 @@ pub async fn search_messages(
         });
     }
 
-    // Escape LIKE wildcards so user input matches literally.
-    let escaped = query
-        .replace('\\', "\\\\")
-        .replace('%', "\\%")
-        .replace('_', "\\_");
-    let pattern = format!("%{escaped}%");
     let take = limit + 1;
 
-    let rows: Vec<MessageRow> = sqlx::query_as(
-        r#"SELECT * FROM "Message"
-           WHERE "channelId" = ANY($1)
-             AND ciphertext IS NULL
-             AND content ILIKE $2 ESCAPE '\'
-             AND ($3::text IS NULL OR "authorId" = $3)
-           ORDER BY "createdAt" DESC, id DESC
-           LIMIT $4 OFFSET $5"#,
-    )
-    .bind(&accessible)
-    .bind(&pattern)
-    .bind(author_id)
-    .bind(take)
-    .bind(offset)
-    .fetch_all(&state.pool)
-    .await?;
+    // `websearch_to_tsquery` accepts anything a user can type - it never raises
+    // on stray operators the way `to_tsquery` does - but it yields an empty
+    // query for input that is all stopwords or punctuation ("the", "?!"). That
+    // would match nothing at all, so those fall back to the old substring scan
+    // rather than silently returning no results.
+    let tsquery_is_empty: bool =
+        sqlx::query_scalar(r#"SELECT websearch_to_tsquery('english', $1)::text = ''"#)
+            .bind(query)
+            .fetch_one(&state.pool)
+            .await?;
+
+    // The two branches are kept apart rather than OR'd into one statement: an
+    // OR across the two predicates makes the planner drop the GIN index and go
+    // back to scanning every message in the server.
+    let rows: Vec<MessageRow> = if tsquery_is_empty {
+        // Escape LIKE wildcards so user input matches literally.
+        let escaped = query
+            .replace('\\', "\\\\")
+            .replace('%', "\\%")
+            .replace('_', "\\_");
+        let pattern = format!("%{escaped}%");
+        sqlx::query_as(
+            r#"SELECT * FROM "Message"
+               WHERE "channelId" = ANY($1)
+                 AND ciphertext IS NULL
+                 AND content ILIKE $2 ESCAPE '\'
+                 AND ($3::text IS NULL OR "authorId" = $3)
+               ORDER BY "createdAt" DESC, id DESC
+               LIMIT $4 OFFSET $5"#,
+        )
+        .bind(&accessible)
+        .bind(&pattern)
+        .bind(author_id)
+        .bind(take)
+        .bind(offset)
+        .fetch_all(&state.pool)
+        .await?
+    } else {
+        // "searchVector" is a stored generated column (see the
+        // 20260730120000_message_search_fts migration), so this reads a
+        // materialised tsvector whether the planner uses Message_searchVector_idx
+        // or reaches the rows by channel and filters.
+        sqlx::query_as(
+            r#"SELECT * FROM "Message"
+               WHERE "channelId" = ANY($1)
+                 AND ciphertext IS NULL
+                 AND "searchVector" @@ websearch_to_tsquery('english', $2)
+                 AND ($3::text IS NULL OR "authorId" = $3)
+               ORDER BY "createdAt" DESC, id DESC
+               LIMIT $4 OFFSET $5"#,
+        )
+        .bind(&accessible)
+        .bind(query)
+        .bind(author_id)
+        .bind(take)
+        .bind(offset)
+        .fetch_all(&state.pool)
+        .await?
+    };
 
     let has_more = rows.len() as i64 > limit;
     let page: Vec<MessageRow> = if has_more {

@@ -230,9 +230,13 @@ async fn update_server(
         }
         patch.name = Some(n.to_string());
     }
+    // Empty string clears, same as JSON null. The Android client serialises with
+    // `explicitNulls = false`, so a null field never reaches the wire at all -
+    // "" is the only clear signal it can send.
     if let Some(v) = obj.get("iconUrl") {
         patch.icon_url = Some(match v {
             Value::Null => None,
+            Value::String(s) if s.is_empty() => None,
             Value::String(s) => Some(s.clone()),
             _ => return Err(bad_request("Invalid input")),
         });
@@ -240,6 +244,7 @@ async fn update_server(
     if let Some(v) = obj.get("description") {
         patch.description = Some(match v {
             Value::Null => None,
+            Value::String(s) if s.is_empty() => None,
             Value::String(s) if s.len() <= 1024 => Some(s.clone()),
             _ => return Err(bad_request("Description must be 1024 characters or fewer")),
         });

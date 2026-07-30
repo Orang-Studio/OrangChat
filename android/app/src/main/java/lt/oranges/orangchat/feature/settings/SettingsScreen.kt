@@ -2,6 +2,7 @@ package lt.oranges.orangchat.feature.settings
 
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -38,6 +39,7 @@ import lt.oranges.orangchat.feature.profile.ProfileSettingsSection
 import lt.oranges.orangchat.feature.profile.ProfileCard
 import lt.oranges.orangchat.ui.components.ButtonVariant
 import lt.oranges.orangchat.ui.components.OrangButton
+import lt.oranges.orangchat.ui.components.ImageField
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.ui.theme.ThemePreference
@@ -79,7 +81,7 @@ fun SettingsScreen(
         )
         SettingsPage.PROFILE -> ProfilePage(self, toRoot, modifier)
         SettingsPage.PROFILE_THEMES -> ProfileThemesScreen(self, toRoot, modifier)
-        SettingsPage.APPEARANCE -> AppearancePage(themePreference, onThemeChange, toRoot, modifier)
+        SettingsPage.APPEARANCE -> AppearancePage(self, themePreference, onThemeChange, toRoot, modifier)
         SettingsPage.PRIVACY -> PrivacyScreen(self, toRoot)
         SettingsPage.SHARING -> SharingScreen(toRoot)
         SettingsPage.RINGTONE -> RingtonePage(toRoot, modifier)
@@ -224,12 +226,19 @@ private fun ProfilePage(self: SelfUser, onBack: () -> Unit, modifier: Modifier =
 
 @Composable
 private fun AppearancePage(
+    self: SelfUser,
     themePreference: ThemePreference,
     onThemeChange: (ThemePreference) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    vm: SettingsViewModel = hiltViewModel(),
 ) {
     val c = OrangTheme.colors
+    val iconUploading by vm.appIconUploading.collectAsStateWithLifecycle()
+    val iconError by vm.appIconError.collectAsStateWithLifecycle()
+    val iconPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri -> uri?.let(vm::uploadAppIcon) }
     Column(modifier = modifier.fillMaxSize().background(c.surface2)) {
         SettingsTopBar("Appearance", onBack)
         Column(
@@ -255,6 +264,30 @@ private fun AppearancePage(
                         )
                     }
                 }
+            }
+
+            SettingSection("App icon") {
+                Text(
+                    "Replaces the OrangChat mark for you everywhere you are signed in. " +
+                        "Android cannot repoint its own launcher icon, so on this device " +
+                        "the change shows up in the web app and the desktop app.",
+                    color = c.inkMuted,
+                    fontSize = 12.sp,
+                )
+                ImageField(
+                    label = "Icon",
+                    url = self.appIconUrl,
+                    height = 72.dp,
+                    square = true,
+                    busy = iconUploading,
+                    onPick = {
+                        iconPicker.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                        )
+                    },
+                    onRemove = vm::removeAppIcon,
+                )
+                iconError?.let { Text(it, color = c.danger, fontSize = 12.sp) }
             }
         }
     }

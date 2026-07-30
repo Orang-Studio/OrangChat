@@ -49,9 +49,21 @@ class TokenStore(context: Context) {
         tokenListeners += listener
     }
 
+    /**
+     * The last signed-in profile, as JSON. Lets a cold start with no network
+     * restore the session instead of falling back to the sign-in screen: the
+     * refresh cookie is still on disk, so the account has not gone anywhere -
+     * only the server is unreachable.
+     */
+    var cachedUser: String?
+        get() = prefs.getString(KEY_USER, null)
+        set(value) = prefs.edit().apply {
+            if (value == null) remove(KEY_USER) else putString(KEY_USER, value)
+        }.apply()
+
     fun clear() {
         setAccessToken(null)
-        prefs.edit().remove(KEY_ACCESS).remove(KEY_COOKIES).apply()
+        prefs.edit().remove(KEY_ACCESS).remove(KEY_COOKIES).remove(KEY_USER).apply()
     }
 
     var themePreference: ThemePreference
@@ -105,6 +117,7 @@ class TokenStore(context: Context) {
     companion object {
         const val KEY_ACCESS = "access_token"
         const val KEY_COOKIES = "cookies"
+        const val KEY_USER = "cached_user"
         const val KEY_THEME = "theme_pref"
         const val KEY_RINGTONE = "ringtone_uri"
         const val KEY_RINGTONE_NAME = "ringtone_name"

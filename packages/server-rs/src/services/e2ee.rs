@@ -14,6 +14,7 @@ use crate::dto::{
 use crate::error::{AppError, AppResult};
 use crate::ids::cuid;
 use crate::models::{ChannelEpochRow, DeviceLogEntryRow, DeviceRow, KeyEnvelopeRow};
+use crate::services::key_deletion;
 use crate::state::AppState;
 
 pub const DOMAIN_DEVICE_BUNDLE: &str = "orangchat/device-bundle/v1";
@@ -619,11 +620,22 @@ pub async fn revoke_device(
 }
 
 pub async fn touch(state: &AppState, user_id: &str, device_id: &str) -> AppResult<()> {
-    sqlx::query(r#"UPDATE "Device" SET "lastSeenAt" = now() WHERE id = $1 AND "userId" = $2"#)
-        .bind(device_id)
-        .bind(user_id)
-        .execute(&state.pool)
-        .await?;
+    let updated = sqlx::query(
+        r#"UPDATE "Device" SET "lastSeenAt" = now()
+           WHERE id = $1 AND "userId" = $2 AND "revokedAt" IS NULL"#,
+    )
+    .bind(device_id)
+    .bind(user_id)
+    .execute(&state.pool)
+    .await?;
+
+    // Only a device that has loaded a local identity ever gets here, so this is
+    // the account demonstrating that a working key still exists - which is
+    // exactly the question a pending key erasure is waiting on. Answer it now
+    // rather than at the end of the wait.
+    if updated.rows_affected() > 0 {
+        key_deletion::abort_on_device_seen(state, user_id).await?;
+    }
     Ok(())
 }
 

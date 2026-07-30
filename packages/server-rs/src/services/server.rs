@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use sqlx::QueryBuilder;
 
 use crate::error::{AppError, AppResult};
+use crate::http::media_proxy::is_asset_url;
 use crate::ids::{cuid, invite_code};
 use crate::models::{
     ChannelOverwriteRow, ChannelRow, InviteRow, RoleRow, ServerMemberRow, ServerRow, UserRow,
@@ -359,14 +360,22 @@ pub async fn update_server(
     if let Some(name) = patch.name {
         sep.push(r#"name = "#).push_bind_unseparated(name);
     }
-    if let Some(icon) = patch.icon_url {
+    // Same round-trip guard as the user profile: the wire form is this row's own
+    // asset route, and storing it would erase the real url.
+    if let Some(icon) = patch
+        .icon_url
+        .filter(|v| !v.as_deref().is_some_and(is_asset_url))
+    {
         sep.push(r#""iconUrl" = "#).push_bind_unseparated(icon);
     }
     if let Some(description) = patch.description {
         sep.push(r#"description = "#)
             .push_bind_unseparated(description);
     }
-    if let Some(banner) = patch.banner_url {
+    if let Some(banner) = patch
+        .banner_url
+        .filter(|v| !v.as_deref().is_some_and(is_asset_url))
+    {
         sep.push(r#""bannerUrl" = "#).push_bind_unseparated(banner);
     }
     if let Some(cid) = patch.system_channel_id {

@@ -182,6 +182,62 @@ pub async fn cancel_for_user(state: &AppState, user_id: &str) -> AppResult<()> {
     Ok(())
 }
 
+/// Called the moment a device holding the key checks in, rather than leaving the
+/// question to the sweep at the end of the wait.
+///
+/// Both orderings reach the same outcome, but only this one is honest to the
+/// user: the request says any surviving device cancels it, so a device that
+/// checks in and changes nothing on screen for another three hours reads as the
+/// promise not being kept. It also means the "nothing was erased" mail lands
+/// while the person is still holding the phone that sent it.
+///
+/// A no-op when nothing is pending, which is the overwhelmingly common case -
+/// `/e2ee/seen` is on the startup path of every client.
+pub async fn abort_on_device_seen(state: &AppState, user_id: &str) -> AppResult<()> {
+    let done = sqlx::query(
+        r#"UPDATE "KeyDeletionRequest" SET "abortedAt" = now()
+           WHERE "userId" = $1 AND "cancelledAt" IS NULL
+             AND "abortedAt" IS NULL AND "executedAt" IS NULL
+           RETURNING id"#,
+    )
+    .bind(user_id)
+    .fetch_optional(&state.pool)
+    .await
+    .map(|row| row.is_some());
+
+    let aborted = match done {
+        Ok(aborted) => aborted,
+        Err(e) => {
+            tracing::warn!(user = %user_id, error = %e, "could not abort key erasure on check-in");
+            return Ok(());
+        }
+    };
+    if !aborted {
+        return Ok(());
+    }
+
+    let address: Option<String> = sqlx::query_scalar(r#"SELECT email FROM "User" WHERE id = $1"#)
+        .bind(user_id)
+        .fetch_optional(&state.pool)
+        .await?;
+    if let Some(address) = address {
+        if let Err(e) = email::send_key_deletion_aborted(&state.config, &address).await {
+            tracing::warn!(user = %user_id, error = %e, "could not send key erasure abort notice");
+        }
+    }
+    push::notify_security(
+        state,
+        user_id,
+        "key-deletion-aborted",
+        "Your encryption keys were not erased",
+        "A device holding your keys checked in, so the erasure was cancelled.",
+        "/?keyErasure=1",
+    )
+    .await;
+
+    Ok(())
+}
+
 /// The wipe itself. Both tables have to go: revoking the devices alone leaves
 /// the log head in place, and `enroll_genesis` only accepts an entry at seq 0
 /// with no previous hash, so the account would still be unable to start over.

@@ -3,6 +3,8 @@ use std::env;
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine as _;
 
+use crate::services::update_policy::{PlatformPolicy, UpdatePolicy};
+
 /// Validated process configuration, loaded once at boot. Mirrors env.ts.
 #[derive(Clone)]
 pub struct Config {
@@ -82,6 +84,11 @@ pub struct Config {
     /// rest); a key that's absent - or a missing file - leaves the badge alone.
     /// See services::badge.
     pub badges_file: String,
+    /// Which client builds are still allowed in, per platform. Unset thresholds
+    /// mean that platform is never nagged and never blocked, so a fresh
+    /// deployment enforces nothing until someone opts in. See
+    /// services::update_policy.
+    pub update_policy: UpdatePolicy,
 }
 
 impl Config {
@@ -166,7 +173,21 @@ impl Config {
                 .ok()
                 .filter(|v| !v.is_empty())
                 .unwrap_or_else(|| "badges.json".into()),
+            update_policy: UpdatePolicy {
+                android: platform_policy("ANDROID"),
+                desktop: platform_policy("DESKTOP"),
+            },
         })
+    }
+}
+
+/// Reads the three update thresholds for one platform, e.g.
+/// `ANDROID_LATEST_VERSION`, `ANDROID_MIN_RECOMMENDED`, `ANDROID_MIN_SUPPORTED`.
+fn platform_policy(prefix: &str) -> PlatformPolicy {
+    PlatformPolicy {
+        latest: opt(&format!("{prefix}_LATEST_VERSION")),
+        min_recommended: opt(&format!("{prefix}_MIN_RECOMMENDED")),
+        min_supported: opt(&format!("{prefix}_MIN_SUPPORTED")),
     }
 }
 

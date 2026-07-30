@@ -117,6 +117,7 @@ export async function restoreQueuedMessages(): Promise<void> {
         awaitingVerification: true,
         message: {
           id: record.id,
+          clientId: record.id,
           channelId: body.payload.channelId,
           author,
           content: body.payload.content,
@@ -196,7 +197,7 @@ async function confirmEntry(entry: PendingOutgoing, sent: Message): Promise<void
   // Keep the optimistic plaintext visible until the confirmed wire row has
   // been opened and inserted. Encrypted acks carry an empty `content`; removing
   // the pending row first makes the message vanish until history is reloaded.
-  await appendConfirmed?.(sent);
+  await appendConfirmed?.({ ...sent, clientId: entry.localId });
   removeEntry(entry.localId);
 }
 
@@ -282,6 +283,7 @@ export function queueMessage(payload: OutgoingMessagePayload): Message {
   const localId = `pending:${crypto.randomUUID()}`;
   const message: Message = {
     id: localId,
+    clientId: localId,
     channelId: payload.channelId,
     author,
     content: payload.content,
@@ -301,10 +303,10 @@ export function queueMessage(payload: OutgoingMessagePayload): Message {
   return message;
 }
 
-/** The server broadcasts before acknowledging. Treat the matching echo as the
- * confirmation so an ack lost during disconnect cannot cause a duplicate. */
-export function confirmPendingFromBroadcast(message: Message): void {
-  const entry = useMessageOutbox.getState().entries.find(
+/** The server broadcasts before acknowledging. Find the local row this echo
+ * confirms, so it can be stamped and reconciled rather than duplicated. */
+export function matchPendingLocalId(message: Message): string | undefined {
+  return useMessageOutbox.getState().entries.find(
     (candidate) =>
       candidate.authorId === message.author.id &&
       candidate.payload.channelId === message.channelId &&
@@ -312,8 +314,12 @@ export function confirmPendingFromBroadcast(message: Message): void {
         ? candidate.sealedCiphertext === message.ciphertext
         : candidate.payload.content === message.content) &&
       (candidate.payload.replyToId ?? null) === message.replyToId,
-  );
-  if (entry) removeEntry(entry.localId);
+  )?.localId;
+}
+
+/** Retire the local row once its confirmed replacement is in the cache. */
+export function resolvePending(localId: string): void {
+  removeEntry(localId);
 }
 
 export function usePendingMessages(channelId: string | undefined): Message[] {

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Link, useLocation, useMatch } from "react-router-dom";
+import { Link, useLocation, useMatch, useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, Phone, Plus, User as UserIcon, UserX, Users } from "lucide-react";
+import { Check, Copy, LogOut, Phone, Plus, User as UserIcon, UserX, Users, X } from "lucide-react";
 import type { Conversation } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
 import { Avatar } from "../../components/Avatar";
@@ -26,9 +26,11 @@ import {
   conversationName,
   conversationToChannel,
   otherParticipants,
+  dmKeys,
   useConversations,
 } from "./queries";
 import { NewDmDialog } from "./NewDmDialog";
+import { leaveDm } from "./api";
 import { ActivityStatus } from "../../components/ActivityStatus";
 
 const copyText = (text: string) => void navigator.clipboard?.writeText(text);
@@ -41,6 +43,7 @@ function ConversationRow({
   active: boolean;
 }) {
   const client = useQueryClient();
+  const navigate = useNavigate();
   const selfId = useAuthStore((s) => s.user?.id);
   const name = conversationName(conversation, selfId);
   const others = otherParticipants(conversation, selfId);
@@ -63,6 +66,16 @@ function ConversationRow({
   const remove = useMutation({
     mutationFn: (userId: string) => removeFriend(userId),
     onSuccess: (_v, userId) => removeFriendFromCache(client, userId),
+  });
+  const leave = useMutation({
+    mutationFn: () => leaveDm(conversation.id),
+    onSuccess: () => {
+      unreadActions.clear(conversation.id);
+      void client.invalidateQueries({ queryKey: dmKeys.list });
+      // Standing in a conversation that is no longer listed leaves the user on
+      // a dead route, so step out of it first.
+      if (active) navigate("/");
+    },
   });
 
   return (
@@ -149,6 +162,16 @@ function ConversationRow({
               </ContextMenuItem>
             </>
           )}
+
+          <ContextMenuSeparator />
+          <ContextMenuItem danger onSelect={() => leave.mutate()}>
+            {isGroup ? (
+              <LogOut aria-hidden className="size-4" />
+            ) : (
+              <X aria-hidden className="size-4" />
+            )}
+            {isGroup ? "Leave Group" : "Close DM"}
+          </ContextMenuItem>
 
           <ContextMenuSeparator />
           {other && (

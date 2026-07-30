@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { TooltipProvider } from "../components/ui/Tooltip";
 import { useCustomCss } from "../lib/customCss";
+import { useAppIcon } from "../lib/appIcon";
 import { getUnreads } from "../features/unread/api";
 import { unreadActions } from "../stores/unread";
 import { restorePushNotifications, setNotificationNavigator } from "../lib/notifications";
@@ -11,11 +12,13 @@ import { CallErrorToast } from "../features/voice/CallErrorToast";
 import { IncomingCallDialog } from "../features/voice/IncomingCallDialog";
 import { getActiveChannel } from "../features/unread/active";
 import { WhatsNewDialog } from "../features/updates/WhatsNewDialog";
+import { UpdateGate } from "../features/updates/UpdateGate";
 import { SecurityAlertOverlay } from "../features/e2ee/SecurityAlertOverlay";
 
 /** Authenticated frame: each layout renders its own PanelShell inside. */
 export function AppShell() {
   useCustomCss();
+  useAppIcon();
   const navigate = useNavigate();
 
   // Let notification clicks deep-link into the app.
@@ -54,6 +57,7 @@ export function AppShell() {
       <CallStage />
       <CallErrorToast />
       <WhatsNewDialog />
+      <UpdateGate />
       {/* Above everything, including calls: an equivocating server is the one
           thing that outranks whatever the user is currently doing. */}
       <SecurityAlertOverlay />

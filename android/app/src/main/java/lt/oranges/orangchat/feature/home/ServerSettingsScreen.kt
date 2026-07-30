@@ -1,6 +1,9 @@
 package lt.oranges.orangchat.feature.home
 
 import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,6 +44,7 @@ import lt.oranges.orangchat.data.model.hasPermission
 import lt.oranges.orangchat.util.InviteLink
 import lt.oranges.orangchat.ui.components.ButtonVariant
 import lt.oranges.orangchat.ui.components.ConfirmDialog
+import lt.oranges.orangchat.ui.components.ImageField
 import lt.oranges.orangchat.ui.components.OrangButton
 import lt.oranges.orangchat.ui.components.OrangTextField
 import lt.oranges.orangchat.ui.theme.OrangRadius
@@ -59,8 +63,13 @@ fun ServerSettingsScreen(
     selfId: String,
     onBack: () -> Unit,
     onRename: (String) -> Unit,
+    onSaveDescription: (String) -> Unit,
+    iconUploading: Boolean,
+    onUploadIcon: (android.net.Uri) -> Unit,
+    onRemoveIcon: () -> Unit,
     onOpenRoles: () -> Unit,
     onOpenMembers: () -> Unit,
+    onOpenAuditLog: () -> Unit,
     onCreateInvite: ((String) -> Unit) -> Unit,
     onLeave: () -> Unit,
     onDelete: () -> Unit,
@@ -73,7 +82,13 @@ fun ServerSettingsScreen(
     val myPerms = Hierarchy.effectivePermissions(detail, selfId)
 
     var name by remember(detail.server.id) { mutableStateOf(detail.server.name) }
+    var description by remember(detail.server.id) {
+        mutableStateOf(detail.server.description.orEmpty())
+    }
     var inviteCode by remember(detail.server.id) { mutableStateOf<String?>(null) }
+    val iconPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri -> uri?.let(onUploadIcon) }
     var confirmLeave by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
 
@@ -106,11 +121,41 @@ fun ServerSettingsScreen(
                     hint = if (isOwner) null else "Only the owner can rename this server",
                     modifier = Modifier.fillMaxWidth(),
                 )
+                OrangTextField(
+                    value = description,
+                    onValueChange = { if (it.length <= 1024) description = it },
+                    label = "Description",
+                    enabled = isOwner,
+                    hint = "Shown on the invite page.",
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                ImageField(
+                    label = "Server icon",
+                    url = detail.server.iconUrl,
+                    height = 72.dp,
+                    square = true,
+                    busy = iconUploading,
+                    enabled = isOwner,
+                    onPick = {
+                        iconPicker.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                        )
+                    },
+                    onRemove = onRemoveIcon,
+                )
                 if (isOwner) {
                     OrangButton(
                         text = "Save",
-                        onClick = { onRename(name.trim()) },
-                        enabled = name.isNotBlank() && name.trim() != detail.server.name,
+                        onClick = {
+                            if (name.trim() != detail.server.name) onRename(name.trim())
+                            if (description.trim() != detail.server.description.orEmpty()) {
+                                onSaveDescription(description.trim())
+                            }
+                        },
+                        enabled = name.isNotBlank() && (
+                            name.trim() != detail.server.name ||
+                                description.trim() != detail.server.description.orEmpty()
+                            ),
                     )
                 }
             }
@@ -179,6 +224,9 @@ fun ServerSettingsScreen(
                         value = "${detail.roles.size}",
                         onClick = onOpenRoles,
                     )
+                }
+                if (myPerms.hasPermission(Permissions.VIEW_AUDIT_LOG)) {
+                    NavRow(label = "Audit log", value = "", onClick = onOpenAuditLog)
                 }
             }
 

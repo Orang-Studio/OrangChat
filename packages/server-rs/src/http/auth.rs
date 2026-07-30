@@ -754,6 +754,15 @@ async fn patch_me(
             _ => return Err(bad_request("Invalid input")),
         });
     }
+    if let Some(v) = obj.get("appIconUrl") {
+        patch.app_icon_url = Some(match v {
+            Value::Null => None,
+            // "" clears, for the Android client - see http::servers::parse_patch.
+            Value::String(s) if s.is_empty() => None,
+            Value::String(s) => Some(s.clone()),
+            _ => return Err(bad_request("Invalid input")),
+        });
+    }
     if let Some(v) = obj.get("bannerUrl") {
         patch.banner_url = Some(match v {
             Value::Null => None,
@@ -812,6 +821,20 @@ async fn patch_me(
     }
     if let Some(v) = obj.get("typingIndicators") {
         patch.typing_indicators = Some(v.as_bool().ok_or_else(|| bad_request("Invalid input"))?);
+    }
+    for (key, field) in [
+        ("notifyFriendRequests", 0usize),
+        ("notifyFriendAccepted", 1),
+        ("notifyFriendOnline", 2),
+    ] {
+        if let Some(v) = obj.get(key) {
+            let b = v.as_bool().ok_or_else(|| bad_request("Invalid input"))?;
+            match field {
+                0 => patch.notify_friend_requests = Some(b),
+                1 => patch.notify_friend_accepted = Some(b),
+                _ => patch.notify_friend_online = Some(b),
+            }
+        }
     }
     if let Some(v) = obj.get("e2eeStrict") {
         patch.e2ee_strict = Some(v.as_bool().ok_or_else(|| bad_request("Invalid input"))?);

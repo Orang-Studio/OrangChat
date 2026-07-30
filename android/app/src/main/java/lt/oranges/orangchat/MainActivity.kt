@@ -40,7 +40,9 @@ import lt.oranges.orangchat.feature.voice.CallHost
 import lt.oranges.orangchat.feature.voice.CallManager
 import lt.oranges.orangchat.navigation.OrangChatNavHost
 import lt.oranges.orangchat.feature.settings.ThemeViewModel
+import lt.oranges.orangchat.data.remote.UpdateGate
 import lt.oranges.orangchat.feature.updates.UpdateAvailableDialog
+import lt.oranges.orangchat.feature.updates.UpdateRequiredDialog
 import lt.oranges.orangchat.feature.updates.UpdateUiState
 import lt.oranges.orangchat.feature.updates.UpdateViewModel
 import lt.oranges.orangchat.ui.theme.OrangChatTheme
@@ -57,6 +59,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var pendingQrLoginStore: PendingQrLoginStore
     @Inject lateinit var pendingVerifyStore: PendingVerifyStore
     @Inject lateinit var pendingTransferStore: PendingTransferStore
+    @Inject lateinit var updateGate: UpdateGate
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -71,6 +74,7 @@ class MainActivity : ComponentActivity() {
             val settingsVm: SettingsViewModel = hiltViewModel()
             val updateVm: UpdateViewModel = hiltViewModel()
             val updateState by updateVm.state.collectAsStateWithLifecycle()
+            val upgradeRequired by updateGate.upgradeRequired.collectAsStateWithLifecycle()
             var dismissedUpdateVersion by rememberSaveable { mutableStateOf<String?>(null) }
             LaunchedEffect(Unit) { updateVm.check() }
             val pref by themeVm.preference.collectAsStateWithLifecycle()
@@ -98,7 +102,18 @@ class MainActivity : ComponentActivity() {
                     ) {
                         OrangChatNavHost()
                         CallHost()
-                        (updateState as? UpdateUiState.Available)?.let { available ->
+                        // Outranks the ordinary "available" prompt: once the
+                        // server has refused this build there is nothing behind
+                        // the dialog that still works.
+                        if (upgradeRequired) {
+                            UpdateRequiredDialog(
+                                latestVersion = updateGate.latestVersion,
+                                onUpdate = {
+                                    if (updateVm.canInstall()) updateVm.check()
+                                    else startActivity(updateVm.installPermissionIntent())
+                                },
+                            )
+                        } else (updateState as? UpdateUiState.Available)?.let { available ->
                             if (dismissedUpdateVersion != available.manifest.versionName) {
                                 UpdateAvailableDialog(
                                     manifest = available.manifest,

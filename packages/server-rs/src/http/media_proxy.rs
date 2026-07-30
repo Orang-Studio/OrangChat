@@ -147,6 +147,7 @@ async fn sign(
 const ASSET_KINDS: &[(&str, &str, &str)] = &[
     ("avatar", "User", "avatarUrl"),
     ("banner", "User", "bannerUrl"),
+    ("app-icon", "User", "appIconUrl"),
     ("server-icon", "Server", "iconUrl"),
     ("server-banner", "Server", "bannerUrl"),
     ("emoji", "Emoji", "url"),
@@ -172,6 +173,17 @@ pub fn same_origin_asset(url: Option<&str>, kind: &str, id: &str) -> Option<Stri
     }
 }
 
+/// Whether `url` is one of the asset routes above - a url this api *hands out*,
+/// never one to store. `same_origin_asset` rewrites a row's real url on the way
+/// out, so any client that echoes a user object back (the web settings dialog
+/// seeds its avatar field from `user.avatarUrl` and saves it verbatim) would
+/// otherwise overwrite the row with a route that resolves to itself: `asset`
+/// reads the column, finds a relative url, and redirects to the url it is
+/// already serving, forever.
+pub fn is_asset_url(url: &str) -> bool {
+    url.starts_with("/api/media/asset/")
+}
+
 #[derive(Deserialize)]
 struct ProxyQuery {
     t: String,
@@ -194,7 +206,7 @@ async fn proxy(
         .get(RANGE)
         .and_then(|v| v.to_str().ok())
         .map(str::to_owned);
-    fetch_media(url, range.as_deref()).await
+    fetch_media(url, range.as_deref(), CORP_SAME_ORIGIN).await
 }
 
 /// Unauthenticated: streams a stored asset (avatar, emoji, soundboard clip)
@@ -223,6 +235,13 @@ async fn asset(
     .flatten();
     let stored = stored.ok_or_else(|| AppError::NotFound("Asset not found".into()))?;
 
+    // A row poisoned by a client echoing the wire form back (see `is_asset_url`)
+    // points at this very route. Redirecting would loop until the client gives
+    // up; 404 lets it fall back to the initial-letter placeholder instead.
+    if is_asset_url(&stored) {
+        return Err(AppError::NotFound("Asset not found".into()));
+    }
+
     // A row written before Cloudinary was configured stores a relative url that
     // nginx serves directly; there is nothing to proxy.
     if !(stored.starts_with("http://") || stored.starts_with("https://")) {
@@ -234,10 +253,21 @@ async fn asset(
         .get(RANGE)
         .and_then(|v| v.to_str().ok())
         .map(str::to_owned);
-    fetch_media(url, range.as_deref()).await
+    // Unlike the signed proxy, these bytes are public and unauthenticated by
+    // design, so `same-origin` buys nothing - and it breaks the one embedder
+    // that is not same-origin: the Android profile card renders user profile
+    // CSS in a WebView loaded via loadDataWithBaseURL(null, ...), whose document
+    // has an opaque origin. Every avatar there is a cross-origin image load.
+    fetch_media(url, range.as_deref(), CORP_CROSS_ORIGIN).await
 }
 
-async fn fetch_media(mut url: Url, range: Option<&str>) -> AppResult<Response> {
+/// `Cross-Origin-Resource-Policy` for the signed proxy: arbitrary remote media,
+/// only ever embedded by our own pages.
+const CORP_SAME_ORIGIN: &str = "same-origin";
+/// As above, for stored assets - public bytes with no embedder restriction.
+const CORP_CROSS_ORIGIN: &str = "cross-origin";
+
+async fn fetch_media(mut url: Url, range: Option<&str>, corp: &str) -> AppResult<Response> {
     for redirect_count in 0..=MAX_REDIRECTS {
         let (host, address) = resolve_public_destination(&url).await?;
         let client = reqwest::Client::builder()
@@ -302,7 +332,7 @@ async fn fetch_media(mut url: Url, range: Option<&str>) -> AppResult<Response> {
             return Err(AppError::BadRequest("Media is too large to proxy".into()));
         }
 
-        return Ok(build_response(status, content_type, response));
+        return Ok(build_response(status, content_type, response, corp));
     }
 
     Err(AppError::BadRequest("Unable to fetch media".into()))
@@ -315,6 +345,7 @@ fn build_response(
     status: StatusCode,
     content_type: String,
     upstream: reqwest::Response,
+    corp: &str,
 ) -> Response {
     // Pull the passthrough headers before bytes_stream() consumes the response.
     let content_length = upstream.headers().get(CONTENT_LENGTH).cloned();
@@ -341,10 +372,9 @@ fn build_response(
         "content-security-policy",
         HeaderValue::from_static("default-src 'none'; sandbox"),
     );
-    out.insert(
-        "cross-origin-resource-policy",
-        HeaderValue::from_static("same-origin"),
-    );
+    if let Ok(value) = HeaderValue::from_str(corp) {
+        out.insert("cross-origin-resource-policy", value);
+    }
     out.insert(
         CACHE_CONTROL,
         HeaderValue::from_static("public, max-age=3600"),
@@ -384,6 +414,20 @@ mod tests {
             Some("/uploads/a.png".into())
         );
         assert_eq!(same_origin_asset(None, "avatar", "u1"), None);
+    }
+
+    /// The wire form must be recognisable on the way back in, or a client that
+    /// echoes it lands it in the column and the route redirects to itself.
+    #[test]
+    fn wire_form_is_detected_as_an_asset_url() {
+        assert!(is_asset_url(
+            &same_origin_asset(Some("https://res.cloudinary.com/x/a.gif"), "avatar", "u1").unwrap()
+        ));
+        assert!(is_asset_url("/api/media/asset/server-icon/s1"));
+        // Real stored urls, which must still be writable.
+        assert!(!is_asset_url("/uploads/a.png"));
+        assert!(!is_asset_url("https://res.cloudinary.com/x/a.gif"));
+        assert!(!is_asset_url("https://cdn.discordapp.com/avatars/1/h.png"));
     }
 
     #[test]

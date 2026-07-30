@@ -17,7 +17,13 @@ import { ExpressionPicker } from "./ExpressionPicker";
 import { normalizeCustomEmojiNames, useEmojiMap } from "../emojis/queries";
 import { clearDraft, loadDraft, saveDraft, saveDraftNow } from "./drafts";
 
-const TYPING_THROTTLE_MS = 2_500;
+/**
+ * One packet per window while the user is actually typing, and none at all in a
+ * window they typed nothing in. Receivers hold the indicator for TYPING_TTL_MS
+ * (a window plus grace), so a sender who closes the tab fades out on their own
+ * rather than sticking forever.
+ */
+const TYPING_THROTTLE_MS = 4_000;
 const MAX_LENGTH = 4_000;
 const MENTION_LIMIT = 8;
 
@@ -73,6 +79,9 @@ export function Composer({
   useEffect(() => {
     setMention(null);
     setDraft("");
+    // Throttle windows are per-conversation; carrying one across a channel
+    // switch would swallow the first keystroke in the new channel.
+    lastTypingSent.current = 0;
     let cancelled = false;
     void loadDraft(channelId).then((text) => {
       // don't clobber anything typed while the load was in flight.
@@ -256,6 +265,10 @@ export function Composer({
       });
       setDraft("");
       clearDraft(channelId);
+      // The sent message clears the indicator on every receiver, so the next
+      // keystroke has to be treated as a fresh start rather than falling inside
+      // the window this send happened to land in.
+      lastTypingSent.current = 0;
       for (const u of ready) if (u.preview) URL.revokeObjectURL(u.preview);
       setUploads([]);
       onClearReply();

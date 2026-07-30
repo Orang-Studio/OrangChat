@@ -56,6 +56,9 @@ fn max_dim(kind: &str) -> (u32, u32) {
     match kind {
         "banner" => (1200, 480),
         "emoji" => (128, 128),
+        // A window/tray/favicon never renders above 256, and this one is
+        // fetched on every page load by its owner.
+        "app-icon" => (256, 256),
         _ => (512, 512),
     }
 }

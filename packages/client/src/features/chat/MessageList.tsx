@@ -179,10 +179,10 @@ export function MessageList({
           .reverse()
           .map(({ message, compact }) =>
             isStrictDisabledNotice(message.content) ? (
-              <SystemNotice key={message.id} message={message} selfId={selfId} />
+              <SystemNotice key={message.clientId ?? message.id} message={message} selfId={selfId} />
             ) : (
               <MessageItem
-                key={message.id}
+                key={message.clientId ?? message.id}
                 message={message}
                 pending={pendingMessageIds.has(message.id)}
                 compact={compact}

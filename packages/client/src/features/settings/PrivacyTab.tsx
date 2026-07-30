@@ -142,6 +142,28 @@ export function PrivacyTab() {
         />
       </div>
 
+      <div className="space-y-3 border-t border-border pt-5">
+        <SectionTitle>Friend notifications</SectionTitle>
+        <Toggle
+          checked={user.notifyFriendRequests}
+          onChange={(notifyFriendRequests) => mutation.mutate({ notifyFriendRequests })}
+          label="Friend requests"
+          hint="Notify me when someone sends me a friend request."
+        />
+        <Toggle
+          checked={user.notifyFriendAccepted}
+          onChange={(notifyFriendAccepted) => mutation.mutate({ notifyFriendAccepted })}
+          label="Requests accepted"
+          hint="Notify me when someone accepts my friend request."
+        />
+        <Toggle
+          checked={user.notifyFriendOnline}
+          onChange={(notifyFriendOnline) => mutation.mutate({ notifyFriendOnline })}
+          label="Friends coming online"
+          hint="Off by default - this fires for every friend each time they open the app."
+        />
+      </div>
+
       {mutation.isError && (
         <p role="alert" className="rounded-lg bg-primary-soft px-3 py-2 text-sm text-danger">
           {mutation.error.message}

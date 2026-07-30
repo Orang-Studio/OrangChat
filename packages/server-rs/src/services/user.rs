@@ -3,6 +3,7 @@
 use sqlx::QueryBuilder;
 
 use crate::error::{AppError, AppResult};
+use crate::http::media_proxy::is_asset_url;
 use crate::ids::cuid;
 use crate::models::UserRow;
 use crate::oauth::OAuthProfile;
@@ -21,10 +22,20 @@ pub struct UserPatch {
     pub pronouns: Option<Option<String>>,
     pub custom_css: Option<Option<String>>,
     pub profile_css: Option<Option<String>>,
+    pub app_icon_url: Option<Option<String>>,
     pub dm_privacy: Option<String>,
     pub friend_request_privacy: Option<String>,
     pub typing_indicators: Option<bool>,
+    pub notify_friend_requests: Option<bool>,
+    pub notify_friend_accepted: Option<bool>,
+    pub notify_friend_online: Option<bool>,
     pub e2ee_strict: Option<bool>,
+}
+
+/// A patch value that is really this api's own output handed back to it. `None`
+/// is the client clearing the field, which is a genuine edit.
+fn is_wire_form(value: Option<&str>) -> bool {
+    value.is_some_and(is_asset_url)
 }
 
 pub async fn update_profile(
@@ -53,7 +64,11 @@ pub async fn update_profile(
     if let Some(dn) = patch.display_name {
         sep.push(r#""displayName" = "#).push_bind_unseparated(dn);
     }
-    if let Some(av) = patch.avatar_url {
+    // A client that round-trips the user object sends back the wire form the api
+    // gave it, which is this row's own asset route; storing it would erase the
+    // real url. Nothing else is a legitimate reason to send one, so drop the
+    // field rather than fail the whole save.
+    if let Some(av) = patch.avatar_url.filter(|v| !is_wire_form(v.as_deref())) {
         sep.push(r#""avatarUrl" = "#).push_bind_unseparated(av);
     }
     if let Some(status) = patch.status {
@@ -62,7 +77,7 @@ pub async fn update_profile(
     if let Some(bio) = patch.bio {
         sep.push(r#"bio = "#).push_bind_unseparated(bio);
     }
-    if let Some(banner) = patch.banner_url {
+    if let Some(banner) = patch.banner_url.filter(|v| !is_wire_form(v.as_deref())) {
         sep.push(r#""bannerUrl" = "#).push_bind_unseparated(banner);
     }
     if let Some(accent) = patch.accent_color {
@@ -78,6 +93,9 @@ pub async fn update_profile(
     if let Some(css) = patch.profile_css {
         sep.push(r#""profileCss" = "#).push_bind_unseparated(css);
     }
+    if let Some(icon) = patch.app_icon_url.filter(|v| !is_wire_form(v.as_deref())) {
+        sep.push(r#""appIconUrl" = "#).push_bind_unseparated(icon);
+    }
     if let Some(v) = patch.dm_privacy {
         sep.push(r#""dmPrivacy" = "#).push_bind_unseparated(v);
     }
@@ -87,6 +105,18 @@ pub async fn update_profile(
     }
     if let Some(v) = patch.typing_indicators {
         sep.push(r#""typingIndicators" = "#)
+            .push_bind_unseparated(v);
+    }
+    if let Some(v) = patch.notify_friend_requests {
+        sep.push(r#""notifyFriendRequests" = "#)
+            .push_bind_unseparated(v);
+    }
+    if let Some(v) = patch.notify_friend_accepted {
+        sep.push(r#""notifyFriendAccepted" = "#)
+            .push_bind_unseparated(v);
+    }
+    if let Some(v) = patch.notify_friend_online {
+        sep.push(r#""notifyFriendOnline" = "#)
             .push_bind_unseparated(v);
     }
     if let Some(v) = patch.e2ee_strict {

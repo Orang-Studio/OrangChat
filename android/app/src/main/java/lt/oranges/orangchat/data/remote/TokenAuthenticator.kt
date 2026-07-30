@@ -41,19 +41,34 @@ class TokenAuthenticator(
                     .build()
             }
 
-            val newAccess = runRefresh() ?: run {
-                tokenStore.clear()
-                return null
+            return when (val result = runRefresh()) {
+                is RefreshResult.Refreshed -> {
+                    tokenStore.setAccessToken(result.accessToken)
+                    response.request.newBuilder()
+                        .header("Authorization", "Bearer ${result.accessToken}")
+                        .build()
+                }
+                // The server rejected the refresh token itself: really signed out.
+                RefreshResult.Rejected -> {
+                    tokenStore.clear()
+                    null
+                }
+                // Unreachable server, not a dead session. Give up on this request
+                // and leave the credentials alone - clearing them here is what
+                // turned a dropped connection into a sign-out.
+                RefreshResult.Unreachable -> null
             }
-            tokenStore.setAccessToken(newAccess)
-            return response.request.newBuilder()
-                .header("Authorization", "Bearer $newAccess")
-                .build()
         }
     }
 
+    private sealed interface RefreshResult {
+        data class Refreshed(val accessToken: String) : RefreshResult
+        data object Rejected : RefreshResult
+        data object Unreachable : RefreshResult
+    }
+
     /** Blocking refresh - Authenticator runs off the main thread already. */
-    private fun runRefresh(): String? {
+    private fun runRefresh(): RefreshResult {
         return try {
             val url = baseUrlProvider.get().trimEnd('/') + "/auth/refresh"
             val req = Request.Builder()
@@ -61,12 +76,18 @@ class TokenAuthenticator(
                 .post(ByteArray(0).toRequestBody(null))
                 .build()
             clientProvider.get().newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) return null
-                val body = resp.body?.string() ?: return null
-                json.decodeFromString(AuthResult.serializer(), body).tokens.accessToken
+                if (resp.code == 401 || resp.code == 403) return RefreshResult.Rejected
+                // 5xx or a proxy blip mid-deploy is transient, so it must not
+                // cost the session either.
+                if (!resp.isSuccessful) return RefreshResult.Unreachable
+                val body = resp.body?.string() ?: return RefreshResult.Unreachable
+                val token = runCatching {
+                    json.decodeFromString(AuthResult.serializer(), body).tokens.accessToken
+                }.getOrNull() ?: return RefreshResult.Unreachable
+                RefreshResult.Refreshed(token)
             }
         } catch (_: Exception) {
-            null
+            RefreshResult.Unreachable
         }
     }
 

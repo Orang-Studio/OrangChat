@@ -24,6 +24,7 @@ import {
 import { type PresenceStatus } from "@orangchat/shared";
 import { STATUS_LABEL } from "../../components/Avatar";
 import { Button } from "../../components/ui/Button";
+import { ImageField } from "../../components/ImageField";
 import { Dialog, DialogClose, DialogFullScreenContent } from "../../components/ui/Dialog";
 import { TextField } from "../../components/ui/TextField";
 import { cn } from "../../lib/cn";
@@ -33,7 +34,6 @@ import { socket } from "../../lib/socket";
 import defaultCss from "../../styles/index.css?raw";
 import { getMyConnections } from "../connections/api";
 import { ProfileCard } from "../profile/ProfileCard";
-import { uploadImage, type UploadKind } from "../uploads/api";
 import { useAuthStore, authStoreActions } from "../../stores/auth";
 import { updateProfile } from "../auth/api";
 import { logout } from "../auth/session";
@@ -187,120 +187,6 @@ function downloadText(filename: string, text: string) {
  * and served back through /api/media/asset, so the local blob is what the
  * preview can actually render in between.
  */
-function ImageUploadButton({
-  kind,
-  label,
-  onUploaded,
-}: {
-  kind: UploadKind;
-  label: string;
-  onUploaded: (url: string, preview: string) => void;
-}) {
-  const ref = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const onFile = async (file: File | undefined) => {
-    setError(null);
-    if (!file) return;
-    setBusy(true);
-    try {
-      const url = await uploadImage(file, kind);
-      onUploaded(url, URL.createObjectURL(file));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload failed");
-    } finally {
-      setBusy(false);
-      if (ref.current) ref.current.value = "";
-    }
-  };
-
-  return (
-    <div className="mt-1.5">
-      <input
-        ref={ref}
-        type="file"
-        accept="image/png,image/jpeg,image/gif,image/webp"
-        className="hidden"
-        onChange={(e) => void onFile(e.target.files?.[0] ?? undefined)}
-      />
-      <Button
-        type="button"
-        variant="secondary"
-        size="sm"
-        loading={busy}
-        onClick={() => ref.current?.click()}
-      >
-        <Upload aria-hidden className="size-4" />
-        {label}
-      </Button>
-      {error && <p className="mt-1 text-xs text-danger">{error}</p>}
-    </div>
-  );
-}
-
-/**
- * Upload-only image field: shows a preview of the current image with Upload and
- * Remove actions. No URL text box - images come from the uploader, which returns
- * a server path (e.g. `/uploads/x.gif`), never hand-typed.
- */
-function ImageField({
-  label,
-  kind,
-  value,
-  preview,
-  onChange,
-  hint,
-  rounded = "full",
-}: {
-  label: string;
-  kind: UploadKind;
-  value: string;
-  /** Renderable stand-in for `value` while it is still an unsaved remote url. */
-  preview?: string;
-  onChange: (url: string, preview: string) => void;
-  hint?: string;
-  rounded?: "full" | "md";
-}) {
-  const shown = preview || value;
-  return (
-    <div>
-      <label className="mb-1.5 block text-sm font-medium text-ink-secondary">{label}</label>
-      <div className="flex items-center gap-3">
-        {shown ? (
-          <img
-            src={shown}
-            alt=""
-            className={cn(
-              "size-14 shrink-0 border border-border object-cover",
-              rounded === "full" ? "rounded-full" : "rounded-lg",
-            )}
-          />
-        ) : (
-          <span
-            aria-hidden
-            className={cn(
-              "flex size-14 shrink-0 items-center justify-center border border-dashed border-border bg-surface-1 text-ink-muted",
-              rounded === "full" ? "rounded-full" : "rounded-lg",
-            )}
-          >
-            <Upload className="size-5" />
-          </span>
-        )}
-        <div className="flex flex-wrap items-center gap-2">
-          <ImageUploadButton kind={kind} label="Upload" onUploaded={onChange} />
-          {value && (
-            <Button type="button" variant="ghost" size="sm" onClick={() => onChange("", "")}>
-              Remove
-            </Button>
-          )}
-        </div>
-      </div>
-      {hint && <p className="mt-1.5 text-xs text-ink-muted">{hint}</p>}
-    </div>
-  );
-}
-
 /** Everything about you: identity, status, info - with a live preview. */
 function ProfileTab() {
   const user = useAuthStore((s) => s.user);
@@ -330,15 +216,22 @@ function ProfileTab() {
     [connections],
   );
 
+  // For an image stored off-origin the api hands back its own `/api/media/asset`
+  // route, and that is what seeds these fields. Sending an untouched one back
+  // would ask the server to store a url pointing at itself, so omit these unless
+  // they were actually edited - `undefined` leaves the field alone.
+  const ifEdited = (next: string, current: string | null) =>
+    (next.trim() || null) === current ? undefined : next.trim() || null;
+
   const mutation = useMutation({
     mutationFn: () =>
       updateProfile({
         displayName: displayName.trim() || undefined,
         username: username.trim() || undefined,
-        avatarUrl: avatarUrl.trim() ? avatarUrl.trim() : null,
+        avatarUrl: ifEdited(avatarUrl, user?.avatarUrl ?? null),
         pronouns: pronouns.trim() ? pronouns.trim() : null,
         bio: bio.trim() ? bio.trim() : null,
-        bannerUrl: bannerUrl.trim() ? bannerUrl.trim() : null,
+        bannerUrl: ifEdited(bannerUrl, user?.bannerUrl ?? null),
         accentColor,
         profileCss: profileCss.length ? profileCss : null,
       }),
@@ -739,8 +632,56 @@ function AppearanceTab({ onNavigate }: { onNavigate: (to: SettingsSection) => vo
       </div>
 
       <div className="border-t border-border pt-5">
+        <AppIconSection />
+      </div>
+
+      <div className="border-t border-border pt-5">
         <CustomCssSection />
       </div>
+    </div>
+  );
+}
+
+/**
+ * Replace the OrangChat mark on this account's own clients. Saves immediately -
+ * there is nothing else on the form to batch it with, and the result is visible
+ * the moment it lands (the tab favicon changes under you).
+ */
+function AppIconSection() {
+  const user = useAuthStore((s) => s.user);
+  const [preview, setPreview] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const save = async (url: string, blob: string) => {
+    setError(null);
+    setPreview(blob);
+    try {
+      const updated = await updateProfile({ appIconUrl: url || null });
+      authStoreActions.setUser(updated);
+      setPreview("");
+    } catch (e) {
+      setPreview("");
+      setError(e instanceof Error ? e.message : "Could not save the icon");
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <SectionTitle>App icon</SectionTitle>
+      <p className="text-xs text-ink-muted">
+        Replaces the OrangChat mark for you everywhere you are signed in - browser tab, in-app
+        branding, and the desktop window and tray. Nobody else sees it.
+      </p>
+      <ImageField
+        label="Icon"
+        kind="app-icon"
+        rounded="md"
+        value={user?.appIconUrl ?? ""}
+        preview={preview}
+        onChange={(url, blob) => void save(url, blob)}
+        hint="Square images work best. Leave empty for the OrangChat mark."
+      />
+      {error && <p className="text-xs text-danger">{error}</p>}
     </div>
   );
 }

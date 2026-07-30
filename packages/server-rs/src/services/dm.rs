@@ -131,6 +131,7 @@ pub async fn list_conversations(
              AND EXISTS (
                  SELECT 1 FROM "ChannelParticipant" p
                  WHERE p."channelId" = c.id AND p."userId" = $1
+                   AND p."hiddenAt" IS NULL
              )
            ORDER BY c."updatedAt" DESC"#,
     )
@@ -163,6 +164,87 @@ pub async fn get_conversation_participants(
             .fetch_all(&state.pool)
             .await?,
     )
+}
+
+/// What leaving a conversation actually did, so the caller can tell the other
+/// participants the right thing.
+pub enum LeaveOutcome {
+    /// A group DM: the user is gone from it and can no longer read it.
+    Left,
+    /// A one-to-one DM: hidden for this user only, and silently restored the
+    /// next time a message arrives.
+    Closed,
+}
+
+/// Removes a DM from one user's list.
+///
+/// The two channel types are genuinely different operations rather than one
+/// with a flag - see the 20260730160000_dm_leave_and_close migration for why a
+/// one-to-one DM must keep its membership.
+pub async fn leave_conversation(
+    state: &AppState,
+    channel_id: &str,
+    user_id: &str,
+) -> AppResult<LeaveOutcome> {
+    let ctype: Option<String> = sqlx::query_scalar(r#"SELECT type FROM "Channel" WHERE id = $1"#)
+        .bind(channel_id)
+        .fetch_optional(&state.pool)
+        .await?;
+    let Some(ctype) = ctype else {
+        return Err(AppError::NotFound("Conversation not found".into()));
+    };
+    if ctype != "dm" && ctype != "group_dm" {
+        return Err(AppError::BadRequest(
+            "Only direct messages can be left".into(),
+        ));
+    }
+
+    let member: Option<String> = sqlx::query_scalar(
+        r#"SELECT id FROM "ChannelParticipant" WHERE "channelId" = $1 AND "userId" = $2"#,
+    )
+    .bind(channel_id)
+    .bind(user_id)
+    .fetch_optional(&state.pool)
+    .await?;
+    if member.is_none() {
+        return Err(AppError::Permission(
+            "Not a participant in this conversation".into(),
+        ));
+    }
+
+    if ctype == "group_dm" {
+        sqlx::query(r#"DELETE FROM "ChannelParticipant" WHERE "channelId" = $1 AND "userId" = $2"#)
+            .bind(channel_id)
+            .bind(user_id)
+            .execute(&state.pool)
+            .await?;
+        Ok(LeaveOutcome::Left)
+    } else {
+        sqlx::query(
+            r#"UPDATE "ChannelParticipant" SET "hiddenAt" = now()
+               WHERE "channelId" = $1 AND "userId" = $2"#,
+        )
+        .bind(channel_id)
+        .bind(user_id)
+        .execute(&state.pool)
+        .await?;
+        Ok(LeaveOutcome::Closed)
+    }
+}
+
+/// Un-hides a closed one-to-one DM for everyone in it.
+///
+/// Called when a message lands. Without this a closed conversation would stay
+/// invisible while quietly accumulating messages the user is never shown.
+pub async fn reopen_for_new_message(state: &AppState, channel_id: &str) -> AppResult<Vec<String>> {
+    Ok(sqlx::query_scalar(
+        r#"UPDATE "ChannelParticipant" SET "hiddenAt" = NULL
+           WHERE "channelId" = $1 AND "hiddenAt" IS NOT NULL
+           RETURNING "userId""#,
+    )
+    .bind(channel_id)
+    .fetch_all(&state.pool)
+    .await?)
 }
 
 pub async fn add_group_participants(

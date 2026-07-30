@@ -19,6 +19,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
@@ -76,6 +78,7 @@ fun HomePane(
     onOpenProfile: (User) -> Unit,
     onStartCall: (Conversation) -> Unit,
     onRemoveFriend: (String) -> Unit,
+    onLeaveConversation: (Conversation) -> Unit,
     modifier: Modifier = Modifier,
     unreads: Map<String, UnreadState> = emptyMap(),
 ) {
@@ -128,6 +131,7 @@ fun HomePane(
                     onOpenProfile = onOpenProfile,
                     onStartCall = onStartCall,
                     onRemoveFriend = onRemoveFriend,
+                    onLeaveConversation = onLeaveConversation,
                 )
             }
         }
@@ -151,6 +155,7 @@ private fun ConversationRow(
     onOpenProfile: (User) -> Unit,
     onStartCall: (Conversation) -> Unit,
     onRemoveFriend: (String) -> Unit,
+    onLeaveConversation: (Conversation) -> Unit,
 ) {
     val c = OrangTheme.colors
     val others = convo.participants.filter { it.id != selfId }
@@ -260,6 +265,17 @@ private fun ConversationRow(
                         MenuItem("Copy channel ID", Icons.Default.ContentCopy) {
                             clipboard.setText(AnnotatedString(convo.id))
                         },
+                    )
+                    // Leaving a group is permanent; closing a one-on-one only
+                    // hides it until the other person writes again, so the two
+                    // are named differently rather than sharing one label.
+                    val isGroup = convo.type == ChannelType.GROUP_DM
+                    add(
+                        MenuItem(
+                            if (isGroup) "Leave group" else "Close DM",
+                            if (isGroup) Icons.AutoMirrored.Filled.Logout else Icons.Default.Close,
+                            destructive = true,
+                        ) { onLeaveConversation(convo) },
                     )
                 },
             )

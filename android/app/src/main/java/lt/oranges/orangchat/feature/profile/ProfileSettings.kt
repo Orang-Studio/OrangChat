@@ -34,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import lt.oranges.orangchat.data.model.SelfUser
 import lt.oranges.orangchat.ui.components.ButtonVariant
+import lt.oranges.orangchat.ui.components.ImageField
 import lt.oranges.orangchat.ui.components.OrangButton
 import lt.oranges.orangchat.ui.components.OrangTextField
 import lt.oranges.orangchat.ui.theme.OrangRadius
@@ -231,48 +232,3 @@ private fun ProfileSectionTitle(text: String) {
     )
 }
 
-@Composable
-private fun ImageField(
-    label: String,
-    url: String?,
-    height: androidx.compose.ui.unit.Dp,
-    square: Boolean = false,
-    busy: Boolean,
-    onPick: () -> Unit,
-    onRemove: () -> Unit,
-) {
-    val c = OrangTheme.colors
-    val previewModifier = if (square) Modifier.size(height) else Modifier.fillMaxWidth().height(height)
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(label, color = c.inkMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-        Box(
-            modifier = previewModifier
-                .clip(RoundedCornerShape(OrangRadius.lg))
-                .background(c.surface3),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (!url.isNullOrBlank()) {
-                AsyncImage(
-                    model = absoluteUrl(url),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = previewModifier,
-                )
-            } else {
-                Text("None set", color = c.inkMuted, fontSize = 12.sp)
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OrangButton(
-                text = if (busy) "Uploading…" else "Upload",
-                onClick = onPick,
-                enabled = !busy,
-                loading = busy,
-                variant = ButtonVariant.Secondary,
-            )
-            if (!url.isNullOrBlank()) {
-                OrangButton(text = "Remove", onClick = onRemove, variant = ButtonVariant.Ghost)
-            }
-        }
-    }
-}
