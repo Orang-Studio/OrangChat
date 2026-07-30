@@ -1,0 +1,8 @@
+Fixes
+- Sending a message no longer shows a second copy appearing. The greyed-out
+  message now turns solid in place, which is what it was always meant to do.
+
+Under the hood
+- Attachment upload failures now record what actually went wrong instead of
+  showing a line of internal code. If an attachment still fails to send,
+  please report it - the cause is now captured.
