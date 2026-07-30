@@ -119,11 +119,23 @@ impl FromRequestParts<AppState> for AuthUser {
 /// management, E2EE key material and the owner's linked accounts. Applied per
 /// nest as a default-deny list, so the dangerous surface is enumerated in one
 /// readable place rather than opted into route by route.
-pub async fn deny_bots(caller: AuthUser, req: Request, next: Next) -> Result<Response, AppError> {
-    if caller.is_bot() {
-        return Err(AppError::Permission(
-            "Bots cannot use this endpoint".into(),
-        ));
+///
+/// This inspects the header rather than extracting `AuthUser`, and that is not
+/// an optimisation. These nests include the routes that *establish* a session -
+/// login, signup, refresh, email verification, the OAuth and QR callbacks - all
+/// of which are reached with no credential at all. Demanding a valid `AuthUser`
+/// here would 401 every one of them and lock the whole site out. A bot token is
+/// only ever presented as the `Bot` scheme, so refusing that scheme is both
+/// sufficient and safe for anonymous callers.
+pub async fn deny_bots(req: Request, next: Next) -> Result<Response, AppError> {
+    let presents_bot_token = req
+        .headers()
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|h| h.starts_with("Bot "));
+
+    if presents_bot_token {
+        return Err(AppError::Permission("Bots cannot use this endpoint".into()));
     }
     Ok(next.run(req).await)
 }
@@ -281,10 +293,7 @@ pub fn router(state: AppState) -> Router {
         .merge(e2ee::routes())
         .merge(friends::routes())
         .merge(push::routes())
-        .route_layer(axum::middleware::from_fn_with_state(
-            state.clone(),
-            deny_bots,
-        ));
+        .route_layer(axum::middleware::from_fn(deny_bots));
 
     let api = Router::new()
         .route(
@@ -360,6 +369,57 @@ pub fn valid_username(s: &str) -> bool {
 
 pub fn bad_request(msg: &str) -> AppError {
     AppError::BadRequest(msg.into())
+}
+
+#[cfg(test)]
+mod deny_bots_tests {
+    use super::*;
+    use axum::body::Body;
+    use axum::http::{Request as HttpRequest, StatusCode};
+    use tower::ServiceExt;
+
+    fn guarded_route() -> Router {
+        Router::new()
+            .route("/login", axum::routing::post(|| async { "ok" }))
+            .route_layer(axum::middleware::from_fn(deny_bots))
+    }
+
+    async fn status_with_auth(header: Option<&str>) -> StatusCode {
+        let mut req = HttpRequest::builder().method("POST").uri("/login");
+        if let Some(value) = header {
+            req = req.header(axum::http::header::AUTHORIZATION, value);
+        }
+        guarded_route()
+            .oneshot(req.body(Body::empty()).unwrap())
+            .await
+            .unwrap()
+            .status()
+    }
+
+    /// The regression this guard nearly shipped: these nests contain the routes
+    /// that *establish* a session, so an anonymous caller must sail through.
+    /// An earlier version extracted `AuthUser` here and would have 401'd every
+    /// login and signup on the site.
+    #[tokio::test]
+    async fn an_anonymous_caller_is_not_challenged() {
+        assert_eq!(status_with_auth(None).await, StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn a_signed_in_person_passes_through() {
+        assert_eq!(
+            status_with_auth(Some("Bearer some.jwt.value")).await,
+            StatusCode::OK
+        );
+    }
+
+    #[tokio::test]
+    async fn a_bot_token_is_refused() {
+        assert_eq!(
+            status_with_auth(Some("Bot abc.def")).await,
+            StatusCode::FORBIDDEN
+        );
+    }
 }
 
 #[cfg(test)]

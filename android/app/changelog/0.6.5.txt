@@ -1,0 +1,11 @@
+Bots
+- Bot accounts now show a BOT label next to their name in chats and the member
+  list. Make your own under Settings -> Developers on the web app.
+
+Fixes
+- Sending a message no longer flashes: the greyed-out message you see while it
+  sends now turns solid in place instead of disappearing and sliding back in as
+  a new one.
+- Failing to send used to show a line of internal code instead of what actually
+  went wrong. It now says something useful, and the real cause is recorded for
+  bug reports.
