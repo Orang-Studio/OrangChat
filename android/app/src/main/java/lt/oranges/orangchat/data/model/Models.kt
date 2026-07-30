@@ -74,6 +74,12 @@ data class User(
     val profileCss: String? = null,
     /** Awarded badge slugs; unknown ones are dropped at render. */
     val badges: List<String> = emptyList(),
+    /**
+     * A bot account. Rendered as a label beside the name - it comes from the
+     * account itself, so a nickname reading "BOT" cannot pass as one. Absent on
+     * rows written before bots existed, hence the default.
+     */
+    val bot: Boolean = false,
     val createdAt: String = "",
 )
 
@@ -112,7 +118,9 @@ data class SelfUser(
     /** True while the account is frozen: no new sign-ins, DMs or friend requests. */
     val lockdown: Boolean = false,
 ) {
-    fun asUser() = User(id, username, displayName, avatarUrl, status, devices, activities, bio, bannerUrl, accentColor, pronouns, profileCss, badges, createdAt)
+    // `createdAt` is named because `bot` sits between it and `badges`, and the
+    // signed-in account this is built from is never a bot.
+    fun asUser() = User(id, username, displayName, avatarUrl, status, devices, activities, bio, bannerUrl, accentColor, pronouns, profileCss, badges, createdAt = createdAt)
 }
 
 @Serializable
@@ -310,6 +318,14 @@ data class Message(
     val ciphertext: String? = null,
     val encEpoch: Int? = null,
     val encVersion: Int? = null,
+    /**
+     * The local id this row was sent under, kept after the server confirms it.
+     * Lists key on this so a confirmed message stays the *same* item as its
+     * optimistic row - keying on `id` alone makes the id change at confirmation
+     * look like a removal and an insert, and the row re-animates from scratch.
+     * Never sent to the server; absent on anything that did not start here.
+     */
+    val clientId: String? = null,
 )
 
 /**

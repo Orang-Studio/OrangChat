@@ -18,6 +18,7 @@ import { QUICK_EMOJIS } from "./emoji-data";
 import { MessageContextMenu } from "./MessageContextMenu";
 import { ForwardDialog } from "./ForwardDialog";
 import { ReportMessageDialog } from "./ReportMessageDialog";
+import { BotTag } from "../../components/BotTag";
 
 export interface MessageItemProps {
   message: Message;
@@ -243,6 +244,7 @@ export function MessageItem({
                     >
                       {message.author.displayName}
                     </button>
+                    {message.author.bot ? <BotTag /> : null}
                     <time
                       dateTime={message.createdAt}
                       title={formatFullTime(message.createdAt)}

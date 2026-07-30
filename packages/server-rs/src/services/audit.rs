@@ -26,6 +26,8 @@ pub mod action {
     pub const MEMBER_UNBAN: &str = "member.unban";
     pub const MEMBER_TIMEOUT: &str = "member.timeout";
     pub const MEMBER_ROLE_UPDATE: &str = "member.role_update";
+    pub const BOT_ADD: &str = "bot.add";
+    pub const BOT_REMOVE: &str = "bot.remove";
 }
 
 pub struct Entry<'a> {

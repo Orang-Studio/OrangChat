@@ -119,6 +119,7 @@ import lt.oranges.orangchat.feature.transfer.ContactQrScanner
 import lt.oranges.orangchat.data.model.UserActivity
 import lt.oranges.orangchat.ui.components.ActivityStatus
 import lt.oranges.orangchat.ui.components.Avatar
+import lt.oranges.orangchat.ui.components.BotTag
 import lt.oranges.orangchat.ui.components.MenuItem
 import lt.oranges.orangchat.ui.components.OrangDropdownMenu
 import lt.oranges.orangchat.ui.components.OrangTextField
@@ -483,7 +484,10 @@ fun ChatPane(
             modifier = Modifier.weight(1f).fillMaxWidth(),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
         ) {
-            items(rows, key = { it.message.id }) { row ->
+            // Key on the local id where there is one: a message's `id` changes
+            // when the server confirms it, and keying on that alone disposes the
+            // row and builds a new one, replaying the insert animation.
+            items(rows, key = { it.message.clientId ?: it.message.id }) { row ->
                 val message = row.message
                 MessageRow(
                     message = message,
@@ -1060,6 +1064,10 @@ private fun MessageRow(
                         fontSize = 15.sp,
                         modifier = Modifier.clickable { onOpenProfile(message.author) },
                     )
+                    if (message.author.bot) {
+                        Spacer(Modifier.width(5.dp))
+                        BotTag()
+                    }
                     Spacer(Modifier.width(8.dp))
                     Text(formatTime(message.createdAt), color = c.inkMuted, fontSize = 11.sp)
                     if (message.editedAt != null) {

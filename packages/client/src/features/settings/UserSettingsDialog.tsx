@@ -12,6 +12,7 @@ import {
   Paintbrush,
   Palette,
   Puzzle,
+  Bot,
   ShieldCheck,
   ScanLine,
   Sliders,
@@ -52,6 +53,7 @@ import { PluginsTab } from "./PluginsTab";
 import { MarketplaceThemes } from "./MarketplaceThemes";
 import { ProfileThemesTab } from "./ProfileThemesTab";
 import { QrSignInTab } from "./QrSignInTab";
+import { DevelopersTab } from "./DevelopersTab";
 
 interface UserSettingsDialogProps {
   open: boolean;
@@ -696,6 +698,7 @@ type SettingsSection =
   | "devices"
   | "encryption"
   | "plugins"
+  | "developers"
   | "themes"
   | "profile_themes"
   | "accessibility"
@@ -714,6 +717,7 @@ const NAV: { id: SettingsSection; label: string; icon: typeof UserIcon }[] = [
   { id: "devices", label: "Devices", icon: Monitor },
   { id: "encryption", label: "Encryption", icon: Lock },
   { id: "plugins", label: "Plugins", icon: Puzzle },
+  { id: "developers", label: "Developers", icon: Bot },
   { id: "themes", label: "Theme", icon: Palette },
   { id: "profile_themes", label: "Profile theme", icon: Paintbrush },
   { id: "accessibility", label: "Accessibility", icon: Accessibility },
@@ -733,6 +737,7 @@ const SECTION_TITLE: Record<SettingsSection, string> = {
   devices: "Devices",
   encryption: "Encryption",
   plugins: "Plugins",
+  developers: "Developers",
   themes: "Theme",
   profile_themes: "Profile theme",
   accessibility: "Accessibility",
@@ -768,6 +773,8 @@ function SectionBody({
       return <EncryptionTab />;
     case "plugins":
       return <PluginsTab />;
+    case "developers":
+      return <DevelopersTab />;
     case "themes":
       return <MarketplaceThemes />;
     case "profile_themes":

@@ -45,6 +45,18 @@ model User {
   /// Set while the account is in lockdown: no new sign-ins, no new DMs, no
   /// friend requests. Lifted by the owner from a session that survived it.
   lockdownAt           DateTime?
+  /// A bot account. Bots are User rows rather than their own table because
+  /// authorship, membership, roles and permissions all key on User - a separate
+  /// table would need a parallel nullable column on every one of them. A bot has
+  /// no password, an undeliverable synthetic email, and `emailVerifiedAt` set at
+  /// creation (the auth extractor rejects unverified accounts outright).
+  isBot                Boolean  @default(false)
+  /// The human who created this bot, on bot rows only. Deleting the owner takes
+  /// their bots with them - an ownerless bot answers to nobody.
+  ownerId              String?
+  owner                User?    @relation("BotOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  bots                 User[]   @relation("BotOwner")
+  botTokens            BotToken[]
   /// Set when the account is deleted. The row is kept as a tombstone so the
   /// user's messages stay readable in other people's conversations; everything
   /// identifying was scrubbed at deletion. See services::account.
@@ -114,6 +126,27 @@ model PushSubscription {
   lastSeenAt DateTime @default(now())
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId])
+}
+
+/// A bot's API credential. Stored as a SHA-256 hex digest, never in the clear -
+/// the plaintext is shown once at mint and cannot be recovered afterwards.
+///
+/// Deliberately not argon2 (which every other secret here uses): the token is 32
+/// bytes of CSPRNG output rather than a human password, so it is not guessable
+/// and needs no slow KDF - and argon2 at the configured 19 MiB would run on
+/// every single bot API call. The digest exists so a database leak does not hand
+/// over live credentials.
+model BotToken {
+  id        String    @id @default(cuid())
+  botId     String
+  tokenHash String    @unique
+  /// Shown in the developer panel so an owner can tell two tokens apart without
+  /// revealing either: the token's last four characters.
+  hint      String
+  createdAt DateTime  @default(now())
+  lastUsedAt DateTime?
+  bot User @relation(fields: [botId], references: [id], onDelete: Cascade)
+  @@index([botId])
 }
 
 model Connection {

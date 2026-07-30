@@ -409,11 +409,27 @@ class SocketManager @Inject constructor(
 
     private fun obj(args: Array<out Any?>): JSONObject? = args.firstOrNull() as? JSONObject
 
+    /**
+     * A decode failure here used to surface as a bare kotlinx message - a model
+     * class name and nothing about which field or which payload - and the actual
+     * body was gone by the time anyone looked. Log the body that failed so the
+     * mismatch is one logcat line away, then rethrow unchanged.
+     */
     private inline fun <reified T> decode(o: JSONObject): T =
-        json.decodeFromString(o.toString())
+        try {
+            json.decodeFromString(o.toString())
+        } catch (e: Exception) {
+            Log.e(TAG, "could not decode ${T::class.simpleName} from $o", e)
+            throw e
+        }
 
     private inline fun <reified T> decodeField(o: JSONObject, field: String): T =
-        json.decodeFromString(o.getJSONObject(field).toString())
+        try {
+            json.decodeFromString(o.getJSONObject(field).toString())
+        } catch (e: Exception) {
+            Log.e(TAG, "could not decode ${T::class.simpleName} from field '$field' of $o", e)
+            throw e
+        }
 
     private fun payload(vararg pairs: Pair<String, String>): JSONObject =
         JSONObject().apply { pairs.forEach { put(it.first, it.second) } }

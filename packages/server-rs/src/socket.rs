@@ -12,8 +12,8 @@ use std::collections::HashSet;
 use crate::auth::verify_access_token;
 use crate::permissions::{self, CONNECT, MANAGE_MESSAGES, SPEAK};
 use crate::services::{
-    call, channel, friends, membership, message, presence, rate_limit, read_state, server, sound,
-    voice,
+    bot, call, channel, friends, membership, message, presence, rate_limit, read_state, server,
+    sound, voice,
 };
 use crate::state::AppState;
 
@@ -467,12 +467,40 @@ pub fn setup(io: SocketIo, state: AppState) {
             let Some(token) = token else {
                 return Err(AuthError);
             };
+            let device = normalize_device(auth.as_ref().and_then(|a| a.device.as_deref()));
+
+            // The bot gateway is this same namespace, not a second transport.
+            // A bot connects with `auth.token = "Bot <token>"`; everything past
+            // the handshake - room joins, fanout, acks - is already identical
+            // because a bot is a User row.
+            if let Some(bot_token) = token.strip_prefix("Bot ") {
+                let Ok(Some(bot_id)) = bot::authenticate(&state, bot_token).await else {
+                    return Err(AuthError);
+                };
+                let username: Option<(String,)> =
+                    sqlx::query_as(r#"SELECT username FROM "User" WHERE id = $1"#)
+                        .bind(&bot_id)
+                        .fetch_optional(&state.pool)
+                        .await
+                        .ok()
+                        .flatten();
+                let Some((username,)) = username else {
+                    return Err(AuthError);
+                };
+                s.extensions.insert(SocketUser {
+                    user_id: bot_id,
+                    username,
+                    device: "bot".to_string(),
+                });
+                return Ok(());
+            }
+
             match verify_access_token(&state.config, &token) {
                 Ok(claims) => {
                     s.extensions.insert(SocketUser {
                         user_id: claims.sub,
                         username: claims.username,
-                        device: normalize_device(auth.as_ref().and_then(|a| a.device.as_deref())),
+                        device,
                     });
                     Ok(())
                 }
@@ -649,17 +677,27 @@ fn register_handlers(
         let uid = user_id.clone();
         s.on(
             "message:send",
-            move |Data(p): Data<SendPayload>, ack: AckSender| {
+            move |s: SocketRef, Data(p): Data<SendPayload>, ack: AckSender| {
                 let state = state.clone();
                 let io = io.clone();
                 let uid = uid.clone();
                 async move {
+                    // The device is stamped server-side at the handshake, so it
+                    // is a trustworthy way to tell a bot from a person here.
+                    let is_bot = s
+                        .extensions
+                        .get::<SocketUser>()
+                        .is_some_and(|u| u.device == "bot");
                     let res = async {
                         rate_limit::check(
                             &state,
                             "msg:send",
                             &uid,
-                            rate_limit::MESSAGE_SEND_PER_USER,
+                            if is_bot {
+                                rate_limit::MESSAGE_SEND_PER_BOT
+                            } else {
+                                rate_limit::MESSAGE_SEND_PER_USER
+                            },
                         )
                         .await?;
                         let ch =

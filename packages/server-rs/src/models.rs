@@ -51,6 +51,9 @@ pub struct UserRow {
     pub email_verified_at: Option<NaiveDateTime>,
     /// Awarded badge slugs; see services::badge for the catalog.
     pub badges: Vec<String>,
+    /// A bot account rather than a person; see services::bot.
+    #[sqlx(rename = "isBot")]
+    pub is_bot: bool,
     /// Set while the account is locked down; see services::account.
     #[sqlx(rename = "lockdownAt")]
     pub lockdown_at: Option<NaiveDateTime>,

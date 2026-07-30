@@ -1,0 +1,30 @@
+{
+  "name": "@orangchat/bot",
+  "version": "0.1.0",
+  "description": "Official SDK for building OrangChat bots - REST + realtime gateway.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": ["orangchat", "bot", "chat", "sdk"],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

@@ -12,7 +12,9 @@ use crate::dto::*;
 use crate::error::{AppError, AppResult};
 use crate::http::{bad_request, AuthUser, ClientIp, OptionalAuthUser};
 use crate::permissions::{self, MANAGE_CHANNELS, MANAGE_INVITES, MANAGE_SERVER, VIEW_AUDIT_LOG};
-use crate::services::{account, audit, channel, membership, message, presence, rate_limit, server};
+use crate::services::{
+    account, audit, bot, channel, membership, message, presence, rate_limit, server,
+};
 use crate::state::AppState;
 
 pub fn routes() -> Router<AppState> {
@@ -32,6 +34,7 @@ pub fn routes() -> Router<AppState> {
         .route("/servers/:serverId/leave", post(leave_server))
         .route("/servers/:serverId/search", get(search))
         .route("/servers/:serverId/audit-log", get(audit_log))
+        .route("/servers/:serverId/bots", post(add_bot))
         .route("/invites/:code", get(invite_preview).post(join_invite))
         .route("/servers/:serverId/me/permissions", get(my_permissions))
 }
@@ -126,6 +129,33 @@ async fn audit_log(
         "items": items,
         "nextCursor": if has_more { Some((offset + limit).to_string()) } else { None },
     })))
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AddBotBody {
+    bot_id: String,
+    /// Decimal string, matching how permissions travel everywhere else (JSON
+    /// has no BigInt). Omitted means the server's @everyone defaults.
+    permissions: Option<String>,
+}
+
+/// Invite a bot into this server. The permission ceiling is enforced in the
+/// service - a caller cannot grant a bot anything they do not hold themselves.
+async fn add_bot(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Path(server_id): Path<String>,
+    Json(body): Json<AddBotBody>,
+) -> AppResult<Json<Value>> {
+    let requested = body
+        .permissions
+        .as_deref()
+        .map(crate::permissions::parse)
+        .unwrap_or(crate::permissions::DEFAULT_EVERYONE_PERMISSIONS);
+
+    bot::invite_to_server(&state, &server_id, &user.user_id, &body.bot_id, requested).await?;
+    Ok(Json(json!({ "ok": true })))
 }
 
 async fn create_server(

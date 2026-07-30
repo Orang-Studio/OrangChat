@@ -12,6 +12,7 @@ import {
 import { cn } from "../../lib/cn";
 import { Avatar } from "../../components/Avatar";
 import { DeviceIndicators } from "../../components/DeviceIndicators";
+import { BotTag } from "../../components/BotTag";
 import { ActivityStatus } from "../../components/ActivityStatus";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { TextField } from "../../components/ui/TextField";
@@ -118,11 +119,14 @@ function MemberRow({
         >
           <Avatar user={member.user} className="size-8" />
           <span className="min-w-0 flex-1">
-            <span
-              className="block truncate text-sm font-medium"
-              style={{ color: memberColor(member, roles) }}
-            >
-              {name}
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span
+                className="truncate text-sm font-medium"
+                style={{ color: memberColor(member, roles) }}
+              >
+                {name}
+              </span>
+              {member.user.bot ? <BotTag /> : null}
             </span>
             <span className="flex min-w-0 items-center gap-1.5 text-xs text-ink-muted">
               <span className="truncate">@{member.user.username}</span>

@@ -40,6 +40,7 @@ import lt.oranges.orangchat.feature.roles.Header
 import lt.oranges.orangchat.feature.roles.Section
 import lt.oranges.orangchat.feature.roles.roleColor
 import lt.oranges.orangchat.ui.components.Avatar
+import lt.oranges.orangchat.ui.components.BotTag
 import lt.oranges.orangchat.ui.components.ButtonVariant
 import lt.oranges.orangchat.ui.components.ConfirmDialog
 import lt.oranges.orangchat.ui.components.DeviceIndicators
@@ -179,6 +180,10 @@ private fun MemberRow(
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                 )
+                if (member.user.bot) {
+                    Spacer(Modifier.width(6.dp))
+                    BotTag()
+                }
                 if (isOwner) {
                     Spacer(Modifier.width(6.dp))
                     Text("Owner", color = c.warning, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)

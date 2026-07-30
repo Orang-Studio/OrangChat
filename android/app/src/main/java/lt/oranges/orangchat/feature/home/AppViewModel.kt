@@ -602,6 +602,7 @@ class AppViewModel @Inject constructor(
                 content = normalizedContent,
                 createdAt = Instant.now().toString(),
                 replyToId = replyToId,
+                clientId = localId,
             )
             current + (channelId to (current[channelId].orEmpty() + optimistic))
         }
@@ -660,7 +661,20 @@ class AppViewModel @Inject constructor(
                         rejectPendingMessage(pending.localId)
                         pendingOutbox.removeAll { it.localId == pending.localId }
                         e2eeRepository.removeQueuedMessage(pending.localId)
-                        _error.value = error.message ?: "Failed to send"
+                        // The server's own rejections are written for people and
+                        // are worth showing. Anything else is an exception whose
+                        // message is a Kotlin class name, which tells the user
+                        // nothing and hides the real failure - log that instead,
+                        // under a tag that can actually be found in logcat.
+                        android.util.Log.e(SEND_TAG, "send failed in ${pending.channelId}", error)
+                        // SerializationException is itself a RuntimeException, so
+                        // it has to be excluded by name rather than by category -
+                        // it is exactly the case that was leaking a model class
+                        // name into the UI where the real error should have been.
+                        _error.value = when {
+                            error is kotlinx.serialization.SerializationException -> FAILED_TO_SEND
+                            else -> error.message?.takeIf { it.isNotBlank() } ?: FAILED_TO_SEND
+                        }
                     }
                 }
             } finally {
@@ -724,11 +738,16 @@ class AppViewModel @Inject constructor(
             return
         }
         _pendingMessageIds.update { it - localId }
+        // Carry the local id onto the confirmed row. The list keys on it, so the
+        // message keeps its identity across the id changing and simply loses the
+        // pending styling instead of being torn down and re-inserted.
+        val confirmed = sent.copy(clientId = localId)
         _messages.update { current ->
-            val existing = current[sent.channelId].orEmpty()
-            val withoutConfirmedCopy = existing.filterNot { it.id == sent.id }
-            val replaced = withoutConfirmedCopy.map { if (it.id == localId) sent else it }
-            current + (sent.channelId to if (replaced.any { it.id == sent.id }) replaced else replaced + sent)
+            val existing = current[confirmed.channelId].orEmpty()
+            val withoutConfirmedCopy = existing.filterNot { it.id == confirmed.id }
+            val replaced = withoutConfirmedCopy.map { if (it.id == localId) confirmed else it }
+            current + (confirmed.channelId to
+                if (replaced.any { it.id == confirmed.id }) replaced else replaced + confirmed)
         }
     }
 
@@ -1157,7 +1176,12 @@ class AppViewModel @Inject constructor(
             runCatching { serverRepository.getHistory(channelId) }.onSuccess { page ->
                 val items = e2eeRepository.decryptAll(page.items)
                 _messages.update { map ->
-                    val merged = (map[channelId].orEmpty() + items)
+                    val existing = map[channelId].orEmpty()
+                    // Server rows win, but they carry no local id. Re-attach the
+                    // one we already had or a message confirmed moments ago gets
+                    // re-keyed by this resync and re-animates as if it were new.
+                    val localIds = existing.mapNotNull { m -> m.clientId?.let { m.id to it } }.toMap()
+                    val merged = (existing + items.map { it.copy(clientId = localIds[it.id]) })
                         .associateBy { it.id }
                         .values
                         .sortedBy { it.createdAt }
@@ -1353,6 +1377,9 @@ class AppViewModel @Inject constructor(
         else -> null
     }
 }
+
+private const val SEND_TAG = "OrangChatSend"
+private const val FAILED_TO_SEND = "Couldn't send that message."
 
 /** Local StateFlow.update shim (kotlinx has it; aliased for older BOMs). */
 private inline fun <T> MutableStateFlow<T>.update(function: (T) -> T) {

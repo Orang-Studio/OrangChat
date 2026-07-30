@@ -3,6 +3,7 @@ pub mod attachment_crypto;
 pub mod audio;
 pub mod audit;
 pub mod badge;
+pub mod bot;
 pub mod call;
 pub mod channel;
 pub mod cloudinary;

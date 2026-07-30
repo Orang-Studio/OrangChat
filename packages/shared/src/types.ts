@@ -44,6 +44,12 @@ export interface User {
   profileCss: string | null;
   /** Awarded badge slugs; unknown ones are ignored by `resolveBadges`. */
   badges: BadgeId[];
+  /**
+   * A bot account. Rendered as a label beside the name - it is a property of
+   * the account, not something anyone can put in a nickname to impersonate.
+   * Absent on rows written before bots existed, so treat undefined as false.
+   */
+  bot?: boolean;
   createdAt: string;
 }
 

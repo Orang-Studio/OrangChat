@@ -37,6 +37,9 @@ pub struct UserDto {
     pub pronouns: Option<String>,
     pub profile_css: Option<String>,
     pub badges: Vec<String>,
+    /// True for a bot account. Clients render this as a label beside the name -
+    /// it is a property of the account, not text anyone can put in a nickname.
+    pub bot: bool,
     pub created_at: String,
 }
 
@@ -433,6 +436,7 @@ pub fn to_user(u: &UserRow) -> UserDto {
         pronouns: u.pronouns.clone(),
         profile_css: u.profile_css.clone(),
         badges: u.badges.clone(),
+        bot: u.is_bot,
         created_at: iso(u.created_at),
     }
 }

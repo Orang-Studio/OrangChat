@@ -95,6 +95,14 @@ pub const SERVER_CREATE_PER_USER: Quota = Quota::new(10, HOUR);
 pub const SEARCH_PER_USER: Quota = Quota::new(60, MINUTE);
 
 pub const MESSAGE_SEND_PER_USER: Quota = Quota::new(10, 5);
+/// Bots answer commands in bursts - several replies to one trigger is normal
+/// traffic, not abuse - so their ceiling is higher than a person's. It is still
+/// a ceiling: a runaway loop is the failure mode this exists to contain.
+///
+/// Note that the coarse `API_PER_IP` (600/min) still applies to a bot's REST
+/// calls. That is deliberate: bucketing on the credential instead would mean
+/// trusting an unverified header to pick the bucket, which is a bypass.
+pub const MESSAGE_SEND_PER_BOT: Quota = Quota::new(60, 5);
 pub const MESSAGE_EDIT_PER_USER: Quota = Quota::new(20, 10);
 /// Reporting is intentionally rare and stores disclosed plaintext. A tight
 /// ceiling limits storage abuse without making a genuine burst impossible.

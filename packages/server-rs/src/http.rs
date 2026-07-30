@@ -1,5 +1,6 @@
 pub mod attachments;
 pub mod auth;
+pub mod bots;
 pub mod channels;
 pub mod connections;
 pub mod dms;
@@ -38,10 +39,31 @@ use crate::services::rate_limit;
 use crate::services::update_policy;
 use crate::state::AppState;
 
-/// Authenticated user, extracted from the `Authorization: Bearer` header.
-/// Mirrors the `authenticate` preHandler guard.
+/// Whether a request is being made by a person or by a bot. Almost every route
+/// treats the two identically - a bot is a `User` row and the permission checks
+/// are the same - but the handful that must not be reachable by a bot need to be
+/// able to tell. See [`deny_bots`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CallerKind {
+    User,
+    Bot,
+}
+
+/// Authenticated caller, extracted from the `Authorization` header.
+///
+/// Two schemes: `Bearer <jwt>` for a signed-in person, `Bot <token>` for a bot.
+/// The scheme is explicit rather than sniffed from the token's shape - guessing
+/// would mean a malformed JWT could be probed against the bot-token table, and
+/// SDK authors expect to state which credential they are presenting.
 pub struct AuthUser {
     pub user_id: String,
+    pub kind: CallerKind,
+}
+
+impl AuthUser {
+    pub fn is_bot(&self) -> bool {
+        self.kind == CallerKind::Bot
+    }
 }
 
 #[axum::async_trait]
@@ -52,11 +74,24 @@ impl FromRequestParts<AppState> for AuthUser {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let token = parts
+        let header = parts
             .headers
             .get(axum::http::header::AUTHORIZATION)
             .and_then(|v| v.to_str().ok())
-            .and_then(|h| h.strip_prefix("Bearer "))
+            .ok_or_else(|| AppError::Unauthorized("Missing access token".into()))?;
+
+        if let Some(token) = header.strip_prefix("Bot ") {
+            let bot_id = crate::services::bot::authenticate(state, token)
+                .await?
+                .ok_or_else(|| AppError::Unauthorized("Invalid bot token".into()))?;
+            return Ok(AuthUser {
+                user_id: bot_id,
+                kind: CallerKind::Bot,
+            });
+        }
+
+        let token = header
+            .strip_prefix("Bearer ")
             .ok_or_else(|| AppError::Unauthorized("Missing access token".into()))?;
         let claims = verify_access_token(&state.config, token)?;
         let verified: Option<bool> =
@@ -71,8 +106,26 @@ impl FromRequestParts<AppState> for AuthUser {
         }
         Ok(AuthUser {
             user_id: claims.sub,
+            kind: CallerKind::User,
         })
     }
+}
+
+/// Refuses bot tokens outright, for the route groups that belong to a person.
+///
+/// Bots authenticate as `User` rows, which is what makes them work everywhere
+/// without touching a single existing handler - and is exactly why this exists.
+/// Without it, minting a bot token would also hand out account deletion, session
+/// management, E2EE key material and the owner's linked accounts. Applied per
+/// nest as a default-deny list, so the dangerous surface is enumerated in one
+/// readable place rather than opted into route by route.
+pub async fn deny_bots(caller: AuthUser, req: Request, next: Next) -> Result<Response, AppError> {
+    if caller.is_bot() {
+        return Err(AppError::Permission(
+            "Bots cannot use this endpoint".into(),
+        ));
+    }
+    Ok(next.run(req).await)
 }
 
 /// The user, if there is one. For routes a signed-out visitor may reach but
@@ -216,25 +269,37 @@ pub fn cors_layer(state: &AppState) -> CorsLayer {
 }
 
 pub fn router(state: AppState) -> Router {
+    // Route groups that belong to a person and must never accept a bot token:
+    // credentials and sessions, E2EE key material, the owner's linked accounts,
+    // their drafts and push endpoints, and the friend graph. A bot authenticates
+    // as a User row, so this has to be refused explicitly.
+    let humans_only = Router::new()
+        .nest("/auth", auth::routes())
+        .nest("/security", security::routes())
+        .merge(connections::routes())
+        .merge(drafts::routes())
+        .merge(e2ee::routes())
+        .merge(friends::routes())
+        .merge(push::routes())
+        .route_layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            deny_bots,
+        ));
+
     let api = Router::new()
         .route(
             "/",
             get(|| async { Json(json!({ "name": "orangchat-api", "version": "0.0.0" })) }),
         )
-        .nest("/auth", auth::routes())
-        .nest("/security", security::routes())
+        .merge(humans_only)
+        .merge(bots::routes())
         .merge(servers::routes())
         .merge(channels::routes())
-        .merge(connections::routes())
         .merge(dms::routes())
-        .merge(drafts::routes())
-        .merge(e2ee::routes())
         .merge(emojis::routes())
         .merge(events::routes())
-        .merge(friends::routes())
         .merge(link_previews::routes())
         .merge(media_proxy::routes())
-        .merge(push::routes())
         .merge(roles::routes())
         .merge(reports::routes())
         .merge(sounds::routes())
