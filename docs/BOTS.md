@@ -25,7 +25,8 @@ The consequences are worth stating plainly:
 
 ## 2. Creating one
 
-**Settings → Developers → New bot.** You get the bot and its first token in one
+**Developers → New bot.** The Developers page is in the sidebar beside Friends,
+or directly at `/developers`. You get the bot and its first token in one
 step. The token is shown **once**; the server keeps only a SHA-256 digest and
 cannot show it again. Lose it and you mint a new one.
 

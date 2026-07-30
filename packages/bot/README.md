@@ -21,8 +21,8 @@ client.on('messageCreate', async (message) => {
 await client.login();
 ```
 
-Create a bot and its token under **Settings → Developers**, then invite it to a
-server from the same screen.
+Create a bot and its token on the **Developers** page (in the sidebar beside
+Friends, or at `/developers`), then invite it to a server from the same screen.
 
 ## Events
 

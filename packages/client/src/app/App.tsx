@@ -6,6 +6,7 @@ import { SignupPage } from "../features/auth/SignupPage";
 import { OAuthCallbackPage } from "../features/auth/OAuthCallbackPage";
 import { HomePane } from "../features/chat/HomePane";
 import { FriendsPage } from "../features/friends/FriendsPage";
+import { DevelopersPage } from "../features/developers/DevelopersPage";
 import { DmSidebar } from "../features/dms/DmSidebar";
 import { DmView } from "../features/dms/DmView";
 import { InvitePage } from "../features/servers/InvitePage";
@@ -56,6 +57,7 @@ export function App() {
             <Route element={<HomeLayout />}>
               <Route path="/" element={<HomePane />} />
               <Route path="/friends" element={<FriendsPage />} />
+              <Route path="/developers" element={<DevelopersPage />} />
               <Route path="/dms/:channelId" element={<DmView />} />
             </Route>
             <Route path="/servers/:serverId" element={<ServerView />} />

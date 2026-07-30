@@ -2,8 +2,8 @@
 
     BOT_TOKEN=... python examples/ping.py
 
-Create the bot and its token in OrangChat under Settings -> Developers, then
-invite it to a server from the same screen.
+Create the bot and its token on the Developers page in OrangChat (sidebar,
+beside Friends), then invite it to a server from the same screen.
 """
 
 import os
@@ -13,7 +13,7 @@ from orangchat import Client
 
 token = os.environ.get("BOT_TOKEN")
 if not token:
-    sys.exit("Set BOT_TOKEN to the token from Settings -> Developers.")
+    sys.exit("Set BOT_TOKEN to the token from the Developers page.")
 
 client = Client(token, base_url=os.environ.get("ORANGCHAT_URL", "https://orangchat.lt"))
 

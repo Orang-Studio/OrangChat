@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot as BotIcon, Check, Copy, KeyRound, Plus, Trash2 } from "lucide-react";
+import { Bot as BotIcon, Check, Copy, KeyRound, Menu, Plus, Trash2 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { ImageField } from "../../components/ImageField";
 import { formatFullTime } from "../../lib/time";
+import { panelActions } from "../../stores/panels";
 import { useServers } from "../servers/queries";
-import { SectionTitle } from "./controls";
 import {
   addBotToServer,
   createBot,
@@ -17,7 +17,7 @@ import {
   updateBot,
   type Bot,
   type MintedToken,
-} from "./botsApi";
+} from "./api";
 
 const botKeys = {
   all: ["bots"] as const,
@@ -326,12 +326,25 @@ function CreateBot() {
   );
 }
 
-export function DevelopersTab() {
+export function DevelopersPage() {
   const { data, isLoading } = useQuery({ queryKey: botKeys.all, queryFn: listBots });
 
   return (
-    <div>
-      <SectionTitle>Bots</SectionTitle>
+    <div className="flex flex-1 flex-col bg-surface-2">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4">
+        <button
+          type="button"
+          onClick={panelActions.openLeft}
+          aria-label="Open navigation"
+          className="rounded-lg p-1.5 text-ink-secondary transition-colors hover:bg-surface-3 hover:text-ink md:hidden"
+        >
+          <Menu aria-hidden className="size-5" />
+        </button>
+        <span className="font-semibold">Developers</span>
+      </header>
+
+      <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto p-4">
+      <h2 className="mb-1 text-base font-semibold">Bots</h2>
       <p className="mb-3 text-sm text-ink-secondary">
         Build on OrangChat with the{" "}
         <code className="rounded bg-surface-3 px-1 py-0.5 font-mono text-xs">@orangchat/bot</code>{" "}
@@ -357,6 +370,7 @@ export function DevelopersTab() {
           <p className="mt-2 text-sm text-ink-secondary">You haven't made any bots yet.</p>
         </div>
       )}
+      </div>
     </div>
   );
 }

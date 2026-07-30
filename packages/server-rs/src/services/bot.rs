@@ -157,10 +157,13 @@ pub async fn create(
     // `emailVerifiedAt` is not cosmetic here: AuthUser rejects any account
     // without it, so an unverified bot would 401 on every request it ever made.
     sqlx::query(
+        // "updatedAt" is set explicitly: Prisma's @updatedAt is applied by the
+        // Prisma client, not by a database default, so a raw INSERT that omits
+        // it violates the NOT NULL constraint.
         r#"INSERT INTO "User"
            (id, email, username, "displayName", "isBot", "ownerId",
-            "emailVerifiedAt", "passwordHash")
-           VALUES ($1, $2, $3, $4, true, $5, now(), NULL)"#,
+            "emailVerifiedAt", "passwordHash", "updatedAt")
+           VALUES ($1, $2, $3, $4, true, $5, now(), NULL, now())"#,
     )
     .bind(&id)
     .bind(&email)

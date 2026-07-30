@@ -2,14 +2,14 @@
 //
 //   BOT_TOKEN=... node examples/ping.mjs
 //
-// Create the bot and its token in OrangChat under Settings -> Developers, then
-// invite it to a server from the same screen.
+// Create the bot and its token on the Developers page in OrangChat (sidebar,
+// beside Friends), then invite it to a server from the same screen.
 
 import { Client } from '@orangchat/bot';
 
 const token = process.env.BOT_TOKEN;
 if (!token) {
-  console.error('Set BOT_TOKEN to the token from Settings -> Developers.');
+  console.error('Set BOT_TOKEN to the token from the Developers page.');
   process.exit(1);
 }
 

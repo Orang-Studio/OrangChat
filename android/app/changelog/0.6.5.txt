@@ -1,6 +1,6 @@
 Bots
 - Bot accounts now show a BOT label next to their name in chats and the member
-  list. Make your own under Settings -> Developers on the web app.
+  list. Make your own on the Developers page in the web app.
 
 Fixes
 - Sending a message no longer flashes: the greyed-out message you see while it

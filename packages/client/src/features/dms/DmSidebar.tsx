@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useMatch, useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, LogOut, Phone, Plus, User as UserIcon, UserX, Users, X } from "lucide-react";
+import { Bot, Check, Copy, LogOut, Phone, Plus, User as UserIcon, UserX, Users, X } from "lucide-react";
 import type { Conversation } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
 import { Avatar } from "../../components/Avatar";
@@ -202,7 +202,9 @@ function ConversationRow({
 export function DmSidebar() {
   // Layout-level component: child-route params aren't visible via useParams.
   const channelId = useMatch("/dms/:channelId")?.params.channelId;
-  const onFriends = useLocation().pathname === "/friends";
+  const pathname = useLocation().pathname;
+  const onFriends = pathname === "/friends";
+  const onDevelopers = pathname === "/developers";
   const { data: conversations } = useConversations();
   const { data: requests } = useFriendRequests();
   const [newDmOpen, setNewDmOpen] = useState(false);
@@ -235,6 +237,22 @@ export function DmSidebar() {
               {incomingCount}
             </span>
           )}
+        </Link>
+
+        <Link
+          to="/developers"
+          aria-current={onDevelopers ? "page" : undefined}
+          className={cn(
+            "flex items-center gap-2.5 rounded-lg px-2 py-2 transition-colors md:py-1.5",
+            onDevelopers
+              ? "bg-surface-3 text-ink"
+              : "text-ink-secondary hover:bg-surface-2 hover:text-ink",
+          )}
+        >
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-3 text-ink-secondary">
+            <Bot aria-hidden className="size-4" />
+          </span>
+          <span className="flex-1 text-sm font-medium">Developers</span>
         </Link>
 
         <div className="flex items-center justify-between px-2 pb-1 pt-2">
