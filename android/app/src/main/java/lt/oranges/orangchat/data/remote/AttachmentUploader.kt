@@ -1,6 +1,7 @@
 package lt.oranges.orangchat.data.remote
 
 import android.content.ContentResolver
+import android.util.Log
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
@@ -66,6 +67,7 @@ class AttachmentUploader @Inject constructor(
 ) {
 
     companion object {
+        private const val TAG = "OrangChatUpload"
         /** Must match MAX_LOCAL_ATTACHMENT in server-rs/src/http/attachments.rs. */
         // The encrypted envelope consumes 36 bytes of Cloudinary's 10 MiB cap.
         const val MAX_LOCAL_ATTACHMENT = 10L * 1024 * 1024 - 36
@@ -315,7 +317,7 @@ class AttachmentUploader @Inject constructor(
         return chatClient.newCall(request).await().use { response ->
             val text = response.body?.string().orEmpty()
             if (!response.isSuccessful) throw IOException(errorFrom(text, "Upload failed"))
-            json.decodeFromString<Attachment>(text)
+            decodeAttachment(text)
         }
     }
 
@@ -340,7 +342,7 @@ class AttachmentUploader @Inject constructor(
         return chatClient.newCall(request).await().use { response ->
             val text = response.body?.string().orEmpty()
             if (!response.isSuccessful) throw IOException(errorFrom(text, "Encrypted upload failed"))
-            json.decodeFromString<Attachment>(text)
+            decodeAttachment(text)
         }
     }
 
@@ -420,9 +422,25 @@ class AttachmentUploader @Inject constructor(
         return chatClient.newCall(request).await().use { response ->
             val text = response.body?.string().orEmpty()
             if (!response.isSuccessful) throw IOException(errorFrom(text, "Could not attach the file"))
-            json.decodeFromString<Attachment>(text)
+            decodeAttachment(text)
         }
     }
+
+    /**
+     * Decode an upload response, saying which body failed when it does.
+     *
+     * A kotlinx failure here names only a model class, and the response that
+     * caused it is gone by the time anyone reads the message - which left an
+     * unexplainable upload error with nothing to debug it from. Log the body,
+     * then rethrow so callers still see a failure.
+     */
+    private fun decodeAttachment(text: String): Attachment =
+        try {
+            json.decodeFromString(text)
+        } catch (e: Exception) {
+            Log.e(TAG, "could not decode an upload response: $text", e)
+            throw e
+        }
 
     /** OrangChat answers with `{"error": ...}`; OrangMove answers in plain text. */
     private fun errorFrom(body: String, fallback: String): String {

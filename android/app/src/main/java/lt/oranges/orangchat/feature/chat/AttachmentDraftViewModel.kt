@@ -1,6 +1,7 @@
 package lt.oranges.orangchat.feature.chat
 
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -132,7 +133,18 @@ class AttachmentDraftViewModel @Inject constructor(
                         // Cancelling is the user's own doing; remove() already
                         // dropped the chip, so there's nothing to report.
                         if (cause is CancellationException) return@onFailure
-                        patch(key) { it.copy(error = cause.message ?: "Upload failed") }
+                        // A kotlinx failure's message is a model class name,
+                        // which tells the user nothing and hides the real
+                        // cause; AttachmentUploader has already logged the
+                        // body that failed. Everything else here is written
+                        // for people and worth showing.
+                        Log.e("OrangChatUpload", "upload failed for ${info.name}", cause)
+                        val shown = if (cause is kotlinx.serialization.SerializationException) {
+                            "Upload failed"
+                        } else {
+                            cause.message?.takeIf { it.isNotBlank() } ?: "Upload failed"
+                        }
+                        patch(key) { it.copy(error = shown) }
                     }
             }
         }

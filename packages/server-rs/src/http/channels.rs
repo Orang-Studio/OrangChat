@@ -156,8 +156,18 @@ async fn post_message(
         sealed.as_ref(),
     )
     .await?;
-    crate::socket::deliver_message(state.io(), &state, &ch, &msg, &user.user_id, &body.content)
-        .await;
+    // No originating socket: this sender was answered over HTTP, so everyone in
+    // the channel needs the broadcast.
+    crate::socket::deliver_message(
+        state.io(),
+        &state,
+        &ch,
+        &msg,
+        &user.user_id,
+        &body.content,
+        None,
+    )
+    .await;
     Ok(Json(json!(msg)))
 }
 

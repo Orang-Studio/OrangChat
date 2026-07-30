@@ -306,6 +306,15 @@ pub(crate) async fn broadcast_presence(
 /// screen. Shared by the socket `message:send` path and the REST send endpoint
 /// (which the Android notification quick-reply posts to) so the two stay
 /// identical no matter which one a message came in through.
+///
+/// `from` is the socket that sent the message, when one did. It is excluded
+/// from the `message:new` fan-out because it already has the message: the send
+/// was acknowledged with the persisted row. Echoing to it as well delivered the
+/// same message twice, and since the sender's optimistic row is still keyed on
+/// its local id, the echo could not be recognised as a duplicate and landed as
+/// a second, freshly-inserted message. Other devices of the same user are
+/// separate sockets and still receive it; the REST path passes `None`, because
+/// there the sender was answered over HTTP instead.
 pub async fn deliver_message(
     io: &SocketIo,
     state: &AppState,
@@ -313,6 +322,7 @@ pub async fn deliver_message(
     msg: &crate::dto::MessageDto,
     author_id: &str,
     content: &str,
+    from: Option<&SocketRef>,
 ) {
     let channel_id = channel.id.clone();
 
@@ -324,9 +334,15 @@ pub async fn deliver_message(
         .emit("read:state", &json!({ "channelId": channel_id }));
     spawn_read_dismiss(state, author_id, &channel_id);
 
-    let _ = io
-        .to(format!("channel:{channel_id}"))
-        .emit("message:new", msg);
+    let room = format!("channel:{channel_id}");
+    match from {
+        Some(sender) => {
+            let _ = sender.broadcast().within(room).emit("message:new", msg);
+        }
+        None => {
+            let _ = io.to(room).emit("message:new", msg);
+        }
+    }
 
     // Unread + @mention bookkeeping, fanned out over rooms members never leave
     // (server:<id> / user:<id>) so background channels still light up.
@@ -727,7 +743,11 @@ fn register_handlers(
                         Ok(msg) => {
                             if let Ok(Some(ch)) = channel::get_channel(&state, &p.channel_id).await
                             {
-                                deliver_message(&io, &state, &ch, &msg, &uid, &p.content).await;
+                                // `&s`: the sender is answered by the ack below,
+                                // so echoing the broadcast back to it too is
+                                // what produced a duplicate message client-side.
+                                deliver_message(&io, &state, &ch, &msg, &uid, &p.content, Some(&s))
+                                    .await;
                             }
                             ack_ok(ack, &msg);
                         }
