@@ -3,6 +3,11 @@ import { authStoreActions, useAuthStore } from "../../stores/auth";
 import { connectSocket, socket } from "../../lib/socket";
 import { clearCachedMedia } from "../../lib/serviceWorker";
 import { registerGamePresence } from "../presence/gamePresence";
+import {
+  activateOfflineQueryCache,
+  clearOfflineQueryCache,
+  restoreOfflineSession,
+} from "../../lib/offlineQueryCache";
 
 /**
  * Session lifecycle. Access token lives in memory only; the refresh token
@@ -26,6 +31,7 @@ let lastConnectErrorRefresh = 0;
 /** Install a session: store, proactive-refresh timer, socket handshake auth. */
 export function applySession(user: SelfUser, tokens: AuthTokens): void {
   authStoreActions.setSession(user, tokens.accessToken);
+  void activateOfflineQueryCache(user);
   scheduleProactiveRefresh(tokens.expiresIn);
   socket.auth = { token: tokens.accessToken, device: clientDevice };
   connectSocket();
@@ -52,7 +58,7 @@ async function doRefresh(): Promise<boolean> {
   } catch {
     // network is down, not a rejected session. keep whatever we have and try
     // again shortly instead of logging the user out over a dropped wifi.
-    scheduleRetry();
+    await fallBackToOfflineSession();
     return false;
   }
 
@@ -64,7 +70,7 @@ async function doRefresh(): Promise<boolean> {
       endLocalSession();
       return false;
     }
-    scheduleRetry();
+    await fallBackToOfflineSession();
     return false;
   }
 
@@ -82,7 +88,7 @@ async function doRefresh(): Promise<boolean> {
     applySession(user, tokens);
     return true;
   } catch {
-    scheduleRetry();
+    await fallBackToOfflineSession();
     return false;
   }
 }
@@ -120,9 +126,19 @@ function endLocalSession(): void {
   clearTimeout(refreshTimer);
   socket.disconnect();
   authStoreActions.clear();
+  clearOfflineQueryCache();
   // Cached avatars and proxied images say who this account was talking to.
   // They shouldn't be sitting on disk for whoever signs in next.
   clearCachedMedia();
+}
+
+/** Keep the last authenticated shell readable when startup has no network. */
+async function fallBackToOfflineSession(): Promise<void> {
+  if (!useAuthStore.getState().user) {
+    const cached = await restoreOfflineSession();
+    if (cached) authStoreActions.setOfflineSession(cached);
+  }
+  scheduleRetry();
 }
 
 function scheduleProactiveRefresh(expiresInSeconds: number): void {

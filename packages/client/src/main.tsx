@@ -11,6 +11,7 @@ import { initViewport } from "./lib/viewport";
 import { initPlugins } from "./features/plugins/store";
 import { initInstalledTheme } from "./features/plugins/themes";
 import { registerServiceWorker } from "./lib/serviceWorker";
+import { initOfflineQueryCache } from "./lib/offlineQueryCache";
 import "./styles/index.css";
 
 initTheme();
@@ -37,6 +38,8 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+initOfflineQueryCache(queryClient);
 
 // Socket events → query cache sync (messages, presence, channels, members).
 registerRealtime(queryClient);

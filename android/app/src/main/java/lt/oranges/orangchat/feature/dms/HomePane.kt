@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PersonRemove
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
@@ -73,6 +74,7 @@ fun HomePane(
     onOpenFriends: () -> Unit,
     onOpenConversation: (Conversation) -> Unit,
     onOpenSettings: () -> Unit,
+    onSearch: () -> Unit,
     onNewGroup: () -> Unit,
     onMarkRead: (String) -> Unit,
     onOpenProfile: (User) -> Unit,
@@ -89,6 +91,17 @@ fun HomePane(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("Direct Messages", color = c.ink, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.weight(1f))
+            Icon(
+                Icons.Default.Search,
+                contentDescription = "Search messages",
+                tint = c.inkSecondary,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(OrangRadius.md))
+                    .clickable(onClick = onSearch)
+                    .padding(4.dp)
+                    .size(22.dp),
+            )
+            Spacer(Modifier.width(8.dp))
             Icon(
                 Icons.Default.GroupAdd,
                 contentDescription = "New group",

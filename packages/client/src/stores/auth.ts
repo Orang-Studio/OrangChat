@@ -20,6 +20,8 @@ export const useAuthStore = create<AuthState>(() => ({
 export const authStoreActions = {
   setSession: (user: SelfUser, accessToken: string) =>
     useAuthStore.setState({ status: "authenticated", user, accessToken }),
+  setOfflineSession: (user: SelfUser) =>
+    useAuthStore.setState({ status: "authenticated", user, accessToken: null }),
   setUser: (user: SelfUser) => useAuthStore.setState({ user }),
   patchUser: (patch: Partial<SelfUser>) =>
     useAuthStore.setState((s) => (s.user ? { user: { ...s.user, ...patch } } : {})),

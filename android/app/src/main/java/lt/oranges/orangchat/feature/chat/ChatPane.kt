@@ -61,6 +61,7 @@ import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
@@ -257,6 +258,7 @@ fun ChatPane(
     onReport: (Message, String, (String?) -> Unit) -> Unit,
     onReact: (Message, String) -> Unit,
     onTyping: () -> Unit,
+    onSearch: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     /** Fetch the page before the oldest message held. */
     onLoadOlder: () -> Unit = {},
@@ -427,6 +429,17 @@ fun ChatPane(
                 } else if (!topic.isNullOrBlank()) {
                     Text(topic, color = c.inkMuted, fontSize = 12.sp, maxLines = 1)
                 }
+            }
+            if (onSearch != null) {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = "Search messages",
+                    tint = c.inkSecondary,
+                    modifier = Modifier
+                        .clickable(onClick = onSearch)
+                        .padding(6.dp)
+                        .size(20.dp),
+                )
             }
             if (encryptionInfo != null) {
                 Icon(

@@ -274,15 +274,15 @@ data class Attachment(
             filename.substringAfterLast('.', "").lowercase() in extensions
         }
 
-    private companion object {
-        const val GENERIC_TYPE = "application/octet-stream"
-        val IMAGE_EXTENSIONS = setOf(
+    companion object {
+        private const val GENERIC_TYPE = "application/octet-stream"
+        private val IMAGE_EXTENSIONS = setOf(
             "png", "jpg", "jpeg", "gif", "webp", "bmp", "heic", "heif", "avif",
         )
-        val AUDIO_EXTENSIONS = setOf(
+        private val AUDIO_EXTENSIONS = setOf(
             "mp3", "m4a", "aac", "ogg", "oga", "opus", "wav", "flac",
         )
-        val VIDEO_EXTENSIONS = setOf(
+        private val VIDEO_EXTENSIONS = setOf(
             "mp4", "m4v", "webm", "mkv", "mov", "3gp",
         )
     }

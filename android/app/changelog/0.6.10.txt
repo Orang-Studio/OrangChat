@@ -1,0 +1,19 @@
+Offline access and search
+
+New
+- Recent servers, channels, direct messages and message history are now kept in
+  an encrypted on-device cache. They open faster and remain readable without a
+  connection after you have visited them on this phone.
+- Message search is now available in Android for servers, individual channels
+  and direct messages. Encrypted conversations are searched privately on this
+  device, including when the server cannot be reached.
+
+Privacy
+- Offline snapshots are separated by account, encrypted with a key protected by
+  Android Keystore, excluded from device backups and erased when you sign out or
+  delete your account.
+
+Fixes
+- Losing Wi-Fi while opening the app no longer looks like being signed out.
+- Fixed encrypted attachment uploads failing after the upload completed because
+  Android could not access the generated attachment serializer.

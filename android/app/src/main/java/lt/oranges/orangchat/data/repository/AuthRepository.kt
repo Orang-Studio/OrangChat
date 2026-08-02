@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import lt.oranges.orangchat.data.local.TokenStore
+import lt.oranges.orangchat.data.local.OfflineCache
 import lt.oranges.orangchat.data.model.AuthResult
 import lt.oranges.orangchat.data.model.SelfUser
 import lt.oranges.orangchat.data.remote.ApiService
@@ -55,6 +56,7 @@ class AuthRepository @Inject constructor(
     private val socketManager: SocketManager,
     private val pushTokenRegistrar: PushTokenRegistrar,
     private val json: Json,
+    private val offlineCache: OfflineCache,
 ) {
     private val _session = MutableStateFlow<SessionState>(SessionState.Loading)
     val session: StateFlow<SessionState> = _session.asStateFlow()
@@ -88,6 +90,7 @@ class AuthRepository @Inject constructor(
             // last known profile is restored and the socket reconnects behind it.
             // Signing out here is what made a lost wifi look like a logout.
             if (isSessionRejected(e)) {
+                cachedUser()?.id?.let { offlineCache.clear(it) }
                 tokenStore.clear()
                 _session.value = SessionState.Unauthenticated
             } else {
@@ -262,9 +265,11 @@ class AuthRepository @Inject constructor(
 
     /** Irreversible. On success the local session is torn down like a sign-out. */
     suspend fun deleteAccount(password: String?, username: String, code: String): DeleteAccountResult {
+        val userId = currentUser?.id
         val result = api.deleteAccount(
             DeleteAccountRequest(password?.ifBlank { null }, username.trim(), code.trim()),
         )
+        userId?.let { offlineCache.clear(it) }
         tokenStore.clear()
         socketManager.disconnect()
         _session.value = SessionState.Unauthenticated
@@ -272,11 +277,13 @@ class AuthRepository @Inject constructor(
     }
 
     suspend fun logout() {
+        val userId = currentUser?.id
         try {
             api.logout()
         } catch (_: Exception) {
             // Best-effort; clear locally regardless.
         }
+        userId?.let { offlineCache.clear(it) }
         tokenStore.clear()
         socketManager.disconnect()
         _session.value = SessionState.Unauthenticated

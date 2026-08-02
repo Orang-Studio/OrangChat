@@ -990,11 +990,17 @@ class E2eeRepository @Inject constructor(
         // name, type and key exist only in here, so a cache hit that restored
         // text alone left every later render showing the server's placeholder
         // row - the file called "sealed" that no device could open.
-        keystore.cachedPayload(message.id)?.let { return@withContext apply(message, it) }
-        keystore.cachedMessage(message.id)?.let { return@withContext message.copy(content = it) }
+        keystore.cachedPayload(message.id)?.let {
+            keystore.backfillCachedMessageMetadata(message, it.sentAt)
+            return@withContext apply(message, it)
+        }
+        keystore.cachedMessage(message.id)?.let {
+            keystore.backfillCachedMessageMetadata(message)
+            return@withContext message.copy(content = it)
+        }
         try {
             val payload = open(message.channelId, ciphertext, message.author.id)
-            keystore.cacheMessage(message.id, message.channelId, payload)
+            keystore.cacheMessage(message, payload)
             apply(message, payload)
         } catch (e: Exception) {
             message.copy(content = unreadable(e))
@@ -1097,9 +1103,17 @@ class E2eeRepository @Inject constructor(
         }
     }
 
-    /** Local search over what this device has actually opened. */
-    fun searchLocal(query: String, channelId: String?): List<Pair<String, String>> =
-        keystore.searchCached(query, channelId)
+    /** Local search over encrypted messages this device has actually opened. */
+    suspend fun searchLocal(
+        query: String,
+        channelIds: Set<String>? = null,
+        limit: Int = 100,
+    ): List<E2eeKeystore.CachedMessage> = withContext(Dispatchers.IO) {
+        keystore.searchCached(query, channelIds, limit)
+    }
+
+    /** Edits must evict the prior plaintext before opening the new envelope. */
+    fun forgetCachedMessage(messageId: String) = keystore.forgetCachedMessage(messageId)
 
     fun saveQueuedMessage(
         id: String,

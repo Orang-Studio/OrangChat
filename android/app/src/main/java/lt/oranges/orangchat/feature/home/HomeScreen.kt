@@ -178,6 +178,8 @@ fun HomeScreen(
     var homeSelected by remember { mutableStateOf(true) }
     var openChat by remember { mutableStateOf(false) }
     var overlay by remember { mutableStateOf(Overlay.NONE) }
+    /** Null searches the whole selected area; otherwise search only this chat. */
+    var searchChannelId by remember { mutableStateOf<String?>(null) }
     var showCreateServer by remember { mutableStateOf(false) }
     var showCreateChannel by remember { mutableStateOf(false) }
     var callExpanded by remember { mutableStateOf(false) }
@@ -216,7 +218,11 @@ fun HomeScreen(
             // so a still-Open drawer here is a close mid-animation. Settings
             // takes the drawer off screen outright - deferring to it would eat
             // the back press and strand the user.
-            overlay != Overlay.NONE -> { overlay = Overlay.NONE; groupAddTargetId = null }
+            overlay != Overlay.NONE -> {
+                overlay = Overlay.NONE
+                groupAddTargetId = null
+                searchChannelId = null
+            }
             drawerState.isOpen -> closeDrawer()
             else -> {
                 openChat = false
@@ -265,6 +271,11 @@ fun HomeScreen(
                     closeDrawer()
                 },
                 onOpenSettings = { overlay = Overlay.SETTINGS; closeDrawer() },
+                onSearch = {
+                    searchChannelId = null
+                    overlay = Overlay.SEARCH
+                    closeDrawer()
+                },
                 onNewGroup = { groupAddTargetId = null; overlay = Overlay.NEW_GROUP; closeDrawer() },
                 onMarkRead = appViewModel::markChannelRead,
                 onOpenProfile = { profileUser = it },
@@ -300,7 +311,11 @@ fun HomeScreen(
                     }
                 },
                 onAddChannel = { showCreateChannel = true; closeDrawer() },
-                onSearch = { overlay = Overlay.SEARCH; closeDrawer() },
+                onSearch = {
+                    searchChannelId = null
+                    overlay = Overlay.SEARCH
+                    closeDrawer()
+                },
                 onServerSettings = { overlay = Overlay.SERVER_SETTINGS; closeDrawer() },
                 onOpenUserSettings = { overlay = Overlay.SETTINGS; closeDrawer() },
             )
@@ -512,16 +527,53 @@ fun HomeScreen(
                                 },
                             )
 
-                            overlay == Overlay.SEARCH && detail != null -> SearchScreen(
-                                serverId = detail!!.server.id,
-                                channelNames = detail!!.channels.associate { it.id to (it.name ?: "channel") },
-                                onBack = { overlay = Overlay.NONE },
-                                onJumpToChannel = { channelId ->
-                                    overlay = Overlay.NONE
-                                    appViewModel.selectChannel(channelId)
-                                    openChat = true
-                                },
-                            )
+                            overlay == Overlay.SEARCH -> {
+                                val localDmSearch = homeSelected
+                                val searchableChannels = searchChannelId?.let { setOf(it) } ?: if (localDmSearch) {
+                                    dms.mapTo(mutableSetOf()) { it.id }
+                                } else {
+                                    detail?.channels
+                                        ?.filter { it.type == ChannelType.TEXT }
+                                        ?.mapTo(mutableSetOf()) { it.id }
+                                        .orEmpty()
+                                }
+                                val searchChannelNames = if (localDmSearch) {
+                                    dms.associate { convo ->
+                                        convo.id to (
+                                            convo.name
+                                                ?: convo.participants
+                                                    .filter { it.id != self.id }
+                                                    .joinToString(", ") { it.displayName }
+                                                    .ifBlank { "Direct Message" }
+                                            )
+                                    }
+                                } else {
+                                    detail?.channels
+                                        ?.associate { it.id to (it.name ?: "channel") }
+                                        .orEmpty()
+                                }
+                                val searchAuthors = (
+                                    listOf(self.asUser()) +
+                                        dms.flatMap { it.participants } +
+                                        detail?.members.orEmpty().map { it.user }
+                                    ).associateBy { it.id }
+                                SearchScreen(
+                                    serverId = if (localDmSearch) null else detail?.server?.id,
+                                    channelIds = searchableChannels,
+                                    channelNames = searchChannelNames,
+                                    authors = searchAuthors,
+                                    onBack = {
+                                        overlay = Overlay.NONE
+                                        searchChannelId = null
+                                    },
+                                    onJumpToChannel = { channelId ->
+                                        overlay = Overlay.NONE
+                                        searchChannelId = null
+                                        appViewModel.selectChannel(channelId)
+                                        openChat = true
+                                    },
+                                )
+                            }
 
                             overlay == Overlay.FRIENDS -> FriendsScreen(
                                 friends = friends,
@@ -623,6 +675,10 @@ fun HomeScreen(
                                     },
                                     onReact = { message, emoji -> appViewModel.toggleReaction(channelId, message, emoji) },
                                     onTyping = { appViewModel.startTyping(channelId) },
+                                    onSearch = {
+                                        searchChannelId = channelId
+                                        overlay = Overlay.SEARCH
+                                    },
                                     onLoadOlder = { appViewModel.loadOlderMessages(channelId) },
                                     loadingOlder = channelId in loadingOlder,
                                     compact = devicePrefs.compactMessages,

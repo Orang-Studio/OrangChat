@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import lt.oranges.orangchat.data.local.OfflineCache
 import lt.oranges.orangchat.data.model.AuditLogEntry
 import lt.oranges.orangchat.data.model.Channel
 import lt.oranges.orangchat.data.model.ChannelType
@@ -68,6 +69,7 @@ class AppViewModel @Inject constructor(
     private val notificationHelper: NotificationHelper,
     private val replyOutbox: ReplyOutbox,
     private val unreadStore: UnreadStore,
+    private val offlineCache: OfflineCache,
     private val pendingInviteStore: PendingInviteStore,
     private val pendingQrLoginStore: PendingQrLoginStore,
     private val pendingShareStore: PendingShareStore,
@@ -212,6 +214,12 @@ class AppViewModel @Inject constructor(
     private val _sounds = MutableStateFlow<List<Sound>>(emptyList())
     val sounds: StateFlow<List<Sound>> = _sounds.asStateFlow()
 
+    /** Coalesce bursts of message/realtime updates into one encrypted file write. */
+    private val messageCacheJobs = mutableMapOf<String, Job>()
+    private var navigationCacheJob: Job? = null
+    private var serverDetailCacheJob: Job? = null
+    private var offlineNavigationAvailable = false
+
     init {
         observeSocket()
     }
@@ -222,14 +230,33 @@ class AppViewModel @Inject constructor(
 
     /** Load everything the home shell needs once authenticated. */
     fun loadInitialData() {
-        refreshServers()
-        refreshDms()
-        refreshFriends()
-        refreshUnreads()
-        refreshEmojis()
         restorePendingMessages()
         flushQueuedReplies()
         syncEncryptionIdentity()
+        viewModelScope.launch {
+            hydrateNavigationCache()
+            // Cached rows paint first; these requests then replace them with
+            // current server truth whenever the network is reachable.
+            refreshServers()
+            refreshDms()
+            refreshFriends()
+            refreshUnreads()
+            refreshEmojis()
+        }
+    }
+
+    private suspend fun hydrateNavigationCache() {
+        val userId = authRepository.currentUser?.id ?: return
+        val cached = offlineCache.navigation(userId) ?: return
+        offlineNavigationAvailable = true
+        _servers.value = cached.servers
+        _dms.value = cached.dms
+        _friends.value = cached.friends
+        _incomingRequests.value = cached.incomingRequests
+        _outgoingRequests.value = cached.outgoingRequests
+        unreadStore.hydrate(cached.unreads)
+        _presence.value = cached.friends.associate { it.user.id to PresenceStatus.OFFLINE } +
+            (userId to PresenceStatus.OFFLINE)
     }
 
     private val _e2eeError = MutableStateFlow<String?>(null)
@@ -442,17 +469,28 @@ class AppViewModel @Inject constructor(
 
     fun refreshUnreads() = viewModelScope.launch {
         runCatching { serverRepository.getUnreads() }
-            .onSuccess { unreadStore.hydrate(it) }
+            .onSuccess {
+                unreadStore.hydrate(it)
+                scheduleNavigationCache()
+            }
     }
 
     fun refreshServers() = viewModelScope.launch {
         runCatching { serverRepository.listServers() }
-            .onSuccess { _servers.value = it }
-            .onFailure { _error.value = it.message }
+            .onSuccess {
+                _servers.value = it
+                scheduleNavigationCache()
+            }
+            .onFailure {
+                if (!offlineNavigationAvailable && _servers.value.isEmpty()) _error.value = it.message
+            }
     }
 
     fun refreshDms() = viewModelScope.launch {
-        runCatching { socialRepository.listDms() }.onSuccess { _dms.value = it }
+        runCatching { socialRepository.listDms() }.onSuccess {
+            _dms.value = it
+            scheduleNavigationCache()
+        }
     }
 
     /**
@@ -482,26 +520,52 @@ class AppViewModel @Inject constructor(
             _presence.update { m -> m + list.associate { it.user.id to it.user.status } }
             _presenceDevices.update { m -> m + list.associate { it.user.id to it.user.devices.toSet() } }
             _presenceActivities.update { m -> m + list.associate { it.user.id to it.user.activities } }
+            scheduleNavigationCache()
         }
         runCatching { socialRepository.listRequests() }.onSuccess {
             _incomingRequests.value = it.incoming
             _outgoingRequests.value = it.outgoing
+            scheduleNavigationCache()
         }
     }
 
     fun selectServer(serverId: String) = viewModelScope.launch {
         _serverDetail.value = null
+        _currentChannelId.value = null
         _sounds.value = emptyList()
+        val userId = authRepository.currentUser?.id
+        val cached = userId?.let { offlineCache.serverDetail(it, serverId) }
+        if (cached != null) applyServerDetail(cached, livePresence = false)
         runCatching { serverRepository.getServer(serverId) }
             .onSuccess { detail ->
-                _serverDetail.value = detail
-                _presence.update { m -> m + detail.members.associate { it.user.id to it.user.status } }
-                _presenceDevices.update { m -> m + detail.members.associate { it.user.id to it.user.devices.toSet() } }
-                _presenceActivities.update { m -> m + detail.members.associate { it.user.id to it.user.activities } }
-                detail.channels.firstOrNull { it.type == ChannelType.TEXT }?.let { selectChannel(it.id) }
+                applyServerDetail(detail, livePresence = true)
+                scheduleServerDetailCache()
                 refreshSounds()
             }
-            .onFailure { _error.value = it.message }
+            .onFailure { if (cached == null) _error.value = it.message }
+    }
+
+    private fun applyServerDetail(detail: ServerDetail, livePresence: Boolean) {
+        _serverDetail.value = detail
+        _presence.update { m ->
+            m + detail.members.associate {
+                it.user.id to if (livePresence) it.user.status else PresenceStatus.OFFLINE
+            }
+        }
+        _presenceDevices.update { m ->
+            m + detail.members.associate {
+                it.user.id to if (livePresence) it.user.devices.toSet() else emptySet()
+            }
+        }
+        _presenceActivities.update { m ->
+            m + detail.members.associate {
+                it.user.id to if (livePresence) it.user.activities else emptyList()
+            }
+        }
+        val current = _currentChannelId.value
+        if (current == null || detail.channels.none { it.id == current }) {
+            detail.channels.firstOrNull { it.type == ChannelType.TEXT }?.let { selectChannel(it.id) }
+        }
     }
 
     fun selectChannel(channelId: String) {
@@ -510,6 +574,7 @@ class AppViewModel @Inject constructor(
         if (_messages.value[channelId] == null) loadHistory(channelId)
         // Opening a channel reads it, locally and on the server.
         unreadStore.setActiveChannel(channelId)
+        scheduleNavigationCache()
         notificationHelper.clearConversationNotifications(channelId)
         viewModelScope.launch { runCatching { serverRepository.markChannelRead(channelId) } }
     }
@@ -517,6 +582,7 @@ class AppViewModel @Inject constructor(
     /** Read a conversation without opening it - the long-press menu's action. */
     fun markChannelRead(channelId: String) = viewModelScope.launch {
         unreadStore.markRead(channelId)
+        scheduleNavigationCache()
         notificationHelper.clearConversationNotifications(channelId)
         runCatching { serverRepository.markChannelRead(channelId) }
     }
@@ -543,12 +609,22 @@ class AppViewModel @Inject constructor(
                     _messages.update { m ->
                         m + (channelId to (items + m[channelId].orEmpty()))
                     }
+                    scheduleMessageCache(channelId)
                 }
             }
         _loadingOlder.update { it - channelId }
     }
 
     fun loadHistory(channelId: String) = viewModelScope.launch {
+        val userId = authRepository.currentUser?.id
+        val cached = userId?.let { offlineCache.messages(it, channelId) }.orEmpty()
+        if (cached.isNotEmpty()) {
+            _messages.update { current ->
+                val cachedIds = cached.mapTo(mutableSetOf()) { it.id }
+                val localOnly = current[channelId].orEmpty().filterNot { it.id in cachedIds }
+                current + (channelId to (cached + localOnly).sortedBy { it.createdAt })
+            }
+        }
         runCatching { serverRepository.getHistory(channelId) }
             .onSuccess { page ->
                 // History comes newest-first from the cursor API. Keep any
@@ -562,8 +638,9 @@ class AppViewModel @Inject constructor(
                         .filter { it.id in _pendingMessageIds.value }
                     current + (channelId to (items + pending))
                 }
+                scheduleMessageCache(channelId)
             }
-            .onFailure { _error.value = it.message }
+            .onFailure { if (cached.isEmpty()) _error.value = it.message }
     }
 
     fun sendMessage(
@@ -647,6 +724,7 @@ class AppViewModel @Inject constructor(
                         pendingOutbox.removeAll { it.localId == pending.localId }
                         e2eeRepository.removeQueuedMessage(pending.localId)
                         unreadStore.markRead(pending.channelId)
+                        scheduleNavigationCache()
                         notificationHelper.clearConversationNotifications(pending.channelId)
                     }.onFailure { error ->
                         if (!_connected.value || !socketManager.isConnected) return@launch
@@ -749,6 +827,7 @@ class AppViewModel @Inject constructor(
             current + (confirmed.channelId to
                 if (replaced.any { it.id == confirmed.id }) replaced else replaced + confirmed)
         }
+        scheduleMessageCache(confirmed.channelId)
     }
 
     private fun rejectPendingMessage(localId: String) {
@@ -829,6 +908,7 @@ class AppViewModel @Inject constructor(
             .onSuccess { detail ->
                 _serverDetail.value = detail
                 _presence.update { m -> m + detail.members.associate { it.user.id to it.user.status } }
+                scheduleServerDetailCache()
             }
             .onFailure { _error.value = it.message }
     }
@@ -1056,6 +1136,11 @@ class AppViewModel @Inject constructor(
     }
 
     fun logout() = viewModelScope.launch {
+        navigationCacheJob?.cancel()
+        serverDetailCacheJob?.cancel()
+        messageCacheJobs.values.forEach(Job::cancel)
+        messageCacheJobs.clear()
+        authRepository.currentUser?.id?.let { offlineCache.clear(it) }
         e2eeRepository.signOut()
         authRepository.logout()
     }
@@ -1120,10 +1205,12 @@ class AppViewModel @Inject constructor(
                         serverId = event.activity.serverId,
                         mentionsMe = selfId != null && selfId in event.activity.mentions,
                     )
+                    scheduleNavigationCache()
                 }
             }
             is SocketEvent.ChannelRead -> {
                 unreadStore.markRead(event.channelId)
+                scheduleNavigationCache()
                 notificationHelper.clearConversationNotifications(event.channelId)
             }
             is SocketEvent.MessageUpdated -> replaceMessage(event.message)
@@ -1149,19 +1236,33 @@ class AppViewModel @Inject constructor(
                 list.map { if (it.userId == event.member.userId) event.member else it }
             }
             is SocketEvent.MemberLeft -> updateMembers { list -> list.filterNot { it.userId == event.userId } }
-            is SocketEvent.ServerUpdated -> _servers.update { list ->
-                list.map { if (it.id == event.server.id) event.server else it }
+            is SocketEvent.ServerUpdated -> {
+                _servers.update { list ->
+                    list.map { if (it.id == event.server.id) event.server else it }
+                }
+                _serverDetail.update { detail ->
+                    if (detail?.server?.id == event.server.id) detail.copy(server = event.server) else detail
+                }
+                scheduleNavigationCache()
+                scheduleServerDetailCache()
             }
-            is SocketEvent.ServerDeleted -> _servers.update { list -> list.filterNot { it.id == event.serverId } }
+            is SocketEvent.ServerDeleted -> {
+                _servers.update { list -> list.filterNot { it.id == event.serverId } }
+                scheduleNavigationCache()
+            }
             is SocketEvent.FriendRequestReceived -> _incomingRequests.update { current ->
                 if (current.any { it.id == event.request.id }) current else current + event.request
-            }
+            }.also { scheduleNavigationCache() }
             is SocketEvent.FriendAccepted -> refreshFriends()
             is SocketEvent.FriendRequestRemoved -> {
                 _incomingRequests.update { l -> l.filterNot { it.id == event.id } }
                 _outgoingRequests.update { l -> l.filterNot { it.id == event.id } }
+                scheduleNavigationCache()
             }
-            is SocketEvent.FriendRemoved -> _friends.update { l -> l.filterNot { it.user.id == event.userId } }
+            is SocketEvent.FriendRemoved -> {
+                _friends.update { l -> l.filterNot { it.user.id == event.userId } }
+                scheduleNavigationCache()
+            }
             else -> Unit
         }
     }
@@ -1175,7 +1276,7 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { serverRepository.getHistory(channelId) }.onSuccess { page ->
                 val items = e2eeRepository.decryptAll(page.items)
-                _messages.update { map ->
+                    _messages.update { map ->
                     val existing = map[channelId].orEmpty()
                     // Server rows win, but they carry no local id. Re-attach the
                     // one we already had or a message confirmed moments ago gets
@@ -1185,9 +1286,10 @@ class AppViewModel @Inject constructor(
                         .associateBy { it.id }
                         .values
                         .sortedBy { it.createdAt }
-                    map + (channelId to merged)
+                        map + (channelId to merged)
+                    }
+                    scheduleMessageCache(channelId)
                 }
-            }
         }
     }
 
@@ -1222,6 +1324,7 @@ class AppViewModel @Inject constructor(
                             it.user.id to it.user.activities
                         }
                     }
+                    scheduleServerDetailCache()
                 }
         }
     }
@@ -1246,7 +1349,10 @@ class AppViewModel @Inject constructor(
         }
         // Clear the author's typing indicator on new message.
         _typing.update { it + (message.channelId to (it[message.channelId].orEmpty() - message.author.id)) }
-        if (isNew) maybeNotify(message)
+        if (isNew) {
+            scheduleMessageCache(message.channelId)
+            maybeNotify(message)
+        }
     }
 
     /**
@@ -1291,6 +1397,7 @@ class AppViewModel @Inject constructor(
 
     private fun replaceMessage(message: Message) {
         if (message.ciphertext != null) {
+            e2eeRepository.forgetCachedMessage(message.id)
             viewModelScope.launch { replaceMessage(e2eeRepository.decrypt(message)) }
             return
         }
@@ -1298,13 +1405,16 @@ class AppViewModel @Inject constructor(
             val list = map[message.channelId] ?: return@update map
             map + (message.channelId to list.map { if (it.id == message.id) message else it })
         }
+        scheduleMessageCache(message.channelId)
     }
 
     private fun removeMessage(channelId: String, messageId: String) {
+        e2eeRepository.forgetCachedMessage(messageId)
         _messages.update { map ->
             val list = map[channelId] ?: return@update map
             map + (channelId to list.filterNot { it.id == messageId })
         }
+        scheduleMessageCache(channelId)
     }
 
     /**
@@ -1353,14 +1463,72 @@ class AppViewModel @Inject constructor(
                 msg.copy(reactions = reactions)
             })
         }
+        scheduleMessageCache(e.channelId)
     }
 
     private fun updateServerChannels(transform: (List<Channel>) -> List<Channel>) {
         _serverDetail.update { d -> d?.copy(channels = transform(d.channels)) }
+        scheduleServerDetailCache()
     }
 
     private fun updateMembers(transform: (List<ServerMember>) -> List<ServerMember>) {
         _serverDetail.update { d -> d?.copy(members = transform(d.members)) }
+        scheduleServerDetailCache()
+    }
+
+    private fun scheduleNavigationCache() {
+        val userId = authRepository.currentUser?.id ?: return
+        navigationCacheJob?.cancel()
+        navigationCacheJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(CACHE_WRITE_DEBOUNCE_MS)
+            if (authRepository.currentUser?.id != userId) return@launch
+            runCatching {
+                offlineCache.storeNavigation(
+                    userId,
+                    OfflineCache.Navigation(
+                        servers = _servers.value,
+                        dms = _dms.value,
+                        friends = _friends.value,
+                        incomingRequests = _incomingRequests.value,
+                        outgoingRequests = _outgoingRequests.value,
+                        unreads = unreadStore.states.value.values.toList(),
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun scheduleServerDetailCache() {
+        val userId = authRepository.currentUser?.id ?: return
+        val detail = _serverDetail.value ?: return
+        serverDetailCacheJob?.cancel()
+        serverDetailCacheJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(CACHE_WRITE_DEBOUNCE_MS)
+            if (authRepository.currentUser?.id != userId) return@launch
+            // Do not let a late write from the previously selected server use
+            // the newly selected detail under the old id.
+            if (_serverDetail.value?.server?.id == detail.server.id) {
+                runCatching {
+                    offlineCache.storeServerDetail(userId, _serverDetail.value ?: detail)
+                }
+            }
+        }
+    }
+
+    private fun scheduleMessageCache(channelId: String) {
+        val userId = authRepository.currentUser?.id ?: return
+        messageCacheJobs.remove(channelId)?.cancel()
+        messageCacheJobs[channelId] = viewModelScope.launch {
+            kotlinx.coroutines.delay(CACHE_WRITE_DEBOUNCE_MS)
+            if (authRepository.currentUser?.id != userId) {
+                messageCacheJobs.remove(channelId)
+                return@launch
+            }
+            runCatching {
+                offlineCache.storeMessages(userId, channelId, _messages.value[channelId].orEmpty())
+            }
+            messageCacheJobs.remove(channelId)
+        }
     }
 
     private fun parseStatus(s: String): PresenceStatus = when (s) {
@@ -1380,6 +1548,7 @@ class AppViewModel @Inject constructor(
 
 private const val SEND_TAG = "OrangChatSend"
 private const val FAILED_TO_SEND = "Couldn't send that message."
+private const val CACHE_WRITE_DEBOUNCE_MS = 300L
 
 /** Local StateFlow.update shim (kotlinx has it; aliased for older BOMs). */
 private inline fun <T> MutableStateFlow<T>.update(function: (T) -> T) {

@@ -14,6 +14,7 @@ import java.security.PublicKey
 import java.security.spec.ECGenParameterSpec
 import org.json.JSONArray
 import org.json.JSONObject
+import lt.oranges.orangchat.data.model.Message
 
 /**
  * Where this device's private keys live (docs/E2EE.md §3).
@@ -281,12 +282,14 @@ class E2eeKeystore(context: Context) {
 
     // ── Local message cache ───────────────────────────────
 
-    fun cacheMessage(messageId: String, channelId: String, payload: MessagePayload) {
+    fun cacheMessage(message: Message, payload: MessagePayload) {
         prefs.edit()
             .putString(
-                "$PREFIX_MESSAGE$messageId",
+                "$PREFIX_MESSAGE${message.id}",
                 JSONObject()
-                    .put("c", channelId)
+                    .put("c", message.channelId)
+                    .put("a", message.author.id)
+                    .put("d", payload.sentAt.ifBlank { message.createdAt })
                     .put("t", payload.text)
                     .put("p", E2ee.toBase64(E2eePayloads.encode(payload)))
                     .toString(),
@@ -303,6 +306,17 @@ class E2eeKeystore(context: Context) {
             ?.let { runCatching { JSONObject(it).optString("p") }.getOrNull() }
             ?.takeIf(String::isNotEmpty)
             ?.let { runCatching { E2eePayloads.decode(E2ee.fromBase64(it)) }.getOrNull() }
+
+    /** Add searchable metadata to records written before the Android index had it. */
+    fun backfillCachedMessageMetadata(message: Message, sentAt: String? = null) {
+        val key = "$PREFIX_MESSAGE${message.id}"
+        val raw = prefs.getString(key, null) ?: return
+        val body = runCatching { JSONObject(raw) }.getOrNull() ?: return
+        if (body.optString("a").isNotEmpty() && body.optString("d").isNotEmpty()) return
+        body.put("a", message.author.id)
+        body.put("d", sentAt?.takeIf(String::isNotBlank) ?: message.createdAt)
+        prefs.edit().putString(key, body.toString()).apply()
+    }
 
     fun rememberSealedAttachment(ref: SealedAttachmentRef) {
         val edit = prefs.edit().putString(
@@ -341,18 +355,44 @@ class E2eeKeystore(context: Context) {
     fun isSealedThumbnail(attachmentId: String): Boolean =
         prefs.getBoolean("$PREFIX_THUMB$attachmentId", false)
 
-    /** Local search over what this device has actually opened. */
-    fun searchCached(query: String, channelId: String?): List<Pair<String, String>> {
+    data class CachedMessage(
+        val id: String,
+        val channelId: String,
+        val authorId: String,
+        val createdAt: String,
+        val text: String,
+    )
+
+    /** Local search over encrypted messages this device has actually opened. */
+    fun searchCached(
+        query: String,
+        channelIds: Set<String>? = null,
+        limit: Int = 100,
+    ): List<CachedMessage> {
         val needle = query.trim().lowercase()
         if (needle.isEmpty()) return emptyList()
         return prefs.all.entries.mapNotNull { (key, value) ->
             if (!key.startsWith(PREFIX_MESSAGE) || value !is String) return@mapNotNull null
             val json = runCatching { JSONObject(value) }.getOrNull() ?: return@mapNotNull null
             val text = json.optString("t")
-            if (channelId != null && json.optString("c") != channelId) return@mapNotNull null
+            val cachedChannelId = json.optString("c")
+            if (channelIds != null && cachedChannelId !in channelIds) return@mapNotNull null
             if (!text.lowercase().contains(needle)) return@mapNotNull null
-            key.removePrefix(PREFIX_MESSAGE) to text
-        }
+            CachedMessage(
+                id = key.removePrefix(PREFIX_MESSAGE),
+                channelId = cachedChannelId,
+                // Records written by older releases did not carry these two
+                // fields. They remain searchable and the UI resolves whatever
+                // metadata it can from its conversation/member directory.
+                authorId = json.optString("a"),
+                createdAt = json.optString("d"),
+                text = text,
+            )
+        }.sortedByDescending(CachedMessage::createdAt).take(limit)
+    }
+
+    fun forgetCachedMessage(messageId: String) {
+        prefs.edit().remove("$PREFIX_MESSAGE$messageId").apply()
     }
 
     data class QueuedMessage(

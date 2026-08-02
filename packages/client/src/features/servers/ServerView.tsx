@@ -12,7 +12,7 @@ import { ChatView } from "../chat/ChatView";
  */
 export function ServerView() {
   const { serverId, channelId } = useParams();
-  const { data: detail, isLoading, isError, error } = useServerDetail(serverId);
+  const { data: detail, isLoading, error } = useServerDetail(serverId);
 
   if (isLoading) {
     return (
@@ -24,7 +24,9 @@ export function ServerView() {
     );
   }
 
-  if (isError || !detail) {
+  // A failed background refresh is expected offline. Keep rendering the disk
+  // snapshot whenever one exists; this screen is only terminal without data.
+  if (!detail) {
     return (
       <PanelShell sidebar={<div className="w-60 shrink-0 bg-surface-1" />}>
         <div className="flex flex-1 flex-col items-center justify-center gap-2 bg-surface-2 p-6 text-center">

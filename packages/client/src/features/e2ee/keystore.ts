@@ -1,7 +1,7 @@
 import { fromBase64, randomBytes, toBase64 } from '@orangchat/shared';
 
 const DB_NAME = 'orangchat-e2ee';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const IDENTITY = 'identity';
 const PINS = 'pins';
 const EPOCH_KEYS = 'epochKeys';
@@ -9,6 +9,7 @@ const HEADS = 'heads';
 const MESSAGES = 'messages';
 const QUEUE = 'queue';
 const DEVICE_KEYS = 'deviceKeys';
+const OFFLINE = 'offline';
 
 export interface LocalIdentity {
   userId: string;
@@ -81,6 +82,9 @@ function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(QUEUE)) db.createObjectStore(QUEUE, { keyPath: 'id' });
       if (!db.objectStoreNames.contains(DEVICE_KEYS)) {
         db.createObjectStore(DEVICE_KEYS, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(OFFLINE)) {
+        db.createObjectStore(OFFLINE, { keyPath: 'id' });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -359,6 +363,26 @@ export async function allCachedMessages(): Promise<CachedMessageRecord[]> {
 /** Signing out must not leave a readable history behind for the next account. */
 export async function clearCachedMessages(): Promise<void> {
   await run(MESSAGES, 'readwrite', (s) => s.clear());
+}
+
+export interface OfflineSnapshotRecord extends SealedRecord {
+  id: 'app';
+  userId: string;
+}
+
+export async function putOfflineSnapshot(record: OfflineSnapshotRecord): Promise<void> {
+  await run(OFFLINE, 'readwrite', (s) => s.put(record));
+}
+
+export async function getOfflineSnapshot(): Promise<OfflineSnapshotRecord | null> {
+  const record = await run<OfflineSnapshotRecord | undefined>(OFFLINE, 'readonly', (s) =>
+    s.get('app'),
+  );
+  return record ?? null;
+}
+
+export async function clearOfflineSnapshot(): Promise<void> {
+  await run(OFFLINE, 'readwrite', (s) => s.clear());
 }
 
 export interface QueuedRecord extends SealedRecord {
