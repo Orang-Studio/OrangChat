@@ -10,6 +10,7 @@ import { initTheme } from "./lib/theme";
 import { initViewport } from "./lib/viewport";
 import { initPlugins } from "./features/plugins/store";
 import { initInstalledTheme } from "./features/plugins/themes";
+import { registerServiceWorker } from "./lib/serviceWorker";
 import "./styles/index.css";
 
 initTheme();
@@ -19,6 +20,10 @@ initViewport();
 // plugin that reads a colour sees the theme's value, not the stock one.
 initInstalledTheme();
 initPlugins();
+
+// Serves avatars, emoji and proxied images from disk on later loads, and is
+// what notifications are delivered through once they're enabled.
+registerServiceWorker();
 
 // Right-click interactions belong to the app's context-menu components. Keep
 // the browser (and Electron's embedded Chromium) from opening a competing menu.

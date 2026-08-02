@@ -19,7 +19,8 @@ use std::time::Duration;
 use axum::body::Body;
 use axum::extract::{Query, State};
 use axum::http::header::{
-    ACCEPT_RANGES, CACHE_CONTROL, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE, LOCATION, RANGE,
+    ACCEPT_RANGES, CACHE_CONTROL, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE, ETAG, IF_NONE_MATCH,
+    LOCATION, RANGE,
 };
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
@@ -29,6 +30,7 @@ use chrono::Utc;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use reqwest::{redirect::Policy, Url};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 use crate::error::{AppError, AppResult};
 use crate::http::link_previews::resolve_public_destination;
@@ -206,7 +208,21 @@ async fn proxy(
         .get(RANGE)
         .and_then(|v| v.to_str().ok())
         .map(str::to_owned);
-    fetch_media(url, range.as_deref(), CORP_SAME_ORIGIN).await
+
+    // A range request is asking for a slice of something it already has, so the
+    // conditional shortcut does not apply to it.
+    let etag = media_etag(&url);
+    if range.is_none() && etag_matches(&headers, &etag) {
+        return Ok(not_modified(&etag, PROXY_CACHE_CONTROL, CORP_SAME_ORIGIN));
+    }
+    fetch_media(
+        url,
+        range.as_deref(),
+        CORP_SAME_ORIGIN,
+        PROXY_CACHE_CONTROL,
+        &etag,
+    )
+    .await
 }
 
 /// Unauthenticated: streams a stored asset (avatar, emoji, soundboard clip)
@@ -258,7 +274,20 @@ async fn asset(
     // that is not same-origin: the Android profile card renders user profile
     // CSS in a WebView loaded via loadDataWithBaseURL(null, ...), whose document
     // has an opaque origin. Every avatar there is a cross-origin image load.
-    fetch_media(url, range.as_deref(), CORP_CROSS_ORIGIN).await
+    // The etag covers the stored url, so a re-uploaded avatar misses and a
+    // returning viewer hits - without this route reading Cloudinary at all.
+    let etag = media_etag(&url);
+    if range.is_none() && etag_matches(&headers, &etag) {
+        return Ok(not_modified(&etag, ASSET_CACHE_CONTROL, CORP_CROSS_ORIGIN));
+    }
+    fetch_media(
+        url,
+        range.as_deref(),
+        CORP_CROSS_ORIGIN,
+        ASSET_CACHE_CONTROL,
+        &etag,
+    )
+    .await
 }
 
 /// `Cross-Origin-Resource-Policy` for the signed proxy: arbitrary remote media,
@@ -267,7 +296,72 @@ const CORP_SAME_ORIGIN: &str = "same-origin";
 /// As above, for stored assets - public bytes with no embedder restriction.
 const CORP_CROSS_ORIGIN: &str = "cross-origin";
 
-async fn fetch_media(mut url: Url, range: Option<&str>, corp: &str) -> AppResult<Response> {
+/// What a signed proxy url is worth caching for. The token it carries expires in
+/// `TOKEN_TTL_SECONDS`, and until then the url names one fixed remote resource,
+/// so there is nothing to revalidate inside that window. A re-signed url is a
+/// different cache entry anyway.
+const PROXY_CACHE_CONTROL: &str = "public, max-age=43200, immutable";
+
+/// Stored assets get a stable url whose bytes *can* change - a new avatar keeps
+/// `/api/media/asset/avatar/{id}`. So they are revalidated rather than pinned:
+/// a day of silence, then a conditional request that almost always comes back
+/// 304 from the entity tag below without touching the upstream cdn.
+/// `stale-while-revalidate` keeps the old pixels on screen while that happens.
+const ASSET_CACHE_CONTROL: &str = "public, max-age=86400, stale-while-revalidate=604800";
+
+/// An entity tag for proxied media, derived from the upstream url. That url is
+/// what decides the bytes - a changed avatar is a different Cloudinary public
+/// id, a re-signed proxy token still points at the same resource - so matching
+/// tags mean matching content, and a hit is answered without a fetch at all.
+/// Hashed rather than used raw because the url is not ours to disclose.
+fn media_etag(url: &Url) -> String {
+    let digest = Sha256::digest(url.as_str().as_bytes());
+    let mut tag = String::with_capacity(18);
+    tag.push('"');
+    for byte in &digest[..8] {
+        tag.push_str(&format!("{byte:02x}"));
+    }
+    tag.push('"');
+    tag
+}
+
+/// True when the client already holds this entity. Same list/weak-prefix rules
+/// as `attachments.rs`.
+fn etag_matches(headers: &HeaderMap, etag: &str) -> bool {
+    headers
+        .get(IF_NONE_MATCH)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|raw| {
+            raw.split(',').any(|candidate| {
+                let candidate = candidate.trim();
+                candidate == "*" || candidate.trim_start_matches("W/") == etag
+            })
+        })
+}
+
+/// A conditional hit, answered without contacting the upstream host.
+fn not_modified(etag: &str, cache_control: &'static str, corp: &str) -> Response {
+    let mut builder = Response::builder().status(StatusCode::NOT_MODIFIED);
+    let out = builder.headers_mut().expect("fresh builder has headers");
+    if let Ok(value) = HeaderValue::from_str(etag) {
+        out.insert(ETAG, value);
+    }
+    out.insert(CACHE_CONTROL, HeaderValue::from_static(cache_control));
+    if let Ok(value) = HeaderValue::from_str(corp) {
+        out.insert("cross-origin-resource-policy", value);
+    }
+    builder
+        .body(Body::empty())
+        .unwrap_or_else(|_| StatusCode::NOT_MODIFIED.into_response())
+}
+
+async fn fetch_media(
+    mut url: Url,
+    range: Option<&str>,
+    corp: &str,
+    cache_control: &'static str,
+    etag: &str,
+) -> AppResult<Response> {
     for redirect_count in 0..=MAX_REDIRECTS {
         let (host, address) = resolve_public_destination(&url).await?;
         let client = reqwest::Client::builder()
@@ -332,7 +426,14 @@ async fn fetch_media(mut url: Url, range: Option<&str>, corp: &str) -> AppResult
             return Err(AppError::BadRequest("Media is too large to proxy".into()));
         }
 
-        return Ok(build_response(status, content_type, response, corp));
+        return Ok(build_response(
+            status,
+            content_type,
+            response,
+            corp,
+            cache_control,
+            etag,
+        ));
     }
 
     Err(AppError::BadRequest("Unable to fetch media".into()))
@@ -346,6 +447,8 @@ fn build_response(
     content_type: String,
     upstream: reqwest::Response,
     corp: &str,
+    cache_control: &'static str,
+    etag: &str,
 ) -> Response {
     // Pull the passthrough headers before bytes_stream() consumes the response.
     let content_length = upstream.headers().get(CONTENT_LENGTH).cloned();
@@ -375,10 +478,14 @@ fn build_response(
     if let Ok(value) = HeaderValue::from_str(corp) {
         out.insert("cross-origin-resource-policy", value);
     }
-    out.insert(
-        CACHE_CONTROL,
-        HeaderValue::from_static("public, max-age=3600"),
-    );
+    out.insert(CACHE_CONTROL, HeaderValue::from_static(cache_control));
+    // Not on a 206: the tag describes the whole entity, and handing it out
+    // beside a partial body invites a cache to store the slice as the file.
+    if status == StatusCode::OK {
+        if let Ok(value) = HeaderValue::from_str(etag) {
+            out.insert(ETAG, value);
+        }
+    }
 
     builder
         .body(Body::from_stream(upstream.bytes_stream()))
@@ -400,6 +507,40 @@ mod tests {
             verify_media_token("s3cret", token_of(&signed)).unwrap(),
             "https://cdn.example.com/a.png"
         );
+    }
+
+    /// A changed avatar is a different upstream url, so the tag has to change
+    /// with it - otherwise a viewer holding the old pixels never sees the new
+    /// ones. The url itself must not be readable back out of the tag.
+    #[test]
+    fn etag_follows_the_upstream_url() {
+        let old = media_etag(&Url::parse("https://res.cloudinary.com/x/v1/a.png").unwrap());
+        let new = media_etag(&Url::parse("https://res.cloudinary.com/x/v2/a.png").unwrap());
+        assert_ne!(old, new);
+        assert_eq!(
+            old,
+            media_etag(&Url::parse("https://res.cloudinary.com/x/v1/a.png").unwrap())
+        );
+        assert!(old.starts_with('"') && old.ends_with('"'));
+        assert!(!old.contains("cloudinary"));
+    }
+
+    #[test]
+    fn conditional_requests_are_recognised() {
+        let etag = media_etag(&Url::parse("https://cdn.example.com/a.png").unwrap());
+        let with = |value: &str| {
+            let mut headers = HeaderMap::new();
+            headers.insert(IF_NONE_MATCH, HeaderValue::from_str(value).unwrap());
+            etag_matches(&headers, &etag)
+        };
+
+        assert!(with(&etag));
+        assert!(with("*"));
+        // Browsers echo the tag weakly, and send lists after a redirect chain.
+        assert!(with(&format!("W/{etag}")));
+        assert!(with(&format!("\"other\", {etag}")));
+        assert!(!with("\"other\""));
+        assert!(!etag_matches(&HeaderMap::new(), &etag));
     }
 
     #[test]

@@ -17,15 +17,27 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.collectAsState
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import lt.oranges.orangchat.data.model.Attachment
 import lt.oranges.orangchat.crypto.E2ee
 import lt.oranges.orangchat.crypto.E2eeKeystore
+import lt.oranges.orangchat.crypto.SealedAttachmentRef
 import lt.oranges.orangchat.util.absoluteUrl
+import lt.oranges.orangchat.util.inlineUrl
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
@@ -33,6 +45,7 @@ import java.net.URL
 import javax.crypto.Cipher
 import javax.crypto.CipherInputStream
 import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 /**
  * Saving an attachment to the phone's Downloads folder.
@@ -94,43 +107,192 @@ private fun enqueue(context: Context, attachment: Attachment) {
 
 private const val MAX_INLINE_SEALED = 64L * 1024 * 1024
 
-private fun decryptToCache(
-    context: Context,
-    attachment: Attachment,
-    keystore: E2eeKeystore,
-): File? {
-    val ref = keystore.sealedAttachment(attachment.id) ?: return null
-    val cached = File(context.cacheDir, "opened-${attachment.id}")
-    if (cached.isFile && cached.length() == ref.size) return cached
-    val absolute = absoluteUrl(attachment.url) ?: return null
-    val temp = File.createTempFile("opening-", ".part", context.cacheDir)
-    return try {
-        val connection = URL(absolute).openConnection() as HttpURLConnection
-        connection.connectTimeout = 15_000
-        connection.readTimeout = 60_000
-        connection.inputStream.use { encrypted ->
+/** Give up rather than retry forever on a connection that keeps dying. */
+private const val MAX_FETCH_ATTEMPTS = 5
+
+/**
+ * Opening sealed attachments, once each, off the composition's lifetime.
+ *
+ * Three things went wrong here and they compounded. Every composable that
+ * rendered the file - the image, the video, the lightbox, the download button -
+ * started its own decrypt; each one ran inside a `LaunchedEffect`, so leaving
+ * the composition (a scroll, a recomposition, opening the lightbox) cancelled
+ * the transfer; and each restart began at byte zero. A 39 MB attachment was
+ * requested sixteen times and never once arrived: the server logs show a stack
+ * of concurrent reads for the same file, each cut off after a few megabytes.
+ *
+ * So: one job per attachment, shared by every caller; run in a scope that
+ * outlives the composables watching it, so a cancelled *observer* no longer
+ * cancels the *work*; and the ciphertext lands in a `.part` file that a dropped
+ * connection resumes from with a `Range` request instead of starting over.
+ */
+internal object SealedFiles {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /** For saving to Downloads, which must also outlive the screen it started on. */
+    val saves = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val lock = Mutex()
+    private val inFlight = mutableMapOf<String, Deferred<File?>>()
+
+    /** 0-1 per attachment id while its bytes are coming down. */
+    private val _progress = MutableStateFlow<Map<String, Float>>(emptyMap())
+    val progress: StateFlow<Map<String, Float>> = _progress.asStateFlow()
+
+    /**
+     * The decrypted file, fetching and decrypting it if this is the first ask.
+     * Cancelling the caller abandons the wait, never the download.
+     */
+    suspend fun open(context: Context, attachment: Attachment, ref: SealedAttachmentRef): File? {
+        val opened = File(context.cacheDir, "opened-${attachment.id}")
+        if (opened.isFile && opened.length() == ref.size) return opened
+
+        val job = lock.withLock {
+            inFlight.getOrPut(attachment.id) {
+                val app = context.applicationContext
+                scope.async {
+                    try {
+                        fetchAndOpen(app, attachment, ref, opened)
+                    } finally {
+                        lock.withLock { inFlight.remove(attachment.id) }
+                        _progress.update { it - attachment.id }
+                    }
+                }
+            }
+        }
+        return job.await()
+    }
+
+    private fun fetchAndOpen(
+        context: Context,
+        attachment: Attachment,
+        ref: SealedAttachmentRef,
+        opened: File,
+    ): File? {
+        val absolute = absoluteUrl(attachment.url) ?: return null
+        val part = File(context.cacheDir, "sealed-${attachment.id}.part")
+        if (!fetch(absolute, part) { fraction ->
+                _progress.update { it + (attachment.id to fraction) }
+            }
+        ) {
+            return null
+        }
+        val result = decrypt(part, ref, opened, context.cacheDir)
+        part.delete()
+        return result
+    }
+
+    /**
+     * Downloads to [part], resuming it if some of the file is already there.
+     *
+     * How long the file is comes from the response, never from the attachment
+     * row: by the time a sealed attachment is rendered its `size` has been
+     * replaced with the *plaintext* length from inside the message, which is
+     * short of the ciphertext by the GCM tag. Stopping there would leave every
+     * file a few bytes shy and fail the tag on decrypt.
+     */
+    private fun fetch(url: String, part: File, onProgress: (Float) -> Unit): Boolean {
+        var total = -1L
+        repeat(MAX_FETCH_ATTEMPTS) {
+            var have = if (part.isFile) part.length() else 0L
+            if (total > 0 && have >= total) return true
+
+            val connection = URL(url).openConnection() as HttpURLConnection
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 60_000
+            if (have > 0) connection.setRequestProperty("Range", "bytes=$have-")
+            var drained = false
+            try {
+                val code = connection.responseCode
+                val resuming = code == HttpURLConnection.HTTP_PARTIAL
+                if (code != HttpURLConnection.HTTP_OK && !resuming) return false
+                total = if (resuming) {
+                    // "bytes 1024-2047/4096" - the whole length is after the slash.
+                    connection.getHeaderField("Content-Range")
+                        ?.substringAfterLast('/')
+                        ?.toLongOrNull()
+                        ?: -1L
+                } else {
+                    // A server that ignored the range sends the whole file again.
+                    if (have > 0) {
+                        part.delete()
+                        have = 0
+                    }
+                    connection.contentLengthLong.takeIf { it > 0 } ?: -1L
+                }
+
+                var written = have
+                FileOutputStream(part, resuming).use { output ->
+                    connection.inputStream.use { input ->
+                        val buffer = ByteArray(64 * 1024)
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read <= 0) break
+                            output.write(buffer, 0, read)
+                            written += read
+                            if (total > 0) {
+                                onProgress((written.toFloat() / total).coerceIn(0f, 1f))
+                            }
+                        }
+                    }
+                }
+                drained = true
+            } catch (_: Exception) {
+                // Whatever arrived stays on disk; the next attempt resumes it.
+            } finally {
+                connection.disconnect()
+            }
+
+            if (total > 0) {
+                if (part.isFile && part.length() >= total) return true
+            } else if (drained) {
+                // No length to check against, but the stream ended cleanly.
+                return part.isFile && part.length() > 0
+            }
+        }
+        return false
+    }
+
+    private fun decrypt(
+        part: File,
+        ref: SealedAttachmentRef,
+        opened: File,
+        cacheDir: File,
+    ): File? {
+        val temp = File.createTempFile("opening-", ".part", cacheDir)
+        return try {
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
             cipher.init(
                 Cipher.DECRYPT_MODE,
-                javax.crypto.spec.SecretKeySpec(E2ee.fromBase64(ref.key), "AES"),
+                SecretKeySpec(E2ee.fromBase64(ref.key), "AES"),
                 GCMParameterSpec(128, E2ee.fromBase64(ref.nonce)),
             )
             cipher.updateAAD(E2ee.attachmentAad(ref.fileId))
             // Plaintext only becomes visible outside the private temp file after
             // EOF verifies the GCM tag successfully.
-            CipherInputStream(encrypted, cipher).use { opened ->
-                FileOutputStream(temp).use { output -> opened.copyTo(output, 64 * 1024) }
+            part.inputStream().use { encrypted ->
+                CipherInputStream(encrypted, cipher).use { plain ->
+                    FileOutputStream(temp).use { output -> plain.copyTo(output, 64 * 1024) }
+                }
             }
-        }
-        if (!temp.renameTo(cached)) {
-            temp.copyTo(cached, overwrite = true)
+            if (!temp.renameTo(opened)) {
+                temp.copyTo(opened, overwrite = true)
+                temp.delete()
+            }
+            opened
+        } catch (_: Exception) {
             temp.delete()
+            null
         }
-        cached
-    } catch (_: Exception) {
-        temp.delete()
-        null
     }
+}
+
+private suspend fun decryptToCache(
+    context: Context,
+    attachment: Attachment,
+    keystore: E2eeKeystore,
+): File? {
+    val ref = keystore.sealedAttachment(attachment.id) ?: return null
+    return SealedFiles.open(context, attachment, ref)
 }
 
 /**
@@ -141,40 +303,60 @@ private fun decryptToCache(
  * anything that renders it: treating the gap before decryption as a failure is
  * what turned every encrypted image into a download card.
  */
-internal data class AttachmentSource(val url: String?, val resolving: Boolean) {
-    val unavailable: Boolean get() = url == null && !resolving
+internal data class AttachmentSource(
+    val url: String?,
+    val resolving: Boolean,
+    /** Sealed, and nobody has asked for it yet - a tap is all it needs. */
+    val deferred: Boolean = false,
+    /** 0-1 while the bytes come down, for anything that wants to show it. */
+    val progress: Float = 0f,
+) {
+    val unavailable: Boolean get() = url == null && !resolving && !deferred
 }
 
-/** Local file URL for inline media up to 64 MiB; larger files stay download-only. */
+/**
+ * Where to read [attachment] from, decrypting it first when it is sealed.
+ *
+ * [wanted] is what keeps a channel of clips from fetching itself: a sealed
+ * video or sound is not touched until its play button is pressed. It has no
+ * effect on a file that is not sealed - there is nothing to fetch ahead of
+ * time, the player streams those itself when it starts.
+ */
 @Composable
-internal fun rememberAttachmentSource(attachment: Attachment): AttachmentSource {
+internal fun rememberAttachmentSource(
+    attachment: Attachment,
+    wanted: Boolean = true,
+): AttachmentSource {
     val context = androidx.compose.ui.platform.LocalContext.current
     val keystore = remember(context) { E2eeKeystore.get(context) }
     val ref = remember(attachment.id) { keystore.sealedAttachment(attachment.id) }
-    var source by remember(attachment.id, attachment.url) {
-        mutableStateOf(
-            if (ref == null) AttachmentSource(absoluteUrl(attachment.url), resolving = false)
-            else AttachmentSource(null, resolving = ref.size <= MAX_INLINE_SEALED),
+    val plain = remember(attachment.url) { absoluteUrl(inlineUrl(attachment.url)) }
+    val fetching by SealedFiles.progress.collectAsState()
+
+    if (ref == null) return AttachmentSource(plain, resolving = false)
+    if (ref.size > MAX_INLINE_SEALED) return AttachmentSource(null, resolving = false)
+
+    var opened by remember(attachment.id) { mutableStateOf<String?>(null) }
+    var failed by remember(attachment.id) { mutableStateOf(false) }
+
+    LaunchedEffect(attachment.id, wanted) {
+        if (!wanted || opened != null || failed) return@LaunchedEffect
+        // Uri.fromFile, not File.toURI: the latter writes file:/path with one
+        // slash, which not every loader parses back.
+        val file = decryptToCache(context, attachment, keystore)
+        if (file == null) failed = true else opened = Uri.fromFile(file).toString()
+    }
+
+    return when {
+        opened != null -> AttachmentSource(opened, resolving = false)
+        failed -> AttachmentSource(null, resolving = false)
+        wanted -> AttachmentSource(
+            null,
+            resolving = true,
+            progress = fetching[attachment.id] ?: 0f,
         )
+        else -> AttachmentSource(null, resolving = false, deferred = true)
     }
-    LaunchedEffect(attachment.id, attachment.url) {
-        source = if (ref == null) {
-            AttachmentSource(absoluteUrl(attachment.url), resolving = false)
-        } else if (ref.size > MAX_INLINE_SEALED) {
-            AttachmentSource(null, resolving = false)
-        } else {
-            AttachmentSource(
-                withContext(Dispatchers.IO) {
-                    // Uri.fromFile, not File.toURI: the latter writes file:/path
-                    // with one slash, which not every loader parses back.
-                    decryptToCache(context, attachment, keystore)
-                        ?.let { Uri.fromFile(it).toString() }
-                },
-                resolving = false,
-            )
-        }
-    }
-    return source
 }
 
 @Composable
@@ -217,7 +399,6 @@ private suspend fun saveOpenedAttachment(context: Context, attachment: Attachmen
 @Composable
 fun rememberAttachmentDownloader(): (Attachment) -> Unit {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val scope = rememberCoroutineScope()
     val e2eeKeystore = remember(context) { E2eeKeystore.get(context) }
     var pending by remember { mutableStateOf<Attachment?>(null) }
 
@@ -240,13 +421,21 @@ fun rememberAttachmentDownloader(): (Attachment) -> Unit {
     return remember(context) {
         { attachment ->
             if (e2eeKeystore.sealedAttachment(attachment.id) != null) {
-                scope.launch {
-                    val saved = saveOpenedAttachment(context, attachment)
-                    Toast.makeText(
-                        context,
-                        if (saved) "Saved ${attachment.filename}" else "Couldn't decrypt this file",
-                        Toast.LENGTH_SHORT,
-                    ).show()
+                val app = context.applicationContext
+                Toast.makeText(app, "Saving ${attachment.filename}…", Toast.LENGTH_SHORT).show()
+                // Deliberately not the composition's scope: saving a large file
+                // takes long enough to outlive the screen it was started from,
+                // and cancelling it there is what made the download button on a
+                // big attachment look like it did nothing at all.
+                SealedFiles.saves.launch {
+                    val saved = saveOpenedAttachment(app, attachment)
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            app,
+                            if (saved) "Saved ${attachment.filename}" else "Couldn't decrypt this file",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
                 }
             } else if (needsLegacyStoragePermission(context)) {
                 pending = attachment

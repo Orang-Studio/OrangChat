@@ -49,7 +49,6 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import coil.request.videoFrameMillis
 import kotlinx.coroutines.delay
 import lt.oranges.orangchat.data.model.Attachment
 import lt.oranges.orangchat.ui.theme.OrangRadius
@@ -85,13 +84,25 @@ private val INLINE_VIDEO_WIDTH = 150.dp
 fun VideoAttachment(attachment: Attachment, expiresAt: Instant?, now: Instant) {
     val c = OrangTheme.colors
     val context = LocalContext.current
-    val href = rememberResolvedAttachmentUrl(attachment)
+    // A sealed clip is not fetched until it is asked for: decrypting one means
+    // downloading all of it, and a channel of videos doing that on sight is
+    // what made previews take longer the bigger the file was.
+    var requested by remember(attachment.id) { mutableStateOf(false) }
+    val source = rememberAttachmentSource(attachment, wanted = requested)
+    val href = source.url
     var broken by remember(attachment.id) { mutableStateOf(false) }
     var expanded by remember(attachment.id) { mutableStateOf(false) }
 
-    if (broken || href == null) {
+    if (broken || source.unavailable) {
         FileCard(attachment, expiresAt, now)
         return
+    }
+
+    // Play was pressed before the bytes were readable; start as soon as they are.
+    LaunchedEffect(href, requested) {
+        if (requested && href != null && MediaPlayback.currentId != attachment.id) {
+            MediaPlayback.toggle(context, attachment.id, href) { broken = true }
+        }
     }
 
     val active = MediaPlayback.currentId == attachment.id
@@ -129,11 +140,11 @@ fun VideoAttachment(attachment: Attachment, expiresAt: Instant?, now: Instant) {
                 )
             } else if (poster != null) {
                 // Standing in until playback starts, so an unplayed clip shows
-                // what it is rather than a black rectangle.
+                // what it is rather than a black rectangle. Only ever a real
+                // image - see videoPosterUrl for why the clip itself is not one.
                 AsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(poster.url)
-                        .apply { if (poster.decodeFrame) videoFrameMillis(0) }
                         .crossfade(true)
                         .build(),
                     contentDescription = attachment.filename,
@@ -145,11 +156,17 @@ fun VideoAttachment(attachment: Attachment, expiresAt: Instant?, now: Instant) {
             InlineOverlay(
                 attachment = attachment,
                 active = active,
+                // Nothing to toggle yet when the file still has to be fetched;
+                // asking for it is what the first press means.
+                fetching = source.resolving,
+                progress = source.progress,
                 onToggle = {
-                    MediaPlayback.toggle(context, attachment.id, href) { broken = true }
+                    if (href == null) requested = true
+                    else MediaPlayback.toggle(context, attachment.id, href) { broken = true }
                 },
                 onExpand = {
-                    if (!active) MediaPlayback.toggle(context, attachment.id, href) { broken = true }
+                    if (href == null) requested = true
+                    else if (!active) MediaPlayback.toggle(context, attachment.id, href) { broken = true }
                     expanded = true
                 },
             )
@@ -173,11 +190,15 @@ fun VideoAttachment(attachment: Attachment, expiresAt: Instant?, now: Instant) {
 private fun InlineOverlay(
     attachment: Attachment,
     active: Boolean,
+    /** The file is still being fetched and decrypted, before playback can start. */
+    fetching: Boolean = false,
+    /** 0-1 of that fetch, so a large clip isn't a spinner with nothing behind it. */
+    progress: Float = 0f,
     onToggle: () -> Unit,
     onExpand: () -> Unit,
 ) {
     val isPlaying = active && MediaPlayback.isPlaying
-    val buffering = active && MediaPlayback.buffering
+    val buffering = fetching || (active && MediaPlayback.buffering)
     val seekable = active && MediaPlayback.ready
     val durationMs = if (active) MediaPlayback.durationMs else 0L
 
@@ -192,11 +213,22 @@ private fun InlineOverlay(
         if (!isPlaying || buffering) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 if (buffering) {
-                    CircularProgressIndicator(
-                        color = Color.White,
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(28.dp),
-                    )
+                    // Determinate while the file itself is coming down: a 40 MB
+                    // clip behind a spinner that never moves reads as broken.
+                    if (fetching && progress > 0f) {
+                        CircularProgressIndicator(
+                            progress = { progress },
+                            color = Color.White,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(28.dp),
+                        )
+                    } else {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(28.dp),
+                        )
+                    }
                 } else {
                     OverlayIconButton(
                         onClick = onToggle,

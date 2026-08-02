@@ -18,6 +18,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 
 /**
  * The app's single media player, shared by audio and video attachments.
@@ -121,7 +122,13 @@ object MediaPlayback {
     }
 
     private fun build(context: Context): ExoPlayer {
-        val p = ExoPlayer.Builder(context.applicationContext).build()
+        // Through the disk cache, so replaying or scrolling back to a clip
+        // doesn't fetch it a second time.
+        val p = ExoPlayer.Builder(context.applicationContext)
+            .setMediaSourceFactory(
+                DefaultMediaSourceFactory(MediaCache.dataSourceFactory(context)),
+            )
+            .build()
         // handleAudioFocus: don't play over a call, or the user's own music.
         p.setAudioAttributes(
             AudioAttributes.Builder()

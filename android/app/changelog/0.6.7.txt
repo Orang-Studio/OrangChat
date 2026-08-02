@@ -1,0 +1,11 @@
+Fixes
+- Videos no longer download themselves just to show a still frame. A clip is
+  fetched when you press play and not before, which is what made previews take
+  longer the bigger the file was.
+- Large attachments (anything over 10 MB) preview and download properly again.
+  They were being served as anonymous data, which no player or image loader
+  would touch, and a dropped connection restarted the download from zero
+  instead of resuming.
+- Editing a message that has an attachment can now clear the text completely.
+  Save was disabled while the box was empty, so there was no way to remove the
+  caption from a photo.

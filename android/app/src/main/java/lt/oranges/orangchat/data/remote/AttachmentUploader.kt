@@ -367,9 +367,9 @@ class AttachmentUploader @Inject constructor(
         val token = orangMoveClient.newCall(request).await().use { response ->
             val text = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                // OrangMove rejects executables by magic bytes and extension, so
-                // that's the likeliest way a large upload gets turned away.
-                throw IOException(errorFrom(text, "The file service rejected this file"))
+                // OrangMove takes any file type, so a rejection here is about
+                // size, a full store or a bad TTL rather than what the file is.
+                throw IOException(errorFrom(text, "The file service could not accept this file"))
             }
             JSONObject(text).getString("token")
         }

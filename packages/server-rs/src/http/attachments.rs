@@ -29,8 +29,9 @@ use std::time::Duration;
 use axum::extract::{DefaultBodyLimit, Multipart, Path, Query, State};
 use axum::http::header::{
     CACHE_CONTROL, CONTENT_DISPOSITION, CONTENT_LENGTH, CONTENT_SECURITY_POLICY, CONTENT_TYPE,
+    ETAG, IF_NONE_MATCH,
 };
-use axum::http::{HeaderMap, HeaderValue};
+use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -82,6 +83,50 @@ pub fn routes() -> Router<AppState> {
         .route("/attachments/sealed/:asset", get(deliver_sealed_attachment))
 }
 
+/// Both delivery routes are keyed by a storage id that is minted once and never
+/// names different bytes, so a copy a client already holds cannot go stale - it
+/// can only be evicted. An hour was leaving every re-opened conversation
+/// re-downloading (and, for encrypted blobs, re-decrypting) the same files.
+/// `private` still keeps plaintext out of shared proxies and CDNs.
+const IMMUTABLE_CACHE_CONTROL: &str = "private, max-age=31536000, immutable";
+
+/// The storage id already identifies the bytes uniquely, so it is the entity
+/// tag. Worth having even alongside `immutable`: a client that revalidates
+/// anyway - after eviction, on a forced reload, or because a proxy asked - gets
+/// a 304 from the check below instead of a Cloudinary round trip and a decrypt.
+fn etag_for(storage_id: &str) -> String {
+    format!("\"{storage_id}\"")
+}
+
+/// True when the client's `If-None-Match` already covers `etag`. Handles the
+/// comma-separated list and the weak prefix; `*` matches anything we hold.
+fn etag_matches(headers: &HeaderMap, etag: &str) -> bool {
+    headers
+        .get(IF_NONE_MATCH)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|raw| {
+            raw.split(',').any(|candidate| {
+                let candidate = candidate.trim();
+                candidate == "*" || candidate.trim_start_matches("W/") == etag
+            })
+        })
+}
+
+/// A 304 carries no body, but must repeat the caching headers so the client can
+/// refresh what it knows about the copy it kept.
+fn not_modified(etag: &str) -> AppResult<Response> {
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        ETAG,
+        HeaderValue::from_str(etag).map_err(|_| AppError::Internal("Invalid etag".into()))?,
+    );
+    headers.insert(
+        CACHE_CONTROL,
+        HeaderValue::from_static(IMMUTABLE_CACHE_CONTROL),
+    );
+    Ok((StatusCode::NOT_MODIFIED, headers).into_response())
+}
+
 const SEALED_PUBLIC_ID_PREFIX: &str = "orangchat/sealed/";
 
 fn sealed_public_id(storage_id: &str) -> String {
@@ -106,12 +151,19 @@ pub fn sealed_storage_id_from_delivery_url(url: &str) -> Option<&str> {
 async fn deliver_sealed_attachment(
     State(state): State<AppState>,
     Path(asset): Path<String>,
+    request_headers: HeaderMap,
 ) -> AppResult<Response> {
     let storage_id = asset
         .split_once('.')
         .map(|(id, _)| id)
         .filter(|id| valid_storage_id(id))
         .ok_or_else(|| AppError::NotFound("Attachment not found".into()))?;
+
+    // Before the fetch: a hit here costs nothing but the round trip.
+    let etag = etag_for(storage_id);
+    if etag_matches(&request_headers, &etag) {
+        return not_modified(&etag);
+    }
 
     let bytes = match state.cloudinary.as_ref() {
         Some(cloudinary) => {
@@ -139,7 +191,11 @@ async fn deliver_sealed_attachment(
     headers.insert(CONTENT_DISPOSITION, HeaderValue::from_static("attachment"));
     headers.insert(
         CACHE_CONTROL,
-        HeaderValue::from_static("private, max-age=3600"),
+        HeaderValue::from_static(IMMUTABLE_CACHE_CONTROL),
+    );
+    headers.insert(
+        ETAG,
+        HeaderValue::from_str(&etag).map_err(|_| AppError::Internal("Invalid etag".into()))?,
     );
     headers.insert(
         CONTENT_SECURITY_POLICY,
@@ -181,12 +237,20 @@ fn valid_storage_id(storage_id: &str) -> bool {
 async fn deliver_encrypted_attachment(
     State(state): State<AppState>,
     Path(asset): Path<String>,
+    request_headers: HeaderMap,
 ) -> AppResult<Response> {
     let storage_id = asset
         .split_once('.')
         .map(|(id, _)| id)
         .filter(|id| valid_storage_id(id))
         .ok_or_else(|| AppError::NotFound("Attachment not found".into()))?;
+
+    // Checked first so a revalidation skips both the download and the decrypt.
+    let etag = etag_for(storage_id);
+    if etag_matches(&request_headers, &etag) {
+        return not_modified(&etag);
+    }
+
     let cloudinary = state
         .cloudinary
         .as_ref()
@@ -220,13 +284,43 @@ async fn deliver_encrypted_attachment(
     // plaintext in shared proxies or CDNs.
     headers.insert(
         CACHE_CONTROL,
-        HeaderValue::from_static("private, max-age=3600"),
+        HeaderValue::from_static(IMMUTABLE_CACHE_CONTROL),
+    );
+    headers.insert(
+        ETAG,
+        HeaderValue::from_str(&etag).map_err(|_| AppError::Internal("Invalid etag".into()))?,
     );
     headers.insert(
         CONTENT_SECURITY_POLICY,
         HeaderValue::from_static("default-src 'none'; sandbox"),
     );
     Ok((headers, plaintext).into_response())
+}
+
+#[cfg(test)]
+mod cache_tests {
+    use super::*;
+
+    #[test]
+    fn conditional_requests_are_recognised() {
+        let etag = etag_for("abc123");
+        assert_eq!(etag, "\"abc123\"");
+
+        let with = |value: &str| {
+            let mut headers = HeaderMap::new();
+            headers.insert(IF_NONE_MATCH, HeaderValue::from_str(value).unwrap());
+            etag_matches(&headers, &etag)
+        };
+
+        assert!(with("\"abc123\""));
+        assert!(with("*"));
+        assert!(with("W/\"abc123\""));
+        assert!(with("\"zzz\", \"abc123\""));
+        // A different blob, and a bare id without the quotes, are both misses.
+        assert!(!with("\"abc124\""));
+        assert!(!with("abc123"));
+        assert!(!etag_matches(&HeaderMap::new(), &etag));
+    }
 }
 
 /// Attachments live apart from avatars/banners because they're served under

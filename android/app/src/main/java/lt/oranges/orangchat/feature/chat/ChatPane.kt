@@ -1082,6 +1082,7 @@ private fun MessageRow(
                     submitLabel = "Save",
                     // Editing text only - attachments are fixed once sent, so no
                     // channelId and no picker here.
+                    allowEmpty = message.attachments.isNotEmpty(),
                     onSend = { content, _, _ -> onEdit(message.id, content); editing = false },
                     onTyping = {},
                     members = members,
@@ -1216,6 +1217,13 @@ private fun Composer(
     initial: String = "",
     submitLabel: String? = null,
     channelId: String? = null,
+    /**
+     * Lets the box be submitted with nothing in it. Set when editing a message
+     * that has attachments: they carry it on their own, so deleting the text is
+     * a real edit rather than an empty message, and requiring a character left
+     * no way to make one.
+     */
+    allowEmpty: Boolean = false,
     customEmojis: List<EmojiRef> = emptyList(),
     /** Members offered by @mention autocomplete (empty in DMs). */
     members: List<ServerMember> = emptyList(),
@@ -1448,7 +1456,7 @@ private fun Composer(
         val ready = uploads.flatMap { upload ->
             listOfNotNull(upload.attachment?.id, upload.sealed?.thumb?.attachmentId)
         }
-        val enabled = (textState.text.isNotBlank() || ready.isNotEmpty()) &&
+        val enabled = (textState.text.isNotBlank() || ready.isNotEmpty() || allowEmpty) &&
             uploads.none { !it.settled } &&
             uploads.none { it.error != null }
         Box(

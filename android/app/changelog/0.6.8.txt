@@ -1,0 +1,12 @@
+Fixes
+- Encrypted attachments in DMs now actually arrive. Every part of the screen
+  that showed a file - the preview, the player, the download button - was
+  starting its own separate download of it, and each one was cancelled the
+  moment you scrolled. A 39 MB video was fetched sixteen times and never once
+  finished. It is now fetched once, shared, and resumed rather than restarted
+  when the connection drops.
+- Videos and voice clips in DMs wait for you to press play before downloading
+  anything, instead of pulling the whole file down just to sit there.
+- Large files now show how far along they are instead of an endless spinner.
+- Saving a large attachment keeps going when you leave the chat, rather than
+  being cancelled halfway with nothing to show for it.

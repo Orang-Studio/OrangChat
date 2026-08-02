@@ -108,9 +108,9 @@ async function uploadToOrangMove(file: File, handle: UploadHandle): Promise<Atta
 
   const res = await post("/orangmove/upload", form, handle);
   if (res.status < 200 || res.status >= 300) {
-    // OrangMove rejects executables by magic bytes and extension, so this is the
-    // likeliest way a large upload fails.
-    throw errorFrom(res, "The file service rejected this file");
+    // OrangMove takes any file type, so a rejection here is about size, a full
+    // store or a bad TTL rather than what the file is.
+    throw errorFrom(res, "The file service could not accept this file");
   }
   const { token } = JSON.parse(res.body) as { token: string };
 
@@ -226,6 +226,26 @@ export async function uploadSealedAttachment(
 
 /** True for files that will be stored on OrangMove, and so will expire. */
 export const isEphemeral = (file: File) => file.size > MAX_LOCAL_ATTACHMENT;
+
+/**
+ * The url to point an `<img>`, `<video>` or `<audio>` at.
+ *
+ * OrangMove serves `/file/` as `application/octet-stream` under
+ * `X-Content-Type-Options: nosniff` and `Content-Disposition: attachment`,
+ * which is exactly what a browser refuses to render: the declared type is not
+ * an image or media type and nosniff forbids looking past it. That is why every
+ * attachment over 10MB showed up as a broken preview. Its `/view/` route exists
+ * for this - same bytes, real type detected from magic bytes, served inline
+ * under `default-src 'none'; sandbox` so a mislabelled file still can't run.
+ *
+ * Downloads keep using `/file/`, which is the one that names the file.
+ */
+export function inlineUrl(attachment: Pick<Attachment, "url">): string {
+  const token = attachment.url.startsWith("/orangmove/file/")
+    ? attachment.url.slice("/orangmove/file/".length)
+    : null;
+  return token ? `/orangmove/view/${token}` : attachment.url;
+}
 
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

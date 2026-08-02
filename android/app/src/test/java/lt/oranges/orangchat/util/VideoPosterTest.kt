@@ -2,9 +2,7 @@ package lt.oranges.orangchat.util
 
 import lt.oranges.orangchat.data.model.Attachment
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -38,7 +36,6 @@ class VideoPosterTest {
             "https://res.cloudinary.com/demo/video/upload/so_0/v1712/folder/clip.jpg",
             poster?.url,
         )
-        assertFalse(poster!!.decodeFrame)
     }
 
     /** The `/v1712/` version segment has a dot-free name but must survive intact. */
@@ -50,30 +47,24 @@ class VideoPosterTest {
         assertEquals("https://res.cloudinary.com/demo/video/upload/so_0/v1/a.b/clip.jpg", poster?.url)
     }
 
+    /** The whole point: nothing is fetched for a clip that has no still of its own. */
     @Test
-    fun `a small local clip is decoded on the device`() {
-        val poster = videoPosterUrl(video("/attachments/x.mp4", storage = "local", size = 2_000_000))
-        assertTrue(poster!!.decodeFrame)
-        assertEquals(absoluteUrl("/attachments/x.mp4"), poster.url)
+    fun `a local clip is never downloaded for its own first frame`() {
+        assertNull(videoPosterUrl(video("/attachments/x.mp4", storage = "local", size = 2_000_000)))
     }
 
-    /** Fetching a large clip early costs more than the dark box is worth. */
     @Test
-    fun `an oversized clip gets no poster at all`() {
+    fun `an orangmove clip gets no poster at all`() {
         assertNull(videoPosterUrl(video("/orangmove/file/t", storage = "orangmove", size = 80L * 1024 * 1024)))
     }
 
+    /** Cloudinary storage but an image-style URL: leave it dark rather than mangle it. */
     @Test
-    fun `an unknown size is not guessed at`() {
-        assertNull(videoPosterUrl(video("/orangmove/file/t", storage = "orangmove", size = 0)))
-    }
-
-    /** Cloudinary storage but an image-style URL: fall back rather than mangle it. */
-    @Test
-    fun `a cloudinary url without the video upload segment falls back`() {
-        val poster = videoPosterUrl(
-            video("https://res.cloudinary.com/demo/raw/upload/v1/clip.mp4", storage = "cloudinary", size = 5),
+    fun `a cloudinary url without the video upload segment has no poster`() {
+        assertNull(
+            videoPosterUrl(
+                video("https://res.cloudinary.com/demo/raw/upload/v1/clip.mp4", storage = "cloudinary", size = 5),
+            ),
         )
-        assertTrue(poster!!.decodeFrame)
     }
 }

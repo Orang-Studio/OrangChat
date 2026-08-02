@@ -11,8 +11,8 @@ import {
 } from '@orangchat/shared/e2ee';
 
 /**
- * The service worker. Two jobs: render notifications, and open the encrypted
- * ones itself (docs/E2EE.md §8).
+ * The service worker. Three jobs: render notifications, open the encrypted ones
+ * itself (docs/E2EE.md §8), and keep small media out of the network.
  *
  * The server has no body to compose for an encrypted conversation, so it sends
  * the envelope instead. Everything needed to open it is already in this origin's
@@ -42,6 +42,129 @@ interface PushPayload {
   ciphertext?: string;
   encEpoch?: number;
 }
+
+/**
+ * Bump to abandon everything cached under the old name. `activate` deletes any
+ * cache that is not this one, so a rename is also the purge.
+ */
+const MEDIA_CACHE = 'orangchat-media-v1';
+
+/**
+ * How many responses to keep. Avatars and emoji are a few KB each, so this is a
+ * modest amount of disk for a set that covers every face in a busy server.
+ */
+const MAX_ENTRIES = 600;
+
+/**
+ * Nothing larger than this is stored. The point of the cache is the small
+ * images that are requested again on every single render; a big file would
+ * evict hundreds of them for one hit, and the origin quota is shared with the
+ * IndexedDB that holds this device's encryption keys - filling it is how a
+ * browser decides to throw those away.
+ */
+const MAX_BYTES = 4 * 1024 * 1024;
+
+/**
+ * Which paths are safe to serve from disk without asking.
+ *
+ * Every one of these names bytes that cannot change: an asset id and an upload
+ * filename are minted per upload (a new avatar is a new url, never a rewrite of
+ * the old one), and a proxy url is keyed by the remote url it stands for.
+ *
+ * Attachments are deliberately absent. They are access-controlled, often large,
+ * and video among them is fetched by range - all three are reasons for the
+ * network to stay in the loop. They carry `immutable` and an entity tag of
+ * their own, so the browser's own cache already keeps them.
+ */
+function isCacheableMedia(url: URL): boolean {
+  return (
+    url.pathname.startsWith('/api/media/asset/') ||
+    url.pathname === '/api/media/proxy' ||
+    url.pathname.startsWith('/uploads/')
+  );
+}
+
+/**
+ * Drops the oldest entries once the cache outgrows its budget. `keys()` yields
+ * insertion order, so this is first-in-first-out rather than true LRU: a face
+ * that has been on screen all day is no more protected than one seen once. That
+ * is the right trade for content this cheap to re-fetch, and it avoids writing
+ * a timestamp on every read.
+ */
+async function trim(cache: Cache): Promise<void> {
+  const keys = await cache.keys();
+  if (keys.length <= MAX_ENTRIES) return;
+  await Promise.all(keys.slice(0, keys.length - MAX_ENTRIES).map((key) => cache.delete(key)));
+}
+
+async function cacheable(response: Response): Promise<boolean> {
+  // A 206 is a slice, and the Cache API cannot represent that: stored beside
+  // its url it would later be handed out as the whole file. An opaque response
+  // has an unreadable status, so it can't be told apart from an error page.
+  if (response.status !== 200 || response.type === 'opaque') return false;
+  const declared = Number(response.headers.get('content-length'));
+  return Number.isFinite(declared) && declared > 0 ? declared <= MAX_BYTES : true;
+}
+
+async function fromCacheOrNetwork(request: Request): Promise<Response> {
+  const cache = await caches.open(MEDIA_CACHE);
+  const hit = await cache.match(request);
+  if (hit) return hit;
+
+  const response = await fetch(request);
+  if (await cacheable(response)) {
+    // Cache the clone, return the original: a body can only be read once, and
+    // the caller is owed the one that streams.
+    void cache
+      .put(request, response.clone())
+      .then(() => trim(cache))
+      .catch(() => {});
+  }
+  return response;
+}
+
+self.addEventListener('fetch', (event: FetchEvent) => {
+  const request = event.request;
+  if (request.method !== 'GET') return;
+
+  // A range request is asking for part of something it already has. `match`
+  // ignores the header entirely, so answering one from the cache hands a player
+  // the start of the file when it asked for the middle, and it never recovers.
+  if (request.headers.has('range')) return;
+
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin || !isCacheableMedia(url)) return;
+
+  event.respondWith(fromCacheOrNetwork(request));
+});
+
+/**
+ * Sent by the app when a session ends. What is stored is only ever avatars,
+ * emoji and proxied embeds, but they still describe who the last person here
+ * was talking to, and that should not outlive their sign-out.
+ */
+self.addEventListener('message', (event: ExtendableMessageEvent) => {
+  if ((event.data as { type?: string } | null)?.type === 'media-cache:clear') {
+    event.waitUntil(caches.delete(MEDIA_CACHE));
+  }
+});
+
+self.addEventListener('install', () => {
+  // Nothing to pre-cache: this worker only keeps what the app has actually
+  // asked for. Take over straight away so the first load after an update is
+  // already served by the version that shipped with it.
+  void self.skipWaiting();
+});
+
+self.addEventListener('activate', (event: ExtendableEvent) => {
+  event.waitUntil(
+    (async () => {
+      const names = await caches.keys();
+      await Promise.all(names.filter((name) => name !== MEDIA_CACHE).map((name) => caches.delete(name)));
+      await self.clients.claim();
+    })(),
+  );
+});
 
 const DB_NAME = 'orangchat-e2ee';
 const EPOCH_KEYS = 'epochKeys';

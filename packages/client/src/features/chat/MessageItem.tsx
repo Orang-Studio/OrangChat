@@ -100,9 +100,14 @@ function EditForm({ message, onDone }: { message: Message; onDone: () => void })
     field.setSelectionRange(field.value.length, field.value.length);
   }, []);
 
+  // An attachment carries the message on its own, so clearing the text is a
+  // real edit there. Without something else on the row it would only leave a
+  // blank message, so an empty draft still means "never mind".
+  const mayBeEmpty = message.attachments.length > 0;
+
   const save = async () => {
     const content = draft.trim();
-    if (!content || content === message.content) return onDone();
+    if (content === message.content || (!content && !mayBeEmpty)) return onDone();
     try {
       await editMessage(message, content);
       onDone();

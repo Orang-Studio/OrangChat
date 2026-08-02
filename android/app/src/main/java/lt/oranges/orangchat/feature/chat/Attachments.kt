@@ -361,7 +361,17 @@ private fun ImagePreview(attachment: Attachment, expiresAt: Instant?, now: Insta
                     .background(c.surface1, RoundedCornerShape(OrangRadius.lg)),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator(color = c.primary, modifier = Modifier.size(20.dp))
+                // Determinate once bytes are moving: a large encrypted image
+                // takes long enough that a still spinner looks like a failure.
+                if (source.progress > 0f) {
+                    CircularProgressIndicator(
+                        progress = { source.progress },
+                        color = c.primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                } else {
+                    CircularProgressIndicator(color = c.primary, modifier = Modifier.size(20.dp))
+                }
             }
         } else {
             AsyncImage(
@@ -399,10 +409,14 @@ internal fun AudioCard(attachment: Attachment, expiresAt: Instant?, now: Instant
     val c = OrangTheme.colors
     val shape = RoundedCornerShape(OrangRadius.lg)
     val download = rememberAttachmentDownloader()
-    val href = rememberResolvedAttachmentUrl(attachment)
+    // Same rule as video: a sealed clip is fetched when it is played, not when
+    // it scrolls past.
+    var requested by remember(attachment.id) { mutableStateOf(false) }
+    val source = rememberAttachmentSource(attachment, wanted = requested)
+    val href = source.url
 
     var broken by remember(attachment.id) { mutableStateOf(false) }
-    if (broken || href == null) {
+    if (broken || source.unavailable) {
         FileCard(attachment, expiresAt, now)
         return
     }
@@ -410,7 +424,13 @@ internal fun AudioCard(attachment: Attachment, expiresAt: Instant?, now: Instant
     val context = LocalContext.current
     val active = MediaPlayback.currentId == attachment.id
     val isPlaying = active && MediaPlayback.isPlaying
-    val loading = active && MediaPlayback.buffering
+    val loading = source.resolving || (active && MediaPlayback.buffering)
+
+    LaunchedEffect(href, requested) {
+        if (requested && href != null && MediaPlayback.currentId != attachment.id) {
+            MediaPlayback.toggle(context, attachment.id, href) { broken = true }
+        }
+    }
     val durationMs = if (active) MediaPlayback.durationMs else 0L
     val seekable = active && MediaPlayback.ready
 
@@ -440,7 +460,10 @@ internal fun AudioCard(attachment: Attachment, expiresAt: Instant?, now: Instant
             modifier = Modifier
                 .size(32.dp)
                 .background(c.primary, CircleShape)
-                .tapToToggle { MediaPlayback.toggle(context, attachment.id, href) { broken = true } },
+                .tapToToggle {
+                    if (href == null) requested = true
+                    else MediaPlayback.toggle(context, attachment.id, href) { broken = true }
+                },
             contentAlignment = Alignment.Center,
         ) {
             if (loading) {

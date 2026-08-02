@@ -8,7 +8,7 @@ import {
   sealedAttachmentsOf,
   sealedObjectUrl,
 } from '../e2ee/attachments';
-import { formatBytes } from './attachments';
+import { formatBytes, inlineUrl } from './attachments';
 import { AudioPlayer } from './AudioPlayer';
 import { ImageLightbox } from './ImageLightbox';
 import { ImageContextMenu } from './ImageContextMenu';
@@ -263,11 +263,13 @@ export function VideoAttachment({ attachment }: { attachment: Attachment }) {
 }
 
 function Body({ attachment }: { attachment: Attachment }) {
-  if (attachment.contentType.startsWith('image/')) return <ImagePreview attachment={attachment} />;
-  if (attachment.contentType.startsWith('audio/'))
-    return <AudioAttachment attachment={attachment} />;
-  if (attachment.contentType.startsWith('video/'))
-    return <VideoAttachment attachment={attachment} />;
+  // Everything below renders the bytes in place, so it needs the url a media
+  // element can actually load - see inlineUrl. FileCard keeps the original,
+  // which is the one served as a named download.
+  const inline = { ...attachment, url: inlineUrl(attachment) };
+  if (attachment.contentType.startsWith('image/')) return <ImagePreview attachment={inline} />;
+  if (attachment.contentType.startsWith('audio/')) return <AudioAttachment attachment={inline} />;
+  if (attachment.contentType.startsWith('video/')) return <VideoAttachment attachment={inline} />;
   return <FileCard attachment={attachment} />;
 }
 
