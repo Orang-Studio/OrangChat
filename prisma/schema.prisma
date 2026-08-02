@@ -34,6 +34,10 @@ model User {
   /// A per-user policy that only ever blocks this account's own sending; it
   /// never mutates anybody else's settings.
   e2eeStrict           Boolean  @default(false)
+  /// "Display the game you're playing". Off by default: detecting a game means
+  /// the desktop client reading the process list, which must be a choice rather
+  /// than something that starts happening because an update shipped.
+  gameActivity         Boolean  @default(false)
   totpSecret           String? // base32 secret
   totpEnabled          Boolean  @default(false)
   emailVerifiedAt      DateTime?

@@ -19,7 +19,7 @@ use crate::http::{bad_request, valid_email, valid_username, AuthUser, ClientIp};
 use crate::ids::cuid;
 use crate::models::UserRow;
 use crate::oauth;
-use crate::services::{account, badge, qr, rate_limit, totp, user};
+use crate::services::{account, badge, presence, qr, rate_limit, totp, user};
 use crate::state::AppState;
 
 const OAUTH_STATE_COOKIE: &str = "oc_oauth_state";
@@ -839,8 +839,22 @@ async fn patch_me(
     if let Some(v) = obj.get("e2eeStrict") {
         patch.e2ee_strict = Some(v.as_bool().ok_or_else(|| bad_request("Invalid input"))?);
     }
+    if let Some(v) = obj.get("gameActivity") {
+        patch.game_activity = Some(v.as_bool().ok_or_else(|| bad_request("Invalid input"))?);
+    }
+    let disabling_game_activity = patch.game_activity == Some(false);
 
     let updated = user::update_profile(&state, &user.user_id, patch).await?;
+
+    // Turning the setting off has to take down what is already on screen. The
+    // desktop client stops reporting on its own, but only after it next polls -
+    // and an old shell, or one that is closed mid-game, never would.
+    if disabling_game_activity
+        && presence::set_activity(&state, &user.user_id, "game", None).await?
+    {
+        let status = presence::get_status(&state, &user.user_id).await?;
+        crate::socket::broadcast_presence(state.io(), &state, &user.user_id, &status).await;
+    }
 
     // Fan the public profile out to everyone rendering it: shared servers,
     // friends, DM partners, and the user's own other sessions.

@@ -141,7 +141,11 @@ private fun ProfileCardNative(
                             modifier = Modifier.height(14.dp),
                         )
                     }
-                    ActivityStatus(activities = user.activities, modifier = Modifier.padding(top = 3.dp))
+                    ActivityStatus(
+                        activities = user.activities,
+                        modifier = Modifier.padding(top = 6.dp),
+                        compact = false,
+                    )
 
                     ProfileBadges(badges = user.badges, modifier = Modifier.padding(top = 8.dp))
 

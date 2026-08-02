@@ -1,7 +1,7 @@
 {
   "name": "@orangchat/desktop",
   "private": true,
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "OrangChat desktop shell for Windows",
   "main": "dist/main.js",
   "scripts": {

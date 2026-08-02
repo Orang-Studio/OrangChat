@@ -1,6 +1,8 @@
 import type { AuthResult, AuthTokens, PresenceDevice, SelfUser } from "@orangchat/shared";
 import { authStoreActions, useAuthStore } from "../../stores/auth";
 import { connectSocket, socket } from "../../lib/socket";
+import { clearCachedMedia } from "../../lib/serviceWorker";
+import { registerGamePresence } from "../presence/gamePresence";
 
 /**
  * Session lifecycle. Access token lives in memory only; the refresh token
@@ -97,6 +99,7 @@ async function fetchMe(accessToken: string): Promise<SelfUser | null> {
 export function bootstrapSession(): void {
   if (bootstrapped) return;
   bootstrapped = true;
+  registerGamePresence();
   installConnectivityHandlers();
   void refreshSession();
 }
@@ -117,6 +120,9 @@ function endLocalSession(): void {
   clearTimeout(refreshTimer);
   socket.disconnect();
   authStoreActions.clear();
+  // Cached avatars and proxied images say who this account was talking to.
+  // They shouldn't be sitting on disk for whoever signs in next.
+  clearCachedMedia();
 }
 
 function scheduleProactiveRefresh(expiresInSeconds: number): void {

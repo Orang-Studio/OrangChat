@@ -1,0 +1,267 @@
+{
+ "note": "The hand-maintained half of the registry, and the only file to edit by hand. Two kinds of entry: (1) titles that ship through their own launchers (Riot, Epic, Battle.net, HoYoPlay), which Steam has no appinfo for; (2) patches - an entry whose id matches a generated one has its executables unioned into it, keeping the Steam appid and artwork. Patches exist because appinfo's launch list is what Steam runs, not what Windows ends up showing in the process list: Denuvo titles launch through a shared shim, and CDPR/Larian ship a launcher that exits once the game is up. Re-run build-game-registry.py after editing.",
+ "games": [
+  {
+   "id": "eldenring",
+   "name": "ELDEN RING",
+   "executables": [
+    "eldenring.exe"
+   ]
+  },
+  {
+   "id": "vrchat",
+   "name": "VRChat",
+   "executables": [
+    "vrchat.exe"
+   ]
+  },
+  {
+   "id": "cyberpunk2077",
+   "name": "Cyberpunk 2077",
+   "executables": [
+    "cyberpunk2077.exe"
+   ]
+  },
+  {
+   "id": "baldursgate3",
+   "name": "Baldur's Gate 3",
+   "executables": [
+    "bg3.exe",
+    "bg3_dx11.exe"
+   ]
+  },
+  {
+   "id": "pathofexile",
+   "name": "Path of Exile",
+   "executables": [
+    "pathofexile_x64.exe",
+    "pathofexile.exe"
+   ]
+  },
+  {
+   "id": "destiny2",
+   "name": "Destiny 2",
+   "executables": [
+    "destiny2.exe"
+   ]
+  },
+  {
+   "id": "fallout4",
+   "name": "Fallout 4",
+   "executables": [
+    "fallout4.exe"
+   ]
+  },
+  {
+   "id": "theelderscrollsvskyrimspecialedition",
+   "name": "The Elder Scrolls V: Skyrim Special Edition",
+   "executables": [
+    "skyrimse.exe"
+   ]
+  },
+  {
+   "id": "satisfactory",
+   "name": "Satisfactory",
+   "executables": [
+    "factorygame-win64-shipping.exe"
+   ]
+  },
+  {
+   "id": "pubgbattlegrounds",
+   "name": "PUBG: BATTLEGROUNDS",
+   "executables": [
+    "tslgame.exe"
+   ]
+  },
+  {
+   "id": "dayz",
+   "name": "DayZ",
+   "executables": [
+    "dayz_x64.exe"
+   ]
+  },
+  {
+   "id": "arma3",
+   "name": "Arma 3",
+   "executables": [
+    "arma3_x64.exe"
+   ]
+  },
+  {
+   "id": "7daystodie",
+   "name": "7 Days to Die",
+   "executables": [
+    "7daystodie.exe"
+   ]
+  },
+  {
+   "id": "conanexilesenhanced",
+   "name": "Conan Exiles Enhanced",
+   "executables": [
+    "conansandbox.exe"
+   ]
+  },
+  {
+   "id": "marvelrivals",
+   "name": "Marvel Rivals",
+   "executables": [
+    "marvel-win64-shipping.exe"
+   ]
+  },
+  {
+   "id": "newworldaeternum",
+   "name": "New World: Aeternum",
+   "executables": [
+    "newworld.exe"
+   ]
+  },
+  {
+   "id": "finalfantasyxivonline",
+   "name": "FINAL FANTASY XIV Online",
+   "executables": [
+    "ffxiv_dx11.exe"
+   ]
+  },
+  {
+   "id": "grandtheftautov",
+   "name": "Grand Theft Auto V",
+   "executables": [
+    "gta5.exe"
+   ],
+   "steamAppId": 271590
+  },
+  {
+   "id": "grandtheftautovenhanced",
+   "name": "Grand Theft Auto V Enhanced",
+   "executables": [
+    "gta5_enhanced.exe"
+   ]
+  },
+  {
+   "id": "leagueoflegends",
+   "name": "League of Legends",
+   "executables": [
+    "league of legends.exe"
+   ],
+   "wikipedia": "League of Legends"
+  },
+  {
+   "id": "valorant",
+   "name": "VALORANT",
+   "executables": [
+    "valorant-win64-shipping.exe",
+    "valorant.exe"
+   ],
+   "wikipedia": "Valorant"
+  },
+  {
+   "id": "fortnite",
+   "name": "Fortnite",
+   "executables": [
+    "fortniteclient-win64-shipping.exe"
+   ],
+   "wikipedia": "Fortnite"
+  },
+  {
+   "id": "minecraft",
+   "name": "Minecraft",
+   "executables": [
+    "minecraft.windows.exe",
+    "minecraftlauncher.exe"
+   ],
+   "wikipedia": "Minecraft"
+  },
+  {
+   "id": "roblox",
+   "name": "Roblox",
+   "executables": [
+    "robloxplayerbeta.exe",
+    "robloxplayerbeta"
+   ],
+   "wikipedia": "Roblox"
+  },
+  {
+   "id": "worldofwarcraft",
+   "name": "World of Warcraft",
+   "executables": [
+    "wow.exe"
+   ],
+   "wikipedia": "World of Warcraft"
+  },
+  {
+   "id": "hearthstone",
+   "name": "Hearthstone",
+   "executables": [
+    "hearthstone.exe"
+   ],
+   "wikipedia": "Hearthstone"
+  },
+  {
+   "id": "genshinimpact",
+   "name": "Genshin Impact",
+   "executables": [
+    "genshinimpact.exe",
+    "yuanshen.exe"
+   ],
+   "wikipedia": "Genshin Impact"
+  },
+  {
+   "id": "honkaistarrail",
+   "name": "Honkai: Star Rail",
+   "executables": [
+    "starrail.exe"
+   ],
+   "wikipedia": "Honkai: Star Rail"
+  },
+  {
+   "id": "zenlesszonezero",
+   "name": "Zenless Zone Zero",
+   "executables": [
+    "zenlesszonezero.exe"
+   ],
+   "wikipedia": "Zenless Zone Zero"
+  },
+  {
+   "id": "wutheringwaves",
+   "name": "Wuthering Waves",
+   "executables": [
+    "wutheringwaves.exe"
+   ],
+   "wikipedia": "Wuthering Waves"
+  },
+  {
+   "id": "osu",
+   "name": "osu!",
+   "executables": [
+    "osu!.exe"
+   ],
+   "wikipedia": "Osu!"
+  },
+  {
+   "id": "worldoftanks",
+   "name": "World of Tanks",
+   "executables": [
+    "worldoftanks.exe"
+   ],
+   "wikipedia": "World of Tanks"
+  },
+  {
+   "id": "runescape",
+   "name": "RuneScape",
+   "executables": [
+    "runescape.exe",
+    "rs2client.exe"
+   ],
+   "wikipedia": "RuneScape"
+  },
+  {
+   "id": "oldschoolrunescape",
+   "name": "Old School RuneScape",
+   "executables": [
+    "osclient.exe",
+    "runelite.exe"
+   ],
+   "wikipedia": "Old School RuneScape"
+  }
+ ]
+}

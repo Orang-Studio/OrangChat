@@ -105,7 +105,11 @@ export function ProfileCard({ data }: { data: ProfileCardData }) {
               />
             )}
           </div>
-          <ActivityStatus activities={data.activities ?? []} className="oc-pf-activity mt-1" />
+          <ActivityStatus
+            activities={data.activities ?? []}
+            className="oc-pf-activity mt-2"
+            compact={false}
+          />
 
           <ProfileBadges badges={data.badges ?? []} className="mt-2" />
 

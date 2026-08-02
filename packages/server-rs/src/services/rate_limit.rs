@@ -110,6 +110,10 @@ pub const MESSAGE_REPORT_PER_USER: Quota = Quota::new(20, HOUR);
 pub const REACTION_PER_USER: Quota = Quota::new(30, 10);
 pub const TYPING_PER_USER: Quota = Quota::new(20, 10);
 pub const CALL_START_PER_USER: Quota = Quota::new(15, 5 * MINUTE);
+/// The desktop client polls every 15s and only reports on a change, so a busy
+/// alt-tabber costs about four of these a minute. The ceiling is here to bound a
+/// client that reports on every poll, not to shape normal use.
+pub const GAME_ACTIVITY_PER_USER: Quota = Quota::new(40, MINUTE);
 
 fn now_secs() -> u64 {
     SystemTime::now()

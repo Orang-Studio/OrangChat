@@ -30,6 +30,7 @@ pub struct UserPatch {
     pub notify_friend_accepted: Option<bool>,
     pub notify_friend_online: Option<bool>,
     pub e2ee_strict: Option<bool>,
+    pub game_activity: Option<bool>,
 }
 
 /// A patch value that is really this api's own output handed back to it. `None`
@@ -121,6 +122,9 @@ pub async fn update_profile(
     }
     if let Some(v) = patch.e2ee_strict {
         sep.push(r#""e2eeStrict" = "#).push_bind_unseparated(v);
+    }
+    if let Some(v) = patch.game_activity {
+        sep.push(r#""gameActivity" = "#).push_bind_unseparated(v);
     }
     sep.push(r#""updatedAt" = now()"#);
     qb.push(r#" WHERE id = "#)

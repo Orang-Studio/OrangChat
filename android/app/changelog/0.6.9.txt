@@ -1,0 +1,16 @@
+New
+- "Now playing" for games, alongside the existing Spotify line. The desktop app
+  recognises around 9,000 titles from the process it sees running and shares the
+  one you're in; here on Android you see it on profiles and in member lists, with
+  the game's artwork and a clock counting how long you've been playing.
+- It is off until you turn it on, in Settings - Privacy - Activity. Detecting a
+  game means the desktop app reading the list of programs running on your
+  computer, which is not something that should start happening because an update
+  shipped.
+- Playing something it doesn't recognise? The desktop app's settings let you
+  point at a running program and name it yourself. Hand-named games show without
+  artwork, so nobody can be tricked into thinking one game is another.
+
+Fixes
+- The camera and microphone work again in the desktop app. Calls could not use
+  either, with nothing on screen to explain why.

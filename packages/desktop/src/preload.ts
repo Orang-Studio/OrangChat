@@ -2,6 +2,9 @@ import { contextBridge, ipcRenderer, webFrame } from "electron";
 
 const versionArg = process.argv.find((a) => a.startsWith("--orangchat-version="));
 
+type GamePresenceReport = { gameId: string } | { name: string } | null;
+type GameOverride = { process: string; name: string };
+
 contextBridge.exposeInMainWorld("orangchatDesktop", {
   isDesktop: true,
   platform: process.platform,
@@ -10,6 +13,17 @@ contextBridge.exposeInMainWorld("orangchatDesktop", {
   flashFrame: () => ipcRenderer.send("window:flash"),
   checkForUpdates: () => ipcRenderer.invoke("updates:check"),
   setAppIcon: (dataUrl: string | null) => ipcRenderer.send("icon:set", dataUrl),
+  setGamePresenceEnabled: (enabled: boolean) => ipcRenderer.send("game:set-enabled", enabled),
+  listGameProcesses: (): Promise<string[]> => ipcRenderer.invoke("game:list-processes"),
+  getGameOverrides: (): Promise<GameOverride[]> => ipcRenderer.invoke("game:get-overrides"),
+  setGameOverrides: (overrides: GameOverride[]): Promise<GameOverride[]> =>
+    ipcRenderer.invoke("game:set-overrides", overrides),
+  onGameDetected: (callback: (report: GamePresenceReport) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, report: GamePresenceReport) =>
+      callback(report);
+    ipcRenderer.on("game:detected", listener);
+    return () => ipcRenderer.removeListener("game:detected", listener);
+  },
 });
 
 // The page already calls the Notification API for DMs and mentions. Wrapping it

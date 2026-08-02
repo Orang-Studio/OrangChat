@@ -12,8 +12,8 @@ use std::collections::HashSet;
 use crate::auth::verify_access_token;
 use crate::permissions::{self, CONNECT, MANAGE_MESSAGES, SPEAK};
 use crate::services::{
-    bot, call, channel, friends, membership, message, presence, rate_limit, read_state, server,
-    sound, voice,
+    bot, call, channel, friends, game, membership, message, presence, rate_limit, read_state,
+    server, sound, voice,
 };
 use crate::state::AppState;
 
@@ -40,6 +40,19 @@ impl std::fmt::Display for AuthError {
 impl std::error::Error for AuthError {}
 
 // ── Event payloads (client → server) ────────────────────
+
+/// What the desktop shell detected. Exactly one field is ever set, and neither
+/// carries anything the server displays verbatim: `game_id` is looked up in the
+/// registry compiled into this binary, and `name` - the hand-allowed process
+/// case - is sanitized and shown without artwork. See services::game.
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct GameActivityPayload {
+    #[serde(default)]
+    game_id: Option<String>,
+    #[serde(default)]
+    name: Option<String>,
+}
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -584,6 +597,19 @@ async fn handle_connect(s: SocketRef, io: SocketIo, state: AppState) {
                         }
                         broadcast_presence(&io, &state, &uid, "offline").await;
                     } else {
+                        // The game outlives one browser tab but not the desktop
+                        // shell: reading the process list is something only that
+                        // shell can do, so once the last one is gone nobody is
+                        // left to notice the game stopped and the line would
+                        // hang on the profile forever. Cleared before the
+                        // broadcast below so it goes out in the same update.
+                        if device == "desktop" {
+                            let devices =
+                                presence::get_devices(&state, &uid).await.unwrap_or_default();
+                            if !devices.iter().any(|kind| kind == "desktop") {
+                                let _ = game::clear(&state, &uid).await;
+                            }
+                        }
                         let status = presence::get_status(&state, &uid)
                             .await
                             .unwrap_or_else(|_| "online".into());
@@ -982,6 +1008,50 @@ fn register_handlers(
                 broadcast_presence(&io, &state, &uid, &status).await;
             }
         });
+    }
+
+    // activity:game
+    {
+        let state = state.clone();
+        let io = io.clone();
+        let uid = user_id.clone();
+        s.on(
+            "activity:game",
+            move |TryData(payload): TryData<Option<GameActivityPayload>>| {
+                let state = state.clone();
+                let io = io.clone();
+                let uid = uid.clone();
+                async move {
+                    // A malformed payload is a clear, not a disconnect: the
+                    // shell that sent it is still the authority on whether a
+                    // game is running, and it just told us it isn't sure.
+                    let payload = payload.ok().flatten().unwrap_or_default();
+                    if rate_limit::check(
+                        &state,
+                        "activity:game",
+                        &uid,
+                        rate_limit::GAME_ACTIVITY_PER_USER,
+                    )
+                    .await
+                    .is_err()
+                    {
+                        return;
+                    }
+                    // `gameId` wins when a client sends both, so the trusted
+                    // path is never the one that gets dropped.
+                    let custom = payload.name.as_deref().filter(|_| payload.game_id.is_none());
+                    let changed = game::report(&state, &uid, payload.game_id.as_deref(), custom)
+                        .await
+                        .unwrap_or(false);
+                    if changed {
+                        let status = presence::get_status(&state, &uid)
+                            .await
+                            .unwrap_or_else(|_| "online".into());
+                        broadcast_presence(&io, &state, &uid, &status).await;
+                    }
+                }
+            },
+        );
     }
 
     // voice:join

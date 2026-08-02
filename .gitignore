@@ -44,3 +44,10 @@ uploads/
 __pycache__/
 *.py[cod]
 *.egg-info/
+
+# Game-presence artwork: ~50MB of tiles derived from Steam/Wikipedia by
+# packages/shared/scripts/fetch-game-art.py. Regenerated at deploy time.
+packages/client/public/games/
+
+# graphify knowledge graph - regenerated from the source, not source itself
+graphify-out/

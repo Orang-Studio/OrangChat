@@ -7,6 +7,7 @@ import {
   nativeImage,
   session,
   dialog,
+  systemPreferences,
 } from "electron";
 import { join } from "node:path";
 import {
@@ -25,6 +26,7 @@ import { registerDownloads } from "./downloads";
 import { createTray, setTrayAttention, setTrayIcon } from "./tray";
 import { syncAutoLaunch } from "./autoLaunch";
 import { setUnreadBadge } from "./badge";
+import { GamePresence } from "./gamePresence";
 import {
   registerUpdater,
   checkForUpdates,
@@ -49,6 +51,7 @@ function applyAppIcon(window: BrowserWindow | null, image: Electron.NativeImage 
 }
 
 let mainWindow: BrowserWindow | null = null;
+let gamePresence: GamePresence | null = null;
 let quitting = false;
 
 if (!app.requestSingleInstanceLock()) {
@@ -253,7 +256,10 @@ app.on("before-quit", () => {
   quitting = true;
 });
 
-app.on("will-quit", () => globalShortcut.unregisterAll());
+app.on("will-quit", () => {
+  gamePresence?.dispose();
+  globalShortcut.unregisterAll();
+});
 
 // The tray keeps the app alive after the last window is hidden.
 app.on("window-all-closed", () => {
@@ -263,42 +269,52 @@ app.on("window-all-closed", () => {
 void app.whenReady().then(() => {
   const defaultSession = session.defaultSession;
 
-  const ALLOWED_PERMISSIONS = new Set([
-    "media",
-    "audioCapture",
-    "videoCapture",
-    "display-capture",
-    "notifications",
-    "fullscreen",
-    "clipboard-sanitized-write",
-  ]);
-
-  // The window is hard-locked to APP_ORIGIN by the navigation guards, so our
-  // own page is the only thing that can ever ask. Electron still reports the
-  // requesting origin inconsistently across checks - notably it hands the
-  // `notifications` permission an empty origin, which made Notification.permission
-  // read as "denied" in the packaged app even though the request handler grants
-  // it. Resolve the origin from the frame's own URL when Electron doesn't give
-  // us one, and treat "unknown" as the app rather than rejecting it.
-  const isAppRequester = (origin: string, contents: Electron.WebContents | null) => {
-    let resolved = origin && origin !== "null" ? origin : "";
-    if (!resolved) {
+  // The window is hard-locked to APP_ORIGIN by the navigation guards and the
+  // window-open handler, so "is this our own page asking" is the entire security
+  // question - and once the answer is yes, there is nothing to gain by second-
+  // guessing which capability it asked for.
+  //
+  // An allowlist of permission *names* used to sit here and it failed closed in
+  // both directions: Electron spells the same capability differently between the
+  // request and the check path (`media` vs `audioCapture`/`videoCapture`), and
+  // any name nobody thought of is a silent denial. That is how the packaged app
+  // ended up with no microphone and no camera at all - getUserMedia rejects with
+  // NotAllowedError and there is nothing in the UI to explain it.
+  const isAppRequester = (origin: string, contents: Electron.WebContents | null): boolean => {
+    for (const candidate of [origin, contents?.getURL()]) {
+      if (!candidate || candidate === "null") continue;
       try {
-        resolved = new URL(contents?.getURL() ?? "").origin;
+        // The screen picker is a bundled file:// page of ours, and its origin
+        // serializes to the string "null" rather than anything comparable.
+        return candidate.startsWith("file:") || new URL(candidate).origin === APP_ORIGIN;
       } catch {
-        resolved = "";
+        return false;
       }
     }
-    return resolved === "" || resolved === APP_ORIGIN;
+    // Electron hands several checks - notifications and the media device checks
+    // among them - an empty origin and a WebContents whose URL it will not
+    // resolve either. The window cannot be anywhere but APP_ORIGIN, so an
+    // absent origin is not evidence of a foreign caller.
+    return true;
   };
 
   defaultSession.setPermissionRequestHandler((contents, permission, callback) => {
-    callback(ALLOWED_PERMISSIONS.has(permission) && isAppRequester("", contents));
+    const allowed = isAppRequester("", contents);
+    if (!allowed) console.warn(`[permissions] denied ${permission} to ${contents?.getURL()}`);
+    callback(allowed);
   });
 
-  defaultSession.setPermissionCheckHandler((contents, permission, origin) => {
-    return ALLOWED_PERMISSIONS.has(permission) && isAppRequester(origin, contents);
-  });
+  defaultSession.setPermissionCheckHandler((contents, permission, origin) =>
+    isAppRequester(origin, contents),
+  );
+
+  // Only reached on macOS, where the OS gates capture behind TCC and Chromium
+  // will not raise the prompt on its own: without this, the first getUserMedia
+  // rejects instead of asking. Windows and Linux resolve immediately.
+  if (process.platform === "darwin") {
+    void systemPreferences.askForMediaAccess("microphone");
+    void systemPreferences.askForMediaAccess("camera");
+  }
 
   registerScreenPicker(defaultSession, () => mainWindow);
   registerDownloads(defaultSession, () => mainWindow);
@@ -330,6 +346,32 @@ void app.whenReady().then(() => {
     const image = nativeImage.createFromDataURL(dataUrl);
     if (image.isEmpty()) return;
     applyAppIcon(mainWindow, image);
+  });
+
+  gamePresence = new GamePresence((report) => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.webContents.send("game:detected", report);
+  });
+
+  ipcMain.on("game:set-enabled", (event, enabled: unknown) => {
+    if (!isTrustedSender(event)) return;
+    if (typeof enabled !== "boolean") return;
+    gamePresence?.setEnabled(enabled);
+  });
+
+  ipcMain.handle("game:list-processes", async (event) => {
+    if (!isTrustedSender(event)) return [];
+    return gamePresence?.listProcesses() ?? [];
+  });
+
+  ipcMain.handle("game:get-overrides", (event) => {
+    if (!isTrustedSender(event)) return [];
+    return gamePresence?.getOverrides() ?? [];
+  });
+
+  ipcMain.handle("game:set-overrides", (event, overrides: unknown) => {
+    if (!isTrustedSender(event)) return [];
+    return gamePresence?.setOverrides(overrides) ?? [];
   });
 
   // Settings → System runs the check from the page and renders the outcome, so

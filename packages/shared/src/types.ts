@@ -74,6 +74,13 @@ export interface SelfUser extends User {
    * anybody else's policy, and it never turns encryption on or off.
    */
   e2eeStrict: boolean;
+  /**
+   * "Display the game you're playing". Off by default: the desktop client has
+   * to read the process list to detect a game, and nothing about that should
+   * start happening because an update shipped. Turning it off also clears any
+   * game activity already being broadcast.
+   */
+  gameActivity: boolean;
   /** Whether TOTP is active. The secret is never sent to any client. */
   twoFactorEnabled: boolean;
   /** False for OAuth-only accounts, which have no password to re-confirm. */

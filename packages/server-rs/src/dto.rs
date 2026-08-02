@@ -75,6 +75,10 @@ pub struct SelfUserDto {
     /// Enforced entirely on the owner's own clients; the server stores it so the
     /// choice follows the account rather than the browser.
     pub e2ee_strict: bool,
+    /// "Display the game you're playing". Gates the desktop client's process
+    /// scan, and is re-checked here on every `activity:game` so that turning it
+    /// off drops presence an older shell is still reporting.
+    pub game_activity: bool,
     /// Whether TOTP is active. The secret itself is never serialized.
     pub two_factor_enabled: bool,
     /// False for OAuth-only accounts, which have no password to re-confirm.
@@ -467,6 +471,7 @@ pub fn to_self_user(u: &UserRow) -> SelfUserDto {
         notify_friend_accepted: u.notify_friend_accepted,
         notify_friend_online: u.notify_friend_online,
         e2ee_strict: u.e2ee_strict,
+        game_activity: u.game_activity,
         two_factor_enabled: u.totp_enabled,
         has_password: u.password_hash.is_some(),
         lockdown: u.lockdown_at.is_some(),

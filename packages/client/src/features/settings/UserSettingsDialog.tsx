@@ -102,9 +102,13 @@ const PROFILE_CSS_TEMPLATE = `/* OrangChat profile theme - this CSS is sandboxed
  *
  * ACTIVITY (Spotify / games)
  *   .oc-pf-activity         the whole line ([data-kind="spotify"|…])
+ *   .oc-pf-activity-artwork its artwork (or icon container when none is set)
  *   .oc-pf-activity-icon    its icon
  *   .oc-pf-activity-text    "Listening to <name> - <details>"
+ *   .oc-pf-activity-meta    the rich profile-card text column
  *   .oc-pf-activity-name    just the track / game name
+ *   .oc-pf-activity-details the optional detail line
+ *   .oc-pf-activity-elapsed the live "for 12:34" clock
  *
  * BADGES
  *   .oc-pf-badges           the badge row

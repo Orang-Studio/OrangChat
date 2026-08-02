@@ -36,8 +36,8 @@ android {
         // bytes, so older releases cannot honestly implement that contract.
         minSdk = 31
         targetSdk = 35
-        versionCode = 49
-        versionName = "0.6.6"
+        versionCode = 52
+        versionName = "0.6.9"
         buildConfigField("String", "KLIPY_API_KEY", "\"$klipyApiKey\"")
         vectorDrawables { useSupportLibrary = true }
     }
@@ -134,6 +134,8 @@ dependencies {
     implementation(libs.livekit.android)
     implementation(libs.livekit.compose)
     implementation(libs.media3.exoplayer)
+    implementation(libs.media3.datasource)
+    implementation(libs.media3.database)
     implementation(libs.coil.compose)
     implementation(libs.coil.gif)
     implementation(libs.coil.video)

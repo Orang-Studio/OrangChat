@@ -182,6 +182,12 @@ build_shared() {
 
 build_web() {
   step "Build the SPA"
+  # ~68MB of game-presence tiles, derived from third-party store art and so kept
+  # out of git. They live in the SPA's public/ and vite copies them into dist,
+  # which means they have to exist *before* the build or every game on every
+  # profile renders a broken image. Re-running is cheap: it only fetches ids
+  # whose tile is missing.
+  run python3 "$REPO/packages/shared/scripts/fetch-game-art.py"
   # `build` is tsc --noEmit followed by vite build, so a type error stops here
   # rather than reaching the web root.
   run pnpm --filter @orangchat/client build

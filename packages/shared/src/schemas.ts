@@ -47,6 +47,7 @@ export const updateProfileSchema = z
     notifyFriendAccepted: z.boolean().optional(),
     notifyFriendOnline: z.boolean().optional(),
     e2eeStrict: z.boolean().optional(),
+    gameActivity: z.boolean().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: 'No fields to update' });
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
@@ -105,7 +106,9 @@ export const sendMessageSchema = z.object({
 });
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 export const editMessageSchema = z.object({
-  content: z.string().min(1).max(4000),
+  // Not min(1): a message whose attachments are the whole point can be edited
+  // down to no text at all, the same way it could be sent that way.
+  content: z.string().max(4000),
 });
 export type EditMessageInput = z.infer<typeof editMessageSchema>;
 export const messageHistoryQuerySchema = z.object({

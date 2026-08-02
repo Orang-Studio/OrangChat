@@ -210,6 +210,18 @@ export interface ClientToServerEvents {
   'reaction:add': (payload: { channelId: string; messageId: string; emoji: string }) => void;
   'reaction:remove': (payload: { channelId: string; messageId: string; emoji: string }) => void;
   'presence:update': (status: PresenceStatus) => void;
+  /**
+   * Report the game the desktop client detected, or `null` when it stopped.
+   *
+   * `gameId` names an entry in the shipped registry and is the only way to get
+   * a title and artwork: the server resolves both from its own copy, so a
+   * client can never choose the text - let alone the image url - that other
+   * people see. `name` is the escape hatch for a process the user allowed by
+   * hand; it is sanitized and rendered without artwork.
+   */
+  'activity:game': (
+    payload: { gameId: string; name?: never } | { gameId?: never; name: string } | null,
+  ) => void;
   'voice:join': (channelId: string, ack?: Ack<{ token: string; url: string }>) => void;
   'voice:leave': (channelId: string, ack?: Ack) => void;
   'voice:update': (

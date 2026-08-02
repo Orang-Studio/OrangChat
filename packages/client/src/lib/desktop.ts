@@ -4,6 +4,13 @@ export interface UpdateCheckResult {
   message?: string;
 }
 
+export interface GameOverride {
+  process: string;
+  name: string;
+}
+
+export type GamePresenceReport = { gameId: string } | { name: string } | null;
+
 /** The bridge the Electron preload exposes; undefined in a plain browser. */
 export interface DesktopBridge {
   isDesktop: true;
@@ -18,6 +25,12 @@ export interface DesktopBridge {
    * the bundled mark. Absent in shells built before the custom-icon IPC.
    */
   setAppIcon?: (dataUrl: string | null) => void;
+  /** Absent in desktop shells built before game presence support. */
+  setGamePresenceEnabled?: (enabled: boolean) => void;
+  listGameProcesses?: () => Promise<string[]>;
+  getGameOverrides?: () => Promise<GameOverride[]>;
+  setGameOverrides?: (overrides: GameOverride[]) => Promise<GameOverride[]>;
+  onGameDetected?: (callback: (report: GamePresenceReport) => void) => () => void;
 }
 
 export const desktop: DesktopBridge | undefined = (

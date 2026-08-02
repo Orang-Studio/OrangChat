@@ -43,6 +43,8 @@ pub struct UserRow {
     pub notify_friend_online: bool,
     #[sqlx(rename = "e2eeStrict")]
     pub e2ee_strict: bool,
+    #[sqlx(rename = "gameActivity")]
+    pub game_activity: bool,
     #[sqlx(rename = "totpSecret")]
     pub totp_secret: Option<String>,
     #[sqlx(rename = "totpEnabled")]
