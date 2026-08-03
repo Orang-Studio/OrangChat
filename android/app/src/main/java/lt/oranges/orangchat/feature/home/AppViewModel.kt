@@ -15,6 +15,7 @@ import lt.oranges.orangchat.data.model.AuditLogEntry
 import lt.oranges.orangchat.data.model.Channel
 import lt.oranges.orangchat.data.model.ChannelType
 import lt.oranges.orangchat.data.model.Conversation
+import lt.oranges.orangchat.data.model.Emoji
 import lt.oranges.orangchat.data.model.Friend
 import lt.oranges.orangchat.data.model.FriendRequest
 import lt.oranges.orangchat.data.model.Message
@@ -142,8 +143,13 @@ class AppViewModel @Inject constructor(
     /** Channels with an older-page fetch in flight. */
     val loadingOlder: StateFlow<Set<String>> = _loadingOlder.asStateFlow()
 
-    /** Channels whose history we have reached the start of. */
-    private val exhaustedChannels = mutableSetOf<String>()
+    private val _channelsAtStart = MutableStateFlow<Set<String>>(emptySet())
+
+    /**
+     * Channels whose history we have reached the start of. Exposed because a
+     * jump to a search hit has to know when to stop asking for older pages.
+     */
+    val channelsAtStart: StateFlow<Set<String>> = _channelsAtStart.asStateFlow()
 
     val session: StateFlow<SessionState> = authRepository.session
 
@@ -211,6 +217,9 @@ class AppViewModel @Inject constructor(
     private val _emojis = MutableStateFlow<Map<String, EmojiRef>>(emptyMap())
     val emojis: StateFlow<Map<String, EmojiRef>> = _emojis.asStateFlow()
 
+    /** The rows [_emojis] was built from, kept so they can be written back out. */
+    private var emojiCatalog: List<Emoji> = emptyList()
+
     private val _sounds = MutableStateFlow<List<Sound>>(emptyList())
     val sounds: StateFlow<List<Sound>> = _sounds.asStateFlow()
 
@@ -255,6 +264,8 @@ class AppViewModel @Inject constructor(
         _incomingRequests.value = cached.incomingRequests
         _outgoingRequests.value = cached.outgoingRequests
         unreadStore.hydrate(cached.unreads)
+        if (cached.emojis.isNotEmpty()) applyEmojis(cached.emojis)
+        if (cached.sounds.isNotEmpty()) _sounds.value = cached.sounds
         _presence.value = cached.friends.associate { it.user.id to PresenceStatus.OFFLINE } +
             (userId to PresenceStatus.OFFLINE)
     }
@@ -500,18 +511,32 @@ class AppViewModel @Inject constructor(
     fun refreshEmojis() = viewModelScope.launch {
         runCatching { serverRepository.listUsableEmojis() }
             .onSuccess { list ->
-                _emojis.value = list.associate {
-                    it.id to EmojiRef(it.id, it.name, it.url, it.animated)
-                }
+                applyEmojis(list)
+                scheduleNavigationCache()
             }
     }
 
-    // Sounds from every server the user is in, so the soundboard works in any
-    // voice room, mirroring how usable emoji span servers.
+    private fun applyEmojis(list: List<Emoji>) {
+        emojiCatalog = list
+        _emojis.value = list.associate {
+            it.id to EmojiRef(it.id, it.name, it.url, it.animated)
+        }
+    }
+
+    /**
+     * Sounds from every server the user is in, so the soundboard works in any
+     * voice room, mirroring how usable emoji span servers.
+     *
+     * A failed fetch says nothing about which sounds exist, so the cached set
+     * is left alone; emptying it here left an offline start with a blank
+     * soundboard it had no way to refill.
+     */
     fun refreshSounds() = viewModelScope.launch {
         runCatching { serverRepository.listUsableSounds() }
-            .onSuccess { _sounds.value = it }
-            .onFailure { _sounds.value = emptyList() }
+            .onSuccess {
+                _sounds.value = it
+                scheduleNavigationCache()
+            }
     }
 
     fun refreshFriends() = viewModelScope.launch {
@@ -532,7 +557,6 @@ class AppViewModel @Inject constructor(
     fun selectServer(serverId: String) = viewModelScope.launch {
         _serverDetail.value = null
         _currentChannelId.value = null
-        _sounds.value = emptyList()
         val userId = authRepository.currentUser?.id
         val cached = userId?.let { offlineCache.serverDetail(it, serverId) }
         if (cached != null) applyServerDetail(cached, livePresence = false)
@@ -597,13 +621,13 @@ class AppViewModel @Inject constructor(
      * the end of are remembered so scrolling up cannot re-request forever.
      */
     fun loadOlderMessages(channelId: String) = viewModelScope.launch {
-        if (channelId in _loadingOlder.value || channelId in exhaustedChannels) return@launch
+        if (channelId in _loadingOlder.value || channelId in _channelsAtStart.value) return@launch
         val oldest = _messages.value[channelId]?.firstOrNull() ?: return@launch
         _loadingOlder.update { it + channelId }
         runCatching { serverRepository.getHistory(channelId, before = oldest.id) }
             .onSuccess { page ->
                 if (page.items.isEmpty()) {
-                    exhaustedChannels += channelId
+                    _channelsAtStart.update { it + channelId }
                 } else {
                     val items = e2eeRepository.decryptAll(page.items.reversed())
                     _messages.update { m ->
@@ -634,13 +658,37 @@ class AppViewModel @Inject constructor(
                 // messages and never has to know about envelopes.
                 val items = e2eeRepository.decryptAll(page.items.reversed())
                 _messages.update { current ->
-                    val pending = current[channelId].orEmpty()
-                        .filter { it.id in _pendingMessageIds.value }
-                    current + (channelId to (items + pending))
+                    val existing = current[channelId].orEmpty()
+                    val pending = existing.filter { it.id in _pendingMessageIds.value }
+                    current + (channelId to mergeHistoryPage(existing, items, pending))
                 }
                 scheduleMessageCache(channelId)
             }
             .onFailure { if (cached.isEmpty()) _error.value = it.message }
+    }
+
+    /**
+     * Fold a freshly fetched newest page into the history already held.
+     *
+     * Overwriting is what threw the offline cache away: a channel holding 250
+     * cached messages collapsed to the 50 this page carries the moment the
+     * network answered, so scrolling up - or jumping to a search hit - had to
+     * refetch history the app had just deleted.
+     *
+     * Anything older than the page survives, because the page says nothing
+     * about it. Inside the page's own window the server is the whole truth, so
+     * a held message it no longer lists there was deleted and goes with it.
+     */
+    private fun mergeHistoryPage(
+        existing: List<Message>,
+        page: List<Message>,
+        pending: List<Message>,
+    ): List<Message> {
+        if (page.isEmpty()) return existing
+        val windowStart = page.first().createdAt
+        val pageIds = page.mapTo(mutableSetOf()) { it.id }
+        val older = existing.filter { it.createdAt < windowStart && it.id !in pageIds }
+        return older + page + pending
     }
 
     fun sendMessage(
@@ -1492,6 +1540,8 @@ class AppViewModel @Inject constructor(
                         incomingRequests = _incomingRequests.value,
                         outgoingRequests = _outgoingRequests.value,
                         unreads = unreadStore.states.value.values.toList(),
+                        emojis = emojiCatalog,
+                        sounds = _sounds.value,
                     ),
                 )
             }

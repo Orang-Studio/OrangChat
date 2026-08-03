@@ -160,6 +160,7 @@ fun VideoAttachment(attachment: Attachment, expiresAt: Instant?, now: Instant) {
                 // asking for it is what the first press means.
                 fetching = source.resolving,
                 progress = source.progress,
+                phaseLabel = source.phaseLabel,
                 onToggle = {
                     if (href == null) requested = true
                     else MediaPlayback.toggle(context, attachment.id, href) { broken = true }
@@ -194,6 +195,8 @@ private fun InlineOverlay(
     fetching: Boolean = false,
     /** 0-1 of that fetch, so a large clip isn't a spinner with nothing behind it. */
     progress: Float = 0f,
+    /** Which half of it - "Downloading" or "Decrypting". */
+    phaseLabel: String = "Downloading",
     onToggle: () -> Unit,
     onExpand: () -> Unit,
 ) {
@@ -215,19 +218,32 @@ private fun InlineOverlay(
                 if (buffering) {
                     // Determinate while the file itself is coming down: a 40 MB
                     // clip behind a spinner that never moves reads as broken.
-                    if (fetching && progress > 0f) {
-                        CircularProgressIndicator(
-                            progress = { progress },
-                            color = Color.White,
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(28.dp),
-                        )
-                    } else {
-                        CircularProgressIndicator(
-                            color = Color.White,
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(28.dp),
-                        )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        if (fetching && progress > 0f) {
+                            CircularProgressIndicator(
+                                progress = { progress },
+                                color = Color.White,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(28.dp),
+                            )
+                        } else {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(28.dp),
+                            )
+                        }
+                        // Which step it is on. Downloading and decrypting both
+                        // run 0-100%, and without this the bar looks like it
+                        // restarted itself for no reason halfway through.
+                        if (fetching) {
+                            Spacer(Modifier.size(6.dp))
+                            Text(
+                                phaseLabel,
+                                color = Color.White.copy(alpha = 0.85f),
+                                fontSize = 10.sp,
+                            )
+                        }
                     }
                 } else {
                     OverlayIconButton(

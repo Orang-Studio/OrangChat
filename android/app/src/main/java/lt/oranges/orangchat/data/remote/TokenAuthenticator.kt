@@ -1,9 +1,11 @@
 package lt.oranges.orangchat.data.remote
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import lt.oranges.orangchat.data.local.TokenStore
 import lt.oranges.orangchat.data.model.AuthResult
 import okhttp3.Authenticator
+import okhttp3.MediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -76,11 +78,12 @@ class TokenAuthenticator(
                 .post(ByteArray(0).toRequestBody(null))
                 .build()
             clientProvider.get().newCall(req).execute().use { resp ->
-                if (resp.code == 401 || resp.code == 403) return RefreshResult.Rejected
-                // 5xx or a proxy blip mid-deploy is transient, so it must not
-                // cost the session either.
-                if (!resp.isSuccessful) return RefreshResult.Unreachable
-                val body = resp.body?.string() ?: return RefreshResult.Unreachable
+                // Read once: for an error status this is the only chance, and
+                // whether it is really ours is the whole question below.
+                val contentType = resp.body?.contentType()
+                val body = resp.body?.string()
+                if (!resp.isSuccessful) return classifyFailure(resp.code, contentType, body)
+                if (body == null) return RefreshResult.Unreachable
                 val token = runCatching {
                     json.decodeFromString(AuthResult.serializer(), body).tokens.accessToken
                 }.getOrNull() ?: return RefreshResult.Unreachable
@@ -89,6 +92,39 @@ class TokenAuthenticator(
         } catch (_: Exception) {
             RefreshResult.Unreachable
         }
+    }
+
+    /**
+     * Whether a failed refresh really means the session is over.
+     *
+     * A status code alone is not enough, because we are not the only thing that
+     * can answer this request. A captive portal, a corporate proxy, Cloudflare
+     * mid-incident and an nginx `deny` all reply 401/403 with an HTML page, and
+     * taking one of those at face value clears the refresh cookie - which is
+     * what turned "opened the app after losing signal" into a permanent
+     * sign-out that nobody on a stable connection could ever reproduce.
+     *
+     * So a rejection has to look like it came from us: our API answers this
+     * route with 401 and a JSON body carrying an `error` field (see AppError's
+     * IntoResponse). 403 never comes from `/auth/refresh` at all - the route
+     * only ever raises Unauthorized - so one arriving here came from something
+     * in the middle and is treated as a bad link, not a dead account.
+     */
+    private fun classifyFailure(
+        code: Int,
+        contentType: MediaType?,
+        body: String?,
+    ): RefreshResult {
+        if (code != 401) return RefreshResult.Unreachable
+        if (contentType?.subtype?.contains("json", ignoreCase = true) != true) {
+            return RefreshResult.Unreachable
+        }
+        val ours = runCatching {
+            json.parseToJsonElement(body ?: return@runCatching false)
+                .jsonObject
+                .containsKey("error")
+        }.getOrDefault(false)
+        return if (ours) RefreshResult.Rejected else RefreshResult.Unreachable
     }
 
     private fun responseCount(response: Response): Int {

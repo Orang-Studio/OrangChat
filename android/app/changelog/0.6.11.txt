@@ -1,0 +1,24 @@
+Offline cache and video fixes
+
+Fixes
+- The offline cache could never be read back after the app was closed, so
+  servers, channels and history opened empty and had to be fetched again on
+  every launch. Snapshots written before this update are replaced automatically
+  the first time each one is refreshed.
+- Custom emoji and soundboard clips are kept with the rest of the cache, so
+  cached messages no longer show raw :emoji: text before the network answers.
+- Opening a channel no longer discards older cached messages that were already
+  on screen.
+- Losing connection while the app starts no longer signs you out. Only a genuine
+  rejection from the server ends a session; captive portals and proxies that
+  answer with their own error pages are treated as being offline.
+
+Improved
+- Encrypted videos and other large attachments decrypt many times faster. A
+  30 MB video that previously took about two minutes now finishes in seconds.
+- The attachment progress ring now says whether it is downloading or
+  decrypting, instead of appearing to stall at the end of a download.
+- Tapping a search result jumps straight to that message, loading the older
+  history it sits in if needed, and flashes it so it is easy to spot. If the
+  message cannot be reached, the chat now says so instead of silently opening
+  at the bottom.

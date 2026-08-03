@@ -363,14 +363,18 @@ private fun ImagePreview(attachment: Attachment, expiresAt: Instant?, now: Insta
             ) {
                 // Determinate once bytes are moving: a large encrypted image
                 // takes long enough that a still spinner looks like a failure.
-                if (source.progress > 0f) {
-                    CircularProgressIndicator(
-                        progress = { source.progress },
-                        color = c.primary,
-                        modifier = Modifier.size(20.dp),
-                    )
-                } else {
-                    CircularProgressIndicator(color = c.primary, modifier = Modifier.size(20.dp))
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    if (source.progress > 0f) {
+                        CircularProgressIndicator(
+                            progress = { source.progress },
+                            color = c.primary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    } else {
+                        CircularProgressIndicator(color = c.primary, modifier = Modifier.size(20.dp))
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(source.phaseLabel, color = c.inkMuted, fontSize = 10.sp)
                 }
             }
         } else {

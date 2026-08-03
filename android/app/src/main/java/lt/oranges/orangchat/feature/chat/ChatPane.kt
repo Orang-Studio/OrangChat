@@ -76,6 +76,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -216,6 +217,24 @@ private const val GROUP_WINDOW_MS = 5 * 60 * 1000L
  */
 private const val TYPING_THROTTLE_MS = 4_000L
 
+/** How long a jumped-to message stays lit before fading back. */
+private const val HIGHLIGHT_MS = 1_600L
+
+/**
+ * Older pages a jump is allowed to pull in before it gives up. 12 pages of 50
+ * is six hundred messages back - far enough for a search hit anyone actually
+ * meant to open, and short of quietly downloading an entire channel.
+ */
+private const val JUMP_MAX_PAGES = 12
+
+/** Gap between checks while a page is in flight. */
+private const val JUMP_POLL_MS = 200L
+
+/** Roughly ten seconds of waiting for a channel's own first page to arrive. */
+private const val JUMP_MAX_INITIAL_WAITS = 50
+
+private const val JUMP_MISSING_NOTICE_MS = 4_000L
+
 /** A message plus its grouping flag, decided chronologically before the list is
  * reversed for display. */
 private data class MessageRowData(val message: Message, val grouped: Boolean)
@@ -263,6 +282,15 @@ fun ChatPane(
     /** Fetch the page before the oldest message held. */
     onLoadOlder: () -> Unit = {},
     loadingOlder: Boolean = false,
+    /** False once history has been read back to the very first message. */
+    hasOlder: Boolean = true,
+    /**
+     * A message to scroll to on arrival - a search hit, or any other deep link
+     * into the middle of a conversation. Pages history in until it is loaded.
+     */
+    jumpToMessageId: String? = null,
+    /** Called once the jump has landed or been given up on, so it fires once. */
+    onJumpHandled: () -> Unit = {},
     /** Accessibility: tighter row spacing. */
     compact: Boolean = false,
     /** Accessibility: jump instead of animating the scroll-to-bottom. */
@@ -338,6 +366,72 @@ fun ChatPane(
         }
     }
 
+    // Landing on a message you did not scroll to is disorienting without it
+    // saying which one it was. Keyed on the id, so a second jump restarts the
+    // fade rather than being cut short by the first one's timer.
+    var highlightedId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(highlightedId) {
+        if (highlightedId != null) {
+            delay(HIGHLIGHT_MS)
+            highlightedId = null
+        }
+    }
+
+    /**
+     * A search hit is usually older than the page a channel opens on, so the
+     * message being jumped to is very often not loaded yet - which is why
+     * tapping a result used to do nothing but open the channel at the bottom.
+     * Pull older pages in until it appears, the same walk the browser client
+     * does, and give up rather than read a whole channel back to its first
+     * message.
+     */
+    var jumpMissing by remember(channelId) { mutableStateOf(false) }
+    val liveRows by rememberUpdatedState(rows)
+    val liveHasOlder by rememberUpdatedState(hasOlder)
+    val liveLoadingOlder by rememberUpdatedState(loadingOlder)
+    LaunchedEffect(jumpToMessageId, channelId) {
+        val target = jumpToMessageId ?: return@LaunchedEffect
+        jumpMissing = false
+        var pagesAsked = 0
+        var waitedForFirstPage = 0
+        var landed = false
+        while (pagesAsked <= JUMP_MAX_PAGES) {
+            val index = liveRows.indexOfFirst { it.message.id == target }
+            if (index >= 0) {
+                // Snap rather than animate: the hit is usually several pages up,
+                // and scrolling there flings the whole conversation past the
+                // reader for no gain. The highlight flash is what points it out.
+                listState.scrollToItem(index)
+                highlightedId = target
+                landed = true
+                break
+            }
+            if (liveRows.isEmpty()) {
+                // The channel's own first page is still in flight. Waiting for
+                // it is not one of our page budget - there is nothing to page
+                // back from yet.
+                if (waitedForFirstPage++ >= JUMP_MAX_INITIAL_WAITS) break
+                delay(JUMP_POLL_MS)
+                continue
+            }
+            if (!liveHasOlder) break
+            if (!liveLoadingOlder) {
+                onLoadOlder()
+                pagesAsked++
+            }
+            delay(JUMP_POLL_MS)
+        }
+        // Deleted, or further back than we are willing to walk.
+        if (!landed) jumpMissing = true
+        onJumpHandled()
+    }
+    LaunchedEffect(jumpMissing) {
+        if (jumpMissing) {
+            delay(JUMP_MISSING_NOTICE_MS)
+            jumpMissing = false
+        }
+    }
+
     val nameOf: (String) -> String? = { uid ->
         members.firstOrNull { it.userId == uid }?.let { it.nickname ?: it.user.displayName }
     }
@@ -369,7 +463,6 @@ fun ChatPane(
     // already loaded can be reached - an unloaded parent renders no quote line
     // to tap in the first place, so there is nothing to jump to.
     val jumpScope = rememberCoroutineScope()
-    var highlightedId by remember { mutableStateOf<String?>(null) }
     val jumpToMessage: (String) -> Unit = { id ->
         val index = rows.indexOfFirst { it.message.id == id }
         if (index >= 0) {
@@ -377,15 +470,6 @@ fun ChatPane(
                 if (reducedMotion) listState.scrollToItem(index) else listState.animateScrollToItem(index)
                 highlightedId = id
             }
-        }
-    }
-    // Landing on a message you did not scroll to is disorienting without it
-    // saying which one it was. Keyed on the id, so a second jump restarts the
-    // fade rather than being cut short by the first one's timer.
-    LaunchedEffect(highlightedId) {
-        if (highlightedId != null) {
-            delay(1600)
-            highlightedId = null
         }
     }
 
@@ -489,6 +573,21 @@ fun ChatPane(
             }
         }
         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(c.border))
+
+        // A jump that could not reach its message has to say so. Silently
+        // sitting at the bottom of the channel is indistinguishable from the
+        // tap having been ignored, which is exactly how this read before.
+        if (jumpMissing) {
+            Text(
+                text = "Couldn't reach that message - it may be too far back or deleted.",
+                color = c.inkMuted,
+                fontSize = 12.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(c.surface1)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+            )
+        }
 
         // Messages. reverseLayout: first item = visual bottom = newest.
         LazyColumn(

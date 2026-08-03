@@ -51,7 +51,12 @@ fun SearchScreen(
     channelNames: Map<String, String>,
     authors: Map<String, User>,
     onBack: () -> Unit,
-    onJumpToChannel: (String) -> Unit,
+    /**
+     * Open the hit's channel and scroll to the message itself. The id matters:
+     * a hit is usually older than the page a channel opens on, and dropping it
+     * left every result opening the conversation at the bottom instead.
+     */
+    onJumpToMessage: (channelId: String, messageId: String) -> Unit,
     modifier: Modifier = Modifier,
     vm: SearchViewModel = hiltViewModel(),
 ) {
@@ -126,7 +131,7 @@ fun SearchScreen(
                         message = message,
                         author = message.author ?: authors[message.authorId],
                         channelName = channelNames[message.channelId],
-                        onClick = { onJumpToChannel(message.channelId) },
+                        onClick = { onJumpToMessage(message.channelId, message.id) },
                     )
                 }
                 // Offset pagination: ask for the next page at the bottom.

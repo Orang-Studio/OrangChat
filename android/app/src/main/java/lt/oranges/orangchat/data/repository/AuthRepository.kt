@@ -38,6 +38,7 @@ import lt.oranges.orangchat.data.remote.UploadResponse
 import lt.oranges.orangchat.realtime.SocketManager
 import lt.oranges.orangchat.notifications.PushTokenRegistrar
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import okhttp3.MultipartBody
 import retrofit2.HttpException
 import javax.inject.Inject
@@ -101,9 +102,25 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    /** True only for a definitive rejection from the server, never for reachability. */
-    private fun isSessionRejected(e: Exception): Boolean =
-        e is HttpException && (e.code() == 401 || e.code() == 403)
+    /**
+     * True only for a definitive rejection from the server, never for reachability.
+     *
+     * The status code on its own does not establish that, because anything
+     * between the phone and us can answer with one: captive portals, corporate
+     * proxies and CDNs under strain all serve 401/403 HTML pages, and believing
+     * one of those signs the user out of a perfectly good account. A real
+     * rejection carries our own JSON error body (AppError's IntoResponse), and
+     * `/auth/refresh` only ever raises Unauthorized - a 403 on this route came
+     * from something in the middle, so it counts as unreachable.
+     */
+    private fun isSessionRejected(e: Exception): Boolean {
+        if (e !is HttpException || e.code() != 401) return false
+        val body = e.response()?.errorBody() ?: return false
+        if (body.contentType()?.subtype?.contains("json", ignoreCase = true) != true) return false
+        return runCatching {
+            json.parseToJsonElement(body.string()).jsonObject.containsKey("error")
+        }.getOrDefault(false)
+    }
 
     private fun cachedUser(): SelfUser? =
         tokenStore.cachedUser?.let {

@@ -17,11 +17,13 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import lt.oranges.orangchat.data.model.Conversation
+import lt.oranges.orangchat.data.model.Emoji
 import lt.oranges.orangchat.data.model.Friend
 import lt.oranges.orangchat.data.model.FriendRequest
 import lt.oranges.orangchat.data.model.Message
 import lt.oranges.orangchat.data.model.Server
 import lt.oranges.orangchat.data.model.ServerDetail
+import lt.oranges.orangchat.data.model.Sound
 import lt.oranges.orangchat.data.model.UnreadState
 
 /**
@@ -44,6 +46,14 @@ class OfflineCache @Inject constructor(
         val incomingRequests: List<FriendRequest> = emptyList(),
         val outgoingRequests: List<FriendRequest> = emptyList(),
         val unreads: List<UnreadState> = emptyList(),
+        /**
+         * Custom emoji and soundboard clips span every server the account is in,
+         * so they belong to the account snapshot rather than any one server's.
+         * Without them a cached message paints its `<:name:id>` tokens as raw
+         * text until the network answers, which looks like broken history.
+         */
+        val emojis: List<Emoji> = emptyList(),
+        val sounds: List<Sound> = emptyList(),
     )
 
     private val appContext = context.applicationContext
@@ -164,9 +174,27 @@ class OfflineCache @Inject constructor(
         }
     }
 
+    /**
+     * Writes [value] to [file], atomically and readably.
+     *
+     * The subtle part is the staging path. EncryptedFile seals a file against
+     * its own *name*: it hands `File.getName()` to Tink as the AEAD's
+     * associated data, on the way in and again on the way out. Staging beside
+     * the target as `<name>.pending` and renaming - the ordinary atomic-write
+     * move - therefore leaves a file sealed under one name and opened under
+     * another, so its tag can never verify. Every snapshot written that way
+     * came back as a decryption failure that [read] dutifully treated as
+     * corruption and deleted, which is why nothing survived a restart and
+     * opening a server showed an empty one.
+     *
+     * Staging in a subdirectory keeps the basename identical, so the file
+     * stays openable and the replace is still a single rename.
+     */
     private inline fun <reified T> write(file: File, value: T) {
-        file.parentFile?.mkdirs()
-        val pending = File(file.parentFile, "${file.name}.pending")
+        val parent = file.parentFile
+        parent?.mkdirs()
+        val staging = File(parent, STAGING_DIR).apply { mkdirs() }
+        val pending = File(staging, file.name)
         pending.delete()
         encrypted(pending).openFileOutput().bufferedWriter().use { output ->
             output.write(json.encodeToString(value))
@@ -195,6 +223,9 @@ class OfflineCache @Inject constructor(
 
     private companion object {
         const val NAVIGATION_FILE = "navigation.json"
+
+        /** Half-written snapshots, under their final name. See [write]. */
+        const val STAGING_DIR = "staging"
     }
 }
 

@@ -43,7 +43,6 @@ import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import javax.crypto.Cipher
-import javax.crypto.CipherInputStream
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
@@ -111,6 +110,29 @@ private const val MAX_INLINE_SEALED = 64L * 1024 * 1024
 private const val MAX_FETCH_ATTEMPTS = 5
 
 /**
+ * How much ciphertext is handed to the cipher at a time.
+ *
+ * Not a tuning knob so much as the whole fix. `CipherInputStream` reads its
+ * source 512 bytes at a time no matter what buffer the caller copies with, and
+ * Android's GCM cipher is one-shot underneath (BoringSSL's EVP_AEAD), so every
+ * `update` appends to an internal buffer that is regrown to the exact new size.
+ * 512-byte increments over a 30 MB file is sixty thousand reallocations copying
+ * fifteen megabytes on average - hundreds of gigabytes of memcpy to decrypt one
+ * clip, which is where the two minutes went. Feeding it a megabyte at a time
+ * leaves thirty of those copies.
+ */
+private const val DECRYPT_CHUNK = 1 shl 20
+
+/** Which half of "opening a sealed file" is currently running. */
+internal enum class SealedPhase { DOWNLOAD, DECRYPT }
+
+/** How far along one sealed attachment is, and at what. */
+internal data class SealedProgress(
+    val phase: SealedPhase = SealedPhase.DOWNLOAD,
+    val fraction: Float = 0f,
+)
+
+/**
  * Opening sealed attachments, once each, off the composition's lifetime.
  *
  * Three things went wrong here and they compounded. Every composable that
@@ -134,9 +156,9 @@ internal object SealedFiles {
     private val lock = Mutex()
     private val inFlight = mutableMapOf<String, Deferred<File?>>()
 
-    /** 0-1 per attachment id while its bytes are coming down. */
-    private val _progress = MutableStateFlow<Map<String, Float>>(emptyMap())
-    val progress: StateFlow<Map<String, Float>> = _progress.asStateFlow()
+    /** Per attachment id, how far it has got and whether it is still fetching. */
+    private val _progress = MutableStateFlow<Map<String, SealedProgress>>(emptyMap())
+    val progress: StateFlow<Map<String, SealedProgress>> = _progress.asStateFlow()
 
     /**
      * The decrypted file, fetching and decrypting it if this is the first ask.
@@ -171,12 +193,18 @@ internal object SealedFiles {
         val absolute = absoluteUrl(attachment.url) ?: return null
         val part = File(context.cacheDir, "sealed-${attachment.id}.part")
         if (!fetch(absolute, part) { fraction ->
-                _progress.update { it + (attachment.id to fraction) }
+                _progress.update {
+                    it + (attachment.id to SealedProgress(SealedPhase.DOWNLOAD, fraction))
+                }
             }
         ) {
             return null
         }
-        val result = decrypt(part, ref, opened, context.cacheDir)
+        val result = decrypt(part, ref, opened, context.cacheDir) { fraction ->
+            _progress.update {
+                it + (attachment.id to SealedProgress(SealedPhase.DECRYPT, fraction))
+            }
+        }
         part.delete()
         return result
     }
@@ -252,11 +280,20 @@ internal object SealedFiles {
         return false
     }
 
+    /**
+     * Decrypts [part] into [opened], reporting how much ciphertext has been fed
+     * through so a large clip shows movement rather than a frozen bar.
+     *
+     * Deliberately not `CipherInputStream` - see [DECRYPT_CHUNK] for why that
+     * combination is quadratic. Feeding the cipher directly also means the
+     * fraction here is the real unit of work, not a guess.
+     */
     private fun decrypt(
         part: File,
         ref: SealedAttachmentRef,
         opened: File,
         cacheDir: File,
+        onProgress: (Float) -> Unit,
     ): File? {
         val temp = File.createTempFile("opening-", ".part", cacheDir)
         return try {
@@ -267,11 +304,25 @@ internal object SealedFiles {
                 GCMParameterSpec(128, E2ee.fromBase64(ref.nonce)),
             )
             cipher.updateAAD(E2ee.attachmentAad(ref.fileId))
+            val total = part.length()
+            var consumed = 0L
             // Plaintext only becomes visible outside the private temp file after
-            // EOF verifies the GCM tag successfully.
+            // doFinal verifies the GCM tag successfully.
             part.inputStream().use { encrypted ->
-                CipherInputStream(encrypted, cipher).use { plain ->
-                    FileOutputStream(temp).use { output -> plain.copyTo(output, 64 * 1024) }
+                FileOutputStream(temp).use { output ->
+                    val buffer = ByteArray(DECRYPT_CHUNK)
+                    while (true) {
+                        val read = encrypted.read(buffer)
+                        if (read <= 0) break
+                        // Providers that buffer internally return nothing here
+                        // and hand everything back from doFinal; both are fine.
+                        cipher.update(buffer, 0, read)?.let(output::write)
+                        consumed += read
+                        if (total > 0) {
+                            onProgress((consumed.toDouble() / total).toFloat().coerceIn(0f, 1f))
+                        }
+                    }
+                    cipher.doFinal()?.let(output::write)
                 }
             }
             if (!temp.renameTo(opened)) {
@@ -308,10 +359,20 @@ internal data class AttachmentSource(
     val resolving: Boolean,
     /** Sealed, and nobody has asked for it yet - a tap is all it needs. */
     val deferred: Boolean = false,
-    /** 0-1 while the bytes come down, for anything that wants to show it. */
+    /** 0-1 through whatever [phase] is currently doing. */
     val progress: Float = 0f,
+    /**
+     * Downloading or decrypting. Worth telling apart: decrypting a large clip
+     * takes long enough that a bar labelled "downloading" sitting at 100% is
+     * what made it look stuck.
+     */
+    val phase: SealedPhase = SealedPhase.DOWNLOAD,
 ) {
     val unavailable: Boolean get() = url == null && !resolving && !deferred
+
+    /** A word for what is happening, for anything with room to say it. */
+    val phaseLabel: String
+        get() = if (phase == SealedPhase.DECRYPT) "Decrypting" else "Downloading"
 }
 
 /**
@@ -350,11 +411,15 @@ internal fun rememberAttachmentSource(
     return when {
         opened != null -> AttachmentSource(opened, resolving = false)
         failed -> AttachmentSource(null, resolving = false)
-        wanted -> AttachmentSource(
-            null,
-            resolving = true,
-            progress = fetching[attachment.id] ?: 0f,
-        )
+        wanted -> {
+            val step = fetching[attachment.id] ?: SealedProgress()
+            AttachmentSource(
+                null,
+                resolving = true,
+                progress = step.fraction,
+                phase = step.phase,
+            )
+        }
         else -> AttachmentSource(null, resolving = false, deferred = true)
     }
 }

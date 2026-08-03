@@ -127,6 +127,7 @@ fun HomeScreen(
     val emojis by appViewModel.emojis.collectAsStateWithLifecycle()
     val sounds by appViewModel.sounds.collectAsStateWithLifecycle()
     val loadingOlder by appViewModel.loadingOlder.collectAsStateWithLifecycle()
+    val channelsAtStart by appViewModel.channelsAtStart.collectAsStateWithLifecycle()
     val conversationEncryption by appViewModel.conversationEncryption.collectAsStateWithLifecycle()
     val e2eeError by appViewModel.e2eeError.collectAsStateWithLifecycle()
     val auditLog by appViewModel.auditLog.collectAsStateWithLifecycle()
@@ -188,6 +189,8 @@ fun HomeScreen(
     var profileUser by remember { mutableStateOf<User?>(null) }
     /** When set, the NEW_GROUP overlay grows this group instead of creating one. */
     var groupAddTargetId by remember { mutableStateOf<String?>(null) }
+    /** A search hit the chat should land on once its channel is open. */
+    var pendingJumpMessageId by remember { mutableStateOf<String?>(null) }
 
     // A newly started/answered DM call opens its stage. Minimizing it does not
     // touch the call session; the persistent bar below can reopen it anytime.
@@ -566,9 +569,10 @@ fun HomeScreen(
                                         overlay = Overlay.NONE
                                         searchChannelId = null
                                     },
-                                    onJumpToChannel = { channelId ->
+                                    onJumpToMessage = { channelId, messageId ->
                                         overlay = Overlay.NONE
                                         searchChannelId = null
+                                        pendingJumpMessageId = messageId
                                         appViewModel.selectChannel(channelId)
                                         openChat = true
                                     },
@@ -681,6 +685,9 @@ fun HomeScreen(
                                     },
                                     onLoadOlder = { appViewModel.loadOlderMessages(channelId) },
                                     loadingOlder = channelId in loadingOlder,
+                                    hasOlder = channelId !in channelsAtStart,
+                                    jumpToMessageId = pendingJumpMessageId,
+                                    onJumpHandled = { pendingJumpMessageId = null },
                                     compact = devicePrefs.compactMessages,
                                     reducedMotion = devicePrefs.reducedMotion,
                                     // Only DMs and group DMs can be called.
