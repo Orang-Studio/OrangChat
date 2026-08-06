@@ -1586,10 +1586,15 @@ class AppViewModel @Inject constructor(
         )
     }
 
-    private fun replaceMessage(message: Message) {
-        if (message.ciphertext != null) {
+    private fun replaceMessage(message: Message, opened: Boolean = false) {
+        // decrypt() returns the row with its envelope intact, so without this
+        // gate the edited row would loop forever: forget cache, decrypt, still
+        // ciphertext, forget cache, decrypt ... and never reach the list below.
+        if (!opened && message.ciphertext != null) {
             e2eeRepository.forgetCachedMessage(message.id)
-            viewModelScope.launch { replaceMessage(e2eeRepository.decrypt(message)) }
+            viewModelScope.launch {
+                replaceMessage(e2eeRepository.decrypt(message), opened = true)
+            }
             return
         }
         _messages.update { map ->
