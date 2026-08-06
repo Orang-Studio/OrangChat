@@ -44,14 +44,32 @@ class AuthViewModel @Inject constructor(
     private val _state = MutableStateFlow(AuthFormState())
     val state: StateFlow<AuthFormState> = _state.asStateFlow()
 
-    fun login(email: String, password: String, totpCode: String? = null, skipPasskey: Boolean = false) {
+    /**
+     * The password, plus whichever second factor the account can reach.
+     *
+     * [skipPasskey] and [lostAuthenticator] each step one rung down that ladder,
+     * towards the emailed code - a device that isn't to hand must not lock the
+     * account out, so both exist, and both are weaker than what they replace.
+     */
+    fun login(
+        email: String,
+        password: String,
+        totpCode: String? = null,
+        skipPasskey: Boolean = false,
+        lostAuthenticator: Boolean = false,
+    ) {
         if (!validate(email, password)) return
-        val needs2fa = _state.value.needsTwoFactor
+        val needs2fa = _state.value.needsTwoFactor && !lostAuthenticator
         run(keepTwoFactor = needs2fa) {
-            // Success here is only the first step of a login; the session comes
-            // later, via an emailed code or a passkey.
-            val challenge = authRepository.login(email, password, totpCode, skipPasskey)
+            // Success here is usually only the first step of a login; the session
+            // comes later, via an emailed code or a passkey. The one exception is
+            // a correct authenticator code, which ends the login on the spot -
+            // the repository has already opened the session by then.
+            val challenge =
+                authRepository.login(email, password, totpCode, skipPasskey, lostAuthenticator)
             when {
+                // Signed in outright. The session flips and these screens go away.
+                challenge.user != null -> AuthFormState()
                 // The password checked out and this account prefers a passkey to
                 // the mailed code: hold the ceremony open until the device signs.
                 challenge.passkeyRequired && challenge.ceremonyToken.isNotBlank() && challenge.challenge != null ->

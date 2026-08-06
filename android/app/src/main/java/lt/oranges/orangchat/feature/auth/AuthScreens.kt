@@ -87,6 +87,7 @@ fun AuthScreens(viewModel: AuthViewModel = hiltViewModel()) {
                     onSignInWithPasskey = { viewModel.signInWithPasskey(context) },
                     onAnswerPasskey = { viewModel.answerPasskey(context) },
                     onEmailCodeInstead = { e, p -> viewModel.login(e, p, skipPasskey = true) },
+                    onLostAuthenticator = { e, p -> viewModel.login(e, p, lostAuthenticator = true) },
                     onCancelPasskey = viewModel::cancelPasskey,
                 )
             }
@@ -118,6 +119,7 @@ private fun LoginForm(
     onSignInWithPasskey: () -> Unit,
     onAnswerPasskey: () -> Unit,
     onEmailCodeInstead: (String, String) -> Unit,
+    onLostAuthenticator: (String, String) -> Unit,
     onCancelPasskey: () -> Unit,
 ) {
     var email by rememberSaveable { mutableStateOf("") }
@@ -166,8 +168,8 @@ private fun LoginForm(
         return
     }
 
-    // Every login ends here: the password (and any authenticator code) checked
-    // out, and the server mailed a one-time code to finish the sign-in with.
+    // The bottom rung: no passkey, no authenticator (or neither to hand), so the
+    // server mailed a one-time code to finish the sign-in with.
     if (state.loginToken != null) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
             Text(
@@ -226,6 +228,15 @@ private fun LoginForm(
                 size = ButtonSize.Lg,
                 enabled = code.isNotBlank(),
                 loading = state.loading,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            // A phone left at home must not be a locked account. This drops to
+            // the emailed code, which is weaker - so it is a button somebody has
+            // to reach for, never the default.
+            OrangButton(
+                text = "Lost your authenticator?",
+                onClick = { code = ""; onLostAuthenticator(email, password) },
+                variant = ButtonVariant.Ghost,
                 modifier = Modifier.fillMaxWidth(),
             )
             OrangButton(

@@ -136,15 +136,21 @@ class AuthRepository @Inject constructor(
         }
 
     /**
-     * First half of a login. A correct password buys a mailed code, never a
-     * session, so this returns the token that [verifyEmailCode] needs rather
-     * than flipping [session]. Any authenticator code is still checked here.
+     * First half of a login. A correct password buys one second factor - a
+     * passkey, an authenticator code, or a mailed one - so this usually returns
+     * the challenge that finishes the sign-in rather than flipping [session].
+     *
+     * The exception is an authenticator code sent with the password: that rung
+     * ends the login, so the session is opened here and the caller sees a
+     * challenge carrying [LoginChallenge.user]. [lostAuthenticator] steps past
+     * that rung down to the mailed code, for a phone left at home.
      */
     suspend fun login(
         email: String,
         password: String,
         totpCode: String? = null,
         skipPasskey: Boolean = false,
+        lostAuthenticator: Boolean = false,
     ): LoginChallenge =
         api.login(
             LoginRequest(
@@ -152,8 +158,13 @@ class AuthRepository @Inject constructor(
                 password = password,
                 totpCode = totpCode?.trim()?.ifBlank { null },
                 skipPasskey = true.takeIf { skipPasskey },
+                lostAuthenticator = true.takeIf { lostAuthenticator },
             ),
-        )
+        ).also { challenge ->
+            val user = challenge.user
+            val tokens = challenge.tokens
+            if (user != null && tokens != null) applyAuth(AuthResult(user, tokens))
+        }
 
     // ── Passkeys ────────────────────────────────────────
 

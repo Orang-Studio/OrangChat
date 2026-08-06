@@ -31,6 +31,12 @@ data class LoginRequest(
      * password is checked either way.
      */
     val skipPasskey: Boolean? = null,
+    /**
+     * The same escape hatch one rung lower: skips the authenticator and mails a
+     * code instead. It trades the strength of the authenticator for the
+     * reachability of the mailbox, so it is only ever set on request.
+     */
+    val lostAuthenticator: Boolean? = null,
 )
 
 /** Second half of a login: the token from /auth/login plus the mailed code. */

@@ -534,13 +534,21 @@ async fn signup(
     ))
 }
 
+/// Password, then whichever second factor the account actually has.
+///
+/// The ladder is passkey, then authenticator, then a code to the address on the
+/// account, and the login ends at the first rung the account can reach - only
+/// the bottom one is a round trip through a mailbox. Each rung is skippable
+/// downwards (`skipPasskey`, `lostAuthenticator`) because an authenticator that
+/// isn't to hand must not be a lockout, and each skip is a deliberate trade of
+/// strength for reachability.
 async fn login(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
-    _headers: axum::http::HeaderMap,
-    _jar: CookieJar,
+    headers: axum::http::HeaderMap,
+    jar: CookieJar,
     Json(body): Json<Value>,
-) -> AppResult<impl IntoResponse> {
+) -> AppResult<(CookieJar, Json<Value>)> {
     rate_limit::check(&state, "login", &ip, rate_limit::LOGIN_PER_IP).await?;
 
     let email = body
@@ -623,7 +631,46 @@ async fn login(
             "This account is locked down. Lift it from a device that's still signed in.".into(),
         ));
     }
-    if user.totp_enabled {
+    if user.email_verified_at.is_none() {
+        return Err(AppError::Unauthorized(
+            "Verify your email before signing in".into(),
+        ));
+    }
+
+    // ── Second factor ────────────────────────────────────────────────────────
+
+    // An account with a passkey is asked for that first: it is
+    // phishing-resistant where a code read off a screen is not, and it is one
+    // tap instead of a round trip through a mail server. `skipPasskey` is the
+    // way back out for someone whose authenticator isn't to hand.
+    let skip_passkey = body
+        .get("skipPasskey")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    if !skip_passkey && passkey::count(&state, &user.id).await? > 0 {
+        let (challenge, ceremony) = passkey::start_known(&state, &user.id).await?;
+        return Ok((
+            jar,
+            Json(json!({
+                "passkeyRequired": true,
+                "challenge": challenge,
+                "ceremonyToken": ceremony,
+            })),
+        ));
+    }
+
+    // `lostAuthenticator` is the escape hatch behind the "Lost your
+    // authenticator?" button, and it is a real trade: it drops the account to
+    // whatever its mailbox is worth, since a password plus that button is then
+    // the whole login. It exists because the alternative - an authenticator on
+    // a phone that is gone, and backup codes in the same drawer as the phone -
+    // is a permanent lockout, and people lose devices far more often than
+    // mailboxes are stolen.
+    let lost_authenticator = body
+        .get("lostAuthenticator")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    if user.totp_enabled && !lost_authenticator {
         let code = body
             .get("totpCode")
             .and_then(Value::as_str)
@@ -644,41 +691,22 @@ async fn login(
                 "That code isn't right. Try the current one.".into(),
             ));
         }
+        reset_login_failures(&state, &user.id).await;
+        // The authenticator *is* the second factor. Mailing a code on top of it
+        // asks for a weaker proof after a stronger one and buys nothing but a
+        // slower sign-in - and it made email the real gate on every account
+        // that had gone to the trouble of setting up 2FA.
+        let (result, cookie) = issue_session(&state, &user, DeviceInfo::new(&headers, &ip)).await?;
+        return Ok((jar.add(cookie), Json(result)));
     }
 
-    if user.email_verified_at.is_none() {
-        return Err(AppError::Unauthorized(
-            "Verify your email before signing in".into(),
-        ));
-    }
-    rate_limit::reset(
-        &state,
-        "login:fail",
-        &user.id,
-        rate_limit::LOGIN_FAILURES_PER_ACCOUNT,
-    )
-    .await;
-    // An account with a passkey is asked for that instead of an emailed code:
-    // it is phishing-resistant where a code read off a screen is not, and it is
-    // one tap instead of a round trip through a mail server. `skipPasskey` is
-    // the way back out for someone whose authenticator isn't to hand.
-    let skip_passkey = body
-        .get("skipPasskey")
-        .and_then(Value::as_bool)
-        .unwrap_or(false);
-    if !skip_passkey && passkey::count(&state, &user.id).await? > 0 {
-        let (challenge, ceremony) = passkey::start_known(&state, &user.id).await?;
-        return Ok(Json(json!({
-            "passkeyRequired": true,
-            "challenge": challenge,
-            "ceremonyToken": ceremony,
-        })));
-    }
-
+    // No stronger factor available, or the user asked to fall back to this one.
+    reset_login_failures(&state, &user.id).await;
     let login_token = random_token();
     issue_email_login_code(&state, &user, &login_token).await?;
-    Ok(Json(
-        json!({ "email2faRequired": true, "loginToken": login_token }),
+    Ok((
+        jar,
+        Json(json!({ "email2faRequired": true, "loginToken": login_token })),
     ))
 }
 
@@ -738,15 +766,22 @@ async fn passkey_finish(
         ));
     }
 
+    reset_login_failures(&state, &user.id).await;
+    let (result, cookie) = issue_session(&state, &user, DeviceInfo::new(&headers, &ip)).await?;
+    Ok((jar.add(cookie), Json(result)))
+}
+
+/// Clears the per-account guess budget once the password (and any authenticator
+/// code) has checked out, so a run of typos doesn't follow someone into their
+/// next sign-in.
+async fn reset_login_failures(state: &AppState, user_id: &str) {
     rate_limit::reset(
-        &state,
+        state,
         "login:fail",
-        &user.id,
+        user_id,
         rate_limit::LOGIN_FAILURES_PER_ACCOUNT,
     )
     .await;
-    let (result, cookie) = issue_session(&state, &user, DeviceInfo::new(&headers, &ip)).await?;
-    Ok((jar.add(cookie), Json(result)))
 }
 
 async fn record_login_failure(state: &AppState, user_id: &str) {

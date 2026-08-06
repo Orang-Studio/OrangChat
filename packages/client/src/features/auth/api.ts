@@ -9,10 +9,11 @@ import { api } from '../../lib/api';
 import type { RequestChallenge } from './webauthn';
 
 /**
- * Password login never mints a session on its own. It either rejects with a
- * `2fa_required` 401 (the account also wants its authenticator code), asks for a
- * passkey, or mails a one-time code - and hands back whatever finishes the
- * sign-in from there.
+ * The password buys a second factor, never a session by itself - except when the
+ * second factor was already supplied. The server answers with a passkey
+ * challenge, a `2fa_required` 401 asking for the authenticator code, a mailed
+ * one-time code, or - once a correct `totpCode` came with the request - the
+ * finished session.
  */
 export interface LoginChallenge {
   email2faRequired?: boolean;
@@ -21,10 +22,18 @@ export interface LoginChallenge {
   passkeyRequired?: boolean;
   challenge?: RequestChallenge;
   ceremonyToken?: string;
+  /** Present only when an authenticator code finished the sign-in outright. */
+  user?: AuthResult['user'];
+  tokens?: AuthResult['tokens'];
 }
 
-export const login = (input: LoginInput & { skipPasskey?: boolean }) =>
-  api<LoginChallenge>('/auth/login', { method: 'POST', json: input });
+/**
+ * `skipPasskey` and `lostAuthenticator` each step the account down one rung of
+ * the second-factor ladder, towards the emailed code.
+ */
+export const login = (
+  input: LoginInput & { skipPasskey?: boolean; lostAuthenticator?: boolean },
+) => api<LoginChallenge>('/auth/login', { method: 'POST', json: input });
 
 // ── Passkey sign-in ─────────────────────────────────────
 //

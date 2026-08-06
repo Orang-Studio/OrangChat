@@ -31,13 +31,19 @@ import { TextField } from '../../components/ui/TextField';
 import { PasswordField } from '../../components/ui/PasswordField';
 
 /**
- * Signing in is three steps, not one: the password, an authenticator code when
- * the account has one, then a second factor - a passkey where the account has
- * one, the emailed code otherwise. Only the last step returns a session.
+ * The password buys one second factor, and the account stops at the strongest
+ * one it has: a passkey, else an authenticator code, else a code to its inbox.
+ * Whichever rung it lands on is the one that returns the session - nobody is
+ * asked to clear two.
+ *
+ * Both upper rungs are skippable downwards ("email me a code instead", "lost
+ * your authenticator?") because a device that isn't to hand must not be a
+ * lockout. Each of those is a deliberate step down in strength, so each is a
+ * button and never the default.
  *
  * A passkey can also replace the whole sequence: it proves the device, the
  * person and the origin in one gesture, so an account signing in that way skips
- * straight past the password and the code.
+ * straight past the password.
  */
 type Step = 'credentials' | 'totp' | 'emailCode' | 'passkey';
 
@@ -168,6 +174,14 @@ export function LoginPage() {
         void answerPasskey(result);
         return;
       }
+      // An authenticator code sent with the password finishes the sign-in there
+      // and then: the account already proved a second factor, so routing it
+      // through a mailbox afterwards would only weaken what it just proved.
+      if (result.user && result.tokens) {
+        applySession(result.user, result.tokens);
+        navigate(from, { replace: true });
+        return;
+      }
       if (!result.loginToken) {
         setError('Could not start the sign-in. Try again.');
         return;
@@ -193,7 +207,9 @@ export function LoginPage() {
     },
   });
 
-  const submitLogin = async (values: LoginInput & { skipPasskey?: boolean }) => {
+  const submitLogin = async (
+    values: LoginInput & { skipPasskey?: boolean; lostAuthenticator?: boolean },
+  ) => {
     let recaptchaToken = '';
     try {
       recaptchaToken = (await recaptcha.current?.execute()) ?? '';
@@ -347,6 +363,18 @@ export function LoginPage() {
             className="w-full"
           >
             Verify
+          </Button>
+          {/* A phone left at home must not be a locked account. This drops to the
+              emailed code, which is weaker - so it is a button somebody has to
+              reach for, never the default. */}
+          <Button
+            type="button"
+            variant="ghost"
+            loading={loginMutation.isPending}
+            onClick={() => void submitLogin({ ...credentials, lostAuthenticator: true })}
+            className="w-full"
+          >
+            Lost your authenticator?
           </Button>
           <Button type="button" variant="ghost" onClick={restart} className="w-full">
             Back

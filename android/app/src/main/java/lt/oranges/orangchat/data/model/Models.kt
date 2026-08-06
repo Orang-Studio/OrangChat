@@ -445,8 +445,11 @@ data class AuthResult(
 )
 
 /**
- * POST /auth/login never mints a session on its own: a correct password only
- * earns a mailed code, and the token below is what ties the second call to it.
+ * POST /auth/login answers with whichever second factor the account can reach -
+ * a passkey, a mailed code, and [loginToken] is what ties the second call to it.
+ * The one exception is an authenticator code sent with the password: that has
+ * already cleared a second factor, so the session comes back in [user]/[tokens]
+ * and there is no second call.
  */
 @Serializable
 data class LoginChallenge(
@@ -460,6 +463,9 @@ data class LoginChallenge(
     /** The WebAuthn request, passed straight to Credential Manager. */
     val challenge: JsonElement? = null,
     val ceremonyToken: String = "",
+    /** Both set only when an authenticator code finished the sign-in outright. */
+    val user: SelfUser? = null,
+    val tokens: AuthTokens? = null,
 )
 
 /** POST /auth/signup: the account exists but cannot sign in until verified. */
