@@ -5,6 +5,7 @@ import type { User } from "@orangchat/shared";
 import { Button } from "../../components/ui/Button";
 import { Dialog, DialogContent } from "../../components/ui/Dialog";
 import { useAuthStore } from "../../stores/auth";
+import { usePresenceStore } from "../../stores/presence";
 import { getUserConnections } from "../connections/api";
 import { createDm } from "../dms/api";
 import { upsertConversation } from "../dms/queries";
@@ -32,6 +33,8 @@ interface ProfileDialogProps {
  * actions (message / add / remove / accept friend). */
 export function ProfileDialog({ user, open, onOpenChange }: ProfileDialogProps) {
   const selfId = useAuthStore((s) => s.user?.id);
+  // The card is opened with a copy of the user, so follow presence live instead.
+  const presence = usePresenceStore((s) => s[user.id]);
   const client = useQueryClient();
   const navigate = useNavigate();
   const { data: friends } = useFriends();
@@ -99,9 +102,9 @@ export function ProfileDialog({ user, open, onOpenChange }: ProfileDialogProps) 
             accentColor: user.accentColor,
             pronouns: user.pronouns,
             bio: user.bio,
-            status: user.status,
-            devices: user.devices,
-            activities: user.activities,
+            status: presence?.status ?? user.status,
+            devices: presence?.devices ?? user.devices,
+            activities: presence?.activities ?? user.activities,
             createdAt: user.createdAt,
             badges: user.badges,
             profileCss: user.profileCss,

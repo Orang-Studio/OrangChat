@@ -40,6 +40,7 @@ import { playSoundboardClip } from '../soundboard/playback';
 import { useVoiceStore, voiceActions } from '../voice/store';
 import { callActions } from '../voice/callStore';
 import { unreadActions } from '../../stores/unread';
+import { presenceActions } from '../../stores/presence';
 import { getActiveChannel } from '../unread/active';
 import { markChannelRead } from '../unread/api';
 import {
@@ -214,6 +215,7 @@ export function registerRealtime(client: QueryClient): void {
 
   socket.on('presence', ({ userId, status, devices, activities }) => {
     maybeNotifyFriendOnline(client, userId, status);
+    presenceActions.set(userId, { status, devices, activities });
     if (userId === selfId()) {
       useAuthStore.getState().user &&
         useAuthStore.setState((state) => ({
