@@ -338,6 +338,7 @@ class E2eeKeystore(context: Context) {
                             width = null,
                             height = null,
                             spoiler = null,
+                            blur = null,
                             thumb = null,
                         ),
                     ),

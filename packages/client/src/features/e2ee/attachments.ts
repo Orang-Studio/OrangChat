@@ -110,9 +110,69 @@ export interface LocalPreview {
   contentType: string;
   width: number;
   height: number;
+  /** base64 micro-JPEG for the payload itself. See `SealedAttachmentRef.blur`. */
+  blur?: string;
 }
 
 const THUMB_EDGE = 400;
+
+/**
+ * Long edge of the inline blur, in pixels.
+ *
+ * The binding constraint is MAX_PUSH_CIPHERTEXT_CHARS in server-rs
+ * (services/push.rs): a message whose ciphertext runs past 2600 characters is
+ * pushed *without* its envelope, so an over-generous stamp would trade a black
+ * rectangle for a notification that no longer says anything. The stamp costs
+ * roughly 1.8 characters of ciphertext per byte - base64 into the payload, then
+ * base64 again out of the seal - which leaves about a kilobyte to spend
+ * alongside a message's text and its attachment keys.
+ *
+ * Sixteen pixels is still more detail than BlurHash carries, and blown up and
+ * blurred it is indistinguishable from a bigger one.
+ */
+const BLUR_EDGE = 16;
+
+/**
+ * Hard ceiling, not a target: at [BLUR_EDGE] even pure noise encodes smaller
+ * than this, so tripping it means something is wrong and the stamp is dropped.
+ */
+const MAX_BLUR_BYTES = 1024;
+
+/**
+ * The same frame again at postage-stamp size, base64, to travel in the message.
+ *
+ * Drawn from whatever the caller already has decoded, so it costs one more
+ * canvas and no extra decode. Returns undefined rather than throwing: this is
+ * the cheapest thing in the pipeline and the least worth failing a send over.
+ */
+export async function blurStamp(
+  source: CanvasImageSource,
+  width: number,
+  height: number,
+): Promise<string | undefined> {
+  if (width <= 0 || height <= 0) return undefined;
+  try {
+    const scale = Math.min(1, BLUR_EDGE / Math.max(width, height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(width * scale));
+    canvas.height = Math.max(1, Math.round(height * scale));
+    const context = canvas.getContext('2d');
+    if (!context) return undefined;
+    context.drawImage(source, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', 0.45),
+    );
+    if (!blob || blob.size > MAX_BLUR_BYTES) return undefined;
+    return toBase64(new Uint8Array(await blob.arrayBuffer()));
+  } catch {
+    return undefined;
+  }
+}
+
+/** Render a stored blur as something an `<img>` can point at. */
+export function blurDataUrl(blur: string | undefined): string | undefined {
+  return blur ? `data:image/jpeg;base64,${blur}` : undefined;
+}
 
 /**
  * A preview the client makes for itself. The server cannot transform bytes it
@@ -150,6 +210,7 @@ export async function makePreview(file: File): Promise<LocalPreview | null> {
       contentType: blob.type || 'image/webp',
       width: bitmap.width,
       height: bitmap.height,
+      blur: await blurStamp(bitmap, bitmap.width, bitmap.height),
     };
   } finally {
     bitmap.close();

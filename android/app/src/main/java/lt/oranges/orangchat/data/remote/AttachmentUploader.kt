@@ -78,6 +78,27 @@ class AttachmentUploader @Inject constructor(
         const val MAX_PER_MESSAGE = 10
         /** OrangMove's MAX_TTL, and so the longest a large file can live. */
         private const val ORANGMOVE_TTL_SECONDS = 3600
+        /**
+         * Long edge of the inline blur, in pixels.
+         *
+         * The binding constraint is MAX_PUSH_CIPHERTEXT_CHARS in server-rs
+         * (services/push.rs): a message whose ciphertext runs past 2600
+         * characters is pushed *without* its envelope, so an over-generous
+         * stamp would trade a black rectangle for a notification that no longer
+         * says anything. The stamp costs roughly 1.8 characters of ciphertext
+         * per byte - base64 into the payload, then base64 again out of the seal
+         * - which leaves about a kilobyte to spend alongside a message's text
+         * and its attachment keys.
+         *
+         * Sixteen pixels is still more detail than BlurHash carries, and blown
+         * up and blurred it is indistinguishable from a bigger one.
+         */
+        private const val BLUR_EDGE = 16
+        /**
+         * Hard ceiling, not a target: at [BLUR_EDGE] even pure noise encodes
+         * smaller than this, so tripping it means something is wrong.
+         */
+        private const val MAX_BLUR_BYTES = 1024
     }
 
     /** What the content resolver can tell us about a picked file. */
@@ -267,7 +288,11 @@ class AttachmentUploader @Inject constructor(
             val mimeType = resolvedMimeType(info)
             val dimensions = imageDimensions(uri, mimeType)
             val meta = probeMedia(uri, mimeType)
-            val thumbnail = (createThumbnail(uri, mimeType) ?: meta.thumbnail)?.let { plain ->
+            val preview = createThumbnail(uri, mimeType) ?: meta.thumbnail
+            // Taken before the seal, because the seal deletes its input and
+            // because this one has to survive that upload failing.
+            val blur = preview?.let { blurStamp(it) }
+            val thumbnail = preview?.let { plain ->
                 try {
                     sealThumbnail(plain)
                 } catch (_: Exception) {
@@ -289,6 +314,7 @@ class AttachmentUploader @Inject constructor(
                     duration = meta.durationSeconds,
                     width = dimensions?.first,
                     height = dimensions?.second,
+                    blur = blur,
                     thumb = thumbnail,
                 ),
             )
@@ -341,6 +367,41 @@ class AttachmentUploader @Inject constructor(
             if (resized !== decoded) resized.recycle()
             decoded.recycle()
         }
+    }
+
+    /**
+     * The same preview again at postage-stamp size, base64, to travel inside the
+     * message payload rather than as a second upload.
+     *
+     * Decoded from the 400px JPEG the caller already wrote, so it costs one
+     * small decode and no second pass over the original. Returns null rather
+     * than throwing: this is the cheapest thing in the pipeline and the least
+     * worth failing a send over.
+     */
+    private fun blurStamp(preview: File): String? = try {
+        val decoded = BitmapFactory.decodeFile(preview.path)
+        if (decoded == null) {
+            null
+        } else {
+            try {
+                val scale = minOf(1f, BLUR_EDGE / maxOf(decoded.width, decoded.height).toFloat())
+                val stamp = Bitmap.createScaledBitmap(
+                    decoded,
+                    maxOf(1, (decoded.width * scale).toInt()),
+                    maxOf(1, (decoded.height * scale).toInt()),
+                    true,
+                )
+                val bytes = java.io.ByteArrayOutputStream()
+                val ok = stamp.compress(Bitmap.CompressFormat.JPEG, 45, bytes)
+                if (stamp !== decoded) stamp.recycle()
+                if (ok && bytes.size() <= MAX_BLUR_BYTES) E2ee.toBase64(bytes.toByteArray())
+                else null
+            } finally {
+                decoded.recycle()
+            }
+        }
+    } catch (_: Exception) {
+        null
     }
 
     /** Seals and uploads a generated preview as a second opaque blob. */

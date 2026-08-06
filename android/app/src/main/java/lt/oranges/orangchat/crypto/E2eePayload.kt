@@ -27,6 +27,22 @@ data class SealedAttachmentRef(
     val width: Int? = null,
     val height: Int? = null,
     val spoiler: Boolean? = null,
+    /**
+     * A postage-stamp JPEG, base64, carried inside the payload itself.
+     *
+     * [thumb] below is a second uploaded blob, and everything that can go wrong
+     * with an upload can go wrong with it - so on a large share of messages it
+     * simply isn't there, and the receiver is left with a black rectangle. This
+     * one travels with the text: no row to claim, no fetch, no decrypt, present
+     * offline. Renderers blow it up and blur it; it is far too small to look at
+     * directly.
+     */
+    val blur: String? = null,
+    /**
+     * The sharp preview: a fetch and a decrypt away, and absent on anything sent
+     * before [blur] existed - which is why [blur] is what stands behind the play
+     * button until this arrives.
+     */
     val thumb: Thumb? = null,
 ) {
     @Serializable

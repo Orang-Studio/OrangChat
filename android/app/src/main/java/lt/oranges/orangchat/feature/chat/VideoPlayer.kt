@@ -1,5 +1,8 @@
 package lt.oranges.orangchat.feature.chat
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
 import android.view.TextureView
 import android.net.Uri
 import androidx.annotation.OptIn
@@ -45,13 +48,17 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import lt.oranges.orangchat.crypto.E2ee
 import lt.oranges.orangchat.crypto.E2eeKeystore
 import lt.oranges.orangchat.data.model.Attachment
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.videoPosterUrl
 import java.io.File
+import java.io.FileOutputStream
 import java.time.Instant
 
 /*
@@ -77,6 +84,127 @@ private const val DEFAULT_ASPECT = 16f / 9f
  */
 private val INLINE_VIDEO_WIDTH = 150.dp
 
+/**
+ * What stands behind the play button on an encrypted clip, from three sources,
+ * because none of them is dependable on its own:
+ *
+ * * the **sealed thumbnail blob** - sharp, but a fetch and a decrypt away, and
+ *   missing outright on every clip whose second upload failed, was never
+ *   claimed, or has since been swept;
+ * * the **inline blur** carried in the message payload - 24px, but it arrives
+ *   with the text, needs no network, and cannot go missing separately;
+ * * a **frame pulled out of the decrypted file** - free once the clip has been
+ *   played, and the only thing that ever rescues a clip sent before the blur
+ *   existed and without a surviving thumbnail.
+ *
+ * They are tried in that order because that is the order of quality, not the
+ * order of arrival: the blur is on screen first and is replaced when something
+ * better resolves.
+ */
+@Composable
+private fun rememberSealedPoster(
+    attachment: Attachment,
+    all: List<Attachment>,
+    decrypted: String?,
+): String? {
+    val context = LocalContext.current
+    val keystore = remember(context) { E2eeKeystore.get(context) }
+    val sealedRef = remember(attachment.id) { keystore.sealedAttachment(attachment.id) }
+
+    var sharp by remember(attachment.id) { mutableStateOf<String?>(null) }
+    var blur by remember(attachment.id) { mutableStateOf<String?>(null) }
+    var local by remember(attachment.id) { mutableStateOf<String?>(null) }
+
+    // The thumbnail's key is right here in the parent ref; the row is looked up
+    // only to learn the url its ciphertext is served from.
+    val thumbRow = remember(sealedRef, all) {
+        sealedRef?.thumb?.let { t -> all.firstOrNull { it.id == t.attachmentId } }
+    }
+    LaunchedEffect(thumbRow?.id) {
+        val row = thumbRow ?: return@LaunchedEffect
+        val thumb = sealedRef?.thumb ?: return@LaunchedEffect
+        val opened = SealedFiles.open(
+            context,
+            row,
+            sealedRef.copy(
+                fileId = thumb.fileId,
+                attachmentId = thumb.attachmentId,
+                key = thumb.key,
+                nonce = thumb.nonce,
+                contentType = thumb.contentType,
+                size = thumb.size,
+                blur = null,
+                thumb = null,
+            ),
+        ) ?: return@LaunchedEffect
+        // Coil guesses a file's type from its extension, and the decrypted
+        // cache file has none - so keep a .jpg copy for the loader.
+        sharp = withContext(Dispatchers.IO) {
+            runCatching { cachedPoster(context, "poster-${row.id}.jpg", opened) }.getOrNull()
+        }
+    }
+
+    LaunchedEffect(attachment.id, sealedRef?.blur) {
+        val encoded = sealedRef?.blur ?: return@LaunchedEffect
+        blur = withContext(Dispatchers.IO) {
+            runCatching {
+                val file = File(context.cacheDir, "blur-${attachment.id}.jpg")
+                if (!file.isFile || file.length() == 0L) file.writeBytes(E2ee.fromBase64(encoded))
+                Uri.fromFile(file).toString()
+            }.getOrNull()
+        }
+    }
+
+    // Last resort, and the only one that works on a clip nothing was ever
+    // uploaded for: the bytes are already decrypted on this device, so pull a
+    // frame out of them.
+    LaunchedEffect(attachment.id, decrypted, sharp) {
+        if (sealedRef == null || decrypted == null || sharp != null) return@LaunchedEffect
+        local = withContext(Dispatchers.IO) { extractPoster(context, attachment.id, decrypted) }
+    }
+
+    return sharp ?: local ?: blur
+}
+
+/** A decrypted blob under a name Coil will recognise as a JPEG. */
+private fun cachedPoster(context: Context, name: String, opened: File): String {
+    val poster = File(context.cacheDir, name)
+    if (!poster.exists() || poster.lastModified() < opened.lastModified()) {
+        opened.copyTo(poster, overwrite = true)
+    }
+    return Uri.fromFile(poster).toString()
+}
+
+/**
+ * A still taken from an already-decrypted clip. A hair past the very start,
+ * because some encoders paint their first frames black. Costs nothing on the
+ * network and nothing on the server, which cannot decode these bytes anyway.
+ */
+private fun extractPoster(context: Context, attachmentId: String, source: String): String? {
+    val poster = File(context.cacheDir, "frame-$attachmentId.jpg")
+    if (poster.isFile && poster.length() > 0) return Uri.fromFile(poster).toString()
+
+    val retriever = MediaMetadataRetriever()
+    return try {
+        runCatching { retriever.setDataSource(context, Uri.parse(source)) }
+            .getOrElse { return null }
+        val frame = runCatching {
+            retriever.getFrameAtTime(1_000_000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+        }.getOrNull() ?: return null
+        try {
+            FileOutputStream(poster).use { frame.compress(Bitmap.CompressFormat.JPEG, 80, it) }
+            Uri.fromFile(poster).toString()
+        } catch (_: Exception) {
+            poster.delete()
+            null
+        } finally {
+            frame.recycle()
+        }
+    } finally {
+        runCatching { retriever.release() }
+    }
+}
+
 @Composable
 fun VideoAttachment(
     attachment: Attachment,
@@ -100,26 +228,7 @@ fun VideoAttachment(
         previewOpen = false
     }
 
-    // A sealed video's poster is its client-made thumbnail row - a small blob,
-    // so it decrypts on its own even while the clip stays unrequested.
-    val keystore = remember(context) { E2eeKeystore.get(context) }
-    val sealedRef = remember(attachment.id) { keystore.sealedAttachment(attachment.id) }
-    val thumbRow = remember(sealedRef, all) {
-        sealedRef?.thumb?.let { t -> all.firstOrNull { it.id == t.attachmentId } }
-    }
-    var sealedPoster by remember(thumbRow?.id) { mutableStateOf<String?>(null) }
-    LaunchedEffect(thumbRow?.id) {
-        val row = thumbRow ?: return@LaunchedEffect
-        val ref = keystore.sealedAttachment(row.id) ?: return@LaunchedEffect
-        val opened = SealedFiles.open(context, row, ref) ?: return@LaunchedEffect
-        // Coil guesses a file's type from its extension, and the decrypted
-        // cache file has none - so keep a .jpg copy for the loader.
-        val posterFile = File(context.cacheDir, "poster-${row.id}.jpg")
-        if (!posterFile.exists() || posterFile.lastModified() < opened.lastModified()) {
-            opened.copyTo(posterFile, overwrite = true)
-        }
-        sealedPoster = Uri.fromFile(posterFile).toString()
-    }
+    val sealedPoster = rememberSealedPoster(attachment, all, decrypted = href)
 
     if (broken || source.unavailable) {
         FileCard(attachment, expiresAt, now)

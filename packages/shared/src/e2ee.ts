@@ -273,7 +273,29 @@ export interface SealedAttachmentRef {
   width?: number;
   height?: number;
   spoiler?: boolean;
-  /** A client-made preview, sealed as its own blob under its own key. */
+  /**
+   * A postage-stamp JPEG, base64, carried inside the payload itself.
+   *
+   * The sharp preview below is a second uploaded blob, and everything that can
+   * go wrong with an upload can go wrong with it: the frame grab fails, the
+   * upload fails, the row is never claimed and gets swept, or the row simply
+   * did not come down beside the message. Every one of those ends in a black
+   * rectangle with no way back.
+   *
+   * This one cannot fail that way. It is in the bytes the client has already
+   * decrypted to read the message at all - no fetch, no row, nothing to claim -
+   * so it is there offline, in search results, and the instant the message
+   * renders. A few hundred bytes buys a blurred still that is unmistakably the
+   * video, which is the whole difference from a black box.
+   *
+   * Renderers upscale it and blur it; it is far too small to look at directly.
+   */
+  blur?: string;
+  /**
+   * A client-made preview, sealed as its own blob under its own key. Sharp, but
+   * a fetch and a decrypt away, and absent on anything sent before it existed -
+   * which is why [blur] is what actually stands behind the play button.
+   */
   thumb?: {
     fileId: string;
     attachmentId: string;

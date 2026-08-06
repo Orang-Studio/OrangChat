@@ -12,6 +12,7 @@ import type { Attachment, SealedAttachmentRef } from '@orangchat/shared';
 import { Button } from '../../components/ui/Button';
 import {
   MAX_INLINE_SEALED,
+  blurDataUrl,
   isSealedThumbnail,
   sealedAttachmentsOf,
   sealedObjectUrl,
@@ -315,14 +316,19 @@ function SealedBody({
 
   // A sealed video's poster is its sealed thumbnail row - a small blob, so it
   // decrypts on its own even while the main file stays behind "Decrypt".
-  const [poster, setPoster] = useState<string | null>(null);
+  const [sharp, setSharp] = useState<string | null>(null);
+  // ...and behind that, the postage stamp carried in the payload: no row, no
+  // fetch, no decrypt, so it is on screen immediately and it is still there for
+  // the messages whose thumbnail upload never landed.
+  const blur = blurDataUrl(sealed.blur) ?? null;
+  const poster = sharp ?? blur;
   useEffect(() => {
     if (!isVideo || !sealed.thumb) return;
     const thumbRow = all.find((a) => a.id === sealed.thumb!.attachmentId);
     if (!thumbRow) return;
     let cancelled = false;
     void sealedObjectUrl(sealed.thumb, thumbRow.url)
-      .then((resolved) => !cancelled && setPoster(resolved))
+      .then((resolved) => !cancelled && setSharp(resolved))
       .catch(() => {
         // A poster is a courtesy; the file still opens without it.
       });
@@ -360,7 +366,14 @@ function SealedBody({
     if (poster) {
       return (
         <div className="relative max-w-sm overflow-hidden rounded-lg border border-border">
-          <img src={poster} alt={sealed.filename} className="w-full" />
+          {/* The stamp is 24px on its long edge; blowing it up to card width
+              is the blur. The extra filter only hides the JPEG's blocking, and
+              the scale keeps that filter from feathering the edges. */}
+          <img
+            src={poster}
+            alt={sealed.filename}
+            className={sharp ? 'w-full' : 'w-full scale-105 blur-md'}
+          />
           <div className="absolute inset-x-0 bottom-0 flex items-center gap-2 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-10">
             {sealed.duration != null && (
               <span className="rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-medium text-white">
@@ -390,6 +403,23 @@ function SealedBody({
   }
 
   if (!url) {
+    // A big clip decrypts in one pass, so this is not a flash - it is the whole
+    // wait. Showing the stamp means the wait is at least visibly about *this*
+    // video rather than about a grey bar.
+    if (poster) {
+      return (
+        <div className="relative max-w-sm overflow-hidden rounded-lg border border-border">
+          <img
+            src={poster}
+            alt={sealed.filename}
+            className={sharp ? 'w-full' : 'w-full scale-105 blur-md'}
+          />
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+            <Lock aria-hidden className="size-5 text-white/90" />
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="flex max-w-sm items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2 text-ink-muted">
         <Lock aria-hidden className="size-4 shrink-0" />

@@ -902,6 +902,21 @@ Consequences:
 - Thumbnails and Cloudinary transformations are dead in E2EE channels. The client
   generates its own thumbnail, encrypts it as a second blob, and puts that key in
   the envelope too.
+- **A thumbnail is two things, because one of them is not reliable.** The sealed
+  second blob is sharp, but it is an upload: the frame grab can fail, the upload
+  can fail, the row can go unclaimed and be swept, or it can simply not come down
+  beside the message. Each of those ends in a permanently black video, and a
+  measurable share of sent clips hit one — so the payload also carries `blur`, a
+  16px JPEG in base64, which renderers upscale and blur behind the play button.
+  It needs no fetch and no row, so it is there offline, in search, and before the
+  first paint; the sealed blob replaces it when and if it resolves. Sizing is set
+  by `MAX_PUSH_CIPHERTEXT_CHARS` (§8): the stamp costs roughly 1.8 characters of
+  ciphertext per byte, and a payload that outgrows that cap is pushed without its
+  envelope, which would trade a black rectangle for a silent notification.
+- **Android additionally recovers a poster from the clip itself.** Once a sealed
+  video has been decrypted to play, `MediaMetadataRetriever` pulls a frame out of
+  the cached plaintext. This is the only thing that ever gives a poster to a clip
+  sent before `blur` existed and whose thumbnail blob is gone.
 - **`services/image_moderation.rs` cannot run.** This is a product decision, not a
   technical one: E2EE DMs mean unsolicited images are not scanned. Recommended
   posture: keep scanning on server channels, drop it in E2EE DMs, and lean on

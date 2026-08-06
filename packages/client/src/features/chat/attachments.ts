@@ -1,7 +1,13 @@
 import type { Attachment, SealedAttachmentRef } from '@orangchat/shared';
 import { useAuthStore } from '../../stores/auth';
 import { refreshSession } from '../auth/session';
-import { imageSize, makePreview, sealForUpload, type LocalPreview } from '../e2ee/attachments';
+import {
+  blurStamp,
+  imageSize,
+  makePreview,
+  sealForUpload,
+  type LocalPreview,
+} from '../e2ee/attachments';
 
 /**
  * Where a file goes depends only on its size:
@@ -228,6 +234,8 @@ export async function makeVideoPreview(file: File): Promise<{
           contentType: frame.blob.type || 'image/webp',
           width: video.videoWidth,
           height: video.videoHeight,
+          // Straight off the element, while it still holds the painted frame.
+          blur: await blurStamp(video, video.videoWidth, video.videoHeight),
         };
       }
     } catch {
@@ -473,6 +481,9 @@ export async function uploadSealedAttachment(
         ? { duration: video?.duration ?? audio?.duration }
         : {}),
       ...(dims ? { width: dims.width, height: dims.height } : {}),
+      // Rides in the payload, so unlike `thumb` it is there even when the
+      // supporting upload above failed, and there before any fetch.
+      ...(thumbSource?.blur ? { blur: thumbSource.blur } : {}),
       ...(thumb ? { thumb } : {}),
     },
   };
