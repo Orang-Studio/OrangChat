@@ -111,6 +111,8 @@ pub struct ChannelRow {
     #[sqlx(rename = "type")]
     pub channel_type: String,
     pub topic: Option<String>,
+    #[sqlx(rename = "backgroundUrl")]
+    pub background_url: Option<String>,
     pub position: i32,
     #[sqlx(rename = "parentCategoryId")]
     pub parent_category_id: Option<String>,

@@ -369,6 +369,11 @@ model Channel {
   name             String?
   type             String // "text" "voice" "category" "dm" "group_dm"
   topic            String?
+  /// Shared DM chat background, set by any participant (Messenger-style).
+  /// Plaintext like avatars, never E2EE like attachments: the server must be
+  /// able to hand the same image to every participant and to new ones joining
+  /// later, which encrypted per-recipient payloads could not do.
+  backgroundUrl    String?
   position         Int      @default(0)
   parentCategoryId String?
   nsfw             Boolean  @default(false)

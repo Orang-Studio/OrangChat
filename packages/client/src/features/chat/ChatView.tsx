@@ -194,6 +194,7 @@ export function ChatView({
           messages={messages}
           pendingMessageIds={pendingMessageIds}
           channelName={channelName}
+          backgroundUrl={channel.backgroundUrl}
           hasOlder={!!hasNextPage}
           isLoadingOlder={isFetchingNextPage}
           onLoadOlder={loadOlder}

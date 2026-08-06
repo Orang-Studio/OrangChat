@@ -253,7 +253,16 @@ export function registerRealtime(client: QueryClient): void {
 
   // ── Channels ──────────────────────────────────────────
   const upsertChannel = (channel: Channel) => {
-    if (!channel.serverId) return;
+    if (!channel.serverId) {
+      // DM background changes (http::channels PUT /background) arrive here;
+      // conversations have no other editable field, so this is the whole update.
+      client.setQueryData<Conversation[]>(dmKeys.list, (list) =>
+        list?.map((c) =>
+          c.id === channel.id ? { ...c, backgroundUrl: channel.backgroundUrl } : c,
+        ),
+      );
+      return;
+    }
     updateDetail(channel.serverId, (detail) => {
       const exists = detail.channels.some((c) => c.id === channel.id);
       const channels = exists

@@ -1108,6 +1108,31 @@ class AppViewModel @Inject constructor(
     fun removeServerIcon(serverId: String) =
         updateServerSettings(serverId, UpdateServerRequest(iconUrl = ""))
 
+    /** Upload a picked image and point the DM's shared chat background at it. */
+    fun setDmBackground(channelId: String, uri: android.net.Uri) = viewModelScope.launch {
+        runCatching {
+            val part = withContext(Dispatchers.IO) { buildImagePart(appContext, uri) }
+            val uploaded = authRepository.uploadImage(part, "chat-background")
+            socialRepository.setDmBackground(channelId, uploaded.url)
+        }
+            .onSuccess { applyDmBackground(channelId, it.backgroundUrl) }
+            .onFailure { _error.value = it.message ?: "Upload failed" }
+    }
+
+    /** Clear the shared chat background. Explicit null, not a patch. */
+    fun clearDmBackground(channelId: String) = viewModelScope.launch {
+        runCatching { socialRepository.setDmBackground(channelId, null) }
+            .onSuccess { applyDmBackground(channelId, null) }
+            .onFailure { _error.value = it.message ?: "Failed to clear background" }
+    }
+
+    /** Keep the DM list entry in sync with the canonical channel row. */
+    private fun applyDmBackground(channelId: String, url: String?) {
+        _dms.update { conversations ->
+            conversations.map { if (it.id == channelId) it.copy(backgroundUrl = url) else it }
+        }
+    }
+
     fun updateServerSettings(serverId: String, patch: UpdateServerRequest) = viewModelScope.launch {
         runCatching { serverRepository.updateServerSettings(serverId, patch) }
             .onSuccess { refreshServers(); refreshServerDetail(serverId) }
@@ -1385,6 +1410,11 @@ class AppViewModel @Inject constructor(
             is SocketEvent.ChannelCreated -> updateServerChannels { it + event.channel }
             is SocketEvent.ChannelUpdated -> updateServerChannels { list ->
                 list.map { if (it.id == event.channel.id) event.channel else it }
+            }.also {
+                // DM background changes arrive here too (no serverId).
+                if (event.channel.serverId == null) {
+                    applyDmBackground(event.channel.id, event.channel.backgroundUrl)
+                }
             }
             is SocketEvent.ChannelDeleted -> updateServerChannels { list ->
                 list.filterNot { it.id == event.channelId }

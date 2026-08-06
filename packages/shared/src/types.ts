@@ -331,6 +331,8 @@ export interface Channel {
   name: string | null;
   type: ChannelType;
   topic: string | null;
+  /** Shared DM chat background (Messenger-style). Plaintext like avatars. */
+  backgroundUrl: string | null;
   position: number;
   parentCategoryId: string | null;
   nsfw: boolean;
@@ -460,6 +462,8 @@ export interface Conversation {
   type: 'dm' | 'group_dm';
   name: string | null;
   participants: User[];
+  /** Shared DM chat background. Plaintext like avatars, never E2EE. */
+  backgroundUrl: string | null;
   lastMessageAt: string | null;
   latestMessage: Message | null;
 }

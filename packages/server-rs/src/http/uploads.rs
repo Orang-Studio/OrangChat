@@ -55,6 +55,10 @@ fn uploads_dir() -> PathBuf {
 fn max_dim(kind: &str) -> (u32, u32) {
     match kind {
         "banner" => (1200, 480),
+        // A DM chat background is a full-screen wallpaper, so it gets to be
+        // bigger than the avatar crop - but still bounded so nobody can push
+        // a giant file into storage.
+        "chat-background" => (1600, 900),
         "emoji" => (128, 128),
         // A window/tray/favicon never renders above 256, and this one is
         // fetched on every page load by its owner.

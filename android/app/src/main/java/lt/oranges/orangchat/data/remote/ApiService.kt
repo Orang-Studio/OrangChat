@@ -200,6 +200,13 @@ interface ApiService {
     @PATCH("channels/{channelId}")
     suspend fun patchChannel(@Path("channelId") channelId: String, @Body body: PatchChannelRequest): Channel
 
+    /** Set or clear a DM's shared chat background (plaintext, like avatars). */
+    @PUT("channels/{channelId}/background")
+    suspend fun putChannelBackground(
+        @Path("channelId") channelId: String,
+        @Body body: ChannelBackgroundRequest,
+    ): Channel
+
     @DELETE("channels/{channelId}")
     suspend fun deleteChannel(@Path("channelId") channelId: String): Response<Unit>
 

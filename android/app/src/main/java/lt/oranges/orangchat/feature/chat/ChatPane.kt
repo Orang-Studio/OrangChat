@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -69,6 +70,7 @@ import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Stop
@@ -118,6 +120,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import lt.oranges.orangchat.util.absoluteUrl
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
@@ -352,6 +357,12 @@ fun ChatPane(
     onCompareSafetyNumber: (
         (String, (AppViewModel.SafetyNumberVerdict) -> Unit) -> Unit
     )? = null,
+    /** DM-only: shared chat background shown behind the messages. */
+    backgroundUrl: String? = null,
+    /** Non-null only for DMs / group DMs: pick an image for the background. */
+    onSetBackground: ((Uri) -> Unit)? = null,
+    /** Clear the shared background. Shown only while one is set. */
+    onRemoveBackground: (() -> Unit)? = null,
 ) {
     val customEmojis = remember(emojis) { emojis.values.sortedBy { it.name.lowercase() } }
     val c = OrangTheme.colors
@@ -366,6 +377,9 @@ fun ChatPane(
     var contactVerifyBusy by remember { mutableStateOf(false) }
     var contactVerifyError by remember { mutableStateOf<String?>(null) }
     var contactVerified by remember { mutableStateOf(false) }
+    val backgroundPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri -> if (uri != null) onSetBackground?.invoke(uri) }
 
     // Rendered newest-first into a reverseLayout list, so index 0 is the visual
     // bottom. This is what pins the view to the newest message and keeps the
@@ -633,6 +647,32 @@ fun ChatPane(
                         .size(20.dp),
                 )
             }
+            if (onSetBackground != null) {
+                Icon(
+                    Icons.Default.Photo,
+                    contentDescription = "Set chat background",
+                    tint = if (backgroundUrl != null) c.inkMuted else c.inkSecondary,
+                    modifier = Modifier
+                        .clickable {
+                            backgroundPicker.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                            )
+                        }
+                        .padding(6.dp)
+                        .size(20.dp),
+                )
+                if (backgroundUrl != null && onRemoveBackground != null) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Remove chat background",
+                        tint = c.inkSecondary,
+                        modifier = Modifier
+                            .clickable(onClick = onRemoveBackground)
+                            .padding(6.dp)
+                            .size(20.dp),
+                    )
+                }
+            }
         }
         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(c.border))
 
@@ -654,6 +694,16 @@ fun ChatPane(
         // The return affordance floats over history; giving it a row of its own
         // would shorten the conversation precisely when someone is reading it.
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            // Shared DM background, under everything else. Plaintext, like
+            // avatars: everyone in the conversation sees the same image.
+            if (backgroundUrl != null) {
+                AsyncImage(
+                    model = absoluteUrl(backgroundUrl),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
             // Messages. reverseLayout: first item = visual bottom = newest.
             LazyColumn(
                 state = listState,

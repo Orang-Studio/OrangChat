@@ -129,6 +129,25 @@ pub async fn update_channel(
         .await?)
 }
 
+/// Set or clear a DM conversation's shared background image (Messenger-style).
+/// Callers enforce that the channel is a DM and the user a participant; the
+/// url itself is an upload result (origin-relative `/uploads/...` or a
+/// Cloudinary `https://...`), which the endpoint validates.
+pub async fn set_channel_background(
+    state: &AppState,
+    channel_id: &str,
+    url: Option<String>,
+) -> AppResult<ChannelRow> {
+    Ok(sqlx::query_as(
+        r#"UPDATE "Channel" SET "backgroundUrl" = $2, "updatedAt" = now()
+           WHERE id = $1 RETURNING *"#,
+    )
+    .bind(channel_id)
+    .bind(url)
+    .fetch_one(&state.pool)
+    .await?)
+}
+
 /// Bulk reorder / re-parent, for drag-and-drop channel lists. One transaction, so
 /// a rejected entry cannot leave the sidebar half-rewritten. Ids are checked
 /// against `serverId` first: otherwise a caller could drag a channel out of a

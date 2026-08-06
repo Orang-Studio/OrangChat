@@ -1,17 +1,20 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
-import { Loader2, Phone, UserPlus, Video } from "lucide-react";
-import type { Channel, ServerMember } from "@orangchat/shared";
+import { useQueryClient } from "@tanstack/react-query";
+import { Image, Loader2, Phone, Trash2, UserPlus, Video } from "lucide-react";
+import type { Channel, Conversation, ServerMember } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
+import { api } from "../../lib/api";
 import { useAuthStore } from "../../stores/auth";
 import { Avatar } from "../../components/Avatar";
 import { ChatView } from "../chat/ChatView";
+import { uploadImage } from "../uploads/api";
 import { EncryptionBadge } from "../e2ee/EncryptionBadge";
 import { PlaintextNotice } from "../e2ee/PlaintextNotice";
 import { VerificationNotice } from "../e2ee/VerificationNotice";
 import { callActions, useCallStore } from "../voice/callStore";
 import { useOtherDeviceIn, voiceActions } from "../voice/store";
-import { conversationToChannel, useConversations } from "./queries";
+import { conversationToChannel, dmKeys, useConversations } from "./queries";
 import { DmIntro } from "./DmIntro";
 import { NewDmDialog } from "./NewDmDialog";
 import { ActivityStatus } from "../../components/ActivityStatus";
@@ -56,10 +59,49 @@ export function DmView() {
   const selfId = useAuthStore((s) => s.user?.id);
   const { data: conversations, isLoading } = useConversations();
   const [addOpen, setAddOpen] = useState(false);
+  const [backgroundBusy, setBackgroundBusy] = useState(false);
+  const backgroundInput = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
   const currentCall = useCallStore((s) => s.current);
   const onCall = currentCall?.channelId === channelId;
 
   const conversation = conversations?.find((c) => c.id === channelId);
+
+  /** Apply the server's answer to the sidebar cache so the pane re-renders. */
+  const applyBackground = (url: string | null) => {
+    queryClient.setQueryData<Conversation[]>(dmKeys.list, (list) =>
+      list?.map((c) => (c.id === channelId ? { ...c, backgroundUrl: url } : c)),
+    );
+  };
+
+  const setBackground = async (file: File) => {
+    setBackgroundBusy(true);
+    try {
+      const url = await uploadImage(file, "chat-background");
+      const channel = await api<Channel>(`/channels/${channelId}/background`, {
+        method: "PUT",
+        json: { url },
+      });
+      applyBackground(channel.backgroundUrl);
+    } catch {
+      // Keep the old background; an upload or save failure is not worth a dialog.
+    } finally {
+      setBackgroundBusy(false);
+    }
+  };
+
+  const removeBackground = async () => {
+    setBackgroundBusy(true);
+    try {
+      const channel = await api<Channel>(`/channels/${channelId}/background`, {
+        method: "PUT",
+        json: { url: null },
+      });
+      applyBackground(channel.backgroundUrl);
+    } finally {
+      setBackgroundBusy(false);
+    }
+  };
 
   // Everyone but the viewer - who the conversation is *with*.
   const others = useMemo(
@@ -130,6 +172,22 @@ export function DmView() {
       >
         <Video aria-hidden className="size-4" />
       </HeaderButton>
+      <HeaderButton
+        label={conversation.backgroundUrl ? "Change chat background" : "Set chat background"}
+        disabled={backgroundBusy}
+        onClick={() => backgroundInput.current?.click()}
+      >
+        {backgroundBusy ? (
+          <Loader2 aria-hidden className="size-4 animate-spin" />
+        ) : (
+          <Image aria-hidden className="size-4" />
+        )}
+      </HeaderButton>
+      {conversation.backgroundUrl && (
+        <HeaderButton label="Remove chat background" disabled={backgroundBusy} onClick={() => void removeBackground()}>
+          <Trash2 aria-hidden className="size-4" />
+        </HeaderButton>
+      )}
       {conversation.type === "group_dm" && (
         <HeaderButton label="Add people" onClick={() => setAddOpen(true)}>
           <UserPlus aria-hidden className="size-4" />
@@ -140,6 +198,17 @@ export function DmView() {
 
   return (
     <>
+      <input
+        ref={backgroundInput}
+        type="file"
+        accept="image/png,image/jpeg,image/gif,image/webp"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) void setBackground(file);
+          event.target.value = "";
+        }}
+      />
       <ChatView
         key={channel.id}
         channel={channel}

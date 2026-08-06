@@ -751,6 +751,17 @@ fun HomeScreen(
                                     } else {
                                         null
                                     },
+                                    backgroundUrl = convo?.backgroundUrl,
+                                    onSetBackground = if (convo != null) {
+                                        { uri -> appViewModel.setDmBackground(channelId, uri) }
+                                    } else {
+                                        null
+                                    },
+                                    onRemoveBackground = if (convo != null) {
+                                        { appViewModel.clearDmBackground(channelId) }
+                                    } else {
+                                        null
+                                    },
                                     // Groups get the same comparison, but §6.3
                                     // keeps their number informational: a match
                                     // confirms the membership and pins nothing.

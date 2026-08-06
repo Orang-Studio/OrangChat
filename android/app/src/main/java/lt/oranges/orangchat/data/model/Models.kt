@@ -213,6 +213,10 @@ data class Channel(
     val userLimit: Int = 0,
     /** Voice only, bits per second. */
     val bitrate: Int = 64000,
+    /** DM-only: shared chat background, origin-relative or https. Plaintext
+     *  like avatars, not E2EE like attachments: the server serves one image to
+     *  every participant, including late joiners. */
+    val backgroundUrl: String? = null,
 )
 
 @Serializable
@@ -368,6 +372,8 @@ data class Conversation(
     val participants: List<User> = emptyList(),
     val lastMessageAt: String? = null,
     val latestMessage: Message? = null,
+    /** DM-only: shared chat background, plaintext like avatars. */
+    val backgroundUrl: String? = null,
 )
 
 @Serializable

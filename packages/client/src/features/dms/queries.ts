@@ -33,6 +33,7 @@ export function conversationToChannel(
     name: conversationName(conversation, selfId),
     type: conversation.type,
     topic: null,
+    backgroundUrl: conversation.backgroundUrl,
     position: 0,
     parentCategoryId: null,
     nsfw: false,

@@ -8,6 +8,8 @@ interface MessageListProps {
   messages: Message[];
   pendingMessageIds: Set<string>;
   channelName: string;
+  /** Shared DM chat background image, drawn behind the messages. */
+  backgroundUrl?: string | null;
   hasOlder: boolean;
   isLoadingOlder: boolean;
   onLoadOlder: () => void;
@@ -63,6 +65,7 @@ export function MessageList({
   messages,
   pendingMessageIds,
   channelName,
+  backgroundUrl,
   hasOlder,
   isLoadingOlder,
   onLoadOlder,
@@ -166,6 +169,14 @@ export function MessageList({
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
+      {backgroundUrl && (
+        <img
+          src={backgroundUrl}
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+        />
+      )}
       {missingJump && (
         <p
           role="status"

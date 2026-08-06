@@ -34,17 +34,27 @@ const NOTIFY_EVENT = "orangchat:notification-shown";
 
 void webFrame.executeJavaScript(`
   (() => {
-    const Native = window.Notification;
-    if (!Native || Native.__orangchatWrapped) return;
+    const mark = ${JSON.stringify(NOTIFY_EVENT)};
 
-    const Wrapped = new Proxy(Native, {
-      construct(target, args) {
-        try { window.dispatchEvent(new Event(${JSON.stringify(NOTIFY_EVENT)})); } catch {}
-        return Reflect.construct(target, args);
-      },
-    });
-    Object.defineProperty(Wrapped, "__orangchatWrapped", { value: true });
-    window.Notification = Wrapped;
+    const Native = window.Notification;
+    if (Native && !Native.__orangchatWrapped) {
+      const Wrapped = new Proxy(Native, {
+        construct(target, args) {
+          try { window.dispatchEvent(new Event(mark)); } catch {}
+          return Reflect.construct(target, args);
+        },
+      });
+      Object.defineProperty(Wrapped, "__orangchatWrapped", { value: true });
+      window.Notification = Wrapped;
+    }
+
+    // The page surfaces DMs and mentions through the service worker, so the
+    // constructor above never fires for the notifications that actually appear.
+    const Original = ServiceWorkerRegistration.prototype.showNotification;
+    ServiceWorkerRegistration.prototype.showNotification = function (...args) {
+      try { window.dispatchEvent(new Event(mark)); } catch {}
+      return Original.apply(this, args);
+    };
   })();
 `);
 

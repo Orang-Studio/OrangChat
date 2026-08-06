@@ -38,6 +38,7 @@ pub fn routes() -> Router<AppState> {
             "/channels/:channelId/pins/:messageId",
             axum::routing::put(pin_message).delete(unpin_message),
         )
+        .route("/channels/:channelId/background", axum::routing::put(put_background))
         .route("/channels/:channelId/voice", get(voice_participants))
 }
 
@@ -505,6 +506,56 @@ async fn unpin_message(
         &json!({ "channelId": channel_id, "messageId": message_id, "pinned": false }),
     );
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct BackgroundBody {
+    url: Option<String>,
+}
+
+/// Set (or, with `null`, clear) the shared background image of a DM or group
+/// DM. Any participant may change it - there is no moderator in a DM - and the
+/// image is plaintext like an avatar, never E2EE like an attachment, because
+/// the whole point is one picture the server hands to everyone in the
+/// conversation, including people who join after it was set.
+async fn put_background(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Path(channel_id): Path<String>,
+    Json(body): Json<BackgroundBody>,
+) -> AppResult<Json<Value>> {
+    let ch = channel::require_channel_access(&state, &channel_id, &user.user_id).await?;
+    if ch.server_id.is_some() {
+        return Err(bad_request("Only DMs have a shared background"));
+    }
+
+    let url = match body.url {
+        None => None,
+        Some(url) => {
+            let clean = url.trim().to_string();
+            // The upload endpoint returns only `/uploads/<id>.<ext>` and
+            // `https://res.cloudinary.com/...`; anything else is not something
+            // this app produced, so it is not an image we can vouch for.
+            if clean.is_empty()
+                || clean.len() > 2048
+                || !(clean.starts_with('/') || clean.starts_with("https://"))
+            {
+                return Err(bad_request("Invalid input"));
+            }
+            Some(clean)
+        }
+    };
+
+    let updated = channel::set_channel_background(&state, &channel_id, url).await?;
+    let dto = to_channel(&updated);
+    // DM participants live in the channel room (http::dms joins each socket on
+    // open), so this reaches exactly the people who may see it.
+    let _ = state
+        .io()
+        .to(format!("channel:{channel_id}"))
+        .emit("channel:updated", &dto);
+    Ok(Json(json!(dto)))
 }
 
 async fn voice_participants(

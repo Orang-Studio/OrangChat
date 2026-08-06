@@ -241,6 +241,10 @@ data class PatchChannelRequest(
     val bitrate: Int? = null,
 )
 
+/** `PUT /channels/{channelId}/background`; null clears the shared DM background. */
+@Serializable
+data class ChannelBackgroundRequest(val url: String? = null)
+
 @Serializable
 data class CreateInviteRequest(val expiresInSeconds: Long? = null, val maxUses: Int? = null)
 

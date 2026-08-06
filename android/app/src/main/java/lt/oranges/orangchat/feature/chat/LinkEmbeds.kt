@@ -3,9 +3,11 @@ package lt.oranges.orangchat.feature.chat
 import android.annotation.SuppressLint
 import android.graphics.Color
 import android.net.Uri
+import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.view.View
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -159,7 +161,14 @@ private fun YoutubeEmbed(video: YoutubeVideo) {
         factory = { context ->
             WebView(context).apply {
                 setBackgroundColor(Color.BLACK)
+                // The YouTube player needs a WebChromeClient for its media
+                // surface; a bare WebViewClient is the classic black-square
+                // cause, because the video never gets a compositing surface.
                 webViewClient = WebViewClient()
+                webChromeClient = WebChromeClient()
+                // Hardware-composited video on top of the Compose canvas; with
+                // software rendering the player paints nothing at all.
+                setLayerType(View.LAYER_TYPE_HARDWARE, null)
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
                 settings.allowFileAccess = false
