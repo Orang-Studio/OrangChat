@@ -70,6 +70,7 @@ import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Search
@@ -400,7 +401,7 @@ fun ChatPane(
     var contactVerifyBusy by remember { mutableStateOf(false) }
     var contactVerifyError by remember { mutableStateOf<String?>(null) }
     var contactVerified by remember { mutableStateOf(false) }
-    var backgroundMenuOpen by remember { mutableStateOf(false) }
+    var headerMenuOpen by remember { mutableStateOf(false) }
     val backgroundPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
     ) { uri -> if (uri != null) onSetBackground?.invoke(uri) }
@@ -616,17 +617,6 @@ fun ChatPane(
                     Text(topic, color = c.inkMuted, fontSize = 12.sp, maxLines = 1)
                 }
             }
-            if (onSearch != null) {
-                Icon(
-                    Icons.Default.Search,
-                    contentDescription = "Search messages",
-                    tint = c.inkSecondary,
-                    modifier = Modifier
-                        .clickable(onClick = onSearch)
-                        .padding(6.dp)
-                        .size(20.dp),
-                )
-            }
             if (encryptionInfo != null) {
                 Icon(
                     imageVector = if (encryptionInfo.verified) Icons.Default.Shield else Icons.Default.Lock,
@@ -662,58 +652,70 @@ fun ChatPane(
                         .size(20.dp),
                 )
             }
-            if (onAddPeople != null) {
+            // Everything that isn't a call or a state indicator goes behind one
+            // menu. A phone header fits about four taps before the title starts
+            // truncating, and a row of anonymous glyphs - a bare X for "remove
+            // the background" among them - is not readable at any width.
+            val overflow = buildList {
+                if (onSearch != null) {
+                    add(MenuItem("Search messages", Icons.Default.Search, onClick = onSearch))
+                }
+                if (onAddPeople != null) {
+                    add(MenuItem("Add people", Icons.Default.GroupAdd, onClick = onAddPeople))
+                }
+                if (onSetBackground != null) {
+                    add(
+                        MenuItem(
+                            if (backgroundUrl != null) "Change background" else "Set chat background",
+                            Icons.Default.Photo,
+                        ) {
+                            backgroundPicker.launch(
+                                PickVisualMediaRequest(
+                                    ActivityResultContracts.PickVisualMedia.ImageOnly,
+                                ),
+                            )
+                        },
+                    )
+                    if (backgroundUrl != null && onRemoveBackground != null) {
+                        add(
+                            MenuItem(
+                                "Remove background for everyone",
+                                Icons.Default.Delete,
+                                destructive = true,
+                                onClick = onRemoveBackground,
+                            ),
+                        )
+                    }
+                }
+            }
+            // A channel header carries search alone rather than hiding the one
+            // thing in it behind a second tap.
+            if (overflow.size == 1) {
+                val only = overflow.first()
                 Icon(
-                    Icons.Default.GroupAdd,
-                    contentDescription = "Add people",
+                    only.icon ?: Icons.Default.MoreVert,
+                    contentDescription = only.label,
                     tint = c.inkSecondary,
                     modifier = Modifier
-                        .clickable(onClick = onAddPeople)
+                        .clickable(onClick = only.onClick)
                         .padding(6.dp)
                         .size(20.dp),
                 )
-            }
-            if (onSetBackground != null) {
-                // One control, not two: a bare X beside the picker reads as
-                // "close the conversation", and it changes the room for
-                // everyone in it. Behind a menu, both choices are named.
+            } else if (overflow.isNotEmpty()) {
                 Box {
                     Icon(
-                        Icons.Default.Photo,
-                        contentDescription = "Chat background",
+                        Icons.Default.MoreVert,
+                        contentDescription = "More",
                         tint = c.inkSecondary,
                         modifier = Modifier
-                            .clickable { backgroundMenuOpen = true }
+                            .clickable { headerMenuOpen = true }
                             .padding(6.dp)
                             .size(20.dp),
                     )
                     OrangDropdownMenu(
-                        expanded = backgroundMenuOpen,
-                        onDismiss = { backgroundMenuOpen = false },
-                        items = buildList {
-                            add(
-                                MenuItem(
-                                    if (backgroundUrl != null) "Change picture" else "Choose a picture",
-                                    Icons.Default.Photo,
-                                ) {
-                                    backgroundPicker.launch(
-                                        PickVisualMediaRequest(
-                                            ActivityResultContracts.PickVisualMedia.ImageOnly,
-                                        ),
-                                    )
-                                },
-                            )
-                            if (backgroundUrl != null && onRemoveBackground != null) {
-                                add(
-                                    MenuItem(
-                                        "Remove for everyone",
-                                        Icons.Default.Delete,
-                                        destructive = true,
-                                        onClick = onRemoveBackground,
-                                    ),
-                                )
-                            }
-                        },
+                        expanded = headerMenuOpen,
+                        onDismiss = { headerMenuOpen = false },
+                        items = overflow,
                     )
                 }
             }

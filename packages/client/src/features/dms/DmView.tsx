@@ -1,20 +1,13 @@
 import { useMemo, useRef, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Image, ImagePlus, Loader2, Phone, Trash2, UserPlus, Video } from "lucide-react";
+import { ImagePlus, Loader2, Phone, Trash2, UserPlus, Video } from "lucide-react";
 import type { Channel, Conversation, ServerMember } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "../../components/ui/DropdownMenu";
 import { api } from "../../lib/api";
 import { useAuthStore } from "../../stores/auth";
 import { Avatar } from "../../components/Avatar";
-import { ChatView } from "../chat/ChatView";
+import { ChatView, type HeaderMenuItem } from "../chat/ChatView";
 import { announce } from "../chat/notices";
 import { uploadImage } from "../uploads/api";
 import { EncryptionBadge } from "../e2ee/EncryptionBadge";
@@ -187,50 +180,41 @@ export function DmView() {
       >
         <Video aria-hidden className="size-4" />
       </HeaderButton>
-      {/* One control, not two: a bare remove icon next to the picker reads as
-          "close the conversation", and it changes the room for everyone in it.
-          Behind a menu, both choices are named. */}
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          aria-label="Chat background"
-          title="Chat background"
-          disabled={backgroundBusy}
-          className={cn(headerButtonClass, "text-ink-muted hover:bg-surface-3 hover:text-ink")}
-        >
-          {backgroundBusy ? (
-            <Loader2 aria-hidden className="size-4 animate-spin" />
-          ) : (
-            <Image aria-hidden className="size-4" />
-          )}
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Chat background</DropdownMenuLabel>
-          {conversation.backgroundUrl && (
-            <img
-              src={conversation.backgroundUrl}
-              alt=""
-              className="mx-1 mb-1 h-20 w-full rounded-lg border border-border object-cover"
-            />
-          )}
-          <DropdownMenuItem onSelect={() => backgroundInput.current?.click()}>
-            <ImagePlus aria-hidden className="size-4" />
-            {conversation.backgroundUrl ? "Change picture" : "Choose a picture"}
-          </DropdownMenuItem>
-          {conversation.backgroundUrl && (
-            <DropdownMenuItem danger onSelect={() => void removeBackground()}>
-              <Trash2 aria-hidden className="size-4" />
-              Remove for everyone
-            </DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {conversation.type === "group_dm" && (
-        <HeaderButton label="Add people" onClick={() => setAddOpen(true)}>
-          <UserPlus aria-hidden className="size-4" />
-        </HeaderButton>
+      {/* The background moved into the menu, which closes on pick - so the
+          upload needs somewhere of its own to say it is still going. */}
+      {backgroundBusy && (
+        <span role="status" aria-label="Saving chat background" className="p-2 text-ink-muted">
+          <Loader2 aria-hidden className="size-4 animate-spin" />
+        </span>
       )}
     </>
   );
+
+  // Everything that isn't a call goes behind the header's one menu: named,
+  // rather than a row of anonymous icons, and the background's remove is a
+  // deliberate second tap because it changes the room for everyone in it.
+  const headerMenu: HeaderMenuItem[] = [
+    ...(conversation.type === "group_dm"
+      ? [{ label: "Add people", icon: UserPlus, onSelect: () => setAddOpen(true) }]
+      : []),
+    {
+      label: conversation.backgroundUrl ? "Change background" : "Set chat background",
+      icon: ImagePlus,
+      disabled: backgroundBusy,
+      onSelect: () => backgroundInput.current?.click(),
+    },
+    ...(conversation.backgroundUrl
+      ? [
+          {
+            label: "Remove background for everyone",
+            icon: Trash2,
+            danger: true,
+            disabled: backgroundBusy,
+            onSelect: () => void removeBackground(),
+          },
+        ]
+      : []),
+  ];
 
   return (
     <>
@@ -250,6 +234,7 @@ export function DmView() {
         channel={channel}
         members={members}
         headerActions={headerActions}
+        headerMenu={headerMenu}
         headerIcon={
           others[0] ? (
             <Avatar user={others[0]} status={others.length === 1 ? others[0].status : undefined} className="size-7" />

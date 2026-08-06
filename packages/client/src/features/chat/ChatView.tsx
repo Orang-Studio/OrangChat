@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
-import { AtSign, Hash, Loader2, Lock, Menu, Search, ShieldAlert, Users } from "lucide-react";
+import {
+  AtSign,
+  Hash,
+  Loader2,
+  Lock,
+  Menu,
+  MoreVertical,
+  Search,
+  ShieldAlert,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import {
   Permissions,
   hasPermission,
@@ -11,6 +22,12 @@ import {
 } from "@orangchat/shared";
 import { useAuthStore } from "../../stores/auth";
 import { panelActions } from "../../stores/panels";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../../components/ui/DropdownMenu";
 import { useMyPermissions } from "../servers/queries";
 import { useMessages } from "../messages/queries";
 import { SearchDialog } from "../search/SearchDialog";
@@ -25,11 +42,26 @@ import { MessageList } from "./MessageList";
 import { Composer } from "./Composer";
 import { TypingIndicator } from "./TypingIndicator";
 
+/** A header action that lives in the overflow menu rather than as its own icon. */
+export interface HeaderMenuItem {
+  label: string;
+  icon: LucideIcon;
+  onSelect: () => void;
+  danger?: boolean;
+  disabled?: boolean;
+}
+
 interface ChatViewProps {
   channel: Channel;
   members: ServerMember[];
-  /** Extra header controls (e.g. group-DM "add people"). */
+  /** Extra header controls (e.g. calls). Kept for the few that must stay one tap. */
   headerActions?: ReactNode;
+  /**
+   * Secondary actions, folded into the header's overflow menu. Everything that
+   * is not time-sensitive belongs here - a header of eight anonymous icons is
+   * how the DM header got unreadable.
+   */
+  headerMenu?: HeaderMenuItem[];
   /** DM avatar/group image shown beside the conversation name. */
   headerIcon?: ReactNode;
   /** Live activity beneath a DM conversation name. */
@@ -53,6 +85,7 @@ export function ChatView({
   channel,
   members,
   headerActions,
+  headerMenu,
   headerIcon,
   headerSubtitle,
   intro,
@@ -115,6 +148,10 @@ export function ChatView({
 
   const channelName = channel.name ?? "channel";
   const HeaderIcon = HEADER_ICON[channel.type as keyof typeof HEADER_ICON] ?? Hash;
+  const menuItems: HeaderMenuItem[] = [
+    { label: "Search messages", icon: Search, onSelect: () => setSearchOpen(true) },
+    ...(headerMenu ?? []),
+  ];
 
   useDocumentTitle(channelName);
 
@@ -153,14 +190,41 @@ export function ChatView({
               </span>
             ))}
           {headerActions}
-          <button
-            type="button"
-            onClick={() => setSearchOpen(true)}
-            aria-label="Search messages"
-            className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink"
-          >
-            <Search aria-hidden className="size-5" />
-          </button>
+          {/* Search leads the overflow, and stands on its own when nothing else
+              is in there - a channel header has room, a DM header does not. */}
+          {menuItems.length === 1 ? (
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              aria-label="Search messages"
+              className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink"
+            >
+              <Search aria-hidden className="size-5" />
+            </button>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label="More"
+                title="More"
+                className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink"
+              >
+                <MoreVertical aria-hidden className="size-5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {menuItems.map(({ label, icon: Icon, onSelect, danger, disabled }) => (
+                  <DropdownMenuItem
+                    key={label}
+                    danger={danger}
+                    disabled={disabled}
+                    onSelect={onSelect}
+                  >
+                    <Icon aria-hidden className="size-4" />
+                    {label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           {channel.serverId && (
             <button
               type="button"
