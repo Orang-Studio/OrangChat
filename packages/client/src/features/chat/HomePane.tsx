@@ -4,7 +4,7 @@ import { panelActions } from "../../stores/panels";
 import { LogoMark } from "../../components/LogoMark";
 import { useServers } from "../servers/queries";
 
-/** The `/` landing pane inside the shell - greets and points at the rail. */
+/** The `/app` home pane inside the shell - greets and points at the rail. */
 export function HomePane() {
   const status = useConnectionStore((s) => s.status);
   const { data: servers } = useServers();

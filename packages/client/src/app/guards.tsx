@@ -19,6 +19,6 @@ export function GuestOnly() {
   const status = useAuthStore((s) => s.status);
 
   if (status === "loading") return <SplashScreen />;
-  if (status === "authenticated") return <Navigate to="/" replace />;
+  if (status === "authenticated") return <Navigate to="/app" replace />;
   return <Outlet />;
 }

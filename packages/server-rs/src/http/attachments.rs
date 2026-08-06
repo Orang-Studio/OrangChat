@@ -41,6 +41,7 @@ use serde_json::{json, Value};
 
 use crate::error::{AppError, AppResult};
 use crate::http::AuthUser;
+use crate::http::uploads::process_image;
 use crate::ids::cuid;
 use crate::services::attachment_crypto::ENVELOPE_OVERHEAD;
 use crate::services::cloudinary::public_id_from_url;
@@ -66,6 +67,10 @@ pub const MAX_PER_MESSAGE: usize = 10;
 /// An OrangMove token is 32 random bytes as base64url - see its token.rs. Check
 /// the shape before spending a request on it.
 const ORANGMOVE_TOKEN_LEN: usize = 43;
+
+/// Upper bound on a media duration, in seconds. Prevents a lying client from
+/// freezing a number on every receiver that fits whatever it wants there.
+const MAX_MEDIA_SECS: f64 = 24.0 * 60.0 * 60.0;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -348,10 +353,16 @@ fn content_type_for(filename: &str) -> &'static str {
         "gif" => "image/gif",
         "webp" => "image/webp",
         "mp4" => "video/mp4",
+        "m4v" => "video/x-m4v",
         "webm" => "video/webm",
+        "mkv" => "video/x-matroska",
         "mov" => "video/quicktime",
+        "3gp" => "video/3gpp",
         "mp3" => "audio/mpeg",
-        "ogg" | "opus" => "audio/ogg",
+        "m4a" | "mp4a" => "audio/mp4",
+        "aac" => "audio/aac",
+        "ogg" | "oga" | "opus" => "audio/ogg",
+        "weba" => "audio/webm",
         "wav" => "audio/wav",
         "flac" => "audio/flac",
         "pdf" => "application/pdf",
@@ -393,6 +404,8 @@ fn descriptor(
     size: i32,
     width: Option<i32>,
     height: Option<i32>,
+    duration: Option<f64>,
+    thumbnail_url: Option<&str>,
     storage: &str,
     flagged: bool,
     expires_at: Option<NaiveDateTime>,
@@ -405,6 +418,8 @@ fn descriptor(
         "size": size,
         "width": width,
         "height": height,
+        "duration": duration,
+        "thumbnailUrl": thumbnail_url,
         "storage": storage,
         "flagged": flagged,
         "expiresAt": iso_opt(expires_at),
@@ -420,6 +435,8 @@ async fn insert_pending(
     content_type: &str,
     size: i32,
     dims: Option<(u32, u32)>,
+    duration: Option<f64>,
+    thumbnail_url: Option<&str>,
     storage: &str,
     flagged: bool,
     expires_at: Option<NaiveDateTime>,
@@ -432,8 +449,8 @@ async fn insert_pending(
 
     sqlx::query(
         r#"INSERT INTO "PendingAttachment"
-             (id, "uploaderId", url, filename, "contentType", size, width, height, storage, flagged, "expiresAt")
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"#,
+             (id, "uploaderId", url, filename, "contentType", size, width, height, duration, "thumbnailUrl", storage, flagged, "expiresAt")
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"#,
     )
     .bind(&id)
     .bind(uploader_id)
@@ -443,6 +460,8 @@ async fn insert_pending(
     .bind(size)
     .bind(width)
     .bind(height)
+    .bind(duration)
+    .bind(thumbnail_url)
     .bind(storage)
     .bind(flagged)
     .bind(expires_at)
@@ -457,6 +476,8 @@ async fn insert_pending(
         size,
         width,
         height,
+        duration,
+        thumbnail_url,
         storage,
         flagged,
         expires_at,
@@ -486,6 +507,59 @@ struct UploadQuery {
     sealed: Option<u8>,
 }
 
+/// A duration the client measured on its side (audio length, video length) as
+/// a string number of seconds. Only persisted for audio/video; on anything
+/// else it is ignored, and a value that fails to parse is the client's bug.
+fn parse_duration(raw: Option<&str>, is_media: bool) -> AppResult<Option<f64>> {
+    let Some(raw) = raw.filter(|r| !r.is_empty()) else {
+        return Ok(None);
+    };
+    if !is_media {
+        return Ok(None);
+    }
+    let seconds: f64 = raw
+        .parse()
+        .map_err(|_| AppError::BadRequest("Invalid media duration".into()))?;
+    if !seconds.is_finite() || seconds <= 0.0 || seconds > MAX_MEDIA_SECS {
+        return Err(AppError::BadRequest("Invalid media duration".into()));
+    }
+    Ok(Some(seconds))
+}
+
+/// Store a client-made video still the same way the main bytes are stored -
+/// re-encoded to bound it, encrypted where the bytes are encrypted - and hand
+/// back the url to keep next to the attachment.
+async fn store_thumbnail(state: &AppState, bytes: Vec<u8>) -> AppResult<String> {
+    let (out, ext) = tokio::task::spawn_blocking(move || process_image(&bytes, "avatar"))
+        .await
+        .map_err(|_| AppError::Internal("Thumbnail processing failed".into()))??;
+    let id = cuid();
+
+    if let Some(cloudinary) = &state.cloudinary {
+        let cipher = state
+            .attachment_cipher
+            .as_ref()
+            .ok_or_else(|| AppError::Internal("Attachment encryption is not configured".into()))?;
+        let encrypted = cipher.encrypt(&out, &id)?;
+        let public_id = encrypted_public_id(&id);
+        if let Err(e) = cloudinary.upload(encrypted, &public_id, "raw").await {
+            let _ = cloudinary.destroy(&public_id, "raw").await;
+            return Err(e);
+        }
+        return Ok(encrypted_delivery_url(&id, Some(ext)));
+    }
+
+    let name = format!("{id}.{ext}");
+    let dir = attachments_dir();
+    tokio::fs::create_dir_all(&dir)
+        .await
+        .map_err(|_| AppError::Internal("Failed to store thumbnail".into()))?;
+    tokio::fs::write(dir.join(&name), &out)
+        .await
+        .map_err(|_| AppError::Internal("Failed to store thumbnail".into()))?;
+    Ok(format!("/attachments/{name}"))
+}
+
 async fn upload_attachment(
     user: AuthUser,
     State(state): State<AppState>,
@@ -504,21 +578,39 @@ async fn upload_attachment(
     .await?;
 
     let mut found: Option<(String, Vec<u8>)> = None;
+    let mut duration_raw: Option<String> = None;
+    let mut thumbnail: Option<(String, Vec<u8>)> = None;
 
     while let Some(field) = multipart
         .next_field()
         .await
         .map_err(|_| AppError::BadRequest("Invalid upload".into()))?
     {
-        if field.name() != Some("file") {
-            continue;
+        match field.name() {
+            Some("file") if found.is_none() => {
+                let filename = clean_filename(field.file_name().unwrap_or("file"));
+                let data = field.bytes().await.map_err(|_| {
+                    AppError::BadRequest("File is too large (max 10 MB for a direct upload)".into())
+                })?;
+                found = Some((filename, data.to_vec()));
+            }
+            Some("duration") => {
+                duration_raw = Some(
+                    field
+                        .text()
+                        .await
+                        .map_err(|_| AppError::BadRequest("Invalid media duration".into()))?,
+                );
+            }
+            Some("thumbnail") => {
+                let filename = clean_filename(field.file_name().unwrap_or("thumb"));
+                let data = field.bytes().await.map_err(|_| {
+                    AppError::BadRequest("Thumbnail is too large".into())
+                })?;
+                thumbnail = Some((filename, data.to_vec()));
+            }
+            _ => {}
         }
-        let filename = clean_filename(field.file_name().unwrap_or("file"));
-        let data = field.bytes().await.map_err(|_| {
-            AppError::BadRequest("File is too large (max 10 MB for a direct upload)".into())
-        })?;
-        found = Some((filename, data.to_vec()));
-        break;
     }
 
     let (filename, bytes) = found.ok_or_else(|| AppError::BadRequest("No file provided".into()))?;
@@ -535,10 +627,37 @@ async fn upload_attachment(
 
     let content_type = content_type_for(&filename);
     let is_image = content_type.starts_with("image/");
+    let is_media = content_type.starts_with("audio/") || content_type.starts_with("video/");
     let dims = is_image.then(|| image_dims(&bytes)).flatten();
+    let duration = parse_duration(duration_raw.as_deref(), is_media)?;
     let size = bytes.len() as i32;
     let id = cuid();
     let ext = safe_extension(&filename);
+
+    // A video's first frame rides the same upload. It is re-encoded and
+    // moderated like any other image; a frame moderation dislikes simply means
+    // no preview, never a withheld attachment.
+    let thumbnail_url = if is_media {
+        match thumbnail.filter(|(_, bytes)| !bytes.is_empty()) {
+            Some((thumb_name, thumb)) => {
+                let thumb_type = content_type_for(&thumb_name);
+                let flagged = image_moderation::flag_bytes(
+                    state.image_moderation.as_deref(),
+                    &thumb,
+                    thumb_type,
+                )
+                .await;
+                if flagged {
+                    None
+                } else {
+                    Some(store_thumbnail(&state, thumb).await?)
+                }
+            }
+            None => None,
+        }
+    } else {
+        None
+    };
 
     let flagged = if is_image {
         image_moderation::flag_bytes(state.image_moderation.as_deref(), &bytes, content_type).await
@@ -564,6 +683,8 @@ async fn upload_attachment(
             content_type,
             size,
             dims,
+            duration,
+            thumbnail_url.as_deref(),
             "cloudinary",
             flagged,
             None,
@@ -597,6 +718,8 @@ async fn upload_attachment(
         content_type,
         size,
         dims,
+        duration,
+        thumbnail_url.as_deref(),
         "local",
         flagged,
         None,
@@ -668,6 +791,8 @@ async fn upload_sealed(
             "application/octet-stream",
             size,
             None,
+            None,
+            None,
             "cloudinary",
             false,
             None,
@@ -695,6 +820,8 @@ async fn upload_sealed(
         "sealed",
         "application/octet-stream",
         size,
+        None,
+        None,
         None,
         "local",
         false,
@@ -777,6 +904,17 @@ pub async fn sweep_pending(state: &AppState) -> AppResult<u64> {
 #[derive(Deserialize)]
 struct ExternalBody {
     token: String,
+    /// Optional media length in seconds, measured by the sender's client.
+    /// There is no way to derive it server-side: the bytes never come through
+    /// this process, and OrangMove reports every file as a generic blob.
+    #[serde(default)]
+    duration: Option<f64>,
+    /// Id of a separately uploaded still image (the video's first frame) to
+    /// claim as this attachment's thumbnail. Uploaded through the normal
+    /// endpoint first, then consumed here so it can never be attached to a
+    /// message as a file of its own.
+    #[serde(rename = "thumbnailId", default)]
+    thumbnail_id: Option<String>,
 }
 
 /// What OrangMove's `/api/meta/:token` returns (store::Meta).
@@ -846,8 +984,46 @@ async fn register_external(
     // OrangMove records every upload as application/octet-stream, so the name is
     // the only thing left to go on.
     let content_type = content_type_for(&filename);
+    let is_media = content_type.starts_with("audio/") || content_type.starts_with("video/");
     let size = i32::try_from(meta.size)
         .map_err(|_| AppError::BadRequest("That file is too large".into()))?;
+
+    let duration = match body.duration {
+        Some(d) if is_media => {
+            if !d.is_finite() || d <= 0.0 || d > MAX_MEDIA_SECS {
+                return Err(AppError::BadRequest("Invalid media duration".into()));
+            }
+            Some(d)
+        }
+        _ => None,
+    };
+
+    // The thumbnail was uploaded through the normal endpoint as its own
+    // pending row; take it now so it can't be attached anywhere else. A
+    // moderation flag on the frame is treated as "no preview".
+    let thumbnail_url = match &body.thumbnail_id {
+        Some(thumb_id) if is_media => {
+            let claimed: Option<(String, bool)> = sqlx::query_as(
+                r#"DELETE FROM "PendingAttachment"
+                    WHERE id = $1 AND "uploaderId" = $2
+                RETURNING url, flagged"#,
+            )
+            .bind(thumb_id)
+            .bind(&user.user_id)
+            .fetch_optional(&state.pool)
+            .await?;
+            match claimed {
+                Some((url, flagged)) if !flagged => Some(url),
+                Some(_) => None,
+                None => {
+                    return Err(AppError::BadRequest(
+                        "That preview does not exist or was already used".into(),
+                    ))
+                }
+            }
+        }
+        _ => None,
+    };
 
     // Served through the same-origin proxy rather than the OrangMove host: the
     // browser CSP would otherwise have to allow it, and the token stays off
@@ -880,6 +1056,8 @@ async fn register_external(
             content_type,
             size,
             None,
+            duration,
+            thumbnail_url.as_deref(),
             "orangmove",
             flagged,
             Some(expires_at),
@@ -915,5 +1093,55 @@ mod encrypted_url_tests {
             encrypted_storage_id_from_delivery_url("https://example.test/cm123.png"),
             None
         );
+    }
+}
+
+#[cfg(test)]
+mod media_preview_tests {
+    use super::{content_type_for, parse_duration, AppError, MAX_MEDIA_SECS};
+
+    #[test]
+    fn recognizes_previewable_media_extensions() {
+        assert_eq!(content_type_for("clip.m4v"), "video/x-m4v");
+        assert_eq!(content_type_for("clip.mkv"), "video/x-matroska");
+        assert_eq!(content_type_for("clip.3gp"), "video/3gpp");
+        assert_eq!(content_type_for("voice.oga"), "audio/ogg");
+    }
+
+    #[test]
+    fn duration_is_optional_and_only_for_media() {
+        assert_eq!(parse_duration(None, true).unwrap(), None);
+        assert_eq!(parse_duration(Some(""), true).unwrap(), None);
+        assert_eq!(parse_duration(Some("12.5"), false).unwrap(), None);
+        assert_eq!(parse_duration(Some("12.5"), true).unwrap(), Some(12.5));
+    }
+
+    #[test]
+    fn rejects_unparsable_or_out_of_range_durations() {
+        assert!(matches!(
+            parse_duration(Some("abc"), true),
+            Err(AppError::BadRequest(_))
+        ));
+        assert!(matches!(
+            parse_duration(Some("0"), true),
+            Err(AppError::BadRequest(_))
+        ));
+        assert!(matches!(
+            parse_duration(Some("-1"), true),
+            Err(AppError::BadRequest(_))
+        ));
+        assert!(matches!(
+            parse_duration(Some("NaN"), true),
+            Err(AppError::BadRequest(_))
+        ));
+        assert!(matches!(
+            parse_duration(Some("inf"), true),
+            Err(AppError::BadRequest(_))
+        ));
+        let over = (MAX_MEDIA_SECS + 1.0).to_string();
+        assert!(matches!(
+            parse_duration(Some(&over), true),
+            Err(AppError::BadRequest(_))
+        ));
     }
 }

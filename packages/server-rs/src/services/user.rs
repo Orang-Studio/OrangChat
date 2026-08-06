@@ -39,11 +39,87 @@ fn is_wire_form(value: Option<&str>) -> bool {
     value.is_some_and(is_asset_url)
 }
 
+// Every one of these columns is a Postgres `text`, so without a check here a
+// scripted client can store megabytes in a field that is then served to anyone
+// who opens the profile.
+const MAX_DISPLAY_NAME: usize = 100;
+const MAX_STATUS: usize = 200;
+const MAX_BIO: usize = 4000;
+const MAX_PRONOUNS: usize = 100;
+/// Matches MAX_LEN in the client's lib/profileCss.ts, which truncates at the
+/// same point before injecting the stylesheet.
+const MAX_CSS: usize = 100_000;
+const MAX_URL: usize = 2048;
+
+fn check_len(value: Option<&str>, field: &str, max: usize) -> AppResult<()> {
+    if value.is_some_and(|v| v.len() > max) {
+        return Err(AppError::BadRequest(format!(
+            "{field} is too long (limit {max} characters)"
+        )));
+    }
+    Ok(())
+}
+
+/// Rejects an image url a client would be unsafe to render.
+///
+/// Two forms are legitimate: an absolute http(s) url (an oauth provider's cdn,
+/// or Cloudinary when it is configured) and a same-origin `/uploads/` path,
+/// which is what `store_media` returns without Cloudinary. Anything else -
+/// `javascript:`, `data:`, a protocol-relative `//evil.tld` - is refused. An
+/// `<img src>` will not execute a javascript: url, but this value is also read
+/// by the Android profile card and by CSS `url()` in profile themes, and it
+/// only has to be dangerous in one of those places.
+pub(crate) fn check_image_url(value: Option<&str>, field: &str) -> AppResult<()> {
+    let Some(url) = value else { return Ok(()) };
+    if url.is_empty() {
+        return Ok(());
+    }
+    check_len(Some(url), field, MAX_URL)?;
+
+    let ok = if let Some(rest) = url.strip_prefix('/') {
+        // A single leading slash only: `//host` is protocol-relative and would
+        // resolve off-origin.
+        !rest.starts_with('/') && url.starts_with("/uploads/")
+    } else {
+        let lower = url.to_ascii_lowercase();
+        lower.starts_with("http://") || lower.starts_with("https://")
+    };
+
+    if !ok {
+        return Err(AppError::BadRequest(format!(
+            "{field} must be an http(s) url"
+        )));
+    }
+    Ok(())
+}
+
+fn validate_patch(patch: &UserPatch) -> AppResult<()> {
+    check_len(patch.display_name.as_deref(), "displayName", MAX_DISPLAY_NAME)?;
+    check_len(patch.status.as_deref(), "status", MAX_STATUS)?;
+    check_len(flat(&patch.bio), "bio", MAX_BIO)?;
+    check_len(flat(&patch.pronouns), "pronouns", MAX_PRONOUNS)?;
+    check_len(flat(&patch.custom_css), "customCss", MAX_CSS)?;
+    check_len(flat(&patch.profile_css), "profileCss", MAX_CSS)?;
+
+    check_image_url(flat(&patch.avatar_url), "avatarUrl")?;
+    check_image_url(flat(&patch.banner_url), "bannerUrl")?;
+    check_image_url(flat(&patch.app_icon_url), "appIconUrl")?;
+    Ok(())
+}
+
+/// Outer `None` is "field absent", inner `None` is "clear it" - neither needs
+/// checking, so both flatten to nothing to validate.
+fn flat(value: &Option<Option<String>>) -> Option<&str> {
+    value.as_ref().and_then(|v| v.as_deref())
+}
+
 pub async fn update_profile(
     state: &AppState,
     user_id: &str,
     patch: UserPatch,
 ) -> AppResult<UserRow> {
+    validate_patch(&patch)?;
+
     if let Some(ref username) = patch.username {
         let existing: Option<String> =
             sqlx::query_scalar(r#"SELECT id FROM "User" WHERE lower(username) = lower($1)"#)
@@ -336,4 +412,51 @@ pub async fn find_or_create_oauth_user(
     .await?;
     tx.commit().await?;
     Ok(user)
+}
+
+#[cfg(test)]
+mod image_url_tests {
+    use super::check_image_url;
+
+    fn accepts(url: &str) -> bool {
+        check_image_url(Some(url), "avatarUrl").is_ok()
+    }
+
+    #[test]
+    fn accepts_the_two_forms_this_server_stores() {
+        // Cloudinary and the oauth provider cdns.
+        assert!(accepts("https://cdn.discordapp.com/avatars/1/a.png"));
+        assert!(accepts("http://example.test/a.png"));
+        // What store_media returns when Cloudinary is not configured.
+        assert!(accepts("/uploads/abc.jpg"));
+    }
+
+    #[test]
+    fn absent_and_cleared_values_are_not_edits() {
+        assert!(check_image_url(None, "avatarUrl").is_ok());
+        assert!(accepts(""));
+    }
+
+    #[test]
+    fn rejects_schemes_a_client_should_never_render() {
+        assert!(!accepts("javascript:alert(1)"));
+        assert!(!accepts("JavaScript:alert(1)"));
+        assert!(!accepts("data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="));
+        assert!(!accepts("vbscript:msgbox(1)"));
+        assert!(!accepts("file:///etc/passwd"));
+    }
+
+    #[test]
+    fn rejects_paths_that_leave_this_origin() {
+        // Protocol-relative: the browser resolves this against evil.tld, not us.
+        assert!(!accepts("//evil.tld/a.png"));
+        // A same-origin path, but not one this server ever hands out.
+        assert!(!accepts("/api/admin"));
+    }
+
+    #[test]
+    fn rejects_an_over_long_url() {
+        let long = format!("https://example.test/{}", "a".repeat(4096));
+        assert!(!accepts(&long));
+    }
 }

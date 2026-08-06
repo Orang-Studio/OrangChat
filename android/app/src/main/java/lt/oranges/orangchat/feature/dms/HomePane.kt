@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
@@ -49,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import lt.oranges.orangchat.data.model.ChannelType
 import lt.oranges.orangchat.data.model.Conversation
+import lt.oranges.orangchat.data.model.Message
 import lt.oranges.orangchat.data.model.PresenceStatus
 import lt.oranges.orangchat.data.model.SelfUser
 import lt.oranges.orangchat.data.model.UnreadState
@@ -153,6 +155,16 @@ fun HomePane(
     }
 }
 
+private fun latestMessagePreview(message: Message?, selfId: String): String? {
+    if (message == null) return null
+    val author = if (message.author.id == selfId) "you" else message.author.displayName
+    val content = message.content
+        .replace(Regex("\\s+"), " ")
+        .trim()
+        .ifBlank { if (message.attachments.isNotEmpty()) "Sent an attachment" else "Message" }
+    return "$author: $content"
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ConversationRow(
@@ -174,6 +186,7 @@ private fun ConversationRow(
     val others = convo.participants.filter { it.id != selfId }
     val title = convo.name ?: others.joinToString(", ") { it.displayName }.ifBlank { "Direct Message" }
     val lead = others.firstOrNull()
+    val latestPreview = latestMessagePreview(convo.latestMessage, selfId)
     // A group DM has no single counterpart, so the person-shaped actions
     // (profile, remove friend, copy user ID) only apply to a one-on-one.
     val other = if (convo.type == ChannelType.GROUP_DM) null else lead
@@ -196,7 +209,7 @@ private fun ConversationRow(
                 },
             )
             .padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Top,
     ) {
         // Leading pip, as on the web: the row reads as unread even before the
         // eye reaches the count on the far side. The Box reserves the slot
@@ -214,8 +227,19 @@ private fun ConversationRow(
         )
         Spacer(Modifier.width(6.dp))
         if (others.size > 1 || lead == null) {
-            Box(modifier = Modifier.size(38.dp)) {
-                Icon(Icons.Default.Group, contentDescription = null, tint = c.inkSecondary)
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(c.primarySoft),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Default.Group,
+                    contentDescription = null,
+                    tint = c.primary,
+                    modifier = Modifier.size(21.dp),
+                )
             }
         } else {
             // Conversation DTOs carry the user's saved preference, not proof
@@ -231,19 +255,26 @@ private fun ConversationRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                color = c.ink,
+                color = if (unread) c.ink else c.inkSecondary,
                 // Unread conversations read bolder, as on the web.
                 fontWeight = if (unread) FontWeight.Bold else FontWeight.Medium,
                 fontSize = 15.sp,
                 maxLines = 1,
             )
-            if (others.size == 1 && lead != null) {
+            if (latestPreview != null) {
+                Text(
+                    text = latestPreview,
+                    color = c.inkMuted,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                )
+            } else if (others.size == 1 && lead != null) {
                 ActivityStatus(
                     activities = presenceActivities[lead.id] ?: lead.activities,
                 )
             }
         }
-        UnreadCountBadge(unreadCount)
+        UnreadCountBadge(unreadCount, modifier = Modifier.padding(top = 2.dp))
         // Anchored to the row's trailing edge so the menu never covers the
         // avatar and name of what is being acted on.
         Box {

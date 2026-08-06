@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { cn } from "../../lib/cn";
 
 export const Dialog = RadixDialog.Root;
-export const DialogTrigger = RadixDialog.Trigger;
 export const DialogClose = RadixDialog.Close;
 
 interface DialogContentProps {

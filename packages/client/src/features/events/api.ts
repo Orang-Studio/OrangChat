@@ -16,9 +16,6 @@ export const listEvents = (serverId: string) =>
 export const createEvent = (serverId: string, input: EventInput) =>
   api<ScheduledEvent>(`/servers/${serverId}/events`, { method: "POST", json: input });
 
-export const updateEvent = (eventId: string, input: EventInput) =>
-  api<ScheduledEvent>(`/events/${eventId}`, { method: "PATCH", json: input });
-
 export const deleteEvent = (eventId: string) =>
   api<void>(`/events/${eventId}`, { method: "DELETE" });
 

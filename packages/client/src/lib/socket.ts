@@ -23,8 +23,58 @@ export const socket: AppSocket = io({
   timeout: 20_000,
 });
 
-socket.on("connect", () => connectionActions.connected(socket.id ?? ""));
-socket.on("disconnect", (reason) => connectionActions.disconnected(reason));
+const PRESENCE_HEARTBEAT_MS = 60_000;
+const WEB_IDLE_DELAY_MS = 10 * 60_000;
+let presenceHeartbeat: ReturnType<typeof setInterval> | null = null;
+let webIdleTimer: ReturnType<typeof setTimeout> | null = null;
+let webIdle = false;
+
+function stopPresenceHeartbeat(): void {
+  if (presenceHeartbeat !== null) clearInterval(presenceHeartbeat);
+  presenceHeartbeat = null;
+}
+
+function startPresenceHeartbeat(): void {
+  stopPresenceHeartbeat();
+  const beat = () => socket.emit("presence:heartbeat", webIdle ? "idle" : "online");
+  beat();
+  presenceHeartbeat = setInterval(beat, PRESENCE_HEARTBEAT_MS);
+}
+
+function webIsFocused(): boolean {
+  return document.visibilityState === "visible" && document.hasFocus();
+}
+
+function noteWebActivity(): void {
+  if (webIdleTimer !== null) clearTimeout(webIdleTimer);
+  webIdleTimer = null;
+  if (!webIsFocused()) {
+    webIdleTimer = setTimeout(() => {
+      webIdleTimer = null;
+      if (webIsFocused()) return;
+      webIdle = true;
+      if (socket.connected) socket.emit("presence:lifecycle", "idle");
+    }, WEB_IDLE_DELAY_MS);
+    return;
+  }
+  webIdle = false;
+  if (socket.connected) socket.emit("presence:lifecycle", "online");
+}
+
+window.addEventListener("focus", noteWebActivity);
+window.addEventListener("blur", noteWebActivity);
+document.addEventListener("visibilitychange", noteWebActivity);
+noteWebActivity();
+
+socket.on("connect", () => {
+  connectionActions.connected(socket.id ?? "");
+  startPresenceHeartbeat();
+  socket.emit("presence:lifecycle", webIdle ? "idle" : "online");
+});
+socket.on("disconnect", (reason) => {
+  stopPresenceHeartbeat();
+  connectionActions.disconnected(reason);
+});
 socket.on("connect_error", (err) => connectionActions.error(err.message));
 socket.io.on("reconnect_attempt", () => connectionActions.connecting());
 

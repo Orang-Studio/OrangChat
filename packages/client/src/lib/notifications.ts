@@ -1,4 +1,5 @@
 import { api } from "./api";
+import { syncEpochKeys } from "../features/e2ee/conversation";
 
 const PREF_KEY = "oc-notifications";
 
@@ -115,5 +116,11 @@ export async function clearConversationNotifications(channelId: string): Promise
 if (notificationsSupported()) {
   navigator.serviceWorker.addEventListener("message", (event) => {
     if (event.data?.type === "notification:navigate" && navigatorFn) navigatorFn(event.data.href);
+    // A push envelope could not be opened and the worker is asking for the
+    // keys it is missing - rotations sync on channel open, and this tab may
+    // have been asleep through one. Best effort: a retry covers it if so.
+    if (event.data?.type === "e2ee:sync" && typeof event.data.channelId === "string") {
+      void syncEpochKeys(event.data.channelId).catch(() => {});
+    }
   });
 }

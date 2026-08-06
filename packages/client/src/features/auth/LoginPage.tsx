@@ -26,7 +26,7 @@ type Step = "credentials" | "totp" | "emailCode";
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? "/";
+  const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? "/app";
   const [mode, setMode] = useState<"password" | "qr">("password");
 
   const [step, setStep] = useState<Step>("credentials");

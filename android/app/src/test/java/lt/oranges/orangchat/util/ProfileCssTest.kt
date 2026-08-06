@@ -175,6 +175,13 @@ class ProfileCssTest {
     }
 
     @Test
+    fun `style close cannot be reassembled by the strip itself`() {
+        // Removing the inner `</style` joins `</s` to `tyle`, spelling the
+        // sequence again - a single pass would emit it.
+        assertDrops(""".oc-pf-name { font-family: "</s</styletyle><img src=x>" }""", "</style")
+    }
+
+    @Test
     fun `inline svg data uri survives the style close strip`() {
         assertKeeps(".oc-pf-banner { background: url(data:image/svg+xml,<svg xmlns='x'></svg>) }", "</svg")
     }

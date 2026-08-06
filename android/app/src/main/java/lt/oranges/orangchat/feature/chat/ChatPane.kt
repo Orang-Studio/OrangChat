@@ -1,14 +1,20 @@
 package lt.oranges.orangchat.feature.chat
 
+import android.Manifest
 import android.app.Activity
 import android.app.KeyguardManager
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.content.MediaType
@@ -49,7 +55,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AddReaction
+import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -60,8 +68,10 @@ import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
@@ -72,6 +82,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -88,17 +99,27 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.AnnotatedString
@@ -110,6 +131,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import lt.oranges.orangchat.data.model.Message
 import lt.oranges.orangchat.data.model.PresenceStatus
 import lt.oranges.orangchat.data.model.ServerMember
@@ -127,6 +150,8 @@ import lt.oranges.orangchat.ui.components.OrangDropdownMenu
 import lt.oranges.orangchat.ui.components.OrangTextField
 import lt.oranges.orangchat.ui.components.OrangButton
 import lt.oranges.orangchat.ui.components.OrangDialog
+import lt.oranges.orangchat.ui.components.ButtonSize
+import lt.oranges.orangchat.ui.components.ButtonVariant
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.EmojiRef
@@ -220,6 +245,11 @@ private const val TYPING_THROTTLE_MS = 4_000L
 /** How long a jumped-to message stays lit before fading back. */
 private const val HIGHLIGHT_MS = 1_600L
 
+private fun formatRecordingTime(totalSeconds: Long): String {
+    val minutes = totalSeconds / 60
+    return "$minutes:${(totalSeconds % 60).toString().padStart(2, '0')}"
+}
+
 /**
  * Older pages a jump is allowed to pull in before it gives up. 12 pages of 50
  * is six hundred messages back - far enough for a search hit anyone actually
@@ -238,6 +268,10 @@ private const val JUMP_MISSING_NOTICE_MS = 4_000L
 /** A message plus its grouping flag, decided chronologically before the list is
  * reversed for display. */
 private data class MessageRowData(val message: Message, val grouped: Boolean)
+
+/** Namespaced so a local client id can never collide with a server message id. */
+private fun messageRowKey(message: Message): String =
+    message.clientId?.let { "client:$it" } ?: "server:${message.id}"
 
 /**
  * Whether [message] should hide its avatar and header because it continues
@@ -272,7 +306,7 @@ fun ChatPane(
         attachmentIds: List<String>,
         sealedAttachments: List<SealedAttachmentRef>,
     ) -> Unit,
-    onEdit: (String, String) -> Unit,
+    onEdit: (String, String, (String?) -> Unit) -> Unit,
     onDelete: (String) -> Unit,
     onReport: (Message, String, (String?) -> Unit) -> Unit,
     onReact: (Message, String) -> Unit,
@@ -339,8 +373,13 @@ fun ChatPane(
     // the same property from `flex-col-reverse`. Grouping is decided on the
     // chronological order first, then the rows are flipped for display.
     val rows = remember(messages) {
-        messages
-            .mapIndexed { i, m -> MessageRowData(m, isGrouped(messages.getOrNull(i - 1), m)) }
+        // History and a socket ack can overlap while a page is loading. Keep one
+        // row per server id, then guard the UI key against namespace collisions.
+        val deduped = messages
+            .distinctBy { it.id }
+            .distinctBy(::messageRowKey)
+        deduped
+            .mapIndexed { i, m -> MessageRowData(m, isGrouped(deduped.getOrNull(i - 1), m)) }
             .asReversed()
     }
 
@@ -360,10 +399,27 @@ fun ChatPane(
     // Follow the conversation only when already at the bottom; someone reading
     // back through history should not be yanked forward by a new arrival.
     val newestId = messages.lastOrNull()?.id
+    val awayFromBottom by remember(listState) {
+        derivedStateOf { listState.firstVisibleItemIndex > 2 }
+    }
+    var lastObservedNewestId by remember(channelId) { mutableStateOf(newestId) }
+    var hasNewMessages by remember(channelId) { mutableStateOf(false) }
     LaunchedEffect(newestId) {
-        if (newestId != null && listState.firstVisibleItemIndex <= 2) {
+        if (
+            newestId != null &&
+            lastObservedNewestId != null &&
+            newestId != lastObservedNewestId &&
+            awayFromBottom
+        ) {
+            hasNewMessages = true
+        }
+        lastObservedNewestId = newestId
+        if (newestId != null && !awayFromBottom) {
             if (reducedMotion) listState.scrollToItem(0) else listState.animateScrollToItem(0)
         }
+    }
+    LaunchedEffect(awayFromBottom) {
+        if (!awayFromBottom) hasNewMessages = false
     }
 
     // Landing on a message you did not scroll to is disorienting without it
@@ -470,6 +526,12 @@ fun ChatPane(
                 if (reducedMotion) listState.scrollToItem(index) else listState.animateScrollToItem(index)
                 highlightedId = id
             }
+        }
+    }
+    val jumpToLatest: () -> Unit = {
+        hasNewMessages = false
+        jumpScope.launch {
+            if (reducedMotion) listState.scrollToItem(0) else listState.animateScrollToItem(0)
         }
     }
 
@@ -589,50 +651,91 @@ fun ChatPane(
             )
         }
 
-        // Messages. reverseLayout: first item = visual bottom = newest.
-        LazyColumn(
-            state = listState,
-            reverseLayout = true,
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
-        ) {
-            // Key on the local id where there is one: a message's `id` changes
-            // when the server confirms it, and keying on that alone disposes the
-            // row and builds a new one, replaying the insert animation.
-            items(rows, key = { it.message.clientId ?: it.message.id }) { row ->
-                val message = row.message
-                MessageRow(
-                    message = message,
-                    pending = message.id in pendingMessageIds,
-                    selfId = selfId,
-                    presence = presence[message.author.id],
-                    grouped = row.grouped,
-                    compact = compact,
-                    nameOf = nameOf,
-                    mentionNames = mentionNames,
-                    mentionUsers = mentionUsers,
-                    members = members,
-                    repliedTo = message.replyToId?.let { id -> messages.firstOrNull { it.id == id } },
-                    highlighted = message.id == highlightedId,
-                    onJumpToMessage = jumpToMessage,
-                    onReply = { replyTo = it },
-                    onEdit = onEdit,
-                    onDelete = onDelete,
-                    onReport = { reportTarget = it },
-                    onReact = onReact,
-                    onOpenProfile = onOpenProfile,
-                    emojis = emojis,
-                )
-            }
-            // Last in a reversed list = the visual top, where older history loads.
-            if (loadingOlder) {
-                item(key = "loading-older") {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(12.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(color = c.inkMuted, modifier = Modifier.size(18.dp))
+        // The return affordance floats over history; giving it a row of its own
+        // would shorten the conversation precisely when someone is reading it.
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            // Messages. reverseLayout: first item = visual bottom = newest.
+            LazyColumn(
+                state = listState,
+                reverseLayout = true,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
+            ) {
+                // Key on the local id where there is one: a message's `id` changes
+                // when the server confirms it, and keying on that alone disposes the
+                // row and builds a new one, replaying the insert animation.
+                items(rows, key = { messageRowKey(it.message) }) { row ->
+                    val message = row.message
+                    MessageRow(
+                        message = message,
+                        pending = message.id in pendingMessageIds,
+                        selfId = selfId,
+                        presence = presence[message.author.id],
+                        grouped = row.grouped,
+                        compact = compact,
+                        nameOf = nameOf,
+                        mentionNames = mentionNames,
+                        mentionUsers = mentionUsers,
+                        members = members,
+                        repliedTo = message.replyToId?.let { id -> messages.firstOrNull { it.id == id } },
+                        highlighted = message.id == highlightedId,
+                        replyingTo = replyTo?.id == message.id,
+                        onJumpToMessage = jumpToMessage,
+                        onReply = { replyTo = it },
+                        onEdit = onEdit,
+                        onDelete = onDelete,
+                        onReport = { reportTarget = it },
+                        onReact = onReact,
+                        onOpenProfile = onOpenProfile,
+                        emojis = emojis,
+                    )
+                }
+                // Last in a reversed list = the visual top, where older history loads.
+                if (loadingOlder) {
+                    item(key = "loading-older") {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(color = c.inkMuted, modifier = Modifier.size(18.dp))
+                        }
                     }
+                }
+            }
+
+            val latestLabel = if (hasNewMessages) "New messages" else "Jump to latest"
+            androidx.compose.animation.AnimatedVisibility(
+                visible = awayFromBottom,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 12.dp),
+                enter = if (reducedMotion) EnterTransition.None else fadeIn(tween(160)),
+                exit = if (reducedMotion) ExitTransition.None else fadeOut(tween(120)),
+            ) {
+                val shape = RoundedCornerShape(OrangRadius.lg)
+                Row(
+                    modifier = Modifier
+                        .clip(shape)
+                        .background(c.surface3)
+                        .border(1.dp, c.border, shape)
+                        .clickable(role = Role.Button, onClick = jumpToLatest)
+                        .semantics { contentDescription = latestLabel }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Default.ArrowDownward,
+                        contentDescription = null,
+                        tint = c.inkSecondary,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        latestLabel,
+                        color = c.ink,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
                 }
             }
         }
@@ -988,9 +1091,11 @@ private fun MessageRow(
     repliedTo: Message?,
     /** Briefly tinted, because someone just jumped here. */
     highlighted: Boolean,
+    /** The row selected by the reply composer. */
+    replyingTo: Boolean,
     onJumpToMessage: (String) -> Unit,
     onReply: (Message) -> Unit,
-    onEdit: (String, String) -> Unit,
+    onEdit: (String, String, (String?) -> Unit) -> Unit,
     onDelete: (String) -> Unit,
     onReport: (Message) -> Unit,
     onReact: (Message, String) -> Unit,
@@ -1005,7 +1110,8 @@ private fun MessageRow(
     }
     var menuOpen by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
-    var editText by remember(message.id) { mutableStateOf(message.content) }
+    var editSaving by remember(message.id) { mutableStateOf(false) }
+    var editError by remember(message.id) { mutableStateOf<String?>(null) }
     var emojiOpen by remember { mutableStateOf(false) }
     val isMine = message.author.id == selfId
     val clipboard = LocalClipboardManager.current
@@ -1037,7 +1143,11 @@ private fun MessageRow(
     // are not crossings the user made.
     // Fades back to the normal row color once the highlight lapses, so the jump
     // draws the eye without leaving the message looking permanently marked.
-    val restColor = if (pinged) c.primary.copy(alpha = 0.08f) else c.surface2
+    val restColor = when {
+        replyingTo -> c.primary.copy(alpha = 0.11f)
+        pinged -> c.primary.copy(alpha = 0.08f)
+        else -> c.surface2
+    }
     val rowBackground by animateColorAsState(
         targetValue = if (highlighted) c.primarySoft else restColor,
         animationSpec = tween(durationMillis = if (highlighted) 0 else 600),
@@ -1068,6 +1178,18 @@ private fun MessageRow(
             .fillMaxWidth()
             .alpha(if (pending) 0.5f else 1f)
             .offset { IntOffset(dragX.value.roundToInt(), 0) }
+            .then(
+                if (replyingTo || pinged) {
+                    Modifier.shadow(
+                        elevation = 8.dp,
+                        shape = RoundedCornerShape(OrangRadius.md),
+                        ambientColor = c.primary.copy(alpha = 0.18f),
+                        spotColor = c.primary.copy(alpha = 0.18f),
+                    )
+                } else {
+                    Modifier
+                },
+            )
             .pointerInput(message.id, isMine, pending) {
                 if (!pending) detectSwipeToReply(
                     onDelta = { amount ->
@@ -1084,6 +1206,8 @@ private fun MessageRow(
                         when {
                             isMine && x <= -editPx -> {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                editError = null
+                                editSaving = false
                                 editing = true
                             }
                             x <= -replyPx -> {
@@ -1189,15 +1313,33 @@ private fun MessageRow(
                 }
             }
             if (editing) {
-                Composer(
-                    initial = editText,
-                    submitLabel = "Save",
-                    // Editing text only - attachments are fixed once sent, so no
-                    // channelId and no picker here.
+                MessageEditForm(
+                    initial = message.content,
                     allowEmpty = message.attachments.isNotEmpty(),
-                    onSend = { content, _, _ -> onEdit(message.id, content); editing = false },
-                    onTyping = {},
-                    members = members,
+                    saving = editSaving,
+                    error = editError,
+                    onCancel = {
+                        if (!editSaving) {
+                            editError = null
+                            editing = false
+                        }
+                    },
+                    onSave = { content ->
+                        editError = null
+                        if (content == message.content) {
+                            editing = false
+                        } else {
+                            editSaving = true
+                            onEdit(message.id, content) { error ->
+                                editSaving = false
+                                if (error == null) {
+                                    editing = false
+                                } else {
+                                    editError = error
+                                }
+                            }
+                        }
+                    },
                 )
             } else {
                 // Attachment-only messages have no text to draw.
@@ -1209,6 +1351,9 @@ private fun MessageRow(
                         selfId = selfId,
                         emojis = renderEmojis,
                         fontSize = 15.sp,
+                        onMentionClick = { userId ->
+                            members.firstOrNull { it.userId == userId }?.user?.let(onOpenProfile)
+                        },
                     )
                 }
                 MessageAttachments(message.attachments)
@@ -1253,6 +1398,7 @@ private fun MessageRow(
                 expanded = menuOpen,
                 onDismiss = { menuOpen = false },
                 items = buildList {
+                    add(MenuItem("Reply", Icons.AutoMirrored.Filled.Reply) { onReply(message) })
                     add(MenuItem("React", Icons.Default.AddReaction) { emojiOpen = true })
                     if (message.content.isNotBlank()) {
                         add(
@@ -1262,7 +1408,11 @@ private fun MessageRow(
                         )
                     }
                     if (isMine) {
-                        add(MenuItem("Edit", Icons.Default.Edit) { editing = true })
+                        add(MenuItem("Edit", Icons.Default.Edit) {
+                            editError = null
+                            editSaving = false
+                            editing = true
+                        })
                         add(MenuItem("Delete", Icons.Default.Delete, destructive = true) { onDelete(message.id) })
                     } else {
                         add(
@@ -1276,6 +1426,86 @@ private fun MessageRow(
             EmojiPicker(emojiOpen, { emojiOpen = false }) { onReact(message, it) }
         }
     }
+    }
+}
+
+@Composable
+private fun MessageEditForm(
+    initial: String,
+    allowEmpty: Boolean,
+    saving: Boolean,
+    error: String?,
+    onCancel: () -> Unit,
+    onSave: (String) -> Unit,
+) {
+    val c = OrangTheme.colors
+    val textState = rememberTextFieldState(initial)
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(initial) {
+        if (!saving) textState.setTextAndPlaceCursorAtEnd(initial)
+    }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+
+    val content = textState.text.toString().trim()
+    val canSave = !saving && (content.isNotEmpty() || allowEmpty)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("Edit message", color = c.inkSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(c.surface3, RoundedCornerShape(OrangRadius.lg))
+                .border(1.dp, if (error == null) c.border else c.danger, RoundedCornerShape(OrangRadius.lg))
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+        ) {
+            BasicTextField(
+                state = textState,
+                textStyle = TextStyle(color = c.ink, fontSize = 14.sp),
+                cursorBrush = SolidColor(c.primary),
+                lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = 6),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester)
+                    .onPreviewKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                        when {
+                            event.key == Key.Escape -> {
+                                onCancel()
+                                true
+                            }
+                            event.key == Key.Enter && !event.isShiftPressed -> {
+                                if (canSave) onSave(content)
+                                true
+                            }
+                            else -> false
+                        }
+                    },
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            error?.let {
+                Text(it, color = c.danger, fontSize = 11.sp, modifier = Modifier.weight(1f))
+            } ?: Text("Enter to save · Shift+Enter for a new line", color = c.inkMuted, fontSize = 11.sp, modifier = Modifier.weight(1f))
+            OrangButton(
+                text = "Cancel",
+                onClick = onCancel,
+                variant = ButtonVariant.Ghost,
+                size = ButtonSize.Sm,
+                enabled = !saving,
+            )
+            Spacer(Modifier.width(4.dp))
+            OrangButton(
+                text = "Save",
+                onClick = { onSave(content) },
+                size = ButtonSize.Sm,
+                enabled = canSave,
+                loading = saving,
+            )
+        }
     }
 }
 
@@ -1350,6 +1580,98 @@ private fun Composer(
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     var emojiOpen by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val voiceRecorder = remember(context) { VoiceMessageRecorder(context) }
+    var recording by remember(channelId) { mutableStateOf(false) }
+    var recordingStartedAt by remember(channelId) { mutableStateOf(0L) }
+    var recordingSeconds by remember(channelId) { mutableStateOf(0L) }
+    var recordingError by remember(channelId) { mutableStateOf<String?>(null) }
+    var attachmentMenuOpen by remember(channelId) { mutableStateOf(false) }
+    var pendingCameraUri by remember(channelId) { mutableStateOf<Uri?>(null) }
+    var tokenWarning by remember(channelId) { mutableStateOf<PastedTokenKind?>(null) }
+    var acknowledgedTokenContent by remember(channelId) { mutableStateOf<String?>(null) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture(),
+    ) { saved ->
+        val uri = pendingCameraUri
+        pendingCameraUri = null
+        if (saved && uri != null) {
+            drafts.add(listOf(uri), channelId, temporaryUris = setOf(uri))
+        } else if (uri != null) {
+            runCatching { context.contentResolver.delete(uri, null, null) }
+        }
+    }
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        val uri = pendingCameraUri
+        if (granted && uri != null) {
+            cameraLauncher.launch(uri)
+        } else if (uri != null) {
+            pendingCameraUri = null
+            runCatching { context.contentResolver.delete(uri, null, null) }
+        }
+    }
+    val recordPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            runCatching {
+                voiceRecorder.start()
+            }.onSuccess {
+                recordingStartedAt = System.currentTimeMillis()
+                recordingSeconds = 0L
+                recordingError = null
+                recording = true
+            }.onFailure {
+                recordingError = "Could not start voice recording"
+            }
+        } else {
+            recordingError = "Microphone access is needed to record a voice message"
+        }
+    }
+
+    fun startVoiceRecording() {
+        if (recording || channelId == null) return
+        recordingError = null
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            runCatching {
+                voiceRecorder.start()
+            }.onSuccess {
+                recordingStartedAt = System.currentTimeMillis()
+                recordingSeconds = 0L
+                recording = true
+            }.onFailure {
+                recordingError = "Could not start voice recording"
+            }
+        } else {
+            recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    fun finishVoiceRecording(cancel: Boolean) {
+        if (!recording) return
+        val uri = if (cancel) {
+            voiceRecorder.cancel()
+            null
+        } else {
+            voiceRecorder.stop()
+        }
+        recording = false
+        if (!cancel && uri != null && channelId != null) {
+            drafts.add(listOf(uri), channelId, temporaryUris = setOf(uri))
+        } else if (!cancel && uri == null) {
+            recordingError = "The recording was too short"
+        }
+    }
+
+    LaunchedEffect(recording) {
+        while (recording) {
+            recordingSeconds = ((System.currentTimeMillis() - recordingStartedAt) / 1000L).coerceAtLeast(0L)
+            delay(250L)
+        }
+    }
 
     LaunchedEffect(channelId, initial) {
         if (channelId == null) {
@@ -1410,6 +1732,24 @@ private fun Composer(
         ActivityResultContracts.GetMultipleContents(),
     ) { uris -> drafts.add(uris, channelId) }
 
+    fun launchCamera() {
+        if (channelId == null) return
+        val uri = runCatching {
+            val directory = java.io.File(context.cacheDir, "camera").apply { mkdirs() }
+            val file = java.io.File(directory, "photo-${java.util.UUID.randomUUID()}.jpg")
+            FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        }.getOrNull() ?: run {
+            recordingError = "Could not prepare the camera"
+            return
+        }
+        pendingCameraUri = uri
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            cameraLauncher.launch(uri)
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
     // Was an onValueChange side effect before the state migration. Also persists
     // the draft as it's typed. Keyed on channelId so a channel switch routes
     // saves to the right channel.
@@ -1462,6 +1802,10 @@ private fun Composer(
             onDispose {
                 // Persist whatever is in the box for the channel we're leaving.
                 textDrafts.saveNow(channelId, textState.text.toString().trim())
+                voiceRecorder.cancel()
+                pendingCameraUri?.let { uri ->
+                    runCatching { context.contentResolver.delete(uri, null, null) }
+                }
                 drafts.clear()
             }
         }
@@ -1480,10 +1824,52 @@ private fun Composer(
                     fontSize = 12.sp,
                     modifier = Modifier
                         .padding(horizontal = 12.dp, vertical = 4.dp)
-                        .clickable { drafts.dismissError() },
+                    .clickable { drafts.dismissError() },
+                )
+            }
+            recordingError?.let {
+                Text(
+                    it,
+                    color = c.danger,
+                    fontSize = 12.sp,
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                        .clickable { recordingError = null },
                 )
             }
         }
+
+    // Attachments can carry a message on their own, so blank text is fine as
+    // long as something is going with it - but not while it's still uploading.
+    // Both the sealed file and the sealed preview beside it: an attachment id
+    // the message never claims is swept as an abandoned upload, which took the
+    // thumbnail out from under every ref that pointed at it.
+    val ready = uploads.flatMap { upload ->
+        listOfNotNull(upload.attachment?.id, upload.sealed?.thumb?.attachmentId)
+    }
+    val enabled = (textState.text.isNotBlank() || ready.isNotEmpty() || allowEmpty) &&
+        uploads.none { !it.settled } &&
+        uploads.none { it.error != null }
+    // A pasted login or bot token is a credential, not conversation text: ask
+    // before sending it, since Android's paste goes straight into the field.
+    // Schema match only; whether the token is live is never asked.
+    val sendDraft: () -> Unit = {
+        val content = textState.text.toString().trim()
+        val kind = findPastedTokenKind(content)
+        if (kind != null && content != acknowledgedTokenContent) {
+            tokenWarning = kind
+        } else {
+            onSend(
+                content,
+                ready,
+                uploads.mapNotNull { it.sealed },
+            )
+            textState.setTextAndPlaceCursorAtEnd("")
+            drafts.clear()
+            channelId?.let { textDrafts.clear(it) }
+            resetKeyboard()
+        }
+    }
 
     Row(
         modifier = Modifier
@@ -1516,15 +1902,25 @@ private fun Composer(
             )
         }
         if (channelId != null) {
-            Icon(
-                Icons.Default.AttachFile,
-                contentDescription = "Attach files",
-                tint = c.inkMuted,
-                modifier = Modifier
-                    .size(38.dp)
-                    .clickable { picker.launch("*/*") }
-                    .padding(7.dp),
-            )
+            Box {
+                Icon(
+                    Icons.Default.AttachFile,
+                    contentDescription = "Attach files",
+                    tint = c.inkMuted,
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clickable { attachmentMenuOpen = true }
+                        .padding(7.dp),
+                )
+                OrangDropdownMenu(
+                    expanded = attachmentMenuOpen,
+                    onDismiss = { attachmentMenuOpen = false },
+                    items = listOf(
+                        MenuItem("Choose files", Icons.Default.AttachFile) { picker.launch("*/*") },
+                        MenuItem("Take a picture", Icons.Default.CameraAlt) { launchCamera() },
+                    ),
+                )
+            }
         }
         Spacer(Modifier.width(6.dp))
         Box(
@@ -1534,66 +1930,140 @@ private fun Composer(
                 .border(1.dp, c.border, RoundedCornerShape(OrangRadius.xl))
                 .padding(horizontal = 14.dp, vertical = 12.dp),
         ) {
-            if (textState.text.isEmpty()) {
-                Text("Message", color = c.inkMuted, fontSize = 15.sp)
-            }
-            BasicTextField(
-                state = textState,
-                textStyle = TextStyle(color = c.ink, fontSize = 15.sp),
-                cursorBrush = SolidColor(c.primary),
-                lineLimits = TextFieldLineLimits.MultiLine(),
-                // BasicTextField defaults to no capitalization - that default is
-                // why Gboard auto-capitalized everywhere but here.
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    keyboardType = KeyboardType.Text,
-                ),
-                modifier = Modifier
-                    .focusRequester(focusRequester)
-                    .fillMaxWidth()
-                    // Editing a sent message can't gain attachments, so it has
-                    // no receiver and the IME hides its image tabs there.
-                    .then(
-                        if (channelId != null) Modifier.contentReceiver(contentListener)
-                        else Modifier,
+            if (recording) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        modifier = Modifier.size(8.dp).background(c.danger, CircleShape),
+                    )
+                    Text(
+                        "Recording ${formatRecordingTime(recordingSeconds)}",
+                        color = c.inkSecondary,
+                        fontSize = 14.sp,
+                    )
+                }
+            } else {
+                if (textState.text.isEmpty()) {
+                    Text("Message", color = c.inkMuted, fontSize = 15.sp)
+                }
+                BasicTextField(
+                    state = textState,
+                    textStyle = TextStyle(color = c.ink, fontSize = 15.sp),
+                    cursorBrush = SolidColor(c.primary),
+                    lineLimits = TextFieldLineLimits.MultiLine(),
+                    // BasicTextField defaults to no capitalization - that default is
+                    // why Gboard auto-capitalized everywhere but here.
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        keyboardType = KeyboardType.Text,
                     ),
-            )
+                    modifier = Modifier
+                        .focusRequester(focusRequester)
+                        .fillMaxWidth()
+                        // Editing a sent message can't gain attachments, so it has
+                        // no receiver and the IME hides its image tabs there.
+                        .then(
+                            if (channelId != null) Modifier.contentReceiver(contentListener)
+                            else Modifier,
+                        ),
+                )
+            }
         }
         Spacer(Modifier.width(8.dp))
-        // Attachments can carry a message on their own, so blank text is fine as
-        // long as something is going with it - but not while it's still uploading.
-        // Both the sealed file and the sealed preview beside it: an attachment id
-        // the message never claims is swept as an abandoned upload, which took the
-        // thumbnail out from under every ref that pointed at it.
-        val ready = uploads.flatMap { upload ->
-            listOfNotNull(upload.attachment?.id, upload.sealed?.thumb?.attachmentId)
-        }
-        val enabled = (textState.text.isNotBlank() || ready.isNotEmpty() || allowEmpty) &&
-            uploads.none { !it.settled } &&
-            uploads.none { it.error != null }
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .background(if (enabled) c.primary else c.surface4, CircleShape)
-                .clickable(enabled = enabled) {
-                    onSend(
-                        textState.text.toString().trim(),
-                        ready,
-                        uploads.mapNotNull { it.sealed },
-                    )
-                    textState.setTextAndPlaceCursorAtEnd("")
-                    drafts.clear()
-                    channelId?.let { textDrafts.clear(it) }
-                    resetKeyboard()
-                },
-            contentAlignment = Alignment.Center,
-        ) {
+        if (recording) {
             Icon(
-                Icons.AutoMirrored.Filled.Send,
-                contentDescription = submitLabel ?: "Send",
-                tint = if (enabled) c.inkOnPrimary else c.inkMuted,
-                modifier = Modifier.size(20.dp),
+                Icons.Default.Close,
+                contentDescription = "Cancel recording",
+                tint = c.inkMuted,
+                modifier = Modifier
+                    .size(38.dp)
+                    .clickable { finishVoiceRecording(cancel = true) }
+                    .padding(7.dp),
             )
+            Icon(
+                Icons.Default.Stop,
+                contentDescription = "Stop recording",
+                tint = c.danger,
+                modifier = Modifier
+                    .size(38.dp)
+                    .clickable { finishVoiceRecording(cancel = false) }
+                    .padding(7.dp),
+            )
+        } else {
+            if (channelId != null) {
+                Icon(
+                    Icons.Default.Mic,
+                    contentDescription = "Record voice message",
+                    tint = c.inkMuted,
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clickable { startVoiceRecording() }
+                        .padding(7.dp),
+                )
+            }
+            // The return affordance floats over history; giving it a row of its own
+            // would shorten the conversation precisely when someone is reading it.
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(if (enabled) c.primary else c.surface4, CircleShape)
+                    .clickable(enabled = enabled) { sendDraft() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.Send,
+                    contentDescription = submitLabel ?: "Send",
+                    tint = if (enabled) c.inkOnPrimary else c.inkMuted,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+    }
+
+    tokenWarning?.let { kind ->
+        OrangDialog(
+            onDismiss = { tokenWarning = null },
+            title = if (kind == PastedTokenKind.LOGIN) {
+                "That looks like a login token"
+            } else {
+                "That looks like a bot token"
+            },
+        ) {
+            Text(
+                if (kind == PastedTokenKind.LOGIN) {
+                    "A login token lets anyone who has it sign into an OrangChat " +
+                        "account. Sending it would hand that account to everyone who can " +
+                        "read this conversation."
+                } else {
+                    "A bot token is the password for a bot account: anyone with it can " +
+                        "sign in as the bot, post in its servers and read its " +
+                        "conversations. Sending it would hand that control to everyone " +
+                        "who can read this conversation."
+                },
+                color = c.inkSecondary,
+                fontSize = 14.sp,
+            )
+            Spacer(Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(onClick = { tokenWarning = null }) {
+                    Text("Cancel", color = c.inkSecondary)
+                }
+                TextButton(
+                    onClick = {
+                        acknowledgedTokenContent = textState.text.toString().trim()
+                        tokenWarning = null
+                        sendDraft()
+                    },
+                ) {
+                    Text("Send anyway", color = c.danger)
+                }
+            }
         }
     }
     }
@@ -1601,6 +2071,23 @@ private fun Composer(
 
 /** How many members the @mention menu offers at once. Matches the web client. */
 private const val MENTION_LIMIT = 8
+
+private enum class PastedTokenKind { LOGIN, BOT }
+
+/**
+ * Schema match only - nothing here is checked against the server. A login token
+ * is a v4 UUID; a bot token is `<base64url(bot id)>.<32 random bytes, base64url>`.
+ */
+private fun findPastedTokenKind(text: String): PastedTokenKind? {
+    val login = Regex(
+        "\\b[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\b",
+        RegexOption.IGNORE_CASE,
+    )
+    if (login.containsMatchIn(text)) return PastedTokenKind.LOGIN
+    val bot = Regex("\\b[A-Za-z0-9_-]{6,24}\\.[A-Za-z0-9_-]{32,80}\\b")
+    if (bot.containsMatchIn(text)) return PastedTokenKind.BOT
+    return null
+}
 
 /**
  * The @mention picker, shown above the composer while a `@query` is being typed.

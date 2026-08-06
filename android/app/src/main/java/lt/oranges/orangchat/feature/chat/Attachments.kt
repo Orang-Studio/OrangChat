@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
+import lt.oranges.orangchat.crypto.E2eeKeystore
 import lt.oranges.orangchat.data.model.Attachment
 import lt.oranges.orangchat.ui.components.ButtonSize
 import lt.oranges.orangchat.ui.components.OrangButton
@@ -209,16 +210,21 @@ fun MessageAttachments(attachments: List<Attachment>, modifier: Modifier = Modif
     if (attachments.isEmpty()) return
     val expiries = attachments.mapNotNull { expiryInstant(it) }
     val now = rememberNow(active = expiries.any { it.isAfter(Instant.now()) })
+    val context = LocalContext.current
+    val keystore = remember(context) { E2eeKeystore.get(context) }
 
     Column(modifier = modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         for (attachment in attachments) {
+            // Supporting preview blobs ride along with the message, claimed but
+            // not separate files - a sealed thumbnail renders under its video.
+            if (keystore.isSealedThumbnail(attachment.id)) continue
             val expiresAt = expiryInstant(attachment)
             when {
                 attachment.flagged -> FlaggedAttachment(attachment, expiresAt, now)
                 expiresAt != null && !expiresAt.isAfter(now) -> ExpiredCard(attachment)
                 attachment.isImage -> ImagePreview(attachment, expiresAt, now)
                 attachment.isAudio -> AudioCard(attachment, expiresAt, now)
-                attachment.isVideo -> VideoAttachment(attachment, expiresAt, now)
+                attachment.isVideo -> VideoAttachment(attachment, expiresAt, now, attachments)
                 else -> FileCard(attachment, expiresAt, now)
             }
         }
@@ -339,6 +345,7 @@ internal fun FileCard(attachment: Attachment, expiresAt: Instant?, now: Instant)
 @Composable
 private fun ImagePreview(attachment: Attachment, expiresAt: Instant?, now: Instant) {
     val c = OrangTheme.colors
+    val context = LocalContext.current
     var broken by remember(attachment.id) { mutableStateOf(false) }
     val source = rememberAttachmentSource(attachment)
     // A sealed image has no url until it has been decrypted. Only a real failure
@@ -349,7 +356,6 @@ private fun ImagePreview(attachment: Attachment, expiresAt: Instant?, now: Insta
         return
     }
     val href = source.url
-    var expanded by remember(attachment.id) { mutableStateOf(false) }
 
     Column {
         if (href == null) {
@@ -390,7 +396,9 @@ private fun ImagePreview(attachment: Attachment, expiresAt: Instant?, now: Insta
                     // Expands in place: the file's own URL is served as a
                     // download, so handing it to the browser is the one thing a
                     // tap must not do.
-                    .clickable { expanded = true },
+                    .clickable {
+                        context.startActivity(MediaPreviewActivity.intent(context, attachment))
+                    },
             )
         }
         expiresAt?.let {
@@ -399,9 +407,6 @@ private fun ImagePreview(attachment: Attachment, expiresAt: Instant?, now: Insta
         }
     }
 
-    if (expanded) {
-        ImageLightbox(attachment, onDismiss = { expanded = false })
-    }
 }
 
 /**
@@ -435,7 +440,13 @@ internal fun AudioCard(attachment: Attachment, expiresAt: Instant?, now: Instant
             MediaPlayback.toggle(context, attachment.id, href) { broken = true }
         }
     }
-    val durationMs = if (active) MediaPlayback.durationMs else 0L
+    // The sender measured the length at upload, so it is shown before the clip
+    // is ever fetched. The player's own number takes over once it is open.
+    val durationMs = if (active) {
+        MediaPlayback.durationMs
+    } else {
+        ((attachment.duration ?: 0.0) * 1000).toLong()
+    }
     val seekable = active && MediaPlayback.ready
 
     // The player is the only one who knows where it's got to, so ask it - but

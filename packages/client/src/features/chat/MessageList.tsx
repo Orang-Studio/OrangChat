@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
-import { isStrictDisabledNotice, type Message } from '@orangchat/shared';
+import { isStrictDisabledNotice, type Message, type User } from '@orangchat/shared';
 import { withinGroupWindow } from '../../lib/time';
 import { MessageItem } from './MessageItem';
 
@@ -23,6 +23,10 @@ interface MessageListProps {
   intro?: ReactNode;
   /** Message to scroll to once history is in - set from a `?m=` deep link. */
   jumpToId?: string | null;
+  /** Current reply target, which receives a persistent subtle highlight. */
+  replyToId?: string | null;
+  /** Full users for resolved mentions, so a mention can open a profile. */
+  mentionProfiles?: Record<string, User>;
   /** Called once a `jumpToId` has been acted on, so the URL can be cleaned. */
   onJumpHandled?: () => void;
 }
@@ -69,6 +73,8 @@ export function MessageList({
   mentionUsers,
   intro,
   jumpToId,
+  replyToId,
+  mentionProfiles,
   onJumpHandled,
 }: MessageListProps) {
   const topSentinel = useRef<HTMLDivElement>(null);
@@ -192,9 +198,11 @@ export function MessageList({
                 onReply={onReply}
                 onJumpTo={(id) => void jumpTo(id)}
                 flash={flashId === message.id}
+                replying={replyToId === message.id}
                 mentionNames={mentionNames}
                 mentionUsers={mentionUsers}
                 selfId={selfId}
+                mentionProfiles={mentionProfiles}
               />
             ),
           )}

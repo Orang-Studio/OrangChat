@@ -76,11 +76,17 @@ export const requestTransferGrant = (body: {
   ikSigPub: string;
   ikDhPub: string;
   code: string;
+  /** Present when the account has no authenticator: the token from requestTransferEmailCode. */
+  loginToken?: string;
 }) =>
   api<E2eeTransferGrant & { expiresIn: number }>('/e2ee/transfer-grant', {
     method: 'POST',
     json: body,
   });
+
+/** For accounts without an authenticator app: emails a one-time code to use in place of TOTP. */
+export const requestTransferEmailCode = () =>
+  api<{ loginToken: string }>('/e2ee/transfer-grant/email-code', { method: 'POST' });
 
 export type TransferSlot = 'hello' | 'handshake' | 'bundle';
 

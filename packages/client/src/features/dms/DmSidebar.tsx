@@ -1,39 +1,58 @@
-import { useState } from "react";
-import { Link, useLocation, useMatch, useNavigate } from "react-router-dom";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bot, Check, Copy, LogOut, Phone, Plus, User as UserIcon, UserX, Users, X } from "lucide-react";
-import type { Conversation } from "@orangchat/shared";
-import { cn } from "../../lib/cn";
-import { Avatar } from "../../components/Avatar";
-import { UnreadBadge } from "../../components/UnreadBadge";
-import { UserFooter } from "../../components/UserFooter";
+import { useState } from 'react';
+import { Link, useLocation, useMatch, useNavigate } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Bot,
+  Check,
+  Copy,
+  LogOut,
+  Phone,
+  Plus,
+  User as UserIcon,
+  UserX,
+  Users,
+  X,
+} from 'lucide-react';
+import type { Conversation, Message } from '@orangchat/shared';
+import { cn } from '../../lib/cn';
+import { Avatar } from '../../components/Avatar';
+import { UnreadBadge } from '../../components/UnreadBadge';
+import { UserFooter } from '../../components/UserFooter';
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
-} from "../../components/ui/ContextMenu";
-import { VoicePanel } from "../voice/VoicePanel";
-import { callActions } from "../voice/callStore";
-import { useAuthStore } from "../../stores/auth";
-import { unreadActions, useChannelUnread } from "../../stores/unread";
-import { markChannelRead } from "../unread/api";
-import { removeFriend } from "../friends/api";
-import { removeFriendFromCache, useFriendRequests, useFriends } from "../friends/queries";
-import { ProfileDialog } from "../profile/ProfileDialog";
+} from '../../components/ui/ContextMenu';
+import { VoicePanel } from '../voice/VoicePanel';
+import { callActions } from '../voice/callStore';
+import { useAuthStore } from '../../stores/auth';
+import { unreadActions, useChannelUnread } from '../../stores/unread';
+import { markChannelRead } from '../unread/api';
+import { removeFriend } from '../friends/api';
+import { removeFriendFromCache, useFriendRequests, useFriends } from '../friends/queries';
+import { ProfileDialog } from '../profile/ProfileDialog';
 import {
   conversationName,
   conversationToChannel,
   otherParticipants,
   dmKeys,
   useConversations,
-} from "./queries";
-import { NewDmDialog } from "./NewDmDialog";
-import { leaveDm } from "./api";
-import { ActivityStatus } from "../../components/ActivityStatus";
+} from './queries';
+import { NewDmDialog } from './NewDmDialog';
+import { leaveDm } from './api';
+import { ActivityStatus } from '../../components/ActivityStatus';
 
 const copyText = (text: string) => void navigator.clipboard?.writeText(text);
+
+function latestMessagePreview(message: Message | null | undefined, selfId: string | undefined) {
+  if (!message) return null;
+  const author = message.author.id === selfId ? 'you' : message.author.displayName;
+  const content =
+    message.content.trim() || (message.attachments.length > 0 ? 'Sent an attachment' : 'Message');
+  return `${author}: ${content.replace(/\s+/g, ' ')}`;
+}
 
 function ConversationRow({
   conversation,
@@ -47,7 +66,8 @@ function ConversationRow({
   const selfId = useAuthStore((s) => s.user?.id);
   const name = conversationName(conversation, selfId);
   const others = otherParticipants(conversation, selfId);
-  const isGroup = conversation.type === "group_dm";
+  const isGroup = conversation.type === 'group_dm';
+  const latestPreview = latestMessagePreview(conversation.latestMessage, selfId);
   // A one-on-one DM has exactly one counterpart; menu actions that target a
   // person (profile, remove friend, copy user ID) only make sense then.
   const other = !isGroup ? others[0] : undefined;
@@ -74,7 +94,7 @@ function ConversationRow({
       void client.invalidateQueries({ queryKey: dmKeys.list });
       // Standing in a conversation that is no longer listed leaves the user on
       // a dead route, so step out of it first.
-      if (active) navigate("/");
+      if (active) navigate('/app');
     },
   });
 
@@ -84,14 +104,14 @@ function ConversationRow({
         <ContextMenuTrigger asChild>
           <Link
             to={`/dms/${conversation.id}`}
-            aria-current={active ? "page" : undefined}
+            aria-current={active ? 'page' : undefined}
             className={cn(
-              "group relative flex items-center gap-2.5 rounded-lg px-2 py-2 transition-colors md:py-1.5",
+              'group relative flex items-start gap-2.5 rounded-lg px-2 py-2 transition-colors md:py-1.5',
               active
-                ? "bg-surface-3 text-ink"
+                ? 'bg-surface-3 text-ink'
                 : unread
-                  ? "text-ink hover:bg-surface-2"
-                  : "text-ink-secondary hover:bg-surface-2 hover:text-ink",
+                  ? 'text-ink hover:bg-surface-2'
+                  : 'text-ink-secondary hover:bg-surface-2 hover:text-ink',
             )}
           >
             {/* Discord-style pip: the row is legible as unread even when the count
@@ -103,36 +123,48 @@ function ConversationRow({
               />
             )}
             {isGroup ? (
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink-secondary">
+              <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink-secondary">
                 <Users aria-hidden className="size-4" />
               </span>
             ) : (
               <Avatar
                 user={other ?? { displayName: name, avatarUrl: null }}
                 status={other?.status}
-                className="size-8"
+                className="mt-0.5 size-8"
               />
             )}
             <span className="min-w-0 flex-1">
-              <span className={cn("block truncate text-sm", unread ? "font-semibold" : "font-medium")}>
+              <span
+                className={cn(
+                  'block truncate text-sm leading-tight',
+                  unread || active ? 'text-ink' : 'text-ink-secondary',
+                  unread ? 'font-semibold' : 'font-medium',
+                )}
+              >
                 {name}
               </span>
-              {isGroup && (
+              {latestPreview ? (
+                <span className="block truncate text-xs leading-4 text-ink-muted">
+                  {latestPreview}
+                </span>
+              ) : isGroup ? (
                 <span className="block truncate text-xs text-ink-muted">
                   {conversation.participants.length} members
                 </span>
+              ) : (
+                other && <ActivityStatus activities={other.activities} linked={false} />
               )}
-              {other && <ActivityStatus activities={other.activities} linked={false} />}
             </span>
-            <UnreadBadge count={active ? 0 : unreadCount} label="unread messages" />
+            <UnreadBadge
+              count={active ? 0 : unreadCount}
+              label="unread messages"
+              className="mt-0.5"
+            />
           </Link>
         </ContextMenuTrigger>
 
         <ContextMenuContent>
-          <ContextMenuItem
-            disabled={!unread}
-            onSelect={() => markRead.mutate()}
-          >
+          <ContextMenuItem disabled={!unread} onSelect={() => markRead.mutate()}>
             <Check aria-hidden className="size-4" />
             Mark As Read
           </ContextMenuItem>
@@ -145,9 +177,7 @@ function ConversationRow({
           )}
 
           <ContextMenuItem
-            onSelect={() =>
-              void callActions.start(conversationToChannel(conversation, selfId))
-            }
+            onSelect={() => void callActions.start(conversationToChannel(conversation, selfId))}
           >
             <Phone aria-hidden className="size-4" />
             Start a Call
@@ -170,7 +200,7 @@ function ConversationRow({
             ) : (
               <X aria-hidden className="size-4" />
             )}
-            {isGroup ? "Leave Group" : "Close DM"}
+            {isGroup ? 'Leave Group' : 'Close DM'}
           </ContextMenuItem>
 
           <ContextMenuSeparator />
@@ -187,13 +217,7 @@ function ConversationRow({
         </ContextMenuContent>
       </ContextMenu>
 
-      {other && (
-        <ProfileDialog
-          user={other}
-          open={profileOpen}
-          onOpenChange={setProfileOpen}
-        />
-      )}
+      {other && <ProfileDialog user={other} open={profileOpen} onOpenChange={setProfileOpen} />}
     </>
   );
 }
@@ -201,10 +225,10 @@ function ConversationRow({
 /** Home middle column: direct-message conversation list. */
 export function DmSidebar() {
   // Layout-level component: child-route params aren't visible via useParams.
-  const channelId = useMatch("/dms/:channelId")?.params.channelId;
+  const channelId = useMatch('/dms/:channelId')?.params.channelId;
   const pathname = useLocation().pathname;
-  const onFriends = pathname === "/friends";
-  const onDevelopers = pathname === "/developers";
+  const onFriends = pathname === '/friends';
+  const onDevelopers = pathname === '/developers';
   const { data: conversations } = useConversations();
   const { data: requests } = useFriendRequests();
   const [newDmOpen, setNewDmOpen] = useState(false);
@@ -220,12 +244,12 @@ export function DmSidebar() {
       <nav aria-label="Conversations" className="flex-1 space-y-0.5 overflow-y-auto p-2">
         <Link
           to="/friends"
-          aria-current={onFriends ? "page" : undefined}
+          aria-current={onFriends ? 'page' : undefined}
           className={cn(
-            "flex items-center gap-2.5 rounded-lg px-2 py-2 transition-colors md:py-1.5",
+            'flex items-center gap-2.5 rounded-lg px-2 py-2 transition-colors md:py-1.5',
             onFriends
-              ? "bg-surface-3 text-ink"
-              : "text-ink-secondary hover:bg-surface-2 hover:text-ink",
+              ? 'bg-surface-3 text-ink'
+              : 'text-ink-secondary hover:bg-surface-2 hover:text-ink',
           )}
         >
           <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-3 text-ink-secondary">
@@ -241,12 +265,12 @@ export function DmSidebar() {
 
         <Link
           to="/developers"
-          aria-current={onDevelopers ? "page" : undefined}
+          aria-current={onDevelopers ? 'page' : undefined}
           className={cn(
-            "flex items-center gap-2.5 rounded-lg px-2 py-2 transition-colors md:py-1.5",
+            'flex items-center gap-2.5 rounded-lg px-2 py-2 transition-colors md:py-1.5',
             onDevelopers
-              ? "bg-surface-3 text-ink"
-              : "text-ink-secondary hover:bg-surface-2 hover:text-ink",
+              ? 'bg-surface-3 text-ink'
+              : 'text-ink-secondary hover:bg-surface-2 hover:text-ink',
           )}
         >
           <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-3 text-ink-secondary">

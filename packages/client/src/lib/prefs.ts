@@ -84,12 +84,6 @@ export function setPref<K extends keyof LocalPrefs>(key: K, value: LocalPrefs[K]
   applyPrefs(next);
 }
 
-export function resetPrefs(): void {
-  usePrefs.setState({ ...DEFAULT_PREFS }, true);
-  write(DEFAULT_PREFS);
-  applyPrefs(DEFAULT_PREFS);
-}
-
 export const getPrefs = () => usePrefs.getState();
 
 /** Honour the OS-level motion setting until the user overrides it here. */

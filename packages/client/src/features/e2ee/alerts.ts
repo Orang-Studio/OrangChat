@@ -36,7 +36,3 @@ export function dismissSecurityAlert(userId: string, kind: SecurityAlertKind): v
     alerts: prev.alerts.filter((a) => !(a.userId === userId && a.kind === kind)),
   }));
 }
-
-export function clearSecurityAlerts(): void {
-  useSecurityAlerts.setState({ alerts: [] });
-}

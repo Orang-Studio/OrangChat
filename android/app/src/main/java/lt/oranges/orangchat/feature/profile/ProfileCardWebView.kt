@@ -35,8 +35,9 @@ private const val HEIGHT_POLL_INTERVAL_MS = 40L
  * things the web sanitizer's scoping exists to prevent. What is left is network
  * egress (an external url() would leak the viewer's IP to the profile owner),
  * blocked here three ways: sanitizeProfileCss strips external url()/@import, the
- * CSP allows no load except images, and shouldInterceptRequest hard-blocks every
- * request that is not one of the avatar/banner URLs we put in the document.
+ * CSP allows no load except images and the fixed badge-interaction script, and
+ * shouldInterceptRequest hard-blocks every request that is not one of the
+ * avatar/banner/badge URLs we put in the document.
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -63,7 +64,9 @@ fun ProfileCardWebView(
                 isFocusable = false
                 overScrollMode = WebView.OVER_SCROLL_NEVER
                 settings.apply {
-                    javaScriptEnabled = false
+                    // The generated document's nonce-restricted script only
+                    // toggles badge labels; profile content remains escaped.
+                    javaScriptEnabled = true
                     domStorageEnabled = false
                     allowFileAccess = false
                     allowContentAccess = false

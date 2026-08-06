@@ -171,6 +171,13 @@ const EPOCH_KEYS = 'epochKeys';
 const HEADS = 'heads';
 const DEVICE_KEYS = 'deviceKeys';
 
+/**
+ * How long an open client gets to fetch the missing keys before the retry.
+ * Long enough for the epoch-key round trip, short enough that a notification
+ * never feels delayed.
+ */
+const SYNC_RETRY_MS = 2_000;
+
 interface StoredEpochKey {
   channelId: string;
   epoch: number;
@@ -276,6 +283,27 @@ function fallbackBody(payload: PushPayload): string {
   return payload.isGroup ? `New message from ${payload.senderName}` : 'New message';
 }
 
+/**
+ * Decrypt, and when the first pass fails because a key has not reached this
+ * device yet, have an open client fetch it before giving up. Rotations sync on
+ * the next channel open or socket event, so a tab that was asleep through one
+ * holds no key for it; an open (even unfocused) tab can sync on demand and a
+ * retry a moment later usually has the envelope it needs. With no window open
+ * there is nothing to ask - the placeholder stands.
+ */
+async function decryptWithSync(payload: PushPayload): Promise<string | null> {
+  const direct = await decrypt(payload);
+  if (direct) return direct;
+
+  const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  if (windows.length === 0) return null;
+  windows.forEach((client) =>
+    client.postMessage({ type: 'e2ee:sync', channelId: payload.channelId }),
+  );
+  await new Promise((resolve) => setTimeout(resolve, SYNC_RETRY_MS));
+  return decrypt(payload);
+}
+
 self.addEventListener('push', (event: PushEvent) => {
   event.waitUntil(
     (async () => {
@@ -304,7 +332,7 @@ self.addEventListener('push', (event: PushEvent) => {
 
       let body = payload.body;
       if (payload.ciphertext) {
-        body = (await decrypt(payload)) ?? fallbackBody(payload);
+        body = (await decryptWithSync(payload)) ?? fallbackBody(payload);
       }
 
       await self.registration.showNotification(payload.title || payload.senderName, {

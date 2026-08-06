@@ -29,6 +29,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class AttachmentDraftViewModel @Inject constructor(
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
     private val uploader: AttachmentUploader,
     private val e2ee: E2eeRepository,
 ) : ViewModel() {
@@ -48,6 +49,9 @@ class AttachmentDraftViewModel @Inject constructor(
         val error: String? = null,
         /** The content uri, for thumbnailing images before they're up. */
         val previewUri: Uri? = null,
+        /** Temporary composer files, such as recordings or camera captures. */
+        val sourceUri: Uri? = null,
+        val deleteSourceOnCleanup: Boolean = false,
     ) {
         val settled: Boolean get() = attachment != null || error != null
     }
@@ -71,7 +75,11 @@ class AttachmentDraftViewModel @Inject constructor(
 
     fun dismissError() { _error.value = null }
 
-    fun add(uris: List<Uri>, channelId: String?) {
+    fun add(
+        uris: List<Uri>,
+        channelId: String?,
+        temporaryUris: Set<Uri> = emptySet(),
+    ) {
         if (uris.isEmpty()) return
         _error.value = null
 
@@ -104,6 +112,8 @@ class AttachmentDraftViewModel @Inject constructor(
                     size = info.size,
                     ephemeral = info.isEphemeral,
                     previewUri = uri.takeIf { _ -> info.mimeType?.startsWith("image/") == true },
+                    sourceUri = uri,
+                    deleteSourceOnCleanup = uri in temporaryUris,
                 )
             }
 
@@ -152,6 +162,8 @@ class AttachmentDraftViewModel @Inject constructor(
 
     fun remove(key: String) {
         jobs.remove(key)?.cancel()
+        val removed = _uploads.value.firstOrNull { it.key == key }
+        cleanup(removed)
         _uploads.update { list -> list.filterNot { it.key == key } }
     }
 
@@ -159,8 +171,21 @@ class AttachmentDraftViewModel @Inject constructor(
     fun clear() {
         jobs.values.forEach { it.cancel() }
         jobs.clear()
+        _uploads.value.forEach(::cleanup)
         _uploads.value = emptyList()
         _error.value = null
+    }
+
+    override fun onCleared() {
+        clear()
+        super.onCleared()
+    }
+
+    private fun cleanup(upload: PendingUpload?) {
+        if (upload?.deleteSourceOnCleanup != true) return
+        upload.sourceUri?.let { uri ->
+            runCatching { context.contentResolver.delete(uri, null, null) }
+        }
     }
 
     private fun patch(key: String, block: (PendingUpload) -> PendingUpload) {

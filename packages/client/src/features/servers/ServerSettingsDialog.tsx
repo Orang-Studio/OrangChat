@@ -79,7 +79,7 @@ function OverviewTab({ server, onClosed }: { server: Server; onClosed: () => voi
     mutationFn: () => deleteServer(server.id),
     onSuccess: () => {
       onClosed();
-      navigate("/");
+      navigate("/app");
     },
   });
 

@@ -1,7 +1,9 @@
 package lt.oranges.orangchat.feature.home
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +20,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Search
@@ -27,9 +30,15 @@ import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Icon
 import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,6 +49,8 @@ import lt.oranges.orangchat.data.model.SelfUser
 import lt.oranges.orangchat.data.model.UnreadState
 import lt.oranges.orangchat.data.model.VoiceState
 import lt.oranges.orangchat.feature.unread.MentionBadge
+import lt.oranges.orangchat.ui.components.MenuItem
+import lt.oranges.orangchat.ui.components.OrangDropdownMenu
 import lt.oranges.orangchat.ui.components.UserFooter
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
@@ -59,6 +70,7 @@ fun ChannelListPane(
     /** channelId -> who is sitting in that voice channel. */
     voiceParticipants: Map<String, Map<String, VoiceState>> = emptyMap(),
     memberNames: Map<String, String> = emptyMap(),
+    onMarkRead: (Channel) -> Unit = {},
 ) {
     val c = OrangTheme.colors
     val categories = detail.channels.filter { it.type == ChannelType.CATEGORY }.sortedBy { it.position }
@@ -112,6 +124,7 @@ fun ChannelListPane(
                         voiceMembers = voiceParticipants[ch.id].orEmpty(),
                         memberNames = memberNames,
                         onClick = onSelectChannel,
+                        onMarkRead = onMarkRead,
                     )
                 }
             }
@@ -137,6 +150,7 @@ fun ChannelListPane(
                         voiceMembers = voiceParticipants[ch.id].orEmpty(),
                         memberNames = memberNames,
                         onClick = onSelectChannel,
+                        onMarkRead = onMarkRead,
                     )
                 }
             }
@@ -145,6 +159,7 @@ fun ChannelListPane(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ChannelRow(
     channel: Channel,
@@ -154,9 +169,12 @@ private fun ChannelRow(
     voiceMembers: Map<String, VoiceState>,
     memberNames: Map<String, String>,
     onClick: (Channel) -> Unit,
+    onMarkRead: (Channel) -> Unit,
 ) {
     val c = OrangTheme.colors
     val icon = if (channel.type == ChannelType.VOICE) Icons.Default.VolumeUp else Icons.Default.Tag
+    val haptics = LocalHapticFeedback.current
+    var menuOpen by remember { mutableStateOf(false) }
     Column {
     Row(
         modifier = Modifier
@@ -164,7 +182,15 @@ private fun ChannelRow(
             .padding(horizontal = 8.dp, vertical = 1.dp)
             .clip(RoundedCornerShape(OrangRadius.md))
             .background(if (selected) c.primarySoft else androidx.compose.ui.graphics.Color.Transparent)
-            .clickable { onClick(channel) }
+            // Long-press stands in for the web client's right-click menu; the
+            // tap still opens the channel.
+            .combinedClickable(
+                onClick = { onClick(channel) },
+                onLongClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    menuOpen = true
+                },
+            )
             .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -183,6 +209,19 @@ private fun ChannelRow(
             modifier = Modifier.weight(1f),
         )
         MentionBadge(mentionCount)
+        // Keeping the anchor at the trailing edge leaves the channel name
+        // visible while its action is open.
+        Box {
+            OrangDropdownMenu(
+                expanded = menuOpen,
+                onDismiss = { menuOpen = false },
+                items = listOf(
+                    MenuItem("Mark as read", Icons.Default.Check, enabled = unread) {
+                        onMarkRead(channel)
+                    },
+                ),
+            )
+        }
     }
     // Who is already in this voice channel, as on the web.
     voiceMembers.values.forEach { member ->

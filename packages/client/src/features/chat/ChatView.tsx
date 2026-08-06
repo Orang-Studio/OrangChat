@@ -7,6 +7,7 @@ import {
   type Channel,
   type Message,
   type ServerMember,
+  type User,
 } from "@orangchat/shared";
 import { useAuthStore } from "../../stores/auth";
 import { panelActions } from "../../stores/panels";
@@ -17,6 +18,7 @@ import { setActiveChannel } from "../unread/active";
 import { markChannelRead } from "../unread/api";
 import { unreadActions } from "../../stores/unread";
 import { clearConversationNotifications } from "../../lib/notifications";
+import { useDocumentTitle } from "../../lib/useDocumentTitle";
 import { useE2eeChannel } from "../e2ee/useE2eeChannel";
 import { useChannelRoom } from "./socket-actions";
 import { MessageList } from "./MessageList";
@@ -105,8 +107,16 @@ export function ChatView({
     return map;
   }, [members]);
 
+  const mentionProfiles = useMemo(() => {
+    const map: Record<string, User> = {};
+    for (const m of members) map[m.userId] = m.user;
+    return map;
+  }, [members]);
+
   const channelName = channel.name ?? "channel";
   const HeaderIcon = HEADER_ICON[channel.type as keyof typeof HEADER_ICON] ?? Hash;
+
+  useDocumentTitle(channelName);
 
   return (
     <section className="flex min-w-0 flex-1 flex-col bg-surface-2">
@@ -190,8 +200,10 @@ export function ChatView({
           selfId={selfId}
           canManage={canManage}
           onReply={setReplyTo}
+          replyToId={replyTo?.id}
           mentionNames={mentionNames}
           mentionUsers={mentionUsers}
+          mentionProfiles={mentionProfiles}
           intro={intro}
           jumpToId={jumpToId}
           onJumpHandled={() =>

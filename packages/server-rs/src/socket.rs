@@ -549,6 +549,7 @@ async fn handle_connect(s: SocketRef, io: SocketIo, state: AppState) {
     let user_id = user.user_id.clone();
     let username = user.username.clone();
     let device = user.device.clone();
+    let socket_id = s.id.to_string();
 
     register_handlers(
         &s,
@@ -556,6 +557,7 @@ async fn handle_connect(s: SocketRef, io: SocketIo, state: AppState) {
         state.clone(),
         user_id.clone(),
         username.clone(),
+        device.clone(),
     );
 
     // Disconnect: clear voice state for any voice rooms, then presence.
@@ -564,11 +566,13 @@ async fn handle_connect(s: SocketRef, io: SocketIo, state: AppState) {
         let state = state.clone();
         let uid = user_id.clone();
         let device = device.clone();
+        let socket_id = socket_id.clone();
         s.on_disconnect(move |s: SocketRef| {
             let io = io.clone();
             let state = state.clone();
             let uid = uid.clone();
             let device = device.clone();
+            let socket_id = socket_id.clone();
             async move {
                 let sid = s.id.to_string();
                 let _ = voice::remove_device(&state, &uid, &sid).await;
@@ -590,7 +594,7 @@ async fn handle_connect(s: SocketRef, io: SocketIo, state: AppState) {
                 emit_voice_devices(&io, &state, &uid).await;
                 // Only the user's *last* socket going away ends their call -
                 // closing one of several tabs must not hang up on the others.
-                if let Ok(last_socket) = presence::remove_socket(&state, &uid, &device).await {
+                if let Ok(last_socket) = presence::remove_socket(&state, &uid, &socket_id).await {
                     if last_socket {
                         if let Ok(Some(channel_id)) = call::active_call_of(&state, &uid).await {
                             end_call_for(&io, &state, &channel_id, &uid, "ended").await;
@@ -632,7 +636,9 @@ async fn handle_connect(s: SocketRef, io: SocketIo, state: AppState) {
             let _ = s.join(format!("channel:{}", c.id));
         }
     }
-    if let Ok(first_socket) = presence::add_socket(&state, &user_id, &device).await {
+    if let Ok(first_socket) =
+        presence::add_socket(&state, &user_id, &socket_id, &device).await
+    {
         if first_socket {
             let _ = presence::set_status(&state, &user_id, "online").await;
         }
@@ -680,6 +686,7 @@ fn register_handlers(
     state: AppState,
     user_id: String,
     username: String,
+    device: String,
 ) {
     // channel:join
     {
@@ -1004,8 +1011,81 @@ fn register_handlers(
             let io = io.clone();
             let uid = uid.clone();
             async move {
+                if !presence::valid_status(&status) {
+                    return;
+                }
                 let _ = presence::set_status(&state, &uid, &status).await;
-                broadcast_presence(&io, &state, &uid, &status).await;
+                let effective = presence::get_status(&state, &uid)
+                    .await
+                    .unwrap_or_else(|_| status.clone());
+                broadcast_presence(&io, &state, &uid, &effective).await;
+            }
+        });
+    }
+
+    // presence:heartbeat - renew only this Socket.IO connection's lease. A
+    // reconnect after a suspended client missed its lease becomes a fresh
+    // online transition and is broadcast like an ordinary connection.
+    {
+        let state = state.clone();
+        let io = io.clone();
+        let uid = user_id.clone();
+        let device = device.clone();
+        let socket_id = s.id.to_string();
+        s.on("presence:heartbeat", move |Data(lifecycle): Data<String>| {
+            let state = state.clone();
+            let io = io.clone();
+            let uid = uid.clone();
+            let device = device.clone();
+            let socket_id = socket_id.clone();
+            async move {
+                if !matches!(lifecycle.as_str(), "online" | "idle") {
+                    return;
+                }
+                if let Ok(first_socket) =
+                    presence::refresh_socket(&state, &uid, &socket_id, &device).await
+                {
+                    let _ = presence::set_socket_lifecycle(
+                        &state,
+                        &uid,
+                        &socket_id,
+                        &lifecycle,
+                    )
+                    .await;
+                    if first_socket {
+                        let _ = presence::set_status(&state, &uid, "online").await;
+                        let effective = presence::get_status(&state, &uid)
+                            .await
+                            .unwrap_or_else(|_| lifecycle.clone());
+                        broadcast_presence(&io, &state, &uid, &effective).await;
+                    }
+                }
+            }
+        });
+    }
+
+    // presence:lifecycle - automatic foreground/background state for only this
+    // client. Explicit user-selected DND/idle/offline status remains global.
+    {
+        let state = state.clone();
+        let io = io.clone();
+        let uid = user_id.clone();
+        let socket_id = s.id.to_string();
+        s.on("presence:lifecycle", move |Data(status): Data<String>| {
+            let state = state.clone();
+            let io = io.clone();
+            let uid = uid.clone();
+            let socket_id = socket_id.clone();
+            async move {
+                if presence::set_socket_lifecycle(&state, &uid, &socket_id, &status)
+                    .await
+                    .unwrap_or(false)
+                {
+                    let effective = presence::get_status(&state, &uid)
+                        .await
+                        .unwrap_or_else(|_| "online".into());
+                    broadcast_presence(&io, &state, &uid, &effective).await;
+                }
             }
         });
     }

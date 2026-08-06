@@ -1,7 +1,10 @@
 package lt.oranges.orangchat.feature.chat
 
 import android.view.TextureView
+import android.net.Uri
 import androidx.annotation.OptIn
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -13,14 +16,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Fullscreen
-import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,23 +38,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.delay
+import lt.oranges.orangchat.crypto.E2eeKeystore
 import lt.oranges.orangchat.data.model.Attachment
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
-import lt.oranges.orangchat.util.absoluteUrl
 import lt.oranges.orangchat.util.videoPosterUrl
+import java.io.File
 import java.time.Instant
 
 /*
@@ -81,7 +78,12 @@ private const val DEFAULT_ASPECT = 16f / 9f
 private val INLINE_VIDEO_WIDTH = 150.dp
 
 @Composable
-fun VideoAttachment(attachment: Attachment, expiresAt: Instant?, now: Instant) {
+fun VideoAttachment(
+    attachment: Attachment,
+    expiresAt: Instant?,
+    now: Instant,
+    all: List<Attachment> = emptyList(),
+) {
     val c = OrangTheme.colors
     val context = LocalContext.current
     // A sealed clip is not fetched until it is asked for: decrypting one means
@@ -91,7 +93,33 @@ fun VideoAttachment(attachment: Attachment, expiresAt: Instant?, now: Instant) {
     val source = rememberAttachmentSource(attachment, wanted = requested)
     val href = source.url
     var broken by remember(attachment.id) { mutableStateOf(false) }
-    var expanded by remember(attachment.id) { mutableStateOf(false) }
+    var previewOpen by remember(attachment.id) { mutableStateOf(false) }
+    val previewLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) {
+        previewOpen = false
+    }
+
+    // A sealed video's poster is its client-made thumbnail row - a small blob,
+    // so it decrypts on its own even while the clip stays unrequested.
+    val keystore = remember(context) { E2eeKeystore.get(context) }
+    val sealedRef = remember(attachment.id) { keystore.sealedAttachment(attachment.id) }
+    val thumbRow = remember(sealedRef, all) {
+        sealedRef?.thumb?.let { t -> all.firstOrNull { it.id == t.attachmentId } }
+    }
+    var sealedPoster by remember(thumbRow?.id) { mutableStateOf<String?>(null) }
+    LaunchedEffect(thumbRow?.id) {
+        val row = thumbRow ?: return@LaunchedEffect
+        val ref = keystore.sealedAttachment(row.id) ?: return@LaunchedEffect
+        val opened = SealedFiles.open(context, row, ref) ?: return@LaunchedEffect
+        // Coil guesses a file's type from its extension, and the decrypted
+        // cache file has none - so keep a .jpg copy for the loader.
+        val posterFile = File(context.cacheDir, "poster-${row.id}.jpg")
+        if (!posterFile.exists() || posterFile.lastModified() < opened.lastModified()) {
+            opened.copyTo(posterFile, overwrite = true)
+        }
+        sealedPoster = Uri.fromFile(posterFile).toString()
+    }
 
     if (broken || source.unavailable) {
         FileCard(attachment, expiresAt, now)
@@ -107,7 +135,8 @@ fun VideoAttachment(attachment: Attachment, expiresAt: Instant?, now: Instant) {
 
     val active = MediaPlayback.currentId == attachment.id
     val player = if (active) MediaPlayback.playerFor(attachment.id) else null
-    val poster = remember(attachment.id) { videoPosterUrl(attachment) }
+    val storedPoster = remember(attachment.id) { videoPosterUrl(attachment) }
+    val posterUrl = sealedPoster ?: storedPoster?.url
 
     // Upload metadata is only a guess to lay out with until the decoder reports
     // the real shape.
@@ -134,17 +163,17 @@ fun VideoAttachment(attachment: Attachment, expiresAt: Instant?, now: Instant) {
                 // snatch it back.
                 VideoSurface(
                     player = player,
-                    bind = !expanded,
+                    bind = !previewOpen,
                     aspect = trueAspect,
                     modifier = Modifier.fillMaxSize(),
                 )
-            } else if (poster != null) {
+            } else if (posterUrl != null) {
                 // Standing in until playback starts, so an unplayed clip shows
                 // what it is rather than a black rectangle. Only ever a real
                 // image - see videoPosterUrl for why the clip itself is not one.
                 AsyncImage(
                     model = ImageRequest.Builder(context)
-                        .data(poster.url)
+                        .data(posterUrl)
                         .crossfade(true)
                         .build(),
                     contentDescription = attachment.filename,
@@ -166,9 +195,12 @@ fun VideoAttachment(attachment: Attachment, expiresAt: Instant?, now: Instant) {
                     else MediaPlayback.toggle(context, attachment.id, href) { broken = true }
                 },
                 onExpand = {
-                    if (href == null) requested = true
-                    else if (!active) MediaPlayback.toggle(context, attachment.id, href) { broken = true }
-                    expanded = true
+                    // Resolve sealed media in parallel with the activity. The
+                    // launcher result keeps the inline TextureView from stealing
+                    // the shared player surface while fullscreen owns it.
+                    requested = true
+                    previewOpen = true
+                    previewLauncher.launch(MediaPreviewActivity.intent(context, attachment))
                 },
             )
         }
@@ -178,13 +210,6 @@ fun VideoAttachment(attachment: Attachment, expiresAt: Instant?, now: Instant) {
         }
     }
 
-    if (expanded) {
-        VideoLightbox(
-            attachment = attachment,
-            onDismiss = { expanded = false },
-            onBroken = { broken = true },
-        )
-    }
 }
 
 @Composable
@@ -203,7 +228,13 @@ private fun InlineOverlay(
     val isPlaying = active && MediaPlayback.isPlaying
     val buffering = fetching || (active && MediaPlayback.buffering)
     val seekable = active && MediaPlayback.ready
-    val durationMs = if (active) MediaPlayback.durationMs else 0L
+    // The sender measured the length at upload, so it is on the still before
+    // any of the clip is.
+    val durationMs = if (active) {
+        MediaPlayback.durationMs
+    } else {
+        ((attachment.duration ?: 0.0) * 1000).toLong()
+    }
 
     LaunchedEffect(active, isPlaying) {
         while (active && isPlaying) {
@@ -314,7 +345,7 @@ private fun InlineOverlay(
  */
 @OptIn(UnstableApi::class)
 @Composable
-private fun VideoSurface(
+internal fun VideoSurface(
     player: ExoPlayer,
     bind: Boolean,
     aspect: Float,
@@ -336,149 +367,5 @@ private fun VideoSurface(
             // this surface is disposed.
             onRelease = { view -> runCatching { player.clearVideoTextureView(view) } },
         )
-    }
-}
-
-/** Full-screen playback. Downloading is intentionally only offered here. */
-@Composable
-private fun VideoLightbox(
-    attachment: Attachment,
-    onDismiss: () -> Unit,
-    onBroken: () -> Unit,
-) {
-    val context = LocalContext.current
-    val download = rememberAttachmentDownloader()
-    val href = rememberResolvedAttachmentUrl(attachment) ?: return
-
-    val active = MediaPlayback.currentId == attachment.id
-    val player = if (active) MediaPlayback.playerFor(attachment.id) else null
-    val isPlaying = active && MediaPlayback.isPlaying
-    val durationMs = if (active) MediaPlayback.durationMs else 0L
-    val aspect = if (active && MediaPlayback.videoAspect > 0f) {
-        MediaPlayback.videoAspect
-    } else {
-        val w = attachment.width
-        val h = attachment.height
-        if (w != null && h != null && w > 0 && h > 0) w.toFloat() / h else DEFAULT_ASPECT
-    }
-
-    var chromeVisible by remember { mutableStateOf(true) }
-    LaunchedEffect(chromeVisible, isPlaying) {
-        if (chromeVisible && isPlaying) {
-            delay(3000)
-            chromeVisible = false
-        }
-    }
-    LaunchedEffect(active, isPlaying) {
-        while (active && isPlaying) {
-            MediaPlayback.syncPosition()
-            delay(200)
-        }
-    }
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false,
-        ),
-    ) {
-        Box(Modifier.fillMaxSize().background(Color.Black)) {
-            if (player != null) {
-                VideoSurface(
-                    player = player,
-                    bind = true,
-                    aspect = aspect,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .tapToToggle { chromeVisible = !chromeVisible },
-            )
-
-            if (chromeVisible) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.TopCenter)
-                        .background(Color.Black.copy(alpha = 0.55f))
-                        .systemBarsPadding()
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            attachment.filename,
-                            color = Color.White,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        if (attachment.size > 0) {
-                            Text(
-                                formatBytes(attachment.size),
-                                color = Color.White.copy(alpha = 0.6f),
-                                fontSize = 11.sp,
-                            )
-                        }
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    OverlayIconButton(
-                        onClick = { download(attachment) },
-                        icon = Icons.Default.Download,
-                        label = "Download ${attachment.filename}",
-                    )
-                    OverlayIconButton(
-                        onClick = onDismiss,
-                        icon = Icons.Default.FullscreenExit,
-                        label = "Exit full screen",
-                    )
-                }
-
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .background(Color.Black.copy(alpha = 0.55f))
-                        .systemBarsPadding()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    OverlayIconButton(
-                        onClick = {
-                            MediaPlayback.toggle(context, attachment.id, href) { onBroken() }
-                        },
-                        icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        label = if (isPlaying) "Pause" else "Play",
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        formatDuration(if (active) MediaPlayback.positionMs else 0L),
-                        color = Color.White,
-                        fontSize = 11.sp,
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Scrubber(
-                        positionMs = if (active) MediaPlayback.positionMs else 0L,
-                        durationMs = durationMs,
-                        enabled = active && MediaPlayback.ready,
-                        onSeek = { MediaPlayback.seekTo(it) },
-                        accent = Color.White,
-                        track = Color.White.copy(alpha = 0.3f),
-                        modifier = Modifier.weight(1f),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        formatDuration(durationMs),
-                        color = Color.White.copy(alpha = 0.7f),
-                        fontSize = 11.sp,
-                    )
-                }
-            }
-        }
     }
 }

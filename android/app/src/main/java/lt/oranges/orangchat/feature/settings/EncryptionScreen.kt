@@ -229,6 +229,7 @@ fun EncryptionScreen(onBack: () -> Unit, vm: EncryptionViewModel = hiltViewModel
             onScannedTransfer = vm::handleScannedTransfer,
             onConfirmSas = vm::confirmSas,
             onSubmitTotp = vm::submitTotp,
+            onRequestEmailCode = vm::requestTransferEmailCode,
         )
     }
 
@@ -295,6 +296,7 @@ fun ScannedDeviceTransferDialog(
             onScannedTransfer = vm::handleScannedTransfer,
             onConfirmSas = vm::confirmSas,
             onSubmitTotp = vm::submitTotp,
+            onRequestEmailCode = vm::requestTransferEmailCode,
         )
     }
 }
@@ -308,6 +310,7 @@ private fun DeviceTransferDialog(
     onScannedTransfer: (String) -> Unit,
     onConfirmSas: () -> Unit,
     onSubmitTotp: (String) -> Unit,
+    onRequestEmailCode: () -> Unit,
 ) {
     val c = OrangTheme.colors
     var pastedCode by remember { mutableStateOf("") }
@@ -414,23 +417,55 @@ private fun DeviceTransferDialog(
                     )
                 }
                 EncryptionViewModel.TransferStep.TOTP -> {
-                    Text(
-                        "Enter a fresh two-factor authentication code. The new device will be signed into your append-only device log.",
-                        color = c.inkSecondary,
-                        fontSize = 14.sp,
-                    )
-                    OrangTextField(
-                        value = totp,
-                        onValueChange = { value -> totp = value.filter(Char::isDigit).take(8) },
-                        label = "Authentication code",
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    )
-                    OrangButton(
-                        text = "Add device",
-                        onClick = { onSubmitTotp(totp) },
-                        enabled = totp.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    val emailCode = !state.hasTwoFactor
+                    if (emailCode && state.transferLoginToken == null) {
+                        Text(
+                            "This account has no authenticator app set up, so OrangChat will email a one-time code to approve the new device.",
+                            color = c.inkSecondary,
+                            fontSize = 14.sp,
+                        )
+                        OrangButton(
+                            text = if (state.requestingEmailCode) "Sending…" else "Email me a code",
+                            onClick = onRequestEmailCode,
+                            enabled = !state.requestingEmailCode,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    } else {
+                        if (emailCode) {
+                            Text(
+                                "A one-time code is on its way to your email - it expires in 10 minutes.",
+                                color = c.inkSecondary,
+                                fontSize = 14.sp,
+                            )
+                        } else {
+                            Text(
+                                "Enter a fresh two-factor authentication code. The new device will be signed into your append-only device log.",
+                                color = c.inkSecondary,
+                                fontSize = 14.sp,
+                            )
+                        }
+                        OrangTextField(
+                            value = totp,
+                            onValueChange = { value -> totp = value.filter(Char::isDigit).take(if (emailCode) 6 else 8) },
+                            label = if (emailCode) "Email code" else "Authentication code",
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        )
+                        OrangButton(
+                            text = "Add device",
+                            onClick = { onSubmitTotp(totp) },
+                            enabled = totp.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        if (emailCode) {
+                            OrangButton(
+                                text = "Resend email code",
+                                onClick = onRequestEmailCode,
+                                enabled = !state.requestingEmailCode,
+                                variant = ButtonVariant.Secondary,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
                 }
                 EncryptionViewModel.TransferStep.FINISHING -> {
                     Text(

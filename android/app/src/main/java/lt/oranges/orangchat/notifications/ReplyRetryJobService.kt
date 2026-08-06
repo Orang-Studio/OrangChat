@@ -86,8 +86,7 @@ class ReplyRetryJobService : JobService() {
             // whenever the system next batches jobs - but the quota for it can
             // be spent, and a refused schedule would strand the reply, so fall
             // back to an ordinary job.
-            val expedited = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-            val accepted = expedited &&
+            val accepted =
                 runCatching { scheduler.schedule(buildJob(context, expedited = true)) }
                     .getOrDefault(JobScheduler.RESULT_FAILURE) == JobScheduler.RESULT_SUCCESS
             if (!accepted) {
@@ -100,7 +99,7 @@ class ReplyRetryJobService : JobService() {
                 .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
                 .setBackoffCriteria(BACKOFF_MS, JobInfo.BACKOFF_POLICY_EXPONENTIAL)
                 .apply {
-                    if (expedited && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (expedited) {
                         setExpedited(true)
                     } else {
                         setMinimumLatency(0)

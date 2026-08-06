@@ -242,6 +242,16 @@ data class Attachment(
     val width: Int? = null,
     val height: Int? = null,
     /**
+     * Seconds, for audio and video. Measured by the sender's client at upload,
+     * so a receiver knows the length without downloading the file.
+     */
+    val duration: Double? = null,
+    /**
+     * A still of the video's first frame, made at upload and stored next to
+     * the bytes. Receivers show it as the preview instead of a dark box.
+     */
+    val thumbnailUrl: String? = null,
+    /**
      * "local" | "cloudinary" | "orangmove". Files over 10MB go to OrangMove,
      * which expires them; the other two are permanent.
      */
@@ -357,6 +367,7 @@ data class Conversation(
     val name: String? = null,
     val participants: List<User> = emptyList(),
     val lastMessageAt: String? = null,
+    val latestMessage: Message? = null,
 )
 
 @Serializable

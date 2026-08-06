@@ -62,6 +62,8 @@ fun SearchScreen(
 ) {
     val c = OrangTheme.colors
     val state by vm.state.collectAsStateWithLifecycle()
+    // Keep the renderer safe if an overlapping page comes back from the server.
+    val results = state.results.distinctBy { it.id }
 
     LaunchedEffect(serverId, channelIds) { vm.reset() }
 
@@ -80,7 +82,7 @@ fun SearchScreen(
             OrangTextField(
                 value = state.query,
                 onValueChange = { vm.onQueryChange(serverId, channelIds, it) },
-                label = "",
+                label = null,
                 placeholder = "Search messages",
                 modifier = Modifier.weight(1f),
             )
@@ -88,7 +90,7 @@ fun SearchScreen(
         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(c.border))
 
         when {
-            state.loading && state.results.isEmpty() -> Box(
+            state.loading && results.isEmpty() -> Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) { CircularProgressIndicator(color = c.primary) }
@@ -103,7 +105,7 @@ fun SearchScreen(
                 else "Type to search this server's messages.",
             )
 
-            state.results.isEmpty() -> Hint(
+            results.isEmpty() -> Hint(
                 if (serverId == null || state.searchedLocally) {
                     "No cached messages matched \"${state.query}\". Messages not opened here may be missing."
                 } else {
@@ -126,7 +128,7 @@ fun SearchScreen(
                         )
                     }
                 }
-                items(state.results, key = { it.id }) { message ->
+                items(results, key = { it.id }) { message ->
                     SearchHit(
                         message = message,
                         author = message.author ?: authors[message.authorId],

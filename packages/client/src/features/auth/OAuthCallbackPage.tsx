@@ -16,7 +16,7 @@ export function OAuthCallbackPage() {
     void refreshSession();
   }, []);
 
-  if (status === "authenticated") return <Navigate to="/" replace />;
+  if (status === "authenticated") return <Navigate to="/app" replace />;
   if (status === "guest") return <Navigate to="/login?error=oauth_failed" replace />;
   return <SplashScreen />;
 }

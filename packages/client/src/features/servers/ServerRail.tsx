@@ -98,7 +98,7 @@ function ServerRailIcon({ server, active }: { server: Server; active: boolean })
       client.invalidateQueries({ queryKey: serverKeys.list });
       client.removeQueries({ queryKey: serverKeys.detail(server.id) });
       close();
-      if (active) navigate("/");
+      if (active) navigate("/app");
     },
   });
 
@@ -242,7 +242,7 @@ export function ServerRail() {
       className="flex w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-surface-0 px-3 py-3"
     >
       <Tooltip label="Home">
-        <Link to="/" className="relative flex justify-center">
+        <Link to="/app" className="relative flex justify-center">
           <LogoMark className="size-12 transition-transform hover:scale-105" />
           <UnreadBadge
             count={dmUnread}

@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <!-- Only the update APK is ever shared out, and only with the installer.
-         Scoped to this one subdirectory of the cache rather than the whole of
-         it, so nothing else the app caches is reachable through the provider. -->
+    <!-- Keep shared files in narrow cache subdirectories rather than exposing
+         the whole cache to the camera, installer, or attachment uploader. -->
     <cache-path name="updates" path="updates/" />
+    <cache-path name="camera" path="camera/" />
+    <cache-path name="recordings" path="recordings/" />
 </paths>

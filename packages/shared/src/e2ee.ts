@@ -26,10 +26,6 @@ export const CONVERSATION_KEY_BYTES = 32;
 
 export const PAIR_SECRET_BYTES = 32;
 
-export const TRANSFER_ID_BYTES = 16;
-
-export const EPOCH_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
-
 export const EPOCH_MAX_MESSAGES = 10_000;
 
 export type DeviceLogKind = 'genesis' | 'add-device' | 'revoke';
@@ -272,6 +268,8 @@ export interface SealedAttachmentRef {
   filename: string;
   contentType: string;
   size: number;
+  /** Seconds, probed on the sender's device before the file was sealed. */
+  duration?: number;
   width?: number;
   height?: number;
   spoiler?: boolean;
@@ -1076,14 +1074,6 @@ export function decodeDeviceTransferInviteQr(raw: string): DeviceTransferInviteQ
     transferId: transferId(params),
     pairSecret: fromBase64(required(params, 'p')),
   };
-}
-
-export function isDeviceTransferInvite(raw: string): boolean {
-  try {
-    return paramsOf(raw, QR_KIND.deviceTransfer).get('m') === 'invite';
-  } catch {
-    return false;
-  }
 }
 
 export function decodeContactVerifyQr(raw: string): ContactVerifyQr {

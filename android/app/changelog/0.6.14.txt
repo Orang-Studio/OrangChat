@@ -1,0 +1,15 @@
+Chat crash and message-order fixes
+
+Fixed
+- A crash when reading back through an older conversation: the same message
+  could appear twice in the list, which crashed the chat screen with "Key was
+  already used". Messages are now guaranteed unique.
+- Encrypted messages are ordered by the server timestamp again. A sender's
+  device clock no longer affects where a message lands in the conversation, so
+  scrolling up can no longer fetch a message the app already had.
+- A message confirmed by the realtime stream now clears the pending-send
+  store, so restarting the app cannot re-send a message that was already
+  delivered.
+- Restored pending messages keep their identity across confirmation, so a
+  restart no longer leaves two copies of one pending message with the same
+  key.

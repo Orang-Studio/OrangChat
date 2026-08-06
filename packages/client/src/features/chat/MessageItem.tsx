@@ -1,7 +1,7 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { Pencil, Pin, Reply, SmilePlus, Trash2 } from "lucide-react";
-import type { Message } from "@orangchat/shared";
+import type { Message, User } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
 import { ContextMenu, ContextMenuTrigger } from "../../components/ui/ContextMenu";
 import { setMessagePinned } from "../messages/api";
@@ -36,12 +36,16 @@ export interface MessageItemProps {
   onJumpTo?: (messageId: string) => void;
   /** Briefly highlighted because something just jumped to it. */
   flash?: boolean;
+  /** The message currently selected as the reply target. */
+  replying?: boolean;
   /** userId → display name, for resolving `<@id>` mentions in content. */
   mentionNames?: Record<string, string>;
   /** username → user, for resolving `@username` mentions in content. */
   mentionUsers?: Record<string, { id: string; name: string }>;
   /** The viewer's id, so mentions of them highlight. */
   selfId?: string;
+  /** Full users for resolved mentions, so a mention can open a profile. */
+  mentionProfiles?: Record<string, User>;
 }
 
 function ReactionPicker({ message }: { message: Message }) {
@@ -91,7 +95,12 @@ function ReactionPicker({ message }: { message: Message }) {
 function EditForm({ message, onDone }: { message: Message; onDone: () => void }) {
   const [draft, setDraft] = useState(message.content);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const editor = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    setDraft(message.content);
+  }, [message.content]);
 
   useLayoutEffect(() => {
     const field = editor.current;
@@ -106,13 +115,18 @@ function EditForm({ message, onDone }: { message: Message; onDone: () => void })
   const mayBeEmpty = message.attachments.length > 0;
 
   const save = async () => {
+    if (saving) return;
     const content = draft.trim();
     if (content === message.content || (!content && !mayBeEmpty)) return onDone();
+    setSaving(true);
+    setError(null);
     try {
       await editMessage(message, content);
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Edit failed");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -122,21 +136,42 @@ function EditForm({ message, onDone }: { message: Message; onDone: () => void })
         ref={editor}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
+        disabled={saving}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             void save();
           }
-          if (e.key === "Escape") onDone();
+          if (e.key === "Escape" && !saving) onDone();
         }}
         rows={Math.min(6, draft.split("\n").length)}
         autoFocus
         className="w-full resize-none rounded-lg border border-border bg-surface-1 px-3 py-2 text-base md:text-sm"
       />
-      <p className="mt-0.5 text-xs text-ink-muted">
-        Enter to save · Esc to cancel
-        {error && <span className="ml-2 text-danger">{error}</span>}
-      </p>
+      <div className="mt-1 flex items-center justify-between gap-2 text-xs text-ink-muted">
+        <span>
+          Enter to save · Esc to cancel
+          {error && <span className="ml-2 text-danger">{error}</span>}
+        </span>
+        <span className="flex shrink-0 gap-1">
+          <button
+            type="button"
+            disabled={saving}
+            onClick={onDone}
+            className="rounded-md px-2 py-1 text-ink-secondary transition-colors hover:bg-surface-3 hover:text-ink disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => void save()}
+            className="rounded-md bg-primary px-2 py-1 font-medium text-ink-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </span>
+      </div>
     </div>
   );
 }
@@ -151,13 +186,15 @@ export function MessageItem({
   onReply,
   onJumpTo,
   flash = false,
+  replying = false,
   mentionNames,
   mentionUsers,
   selfId,
+  mentionProfiles,
 }: MessageItemProps) {
   const [editing, setEditing] = useState(false);
   const [touchActions, setTouchActions] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileUser, setProfileUser] = useState<User | null>(null);
   const [forwardOpen, setForwardOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const usableEmojis = useEmojiMap();
@@ -189,7 +226,8 @@ export function MessageItem({
               !compact && "oc-message-lead mt-3",
               touchActions && "bg-surface-3/40",
               pending && "pointer-events-none opacity-50",
-              pinged && "border-l-2 border-primary bg-primary/[0.06] hover:bg-primary/10",
+              pinged && "oc-message-pinged border-l-2 border-primary bg-primary/[0.06] hover:bg-primary/10",
+              replying && "oc-message-replying bg-primary/[0.08] hover:bg-primary/10",
               // Static rather than animated so it still lands under reduced motion.
               flash && "bg-primary/15 hover:bg-primary/15",
             )}
@@ -231,7 +269,7 @@ export function MessageItem({
               ) : (
                 <button
                   type="button"
-                  onClick={() => setProfileOpen(true)}
+                  onClick={() => setProfileUser(message.author)}
                   aria-label={`View ${message.author.displayName}'s profile`}
                   className="mt-0.5 shrink-0"
                 >
@@ -244,7 +282,7 @@ export function MessageItem({
                   <p className="flex items-baseline gap-2">
                     <button
                       type="button"
-                      onClick={() => setProfileOpen(true)}
+                      onClick={() => setProfileUser(message.author)}
                       className="font-semibold hover:underline"
                     >
                       {message.author.displayName}
@@ -268,9 +306,13 @@ export function MessageItem({
                       <RichText
                         content={message.content}
                         mentions={mentionNames}
-                        mentionUsers={mentionUsers}
-                        selfId={selfId}
-                        emojis={emojis}
+                         mentionUsers={mentionUsers}
+                         selfId={selfId}
+                         emojis={emojis}
+                         onMentionClick={(userId) => {
+                           const user = mentionProfiles?.[userId];
+                           if (user) setProfileUser(user);
+                         }}
                       />
                     )}
                     {message.editedAt && (
@@ -367,11 +409,13 @@ export function MessageItem({
               </div>
             )}
 
-            {profileOpen && (
+            {profileUser && (
               <ProfileDialog
-                user={message.author}
-                open={profileOpen}
-                onOpenChange={setProfileOpen}
+                user={profileUser}
+                open
+                onOpenChange={(open) => {
+                  if (!open) setProfileUser(null);
+                }}
               />
             )}
           </div>

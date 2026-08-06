@@ -12,7 +12,7 @@ use crate::error::{AppError, AppResult};
 use crate::http::{bad_request, AuthUser};
 use crate::permissions::{BAN_MEMBERS, KICK_MEMBERS, MANAGE_NICKNAMES};
 use crate::services::server::MemberDetail;
-use crate::services::{audit, membership, moderation, role};
+use crate::services::{audit, bot, membership, moderation, role};
 use crate::state::AppState;
 
 pub fn routes() -> Router<AppState> {
@@ -436,14 +436,21 @@ async fn kick_member(
 ) -> AppResult<impl IntoResponse> {
     membership::require_permission(&state, &server_id, &user.user_id, KICK_MEMBERS).await?;
     moderation::kick_member(&state, &server_id, &target_id, &user.user_id).await?;
+    // A bot leaving is not a moderation event, and `bot.remove` keeps it
+    // distinguishable from member.kick in the audit log, matching bot.add.
+    let (action, target_type) = if bot::is_bot(&state, &target_id).await? {
+        (audit::action::BOT_REMOVE, "user")
+    } else {
+        (audit::action::MEMBER_KICK, "member")
+    };
     audit::record(
         &state,
         audit::Entry {
             server_id: &server_id,
             actor_id: &user.user_id,
-            action: audit::action::MEMBER_KICK,
+            action,
             target_id: Some(&target_id),
-            target_type: Some("member"),
+            target_type: Some(target_type),
             changes: json!({}),
             reason: None,
         },

@@ -498,10 +498,17 @@ class AppViewModel @Inject constructor(
     }
 
     fun refreshDms() = viewModelScope.launch {
-        runCatching { socialRepository.listDms() }.onSuccess {
-            _dms.value = it
-            scheduleNavigationCache()
+        val conversations = runCatching { socialRepository.listDms() }.getOrNull() ?: return@launch
+        val readable = buildList {
+            for (conversation in conversations) {
+                val latest = conversation.latestMessage?.let { message ->
+                    runCatching { e2eeRepository.decrypt(message) }.getOrDefault(message)
+                }
+                add(conversation.copy(latestMessage = latest))
+            }
         }
+        _dms.value = readable
+        scheduleNavigationCache()
     }
 
     /**
@@ -631,7 +638,16 @@ class AppViewModel @Inject constructor(
                 } else {
                     val items = e2eeRepository.decryptAll(page.items.reversed())
                     _messages.update { m ->
-                        m + (channelId to (items + m[channelId].orEmpty()))
+                        val held = m[channelId].orEmpty()
+                        // A decrypted row's ordering time can disagree with the
+                        // server's keyset (sender-local clocks), so the page
+                        // cursor can straddle a message we already hold. Dropping
+                        // held ids here is what keeps one id on the list - a
+                        // duplicate would collide in the chat list's LazyColumn.
+                        val fresh = items.distinctBy(Message::id).filterNot { pageRow ->
+                            held.any { it.id == pageRow.id }
+                        }
+                        m + (channelId to (fresh + held).distinctBy(Message::id))
                     }
                     scheduleMessageCache(channelId)
                 }
@@ -688,7 +704,7 @@ class AppViewModel @Inject constructor(
         val windowStart = page.first().createdAt
         val pageIds = page.mapTo(mutableSetOf()) { it.id }
         val older = existing.filter { it.createdAt < windowStart && it.id !in pageIds }
-        return older + page + pending
+        return (older + page + pending).distinctBy(Message::id)
     }
 
     fun sendMessage(
@@ -719,18 +735,19 @@ class AppViewModel @Inject constructor(
             sealedAttachments,
         )
         _pendingMessageIds.update { it + localId }
+        val optimistic = Message(
+            id = localId,
+            channelId = channelId,
+            author = author,
+            content = normalizedContent,
+            createdAt = Instant.now().toString(),
+            replyToId = replyToId,
+            clientId = localId,
+        )
         _messages.update { current ->
-            val optimistic = Message(
-                id = localId,
-                channelId = channelId,
-                author = author,
-                content = normalizedContent,
-                createdAt = Instant.now().toString(),
-                replyToId = replyToId,
-                clientId = localId,
-            )
             current + (channelId to (current[channelId].orEmpty() + optimistic))
         }
+        updateConversationLatest(optimistic)
         flushPendingMessages()
     }
 
@@ -834,6 +851,8 @@ class AppViewModel @Inject constructor(
             )
             _pendingMessageIds.update { it + saved.id }
             _messages.update { current ->
+                val existing = current[saved.channelId].orEmpty()
+                if (existing.any { it.id == saved.id || it.clientId == saved.id }) return@update current
                 val optimistic = Message(
                     id = saved.id,
                     channelId = saved.channelId,
@@ -841,8 +860,9 @@ class AppViewModel @Inject constructor(
                     content = saved.content,
                     createdAt = Instant.now().toString(),
                     replyToId = saved.replyToId,
+                    clientId = saved.id,
                 )
-                current + (saved.channelId to (current[saved.channelId].orEmpty() + optimistic))
+                current + (saved.channelId to (existing + optimistic))
             }
         }
         flushPendingMessages()
@@ -875,6 +895,7 @@ class AppViewModel @Inject constructor(
             current + (confirmed.channelId to
                 if (replaced.any { it.id == confirmed.id }) replaced else replaced + confirmed)
         }
+        updateConversationLatest(confirmed)
         scheduleMessageCache(confirmed.channelId)
     }
 
@@ -885,7 +906,46 @@ class AppViewModel @Inject constructor(
         }
     }
 
-    fun editMessage(channelId: String, messageId: String, content: String) = viewModelScope.launch {
+    private fun updateConversationLatest(message: Message) {
+        val hasConversation = _dms.value.any { it.id == message.channelId }
+        if (!hasConversation) return
+        _dms.update { conversations ->
+            conversations
+                .map { conversation ->
+                    if (conversation.id == message.channelId) {
+                        conversation.copy(
+                            lastMessageAt = message.createdAt,
+                            latestMessage = message,
+                        )
+                    } else {
+                        conversation
+                    }
+                }
+                .sortedByDescending { it.lastMessageAt.orEmpty() }
+        }
+        scheduleNavigationCache()
+    }
+
+    private fun replaceConversationLatest(message: Message) {
+        if (_dms.value.none { it.latestMessage?.id == message.id }) return
+        _dms.update { conversations ->
+            conversations.map { conversation ->
+                if (conversation.latestMessage?.id == message.id) {
+                    conversation.copy(latestMessage = message)
+                } else {
+                    conversation
+                }
+            }
+        }
+        scheduleNavigationCache()
+    }
+
+    fun editMessage(
+        channelId: String,
+        messageId: String,
+        content: String,
+        onDone: (String?) -> Unit = {},
+    ) = viewModelScope.launch {
         val normalizedContent = normalizeCustomEmojiNames(content, _emojis.value)
         runCatching {
             val message = _messages.value[channelId].orEmpty().firstOrNull { it.id == messageId }
@@ -903,7 +963,16 @@ class AppViewModel @Inject constructor(
                 encVersion = sealed?.encVersion,
             )
         }
-            .onFailure { _error.value = it.message }
+            .onSuccess { updated ->
+                // The ack is authoritative even if the broadcast races or is lost.
+                replaceMessage(updated)
+                onDone(null)
+            }
+            .onFailure {
+                val message = it.message?.takeIf(String::isNotBlank) ?: "Edit failed"
+                _error.value = message
+                onDone(message)
+            }
     }
 
     fun deleteMessage(channelId: String, messageId: String) = viewModelScope.launch {
@@ -1237,6 +1306,9 @@ class AppViewModel @Inject constructor(
                     if (pending != null) {
                         confirmPendingMessage(pending.localId, message)
                         pendingOutbox.removeAll { it.localId == pending.localId }
+                        // The ack path clears the queue store; this path must too,
+                        // or a restart re-sends a message the server already has.
+                        e2eeRepository.removeQueuedMessage(pending.localId)
                     } else {
                         appendMessage(message)
                     }
@@ -1324,7 +1396,7 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { serverRepository.getHistory(channelId) }.onSuccess { page ->
                 val items = e2eeRepository.decryptAll(page.items)
-                    _messages.update { map ->
+                _messages.update { map ->
                     val existing = map[channelId].orEmpty()
                     // Server rows win, but they carry no local id. Re-attach the
                     // one we already had or a message confirmed moments ago gets
@@ -1392,12 +1464,16 @@ class AppViewModel @Inject constructor(
         var isNew = false
         _messages.update { map ->
             val list = map[message.channelId].orEmpty()
-            if (list.any { it.id == message.id }) map
+            if (list.any {
+                    it.id == message.id ||
+                        (message.clientId != null && it.clientId == message.clientId)
+                }) map
             else { isNew = true; map + (message.channelId to (list + message)) }
         }
         // Clear the author's typing indicator on new message.
         _typing.update { it + (message.channelId to (it[message.channelId].orEmpty() - message.author.id)) }
         if (isNew) {
+            updateConversationLatest(message)
             scheduleMessageCache(message.channelId)
             maybeNotify(message)
         }
@@ -1451,8 +1527,10 @@ class AppViewModel @Inject constructor(
         }
         _messages.update { map ->
             val list = map[message.channelId] ?: return@update map
-            map + (message.channelId to list.map { if (it.id == message.id) message else it })
+            map + (message.channelId to
+                list.map { if (it.id == message.id) message else it }.distinctBy(Message::id))
         }
+        replaceConversationLatest(message)
         scheduleMessageCache(message.channelId)
     }
 
@@ -1462,6 +1540,7 @@ class AppViewModel @Inject constructor(
             val list = map[channelId] ?: return@update map
             map + (channelId to list.filterNot { it.id == messageId })
         }
+        if (_dms.value.any { it.id == channelId }) refreshDms()
         scheduleMessageCache(channelId)
     }
 

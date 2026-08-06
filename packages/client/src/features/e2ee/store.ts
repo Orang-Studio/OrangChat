@@ -42,10 +42,6 @@ export function isEncrypted(channelId: string): boolean {
   return state.latched[channelId] === true || state.channels[channelId]?.e2ee === true;
 }
 
-export function channelState(channelId: string): E2eeChannelState | undefined {
-  return useE2eeStore.getState().channels[channelId];
-}
-
 export async function refreshChannelState(channelId: string): Promise<E2eeChannelState> {
   const state = await getChannelE2eeState(channelId);
   useE2eeStore.setState((prev) => {

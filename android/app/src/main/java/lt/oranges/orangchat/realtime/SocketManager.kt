@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -15,9 +16,12 @@ import io.socket.client.IO
 import io.socket.client.Socket
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.json.Json
@@ -67,6 +71,9 @@ class SocketManager @Inject constructor(
     @Volatile private var activeChannelId: String? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     @Volatile private var lastAuthRefresh = 0L
+    @Volatile private var backgroundedAt = 0L
+    private var backgroundDisconnectJob: Job? = null
+    private var presenceHeartbeatJob: Job? = null
 
     init {
         tokenStore.addTokenListener { token ->
@@ -84,6 +91,7 @@ class SocketManager @Inject constructor(
 
     @Synchronized
     fun connect() {
+        if (!shouldKeepSocket()) return
         val token = tokenStore.accessToken ?: return
         socket?.let { existing ->
             if (!existing.connected()) existing.connect()
@@ -104,6 +112,8 @@ class SocketManager @Inject constructor(
 
     @Synchronized
     fun disconnect() {
+        presenceHeartbeatJob?.cancel()
+        presenceHeartbeatJob = null
         socket?.let {
             it.off()
             it.disconnect()
@@ -124,6 +134,7 @@ class SocketManager @Inject constructor(
      *  hasn't recovered on its own. Idempotent. */
     @Synchronized
     fun reconnectIfNeeded() {
+        if (!shouldKeepSocket()) return
         if (tokenStore.accessToken == null) return
         val s = socket
         if (s == null) connect() else if (!s.connected()) s.connect()
@@ -163,18 +174,68 @@ class SocketManager @Inject constructor(
         // Coming back to the foreground is the other moment a dead socket needs a
         // kick. Lifecycle observers must be added on the main thread.
         Handler(Looper.getMainLooper()).post {
-            ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
-                override fun onStart(owner: LifecycleOwner) = reconnectIfNeeded()
+            val lifecycle = ProcessLifecycleOwner.get().lifecycle
+            if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                enterForeground()
+            } else {
+                enterBackground()
+            }
+            lifecycle.addObserver(object : DefaultLifecycleObserver {
+                override fun onStart(owner: LifecycleOwner) {
+                    enterForeground()
+                }
+
+                override fun onStop(owner: LifecycleOwner) {
+                    enterBackground()
+                }
             })
+        }
+    }
+
+    private fun enterForeground() {
+        backgroundedAt = 0L
+        backgroundDisconnectJob?.cancel()
+        backgroundDisconnectJob = null
+        reconnectIfNeeded()
+        socket?.takeIf { it.connected() }?.emit("presence:lifecycle", "online")
+    }
+
+    private fun enterBackground() {
+        if (backgroundedAt == 0L) backgroundedAt = System.currentTimeMillis()
+        socket?.takeIf { it.connected() }?.emit("presence:lifecycle", "idle")
+        backgroundDisconnectJob?.cancel()
+        backgroundDisconnectJob = scope.launch {
+            delay(BACKGROUND_GRACE_MS)
+            if (!shouldKeepSocket()) disconnect()
+        }
+    }
+
+    private fun shouldKeepSocket(): Boolean {
+        val since = backgroundedAt
+        return since == 0L || System.currentTimeMillis() - since < BACKGROUND_GRACE_MS
+    }
+
+    @Synchronized
+    private fun startPresenceHeartbeat(s: Socket) {
+        presenceHeartbeatJob?.cancel()
+        presenceHeartbeatJob = scope.launch {
+            while (isActive && s.connected()) {
+                s.emit("presence:heartbeat", if (backgroundedAt == 0L) "online" else "idle")
+                delay(PRESENCE_HEARTBEAT_MS)
+            }
         }
     }
 
     private fun registerListeners(s: Socket) {
         s.on(Socket.EVENT_CONNECT) { _ ->
+            startPresenceHeartbeat(s)
             activeChannelId?.let { s.emit("channel:join", it) }
+            s.emit("presence:lifecycle", if (backgroundedAt == 0L) "online" else "idle")
             emit(SocketEvent.ConnectionState(true))
         }
         s.on(Socket.EVENT_DISCONNECT) { args ->
+            presenceHeartbeatJob?.cancel()
+            presenceHeartbeatJob = null
             emit(SocketEvent.ConnectionState(false, args.firstOrNull()?.toString()))
         }
         s.on(Socket.EVENT_CONNECT_ERROR) { args ->
@@ -493,5 +554,7 @@ class SocketManager @Inject constructor(
     companion object {
         private const val TAG = "SocketManager"
         private const val AUTH_REFRESH_COOLDOWN_MS = 4_000L
+        private const val PRESENCE_HEARTBEAT_MS = 60_000L
+        private const val BACKGROUND_GRACE_MS = 5 * 60_000L
     }
 }

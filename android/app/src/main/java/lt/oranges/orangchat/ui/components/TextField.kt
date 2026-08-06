@@ -34,7 +34,7 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
 fun OrangTextField(
     value: String,
     onValueChange: (String) -> Unit,
-    label: String,
+    label: String? = null,
     modifier: Modifier = Modifier,
     placeholder: String? = null,
     error: String? = null,
@@ -50,12 +50,14 @@ fun OrangTextField(
     val borderColor = if (error != null) c.danger else c.border
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(
-            text = label,
-            color = c.inkSecondary,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-        )
+        if (!label.isNullOrBlank()) {
+            Text(
+                text = label,
+                color = c.inkSecondary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+            )
+        }
         Box(
             modifier = Modifier
                 .fillMaxWidth()

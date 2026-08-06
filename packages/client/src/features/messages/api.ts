@@ -20,11 +20,6 @@ export function setMessagePinned(channelId: string, messageId: string, pinned: b
   });
 }
 
-/** Messages pinned in a channel, newest pin first. */
-export async function getPins(channelId: string) {
-  return decryptMessages(channelId, await api<Message[]>(`/channels/${channelId}/pins`));
-}
-
 export interface MessageReportReceipt {
   id: string;
   status: "received" | "already_received";

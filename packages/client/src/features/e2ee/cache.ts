@@ -110,10 +110,6 @@ export async function recallMessage(id: string): Promise<CachedMessage | null> {
   return hydrate(await getCachedMessage(id).catch(() => null));
 }
 
-export function recallMessageSync(id: string): CachedMessage | null {
-  return hot.get(id) ?? null;
-}
-
 /** Pulls a conversation's cache into memory so a reload does not re-decrypt. */
 export async function warmChannel(channelId: string): Promise<void> {
   try {
@@ -129,10 +125,6 @@ export async function warmChannel(channelId: string): Promise<void> {
 export async function forgetMessage(id: string): Promise<void> {
   hot.delete(id);
   await deleteCachedMessage(id).catch(() => {});
-}
-
-export function forgetAllInMemory(): void {
-  hot.clear();
 }
 
 export interface LocalSearchHit {

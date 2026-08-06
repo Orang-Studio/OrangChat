@@ -6,6 +6,7 @@ use serde_json::{json, Value};
 
 use crate::error::{AppError, AppResult};
 use crate::http::{bad_request, AuthUser, ClientIp};
+use crate::http::auth::{store_email_login_code, verify_email_login_code};
 use crate::models::UserRow;
 use crate::services::{channel, e2ee, email, key_deletion, push, rate_limit, totp};
 use crate::state::AppState;
@@ -19,6 +20,7 @@ pub fn routes() -> Router<AppState> {
         .route("/e2ee/users/:userId/devices", get(peer_devices))
         .route("/e2ee/transfers", post(new_transfer))
         .route("/e2ee/transfer-grant", post(transfer_grant))
+        .route("/e2ee/transfer-grant/email-code", post(request_transfer_email_code))
         .route(
             "/e2ee/transfers/:transferId/blob",
             get(fetch_blob).post(store_blob),
@@ -166,6 +168,61 @@ struct TransferGrantBody {
     ik_dh_pub: String,
     #[serde(default)]
     code: Option<String>,
+    /// Set when the account has no authenticator: the one-time email code
+    /// issued by /e2ee/transfer-grant/email-code and the token it came with.
+    #[serde(default)]
+    login_token: Option<String>,
+}
+
+/// The fallback for accounts without an authenticator app: mints a one-time
+/// email code exactly like a sign-in code and hands back the opaque token the
+/// client must present alongside the code. One code per account at a time; a
+/// fresh request burns the previous one.
+async fn request_transfer_email_code(
+    State(state): State<AppState>,
+    user: AuthUser,
+) -> AppResult<Json<Value>> {
+    rate_limit::check(
+        &state,
+        "e2ee:transfer-email-code",
+        &user.user_id,
+        rate_limit::EMAIL_CODE_PER_USER,
+    )
+    .await?;
+
+    let row: UserRow = sqlx::query_as(r#"SELECT * FROM "User" WHERE id = $1"#)
+        .bind(&user.user_id)
+        .fetch_one(&state.pool)
+        .await?;
+
+    if row.lockdown_at.is_some() {
+        return Err(AppError::Permission(
+            "This account is locked down, so no new device can be added".into(),
+        ));
+    }
+    // TOTP accounts never take this path - they already have a code they can
+    // produce themselves - but refusing it here keeps the invariant that a
+    // transfer grant is always gated by one of the two second factors.
+    if row.totp_enabled {
+        return Err(bad_request(
+            "This account has two-factor authentication; enter a code from your authenticator app instead",
+        ));
+    }
+    if e2ee::active_devices(&state, &user.user_id)
+        .await?
+        .is_empty()
+    {
+        return Err(bad_request(
+            "This account has no encryption identity to add a device to",
+        ));
+    }
+
+    let login_token = crate::auth_security::random_token();
+    let code = crate::auth_security::random_email_code();
+    store_email_login_code(&state, &row.id, &code, &login_token).await?;
+    email::send_device_transfer_code(&state.config, &row.email, &code).await?;
+
+    Ok(Json(json!({ "loginToken": login_token })))
 }
 
 #[derive(Deserialize)]
@@ -294,18 +351,24 @@ async fn transfer_grant(
             "This account is locked down, so no new device can be added".into(),
         ));
     }
-    if !row.totp_enabled {
-        return Err(bad_request(
-            "Turn on two-factor authentication before adding a second device",
-        ));
-    }
 
+    // A fresh second-factor code, either kind: TOTP when the account has an
+    // authenticator, otherwise the one-time email code this endpoint's sibling
+    // issued. Neither is the authority - the old device's signature is - but
+    // both stand between a stolen session and the device log.
     let code = body.code.as_deref().unwrap_or_default();
-    let secret = row.totp_secret.as_deref().unwrap_or_default();
-    let ok = totp::verify_code(secret, &row.email, code)?
-        || totp::consume_backup_code(&state, &row.id, code).await?;
-    if !ok {
-        return Err(bad_request("That code isn't right. Try the current one."));
+    if row.totp_enabled {
+        let secret = row.totp_secret.as_deref().unwrap_or_default();
+        let ok = totp::verify_code(secret, &row.email, code)?
+            || totp::consume_backup_code(&state, &row.id, code).await?;
+        if !ok {
+            return Err(bad_request("That code isn't right. Try the current one."));
+        }
+    } else {
+        let login_token = body.login_token.as_deref().unwrap_or_default();
+        verify_email_login_code(&state, login_token, code).await.map_err(|_| {
+            bad_request("That code isn't right. Request a fresh one and try again.")
+        })?;
     }
 
     if e2ee::active_devices(&state, &user.user_id)
@@ -342,7 +405,7 @@ async fn transfer_grant(
     tokio::spawn(async move {
         let payload = push::PushPayload {
             title: "Encryption device approved".into(),
-            body: "A two-factor code approved a new OrangChat encryption device.".into(),
+            body: "A security code approved a new OrangChat encryption device.".into(),
             href: "/settings".into(),
             tag: "e2ee-device-transfer".into(),
             icon: None,

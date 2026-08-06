@@ -283,21 +283,72 @@ async fn issue_email_verification(state: &AppState, user: &UserRow) -> AppResult
     crate::services::email::send_verification(&state.config, &user.email, &token).await
 }
 
-async fn issue_email_login_code(
+/// Issues a fresh one-time email code for `login_token` and emails it to the
+/// user. Any previous unused code for the account is burned first, so a code
+/// only ever exists once. Shared by sign-in and the e2ee transfer-grant
+/// fallback for accounts without an authenticator.
+pub(super) async fn store_email_login_code(
+    state: &AppState,
+    user_id: &str,
+    code: &str,
+    login_token: &str,
+) -> AppResult<()> {
+    sqlx::query(
+        r#"UPDATE "EmailLoginCode" SET "usedAt" = now() WHERE "userId" = $1 AND "usedAt" IS NULL"#,
+    )
+    .bind(user_id)
+    .execute(&state.pool)
+    .await?;
+    sqlx::query(r#"INSERT INTO "EmailLoginCode" (id, "userId", "codeHash", "loginTokenHash", "expiresAt") VALUES ($1, $2, $3, $4, now() + interval '10 minutes')"#)
+        .bind(cuid()).bind(user_id).bind(hash_password(code)?).bind(token_hash(login_token)).execute(&state.pool).await?;
+    Ok(())
+}
+
+pub(super) async fn issue_email_login_code(
     state: &AppState,
     user: &UserRow,
     login_token: &str,
 ) -> AppResult<()> {
     let code = random_email_code();
-    sqlx::query(
-        r#"UPDATE "EmailLoginCode" SET "usedAt" = now() WHERE "userId" = $1 AND "usedAt" IS NULL"#,
-    )
-    .bind(&user.id)
-    .execute(&state.pool)
-    .await?;
-    sqlx::query(r#"INSERT INTO "EmailLoginCode" (id, "userId", "codeHash", "loginTokenHash", "expiresAt") VALUES ($1, $2, $3, $4, now() + interval '10 minutes')"#)
-        .bind(cuid()).bind(&user.id).bind(hash_password(&code)?).bind(token_hash(login_token)).execute(&state.pool).await?;
+    store_email_login_code(state, &user.id, &code, login_token).await?;
     crate::services::email::send_login_code(&state.config, &user.email, &code).await
+}
+
+/// Verifies a one-time email code and burns it. Wrong tries are counted and
+/// the code is spent after five of them; wrong codes and missing rows are
+/// indistinguishable, so the endpoint does not hint at what went wrong.
+pub(super) async fn verify_email_login_code(
+    state: &AppState,
+    login_token: &str,
+    code: &str,
+) -> AppResult<()> {
+    if !valid_email_code(code) || login_token.is_empty() {
+        return Err(AppError::Unauthorized("Invalid or expired code".into()));
+    }
+    let row: Option<UserRow> = sqlx::query_as(r#"SELECT u.* FROM "User" u JOIN "EmailLoginCode" c ON c."userId" = u.id WHERE c."loginTokenHash" = $1 AND c."usedAt" IS NULL AND c."expiresAt" > now() AND c.attempts < 5 AND u."emailVerifiedAt" IS NOT NULL"#).bind(token_hash(login_token)).fetch_optional(&state.pool).await?;
+    if row.is_none() {
+        return Err(AppError::Unauthorized("Invalid or expired code".into()));
+    }
+    let hash: String = sqlx::query_scalar(
+        r#"SELECT "codeHash" FROM "EmailLoginCode" WHERE "loginTokenHash" = $1"#,
+    )
+    .bind(token_hash(login_token))
+    .fetch_one(&state.pool)
+    .await?;
+    if !verify_password(&hash, code) {
+        sqlx::query(
+            r#"UPDATE "EmailLoginCode" SET attempts = attempts + 1 WHERE "loginTokenHash" = $1"#,
+        )
+        .bind(token_hash(login_token))
+        .execute(&state.pool)
+        .await?;
+        return Err(AppError::Unauthorized("Invalid or expired code".into()));
+    }
+    sqlx::query(r#"UPDATE "EmailLoginCode" SET "usedAt" = now() WHERE "loginTokenHash" = $1"#)
+        .bind(token_hash(login_token))
+        .execute(&state.pool)
+        .await?;
+    Ok(())
 }
 
 async fn recaptcha_config(State(state): State<AppState>) -> AppResult<Json<Value>> {
@@ -368,30 +419,9 @@ async fn verify_email_2fa(
         .and_then(Value::as_str)
         .unwrap_or_default();
     let code = body.get("code").and_then(Value::as_str).unwrap_or_default();
-    if !valid_email_code(code) || token.is_empty() {
-        return Err(bad_request("Invalid or expired code"));
-    }
+    verify_email_login_code(&state, token, code).await?;
     let row: Option<UserRow> = sqlx::query_as(r#"SELECT u.* FROM "User" u JOIN "EmailLoginCode" c ON c."userId" = u.id WHERE c."loginTokenHash" = $1 AND c."usedAt" IS NULL AND c."expiresAt" > now() AND c.attempts < 5 AND u."emailVerifiedAt" IS NOT NULL"#).bind(token_hash(token)).fetch_optional(&state.pool).await?;
     let user = row.ok_or_else(|| AppError::Unauthorized("Invalid or expired code".into()))?;
-    let hash: String = sqlx::query_scalar(
-        r#"SELECT "codeHash" FROM "EmailLoginCode" WHERE "loginTokenHash" = $1"#,
-    )
-    .bind(token_hash(token))
-    .fetch_one(&state.pool)
-    .await?;
-    if !verify_password(&hash, code) {
-        sqlx::query(
-            r#"UPDATE "EmailLoginCode" SET attempts = attempts + 1 WHERE "loginTokenHash" = $1"#,
-        )
-        .bind(token_hash(token))
-        .execute(&state.pool)
-        .await?;
-        return Err(AppError::Unauthorized("Invalid or expired code".into()));
-    }
-    sqlx::query(r#"UPDATE "EmailLoginCode" SET "usedAt" = now() WHERE "loginTokenHash" = $1"#)
-        .bind(token_hash(token))
-        .execute(&state.pool)
-        .await?;
     let (result, cookie) = issue_session(&state, &user, DeviceInfo::new(&headers, &ip)).await?;
     Ok((jar.add(cookie), Json(result)))
 }

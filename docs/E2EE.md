@@ -16,8 +16,9 @@ history keys and authorizes the new device.
 
 To add an Android phone from a PC that is already authorized:
 
-1. Sign in to the same OrangChat account on both devices and enable TOTP
-   two-factor authentication.
+1. Sign in to the same OrangChat account on both devices. Enable TOTP two-factor
+   authentication if you have an authenticator app; accounts without one use a
+   one-time email code instead (§4.4).
 2. On the PC, open **Settings → Encryption → Add another device**. The PC shows
    a one-time device-transfer QR.
 3. On the phone, open **Settings → Encryption → Add this phone → Scan code from
@@ -25,14 +26,15 @@ To add an Android phone from a PC that is already authorized:
    Camera app plus **Open OrangChat** remains an alternative.
 4. Read the confirmation screen before continuing. It explains that the phone
    will create its own Android Keystore identity, both devices will compare a
-   safety code, the authorized PC will require 2FA, and only then will encrypted
-   history keys move. Nothing is transferred until **Continue transfer** is
-   tapped.
+   safety code, the authorized PC will require a fresh security code, and only
+   then will encrypted history keys move. Nothing is transferred until
+   **Continue transfer** is tapped.
 5. Compare the six digits on both screens. Cancel if they differ; otherwise tap
    **The digits match** on both.
-6. Enter a current TOTP code on the already-authorized PC. It encrypts the
-   history bundle to the phone and signs the phone into the append-only device
-   log.
+6. Enter a fresh security code on the already-authorized PC - a current TOTP
+   code when the account has an authenticator, otherwise the six-digit code the
+   PC emails to the account address. It encrypts the history bundle to the phone
+   and signs the phone into the append-only device log.
 7. Wait for the phone to say it is authorized. It then appears in the device
    list and can decrypt existing history.
 
@@ -298,10 +300,11 @@ identity key, which is correct.
 
 ---
 
-## 4. Device transfer: nearby + 2FA
+## 4. Device transfer: nearby + a second factor
 
 The requirement was "moving keys to another device needs a private connection
-between those 2 devices, they have to be nearby, and copying requires 2FA."
+between those 2 devices, they have to be nearby, and copying requires a fresh
+security code."
 
 **The identity key is not what moves.** It can't - it's non-extractable, by
 design. The new device generates its *own* identity key. What crosses the room is
@@ -328,7 +331,7 @@ NEW phone                     OLD PC (signed in, holds history)         SERVER
   3.        both derive: SAS = HKDF(ECDH ‖ pairSecret)[0..6]              │
   │         show 6 digits on both screens; human confirms they match      │
   │                                    │                                  │
-  4.                                   │ prompt for TOTP ────────────────▶│
+  4.                                   │ prompt for TOTP / email code ───▶│
   │                                    │◀── transferGrant (60s, 1 use) ───│
   │                                    │                                  │
   5. history bundle = AES-GCM(HKDF(ECDH ‖ pairSecret), {epoch CKs})       │
@@ -388,19 +391,33 @@ hardening is part of the design, not an implementation detail:
 
 ### 4.4 2FA
 
-The **old** device submits a fresh TOTP (`services/totp.rs`, already live) to
-`POST /devices/transfer-grant`. The server returns a 60-second single-use grant
-bound to `(userId, transferId, newDeviceIkFingerprint)`. The grant enforces TOTP
-and server policy, but it is **not** cryptographic authority to add a device.
+The **old** device submits a fresh second-factor code to `POST /devices/transfer-grant`.
+The server returns a 60-second single-use grant bound to
+`(userId, transferId, newDeviceIkFingerprint)`. The grant enforces the code and
+server policy, but it is **not** cryptographic authority to add a device.
 `POST /devices` also carries an authorization signature made by the old device’s
 `IK-sig`. Clients validate that signature and its chain before wrapping any CK.
 An operator cannot bypass this by changing the server-side validation: peers do
 the same validation locally and reject the invented device.
 
+Two kinds of code buy the grant, decided by what the account has enrolled:
+
+- **TOTP** (`services/totp.rs`) when the account has an authenticator app. The
+  code is verified, or a single-use backup code is consumed.
+- **A one-time email code** when it does not. `POST /e2ee/transfer-grant/email-code`
+  mints a six-digit code into the same `EmailLoginCode` table as sign-in
+  (10-minute lifetime, five attempts, one live code per account) and emails it;
+  `POST /e2ee/transfer-grant` then takes the code plus the returned `loginToken`.
+
+The email path exists because demanding TOTP from an account that has no
+authenticator - and cannot mint one without one - is a softlock. Its proof is
+mailbox possession, exactly the second factor sign-in's email code uses.
+
 Policy consequences, and they're not optional:
 
-- **E2EE requires TOTP enabled.** No TOTP, no second device, and a "you will lose
-  your history if you lose this device" warning on the single-device path.
+- **A second factor is always required.** TOTP where one is enrolled, an emailed
+  code otherwise - no code of either kind, no second device, and a "you will
+  lose your history if you lose this device" warning on the single-device path.
 - Account lockdown (`User.lockdownAt`) blocks transfer grants outright - it
   already means "nothing new attaches to this account", and a device is very much
   something new.

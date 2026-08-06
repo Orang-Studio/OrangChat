@@ -1,0 +1,7 @@
+Fullscreen media fixes
+
+Fixed
+- Images and videos in fullscreen are now centered in the usable area below
+  the media header instead of being shifted down.
+- Video playback controls now stay inside the visible fullscreen area, above
+  the Android navigation bar.

@@ -220,8 +220,12 @@ export async function awaitAdoption(
 
 export interface OldDeviceHandshake {
   sas: string;
-  /** Sends the bundle and signs the new device into the log. */
-  finish: (totpCode: string) => Promise<void>;
+  /**
+   * Sends the bundle and signs the new device into the log. `code` is a fresh
+   * TOTP code when the account has an authenticator, otherwise the one-time
+   * email code (with the `loginToken` it was issued with).
+   */
+  finish: (code: string, loginToken?: string) => Promise<void>;
   cancel: () => void;
 }
 
@@ -277,12 +281,13 @@ async function oldDeviceHandshake(input: {
   return {
     sas,
     cancel: () => input.channel?.close(),
-    finish: async (totpCode: string) => {
+    finish: async (code: string, loginToken?: string) => {
       const { grant } = await requestTransferGrant({
         transferId: input.transferId,
         ikSigPub: toBase64(input.ikSigPub),
         ikDhPub: toBase64(input.ikDhPub),
-        code: totpCode,
+        code,
+        ...(loginToken ? { loginToken } : {}),
       });
 
       const keys: EpochKeyEntry[] = await allEpochKeys();
@@ -332,12 +337,13 @@ export async function awaitInvitedDevice(pending: PendingInvitation): Promise<Ol
 /**
  * The old device's half: it scanned the code, so it holds the pairing secret and
  * can prove proximity. It derives the digits, and once a person confirms them it
- * spends a TOTP code, hands over the history, and - the part that actually
+ * spends a second-factor code (TOTP, or a one-time email code when the account
+ * has no authenticator), hands over the history, and - the part that actually
  * matters - signs the new device's bundle into the append-only log.
  *
- * The grant proves TOTP and server policy. The signature is the authority. No
- * amount of database access substitutes for it, which is why peers re-check it
- * themselves before wrapping anything to the new device.
+ * The grant proves the second factor and server policy. The signature is the
+ * authority. No amount of database access substitutes for it, which is why
+ * peers re-check it themselves before wrapping anything to the new device.
  */
 export async function adoptScannedDevice(raw: string): Promise<OldDeviceHandshake> {
   const scanned = decodeDeviceTransferQr(raw);

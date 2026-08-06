@@ -38,6 +38,7 @@ function write(theme: InstalledTheme | null): void {
 }
 
 const STYLE_ID = "oc-installed-theme";
+let active = true;
 
 /** Push the theme's variables into a single <style> on :root, or clear it. */
 function applyVars(vars: Record<string, string> | null): void {
@@ -71,7 +72,7 @@ export const useInstalledTheme = create<ThemeStore>((set) => ({
 
   install: (theme) => {
     const next: InstalledTheme = { id: theme.id, name: theme.name, vars: theme.vars };
-    applyVars(next.vars);
+    if (active) applyVars(next.vars);
     write(next);
     set({ installed: next });
   },
@@ -83,7 +84,13 @@ export const useInstalledTheme = create<ThemeStore>((set) => ({
   },
 }));
 
+/** Apply or temporarily suppress the persisted theme without uninstalling it. */
+export function setInstalledThemeActive(next: boolean): void {
+  active = next;
+  applyVars(next ? (read()?.vars ?? null) : null);
+}
+
 /** Apply the persisted theme at boot, before React mounts. */
-export function initInstalledTheme(): void {
-  applyVars(read()?.vars ?? null);
+export function initInstalledTheme(initiallyActive = true): void {
+  setInstalledThemeActive(initiallyActive);
 }

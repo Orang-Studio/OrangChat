@@ -115,7 +115,7 @@ class SearchViewModel @Inject constructor(
             offset += page.items.size
             val pageResults = page.items.map(Message::toSearchResult)
             _state.value = _state.value.copy(
-                results = if (append) _state.value.results + pageResults else pageResults,
+                results = mergeSearchResults(_state.value.results, pageResults, append),
                 loading = false,
                 hasMore = page.nextCursor != null,
                 searchedLocally = false,
@@ -157,6 +157,13 @@ class SearchViewModel @Inject constructor(
         return mergeLocalResults(decrypted, offline, LOCAL_LIMIT)
     }
 }
+
+/** Offset pages can overlap when the index changes between requests. */
+internal fun mergeSearchResults(
+    existing: List<SearchResult>,
+    page: List<SearchResult>,
+    append: Boolean,
+): List<SearchResult> = (if (append) existing + page else page).distinctBy(SearchResult::id)
 
 private fun Message.toSearchResult() = SearchResult(
     id = id,

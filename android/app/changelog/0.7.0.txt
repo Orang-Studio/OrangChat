@@ -1,0 +1,39 @@
+Voice messages, chat fixes, and offline notifications
+
+New
+- Record voice messages right in the composer, on both web and Android. A
+  message too short to be useful is discarded instead of sent, and recordings
+  play back inline.
+- Public landing page for orangchat, describing what the app is and how to
+  join.
+
+Fixed
+- Encrypted notifications now decrypt even when the phone has no connection to
+  the server: the message text is read from locally stored keys instead of
+  demanding a live lookup, so a push no longer falls back to a bare "New
+  message".
+- Notification avatars are remembered on the device, so the sender's face
+  shows even offline. Animated GIF avatars now decode correctly instead of
+  turning into the initial-letter circle.
+- A crash when reading back through an older conversation: the same message
+  could appear twice in the list, crashing the chat screen with "Key was
+  already used". Messages are now guaranteed unique.
+- Encrypted messages are ordered by the server timestamp again. A sender's
+  device clock no longer affects where a message lands in the conversation.
+- A message confirmed by the realtime stream now clears the pending-send
+  store, so restarting the app cannot re-send a message that was already
+  delivered.
+- Restored pending messages keep their identity across confirmation, so a
+  restart no longer leaves two copies of one pending message with the same
+  key.
+
+Improved
+- Message editing is easier: Enter sends, Shift+Enter starts a new line, and
+  a toolbar sits at the bottom of the editor.
+- Attach files, take a picture with the camera, or record a voice message
+  straight from the composer.
+- Typing something that looks like a bot or login token warns you before you
+  paste it into a chat.
+- Reading back through a conversation shows a button to return to the newest
+  message, which says "New messages" when something arrived while you were
+  scrolled up.

@@ -1,5 +1,6 @@
 package lt.oranges.orangchat.notifications
 
+import android.util.Log
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import dagger.hilt.android.AndroidEntryPoint
@@ -38,13 +39,15 @@ class FcmService : FirebaseMessagingService() {
         if (AppForegroundState.isForeground) return
         val title = message.data["title"] ?: "OrangChat"
         val body = message.data["body"].orEmpty()
+        val avatarUrl = message.data["avatarUrl"]?.takeIf { it.isNotBlank() }
+            ?: message.data["icon"]?.takeIf { it.isNotBlank() }
         if (message.data["kind"] == "call") {
             notificationHelper.notifyPushCall(
                 channelId = channelId,
                 title = title,
                 body = body,
                 callerName = message.data["senderName"] ?: title,
-                callerAvatarUrl = message.data["icon"],
+                callerAvatarUrl = avatarUrl,
             )
         } else {
             val senderName = message.data["senderName"] ?: title
@@ -60,6 +63,11 @@ class FcmService : FirebaseMessagingService() {
                             ciphertext,
                             message.data["senderId"].orEmpty(),
                         ).text
+                    }.onFailure { throwable ->
+                        // The placeholder is deliberate, but the reason must not
+                        // vanish with it - this is the only window we ever get
+                        // into why a push would not open.
+                        Log.w(TAG, "push envelope for $channelId did not open", throwable)
                     }.getOrNull()
                 } ?: "New message"
             }
@@ -72,10 +80,14 @@ class FcmService : FirebaseMessagingService() {
                 body = text ?: body,
                 senderId = message.data["senderId"] ?: title,
                 senderName = senderName,
-                senderAvatarUrl = message.data["icon"],
+                senderAvatarUrl = avatarUrl,
                 isGroup = message.data["isGroup"] == "true",
                 messageId = message.data["messageId"]?.ifBlank { null },
             )
         }
+    }
+
+    companion object {
+        private const val TAG = "FcmService"
     }
 }

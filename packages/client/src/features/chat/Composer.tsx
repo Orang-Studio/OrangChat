@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Paperclip, SendHorizontal, X } from "lucide-react";
+import { AlertTriangle, Camera, Mic, Paperclip, SendHorizontal, Square, X } from "lucide-react";
 import type { Message, ServerMember } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
 import { usePrefs } from "../../lib/prefs";
 import { Avatar } from "../../components/Avatar";
+import { Dialog, DialogContent } from "../../components/ui/Dialog";
+import { Button } from "../../components/ui/Button";
 import { emitTyping, sendMessage } from "./socket-actions";
 import {
   isEphemeral,
@@ -26,6 +28,41 @@ import { clearDraft, loadDraft, saveDraft, saveDraftNow } from "./drafts";
 const TYPING_THROTTLE_MS = 4_000;
 const MAX_LENGTH = 4_000;
 const MENTION_LIMIT = 8;
+
+function recordingMimeType(): string | undefined {
+  if (typeof MediaRecorder === "undefined") return undefined;
+  return ["audio/ogg;codecs=opus", "audio/webm;codecs=opus", "audio/mp4"].find((type) =>
+    MediaRecorder.isTypeSupported(type),
+  );
+}
+
+type PastedTokenKind = "login" | "bot";
+
+/** Schema match only - nothing here is validated against the server. A login
+ * token is a v4 UUID; a bot token is `<base64url(bot id)>.<32 random bytes>`. */
+function findPastedTokenKind(text: string): PastedTokenKind | null {
+  if (
+    /\b[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i.test(text)
+  ) {
+    return "login";
+  }
+  if (/\b[A-Za-z0-9_-]{6,24}\.[A-Za-z0-9_-]{32,80}\b/.test(text)) {
+    return "bot";
+  }
+  return null;
+}
+
+function recordingExtension(mimeType: string): string {
+  if (mimeType.startsWith("audio/ogg")) return "ogg";
+  if (mimeType.startsWith("audio/mp4")) return "m4a";
+  // `.weba` lets the server distinguish an audio WebM from a video WebM.
+  return "weba";
+}
+
+function formatRecordingTime(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
+}
 
 interface ComposerProps {
   channelId: string;
@@ -60,9 +97,21 @@ export function Composer({
   const [dragging, setDragging] = useState(false);
   const [mention, setMention] = useState<{ start: number; query: string } | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [tokenWarning, setTokenWarning] = useState<{
+    kind: PastedTokenKind;
+    text: string;
+  } | null>(null);
   const lastTypingSent = useRef(0);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
+  const recorder = useRef<MediaRecorder | null>(null);
+  const recordingStream = useRef<MediaStream | null>(null);
+  const recordingChunks = useRef<Blob[]>([]);
+  const recordingCancelled = useRef(false);
+  const recordingStartedAt = useRef(0);
+  const [recording, setRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   // Uploads outlive the render that started them; a ref keeps cleanup honest
   // even when the component unmounts mid-flight.
   const live = useRef<PendingUpload[]>([]);
@@ -70,6 +119,14 @@ export function Composer({
   // Latest draft, so the channel-switch cleanup can persist what's in the box.
   const draftRef = useRef("");
   draftRef.current = draft;
+
+  useEffect(() => {
+    if (!recording) return;
+    const timer = window.setInterval(() => {
+      setRecordingSeconds(Math.floor((Date.now() - recordingStartedAt.current) / 1000));
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [recording]);
 
   useEffect(() => {
     textarea.current?.focus();
@@ -97,6 +154,12 @@ export function Composer({
   // in flight rather than silently attaching them to wherever you land next.
   useEffect(
     () => () => {
+      recordingCancelled.current = true;
+      if (recorder.current && recorder.current.state !== "inactive") recorder.current.stop();
+      recordingStream.current?.getTracks().forEach((track) => track.stop());
+      recorder.current = null;
+      recordingStream.current = null;
+      setRecording(false);
       for (const u of live.current) {
         u.abort();
         if (u.preview) URL.revokeObjectURL(u.preview);
@@ -230,6 +293,71 @@ export function Composer({
     }
   };
 
+  const startRecording = async () => {
+    if (recording || sending) return;
+    const mimeType = recordingMimeType();
+    if (!mimeType || !navigator.mediaDevices?.getUserMedia) {
+      setError("Voice recording is not supported by this browser");
+      return;
+    }
+    setError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const next = new MediaRecorder(stream, { mimeType });
+      recordingChunks.current = [];
+      recordingCancelled.current = false;
+      recordingStartedAt.current = Date.now();
+      recordingStream.current = stream;
+      recorder.current = next;
+      next.ondataavailable = (event) => {
+        if (event.data.size > 0) recordingChunks.current.push(event.data);
+      };
+      next.onstop = () => {
+        const chunks = recordingChunks.current;
+        const cancelled = recordingCancelled.current;
+        const actualMimeType = next.mimeType || mimeType;
+        stream.getTracks().forEach((track) => track.stop());
+        if (!cancelled && chunks.length > 0) {
+          const blob = new Blob(chunks, { type: actualMimeType });
+          const name = `voice-${Date.now()}.${recordingExtension(actualMimeType)}`;
+          addFiles([new File([blob], name, { type: actualMimeType })]);
+        }
+        recordingChunks.current = [];
+        recordingStream.current = null;
+        recorder.current = null;
+        setRecording(false);
+      };
+      next.onerror = () => {
+        recordingCancelled.current = true;
+        setError("Voice recording failed");
+      };
+      next.start(250);
+      setRecordingSeconds(0);
+      setRecording(true);
+    } catch (err) {
+      recordingStream.current?.getTracks().forEach((track) => track.stop());
+      recordingStream.current = null;
+      recorder.current = null;
+      setError(err instanceof DOMException && err.name === "NotAllowedError"
+        ? "Microphone access is required to record a voice message"
+        : "Could not start voice recording");
+    }
+  };
+
+  const finishRecording = (cancel: boolean) => {
+    const active = recorder.current;
+    if (!active) return;
+    recordingCancelled.current = cancel;
+    if (active.state === "inactive") {
+      recordingStream.current?.getTracks().forEach((track) => track.stop());
+      recordingStream.current = null;
+      recorder.current = null;
+      setRecording(false);
+    } else {
+      active.stop();
+    }
+  };
+
   const uploading = uploads.some((u) => !isSettled(u));
   const failed = uploads.filter((u) => u.error !== undefined);
   const ready = uploads.filter((u) => u.attachment !== undefined);
@@ -348,9 +476,35 @@ export function Composer({
   /** Pasted screenshots arrive as files on the clipboard, same as a pick. */
   const onPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const files = Array.from(e.clipboardData.files);
-    if (files.length === 0) return;
+    if (files.length === 0) {
+      // A pasted login or bot token is not an upload; warn before it lands in
+      // the box, where a stray Enter would post it to the conversation.
+      const text = e.clipboardData.getData("text/plain");
+      if (text.trim()) {
+        const kind = findPastedTokenKind(text);
+        if (kind) {
+          e.preventDefault();
+          setTokenWarning({ kind, text });
+          return;
+        }
+      }
+      return;
+    }
     e.preventDefault();
     addFiles(files);
+  };
+
+  const insertPastedText = (text: string) => {
+    const el = textarea.current;
+    const start = el?.selectionStart ?? draft.length;
+    const end = el?.selectionEnd ?? start;
+    const next = `${draft.slice(0, start)}${text}${draft.slice(end)}`.slice(0, MAX_LENGTH);
+    onChange(next);
+    requestAnimationFrame(() => {
+      const caret = Math.min(start + text.length, next.length);
+      el?.focus();
+      el?.setSelectionRange(caret, caret);
+    });
   };
 
   return (
@@ -438,40 +592,101 @@ export function Composer({
               e.target.value = "";
             }}
           />
-          <button
-            type="button"
-            aria-label="Attach files"
-            onClick={() => fileInput.current?.click()}
-            className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-1 hover:text-ink"
-          >
-            <Paperclip aria-hidden className="size-5" />
-          </button>
-          <ExpressionPicker onEmoji={insertEmoji} onGif={(url) => void sendGif(url)} />
-          <textarea
-            ref={textarea}
-            value={draft}
-            maxLength={MAX_LENGTH}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyDown={onKeyDown}
-            onPaste={onPaste}
-            onClick={syncMention}
-            onKeyUp={(e) => {
-              if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) syncMention();
+          <input
+            ref={cameraInput}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => {
+              addFiles(Array.from(e.target.files ?? []));
+              e.target.value = "";
             }}
-            placeholder={dragging ? "Drop files to attach" : `Message #${channelName}`}
-            aria-label={`Message #${channelName}`}
-            rows={Math.min(8, draft.split("\n").length)}
-            className="max-h-48 flex-1 resize-none bg-transparent py-1 text-base leading-relaxed placeholder:text-ink-muted focus:outline-none md:text-sm"
           />
-          <button
-            type="button"
-            aria-label="Send message"
-            disabled={!canSend}
-            onClick={() => void send()}
-            className="rounded-lg p-2 text-primary transition-colors hover:bg-primary-soft disabled:opacity-40 disabled:hover:bg-transparent"
-          >
-            <SendHorizontal aria-hidden className="size-5" />
-          </button>
+          {!recording && (
+            <>
+              <button
+                type="button"
+                aria-label="Attach files"
+                onClick={() => fileInput.current?.click()}
+                className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-1 hover:text-ink"
+              >
+                <Paperclip aria-hidden className="size-5" />
+              </button>
+              <button
+                type="button"
+                aria-label="Take a picture"
+                onClick={() => cameraInput.current?.click()}
+                className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-1 hover:text-ink"
+              >
+                <Camera aria-hidden className="size-5" />
+              </button>
+              <ExpressionPicker onEmoji={insertEmoji} onGif={(url) => void sendGif(url)} />
+            </>
+          )}
+          {recording ? (
+            <div className="flex min-w-0 flex-1 items-center gap-2 py-1 text-sm text-ink-secondary">
+              <span className="size-2 shrink-0 animate-pulse rounded-full bg-danger" aria-hidden />
+              <span>Recording {formatRecordingTime(recordingSeconds)}</span>
+            </div>
+          ) : (
+            <textarea
+              ref={textarea}
+              value={draft}
+              maxLength={MAX_LENGTH}
+              onChange={(e) => onChange(e.target.value)}
+              onKeyDown={onKeyDown}
+              onPaste={onPaste}
+              onClick={syncMention}
+              onKeyUp={(e) => {
+                if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) syncMention();
+              }}
+              placeholder={dragging ? "Drop files to attach" : `Message #${channelName}`}
+              aria-label={`Message #${channelName}`}
+              rows={Math.min(8, draft.split("\n").length)}
+              className="max-h-48 flex-1 resize-none bg-transparent py-1 text-base leading-relaxed placeholder:text-ink-muted focus:outline-none md:text-sm"
+            />
+          )}
+          {recording ? (
+            <>
+              <button
+                type="button"
+                aria-label="Cancel recording"
+                onClick={() => finishRecording(true)}
+                className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-1 hover:text-ink"
+              >
+                <X aria-hidden className="size-5" />
+              </button>
+              <button
+                type="button"
+                aria-label="Stop recording"
+                onClick={() => finishRecording(false)}
+                className="rounded-lg p-2 text-danger transition-colors hover:bg-danger/10"
+              >
+                <Square aria-hidden className="size-5 fill-current" />
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                aria-label="Record voice message"
+                onClick={() => void startRecording()}
+                className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-1 hover:text-ink"
+              >
+                <Mic aria-hidden className="size-5" />
+              </button>
+              <button
+                type="button"
+                aria-label="Send message"
+                disabled={!canSend}
+                onClick={() => void send()}
+                className="rounded-lg p-2 text-primary transition-colors hover:bg-primary-soft disabled:opacity-40 disabled:hover:bg-transparent"
+              >
+                <SendHorizontal aria-hidden className="size-5" />
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -479,6 +694,50 @@ export function Composer({
         <p role="alert" className="mt-1 text-xs text-danger">
           {error}
         </p>
+      )}
+
+      {tokenWarning && (
+        <Dialog open onOpenChange={(open) => !open && setTokenWarning(null)}>
+          <DialogContent
+            title={
+              tokenWarning.kind === "login"
+                ? "That looks like a login token"
+                : "That looks like a bot token"
+            }
+          >
+            <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/10 p-3">
+              <AlertTriangle aria-hidden className="mt-0.5 size-5 shrink-0 text-warning" />
+              <p className="text-sm text-ink-secondary">
+                {tokenWarning.kind === "login" ? (
+                  <>
+                    A login token lets anyone who has it sign into an OrangChat account. Pasting
+                    it here would hand that account to everyone who can read this conversation.
+                  </>
+                ) : (
+                  <>
+                    A bot token is the password for a bot account: anyone with it can sign in as
+                    the bot, post in its servers and read its conversations. Pasting it here would
+                    hand that control to everyone who can read this conversation.
+                  </>
+                )}
+              </p>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={() => setTokenWarning(null)}>
+                Don't paste
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  insertPastedText(tokenWarning.text);
+                  setTokenWarning(null);
+                }}
+              >
+                Paste it anyway
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

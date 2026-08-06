@@ -68,10 +68,6 @@ export function setStrictFor(channelId: string, on: boolean | null): void {
   });
 }
 
-export function strictOverrideFor(channelId: string): boolean | null {
-  return useStrictStore.getState().overrides[channelId] ?? null;
-}
-
 export async function isVerified(userId: string): Promise<boolean> {
   const pin = await getPin(userId);
   return pin?.verifiedAt != null;

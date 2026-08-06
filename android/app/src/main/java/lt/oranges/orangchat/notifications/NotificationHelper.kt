@@ -12,6 +12,7 @@ import android.graphics.BitmapFactory
 import android.graphics.BitmapShader
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.ImageDecoder
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Shader
@@ -28,8 +29,12 @@ import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.ByteArrayInputStream
+import java.io.File
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -69,7 +74,6 @@ class NotificationHelper @Inject constructor(
     }
 
     private fun createChannels() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java)
         val messages = NotificationChannel(
             CHANNEL_MESSAGES,
@@ -135,7 +139,9 @@ class NotificationHelper @Inject constructor(
             .setOngoing(false)
             .setContentIntent(pending)
             .build()
-        NotificationManagerCompat.from(context).notify(tag.hashCode(), notification)
+        if (hasPermission()) {
+            NotificationManagerCompat.from(context).notify(tag.hashCode(), notification)
+        }
     }
 
     fun hasPermission(): Boolean {
@@ -229,7 +235,7 @@ class NotificationHelper @Inject constructor(
         return {
             val avatar = avatarFor(senderAvatarUrl, senderName)
             postConversationMessage(
-                channelId, title, body, senderId, avatar, avatar, isGroup, messages, generation,
+                channelId, title, body, senderId, senderName, avatar, avatar, isGroup, messages, generation,
             )
         }
     }
@@ -240,6 +246,7 @@ class NotificationHelper @Inject constructor(
         title: String,
         body: String,
         senderId: String,
+        senderName: String,
         senderAvatar: Bitmap?,
         conversationIcon: Bitmap,
         isGroup: Boolean,
@@ -261,7 +268,7 @@ class NotificationHelper @Inject constructor(
         )
 
         val sender = Person.Builder()
-            .setName(title)
+            .setName(senderName)
             .setKey(senderId)
             .apply { senderAvatar?.let { setIcon(IconCompat.createWithBitmap(it)) } }
             .build()
@@ -311,6 +318,7 @@ class NotificationHelper @Inject constructor(
             // a second time.
             .setLargeIcon(conversationIcon)
             .setStyle(style)
+            .setShortcutInfo(shortcut)
             .setShortcutId(shortcutId)
             .setLocusId(LocusIdCompat(shortcutId))
             .setAutoCancel(true)
@@ -348,13 +356,31 @@ class NotificationHelper @Inject constructor(
         val url = absoluteUrl(rawUrl)
         if (url != null) {
             avatarCache.get(url)?.let { return it }
+            loadAvatarFromDisk(url)?.let { return it }
             if (fetch) loadAvatar(url)?.let { return it }
         }
         return initialsAvatar(name)
     }
 
+    /** Face fetched on an earlier notification, so a phone with no network at
+     *  push time still shows who wrote rather than a bare initial. */
+    private fun loadAvatarFromDisk(url: String): Bitmap? {
+        val file = avatarFile(url)
+        if (!file.exists()) return null
+        return runCatching { file.inputStream().use(::decodeAvatar) }
+            .getOrNull()
+            ?.let { circleCrop(it).also { bitmap -> avatarCache.put(url, bitmap) } }
+    }
+
+    private fun avatarFile(url: String): File {
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(url.toByteArray())
+            .joinToString("") { "%02x".format(it) }
+        return File(context.cacheDir, "avatars/$digest.img")
+    }
+
     private fun loadAvatar(url: String): Bitmap? {
-        val bitmap = runCatching {
+        val bytes = runCatching {
             val connection = (URL(url).openConnection() as HttpURLConnection).apply {
                 connectTimeout = AVATAR_TIMEOUT_MS
                 readTimeout = AVATAR_TIMEOUT_MS
@@ -363,12 +389,39 @@ class NotificationHelper @Inject constructor(
             }
             try {
                 if (connection.responseCode !in 200..299) return@runCatching null
-                connection.inputStream.use(BitmapFactory::decodeStream)
+                connection.inputStream.use { it.readBytes() }
             } finally {
                 connection.disconnect()
             }
         }.getOrNull() ?: return null
+        val file = avatarFile(url)
+        runCatching {
+            file.parentFile?.mkdirs()
+            file.writeBytes(bytes)
+        }
+        val bitmap = runCatching { decodeAvatar(ByteArrayInputStream(bytes)) }.getOrNull() ?: return null
         return circleCrop(bitmap).also { avatarCache.put(url, it) }
+    }
+
+    /**
+     * BitmapFactory cannot decode GIF, and avatars can be animated GIFs - a null
+     * decode there silently swapped every such portrait for the initials circle.
+     * ImageDecoder (API 28+, we are on 31) decodes the first frame instead.
+     */
+    private fun decodeAvatar(stream: InputStream): Bitmap? {
+        // ImageDecoder has no InputStream overload; the ByteArray overload is
+        // API 31, which is exactly this app's minSdk.
+        val bytes = stream.readBytes()
+        val source = ImageDecoder.createSource(bytes)
+        return runCatching {
+            ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
+                // Notifications only need a small portrait; decoding at full
+                // size wastes memory and a CPU pass.
+                decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                val size = minOf(info.size.width, info.size.height)
+                if (size > AVATAR_PX * 4) decoder.setTargetSize(AVATAR_PX * 4, AVATAR_PX * 4)
+            }
+        }.getOrNull() ?: BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
     }
 
     /** Square-crop, downscale and round off, so the shade shows a portrait and
@@ -517,7 +570,7 @@ class NotificationHelper @Inject constructor(
             // Our own reply must not repaint the conversation as us: the icon
             // stays whoever we are talking to, remembered from their message.
             postConversationMessage(
-                channelId, title, text, SELF_KEY, null, avatarFor(avatarUrl, title),
+                channelId, title, text, SELF_KEY, "You", null, avatarFor(avatarUrl, title),
                 isGroup, messages, generation, alertOnce = true,
             )
         }
@@ -552,7 +605,7 @@ class NotificationHelper @Inject constructor(
         if (messages.isEmpty()) return
         scope.launch {
             postConversationMessage(
-                channelId, title, messages.last().body, SELF_KEY, null,
+                channelId, title, messages.last().body, SELF_KEY, "You", null,
                 avatarFor(avatarUrl, title), isGroup, messages, generation, alertOnce = true,
             )
         }

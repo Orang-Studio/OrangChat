@@ -8,4 +8,11 @@
         <item name="android:navigationBarColor">#08090c</item>
         <item name="android:windowBackground">#0e0f13</item>
     </style>
+
+    <style name="Theme.OrangChat.MediaPreview" parent="Theme.OrangChat">
+        <item name="android:windowBackground">#000000</item>
+        <item name="android:statusBarColor">#000000</item>
+        <item name="android:navigationBarColor">#000000</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
 </resources>

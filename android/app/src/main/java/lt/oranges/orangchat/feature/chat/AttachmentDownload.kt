@@ -395,7 +395,9 @@ internal fun rememberAttachmentSource(
     val fetching by SealedFiles.progress.collectAsState()
 
     if (ref == null) return AttachmentSource(plain, resolving = false)
-    if (ref.size > MAX_INLINE_SEALED) return AttachmentSource(null, resolving = false)
+    if (ref.size > MAX_INLINE_SEALED) {
+        return AttachmentSource(null, resolving = false, deferred = true)
+    }
 
     var opened by remember(attachment.id) { mutableStateOf<String?>(null) }
     var failed by remember(attachment.id) { mutableStateOf(false) }

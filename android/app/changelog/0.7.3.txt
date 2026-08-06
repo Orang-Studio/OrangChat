@@ -1,0 +1,6 @@
+Fullscreen display bounds
+
+Fixed
+- Fullscreen media now uses the phone's actual display height, keeping videos
+  centered and the bottom playback controls on screen.
+- Image and video viewers now use the same full-display window sizing.

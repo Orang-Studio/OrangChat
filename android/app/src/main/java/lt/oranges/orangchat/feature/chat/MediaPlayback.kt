@@ -38,6 +38,8 @@ object MediaPlayback {
         private set
     var isPlaying by mutableStateOf(false)
         private set
+    var muted by mutableStateOf(false)
+        private set
     var buffering by mutableStateOf(false)
         private set
     var positionMs by mutableLongStateOf(0L)
@@ -109,7 +111,9 @@ object MediaPlayback {
 
         currentId = id
         this.onError = onError
+        p.volume = 1f
         isPlaying = false
+        muted = false
         buffering = true
         positionMs = 0L
         durationMs = 0L
@@ -144,10 +148,20 @@ object MediaPlayback {
 
     fun toggle(context: Context, id: String, url: String, onError: () -> Unit) {
         val p = open(context, id, url, onError)
-        if (p.playbackState == Player.STATE_ENDED) p.seekTo(0)
+        if (p.playbackState == Player.STATE_ENDED) {
+            p.seekTo(0)
+            p.playWhenReady = true
+            return
+        }
         // Not isPlaying: that stays false while buffering, so a pause tapped
         // mid-buffer would read as "not playing" and start it again.
         p.playWhenReady = !p.playWhenReady
+    }
+
+    fun toggleMute() {
+        val p = player ?: return
+        muted = !muted
+        p.volume = if (muted) 0f else 1f
     }
 
     fun seekTo(ms: Long) {
@@ -191,6 +205,7 @@ object MediaPlayback {
         onError = null
         currentId = null
         isPlaying = false
+        muted = false
         buffering = false
         positionMs = 0L
         durationMs = 0L

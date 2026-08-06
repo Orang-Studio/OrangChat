@@ -1,0 +1,6 @@
+Fullscreen video controls
+
+Fixed
+- Fullscreen video now opens with playback controls visible.
+- Tapping the video hides or restores the media controls and Android system
+  bars together, without placing a play/pause button over the middle.

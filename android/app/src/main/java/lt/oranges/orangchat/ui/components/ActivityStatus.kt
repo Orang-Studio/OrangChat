@@ -1,8 +1,13 @@
 package lt.oranges.orangchat.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,6 +38,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import lt.oranges.orangchat.data.model.UserActivity
+import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.absoluteUrl
 
@@ -72,8 +78,21 @@ fun ActivityStatus(
     val activity = activities.firstOrNull { it.kind == "spotify" } ?: activities.firstOrNull() ?: return
     val spotify = activity.kind == "spotify"
     val elapsed = elapsedTime(activity.startedAt)
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        val artworkSize = if (compact) 20.dp else 48.dp
+    val shape = RoundedCornerShape(OrangRadius.xl)
+    val artworkSize = if (compact) 20.dp else 48.dp
+    Row(
+        modifier = if (compact) {
+            modifier
+        } else {
+            modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .background(OrangTheme.colors.surface3)
+                .border(1.dp, OrangTheme.colors.border, shape)
+                .padding(12.dp)
+        },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         if (!activity.imageUrl.isNullOrBlank()) {
             AsyncImage(
                 model = absoluteUrl(activity.imageUrl),
@@ -82,12 +101,20 @@ fun ActivityStatus(
                 modifier = Modifier.size(artworkSize).clip(RoundedCornerShape(4.dp)),
             )
         } else {
-            Icon(
-                imageVector = if (spotify) Icons.Default.MusicNote else Icons.Default.SportsEsports,
-                contentDescription = null,
-                tint = OrangTheme.colors.inkMuted,
-                modifier = Modifier.size(if (compact) 12.dp else 28.dp),
-            )
+            Box(
+                modifier = Modifier
+                    .size(artworkSize)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(OrangTheme.colors.surface2),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = if (spotify) Icons.Default.MusicNote else Icons.Default.SportsEsports,
+                    contentDescription = null,
+                    tint = OrangTheme.colors.inkMuted,
+                    modifier = Modifier.size(if (compact) 12.dp else 28.dp),
+                )
+            }
         }
         Spacer(Modifier.width(if (compact) 4.dp else 10.dp))
         if (compact) {
@@ -108,9 +135,9 @@ fun ActivityStatus(
         } else {
             Column(modifier = Modifier.weight(1f, fill = false)) {
                 Text(
-                    text = if (spotify) "LISTENING TO" else "PLAYING",
+                    text = if (spotify) "LISTENING TO" else "NOW PLAYING",
                     color = OrangTheme.colors.inkMuted,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.SemiBold,
                     fontSize = 10.sp,
                     maxLines = 1,
                 )
@@ -126,7 +153,7 @@ fun ActivityStatus(
                     Text(
                         text = it,
                         color = OrangTheme.colors.inkMuted,
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )

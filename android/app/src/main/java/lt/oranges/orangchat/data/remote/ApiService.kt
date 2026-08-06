@@ -16,6 +16,7 @@ import lt.oranges.orangchat.data.model.E2eeEpochKeys
 import lt.oranges.orangchat.data.model.E2eeGenesisRequest
 import lt.oranges.orangchat.data.model.E2eeMintEpochRequest
 import lt.oranges.orangchat.data.model.E2eeRevokeRequest
+import lt.oranges.orangchat.data.model.E2eeTransferEmailCode
 import lt.oranges.orangchat.data.model.E2eeTransferGrant
 import lt.oranges.orangchat.data.model.E2eeTransferGrantRequest
 import lt.oranges.orangchat.data.model.E2eeTransferId
@@ -435,6 +436,10 @@ interface ApiService {
 
     @POST("e2ee/transfer-grant")
     suspend fun requestE2eeTransferGrant(@Body body: E2eeTransferGrantRequest): E2eeTransferGrant
+
+    /** One-time email code for accounts without an authenticator app. */
+    @POST("e2ee/transfer-grant/email-code")
+    suspend fun requestE2eeTransferEmailCode(): E2eeTransferEmailCode
 
     @POST("e2ee/transfers/{transferId}/blob")
     suspend fun putE2eeTransferBlob(

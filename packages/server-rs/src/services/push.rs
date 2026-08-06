@@ -458,6 +458,9 @@ async fn send_fcm(push: &Push, sub: &Subscription, payload: &PushPayload) -> Res
                 "senderId": payload.sender_id,
                 "senderName": payload.sender_name,
                 "isGroup": payload.is_group.to_string(),
+                // Keep the avatar under an application-specific key as well as
+                // `icon`: FCM treats `icon` as a reserved notification option.
+                "avatarUrl": payload.icon.clone().unwrap_or_default(),
                 "icon": payload.icon.clone().unwrap_or_default(),
                 "kind": match payload.kind {
                     PushKind::Call => "call",

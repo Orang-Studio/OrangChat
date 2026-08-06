@@ -32,9 +32,6 @@ export const getServerDetail = (serverId: string) =>
 export const createChannel = (serverId: string, input: CreateChannelInput) =>
   api<Channel>(`/servers/${serverId}/channels`, { method: "POST", json: input });
 
-export const deleteChannel = (channelId: string) =>
-  api<void>(`/channels/${channelId}`, { method: "DELETE" });
-
 export const createInvite = (serverId: string, input: CreateInviteInput = {}) =>
   api<Invite>(`/servers/${serverId}/invites`, { method: "POST", json: input });
 

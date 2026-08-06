@@ -39,6 +39,8 @@ export interface MentionContext {
   selfId?: string;
   /** Called when a mention is present so callers can theme @everyone/@here. */
   everyoneHighlights?: boolean;
+  /** Open the mentioned user's profile. Group-wide mentions remain plain text. */
+  onMentionClick?: (userId: string) => void;
   /** emojiId -> emoji, for resolving <:name:id> tokens. */
   emojis?: Record<string, EmojiRef>;
 }
@@ -233,16 +235,21 @@ const INLINE_RULES: {
       const id = m[1] ?? "";
       const name = ctx.names?.[id] ?? "unknown";
       const isSelf = ctx.selfId === id;
-      return (
-        <span
+      const className = cn(
+        "rounded px-1 font-medium",
+        isSelf ? "bg-primary/30 text-primary" : "bg-primary-soft text-primary",
+      );
+      return ctx.onMentionClick && ctx.names?.[id] ? (
+        <button
           key={nextKey()}
-          className={cn(
-            "rounded px-1 font-medium",
-            isSelf
-              ? "bg-primary/30 text-primary"
-              : "bg-primary-soft text-primary",
-          )}
+          type="button"
+          onClick={() => ctx.onMentionClick?.(id)}
+          className={cn(className, "cursor-pointer text-inherit hover:bg-primary/30")}
         >
+          @{name}
+        </button>
+      ) : (
+        <span key={nextKey()} className={className}>
           @{name}
         </span>
       );
@@ -272,16 +279,21 @@ const INLINE_RULES: {
       // Unresolved handles are ordinary words (and the tail of every email
       // address) - render the literal text so nothing lights up by accident.
       if (!user) return <Fragment key={nextKey()}>{m[0]}</Fragment>;
-      return (
-        <span
+      const className = cn(
+        "rounded px-1 font-medium",
+        ctx.selfId === user.id ? "bg-primary/30 text-primary" : "bg-primary-soft text-primary",
+      );
+      return ctx.onMentionClick ? (
+        <button
           key={nextKey()}
-          className={cn(
-            "rounded px-1 font-medium",
-            ctx.selfId === user.id
-              ? "bg-primary/30 text-primary"
-              : "bg-primary-soft text-primary",
-          )}
+          type="button"
+          onClick={() => ctx.onMentionClick?.(user.id)}
+          className={cn(className, "cursor-pointer text-inherit hover:bg-primary/30")}
         >
+          @{user.name}
+        </button>
+      ) : (
+        <span key={nextKey()} className={className}>
           @{user.name}
         </span>
       );
@@ -384,14 +396,22 @@ export function RichText({
   mentionUsers = {},
   selfId,
   emojis,
+  onMentionClick,
 }: {
   content: string;
   mentions?: Record<string, string>;
   mentionUsers?: Record<string, { id: string; name: string }>;
   selfId?: string;
   emojis?: Record<string, EmojiRef>;
+  onMentionClick?: (userId: string) => void;
 }) {
-  const ctx: MentionContext = { names: mentions, usernames: mentionUsers, selfId, emojis };
+  const ctx: MentionContext = {
+    names: mentions,
+    usernames: mentionUsers,
+    selfId,
+    emojis,
+    onMentionClick,
+  };
   const blocks = parseBlocks(content);
   return (
     <>

@@ -50,6 +50,10 @@ pub const OAUTH_START_PER_IP: Quota = Quota::new(20, 5 * MINUTE);
 pub const TOTP_PER_USER: Quota = Quota::new(10, 5 * MINUTE);
 pub const EMAIL_PER_IP: Quota = Quota::new(3, MINUTE);
 pub const EMAIL_2FA_PER_IP: Quota = Quota::new(10, 5 * MINUTE);
+/// Requesting a one-time email code for a device-transfer grant. Three per
+/// minute mirrors the login resend budget; a fresh code invalidates the
+/// previous one, so more than that is retry churn, not progress.
+pub const EMAIL_CODE_PER_USER: Quota = Quota::new(3, MINUTE);
 
 /// Enrolling, authorizing or revoking a device. Rare by nature, and each one is
 /// a security event, so the budget is tight enough that a stolen session cannot
@@ -241,7 +245,8 @@ mod tests {
         // Desktop may wait 45 times for the phone's hello and the phone may
         // wait 45 times each for handshake and bundle. Leave room for retries.
         const MAX_NORMAL_POLLS: u32 = 45 * 3;
-        assert!(E2EE_TRANSFER_POLL_PER_USER.limit >= MAX_NORMAL_POLLS);
-        assert!(E2EE_TRANSFER_POLL_PER_USER.limit > E2EE_TRANSFER_MUTATION_PER_USER.limit,);
+        const _: () = assert!(E2EE_TRANSFER_POLL_PER_USER.limit >= MAX_NORMAL_POLLS);
+        const _: () =
+            assert!(E2EE_TRANSFER_POLL_PER_USER.limit > E2EE_TRANSFER_MUTATION_PER_USER.limit);
     }
 }

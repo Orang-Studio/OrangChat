@@ -48,6 +48,11 @@
         android:theme="@style/Theme.OrangChat">
 
         <activity
+            android:name=".feature.chat.MediaPreviewActivity"
+            android:exported="false"
+            android:theme="@style/Theme.OrangChat.MediaPreview" />
+
+        <activity
             android:name=".MainActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="true"

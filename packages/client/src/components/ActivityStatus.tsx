@@ -26,7 +26,8 @@ function ElapsedTime({ startedAt, compact }: { startedAt: string; compact: boole
   );
 }
 
-/** Rich-presence line shared by member/friend rows and future game activity. */
+/** Rich presence shared by member/friend rows (`compact`) and the profile card,
+ * where it becomes a Discord-style activity card. */
 export function ActivityStatus({
   activities,
   className,
@@ -37,7 +38,7 @@ export function ActivityStatus({
   className?: string;
   /** False when rendered inside another link, such as a conversation row. */
   linked?: boolean;
-  /** Profile cards have enough room for artwork and metadata on separate lines. */
+  /** Compact single-line row; the profile card variant is a card with artwork. */
   compact?: boolean;
 }) {
   const activity = activities?.find((item) => item.kind === "spotify") ?? activities?.[0];
@@ -56,8 +57,8 @@ export function ActivityStatus({
   ) : (
     <span
       className={cn(
-        "oc-pf-activity-artwork flex shrink-0 items-center justify-center rounded bg-surface-3",
-        compact ? "size-5" : "size-12",
+        "oc-pf-activity-artwork flex shrink-0 items-center justify-center rounded",
+        compact ? "size-5 bg-surface-3" : "size-12 bg-surface-2",
       )}
     >
       <Icon aria-hidden className={cn("oc-pf-activity-icon", compact ? "size-3" : "size-6")} />
@@ -68,9 +69,7 @@ export function ActivityStatus({
       {artwork}
       <span className="oc-pf-activity-text truncate">
         {label}{" "}
-        <span className="oc-pf-activity-name font-medium text-ink-secondary">
-          {activity.name}
-        </span>
+        <span className="oc-pf-activity-name font-medium text-ink-secondary">{activity.name}</span>
         {activity.details ? ` - ${activity.details}` : ""}
         {activity.startedAt && <ElapsedTime startedAt={activity.startedAt} compact />}
       </span>
@@ -78,15 +77,17 @@ export function ActivityStatus({
   ) : (
     <>
       {artwork}
-      <span className="oc-pf-activity-text oc-pf-activity-meta min-w-0">
-        <span className="block text-[11px] font-medium uppercase tracking-wide text-ink-muted">
+      <span className="oc-pf-activity-text oc-pf-activity-meta min-w-0 flex-1">
+        <span className="oc-pf-activity-label block text-[11px] font-medium uppercase tracking-wide text-ink-muted">
           {label}
         </span>
         <span className="oc-pf-activity-name block truncate text-sm font-semibold text-ink-secondary">
           {activity.name}
         </span>
         {activity.details && (
-          <span className="oc-pf-activity-details block truncate text-xs">{activity.details}</span>
+          <span className="oc-pf-activity-details block truncate text-xs text-ink-muted">
+            {activity.details}
+          </span>
         )}
         {activity.startedAt && <ElapsedTime startedAt={activity.startedAt} compact={false} />}
       </span>
@@ -95,7 +96,7 @@ export function ActivityStatus({
 
   const rootClass = cn(
     "flex min-w-0 items-center text-xs text-ink-muted",
-    compact ? "gap-1.5" : "gap-2.5",
+    compact ? "gap-1.5" : "gap-3 rounded-lg border border-border bg-surface-3 p-3",
     className,
   );
 
@@ -111,10 +112,7 @@ export function ActivityStatus({
       {content}
     </a>
   ) : (
-    <span
-      data-kind={activity.kind}
-      className={rootClass}
-    >
+    <span data-kind={activity.kind} className={rootClass}>
       {content}
     </span>
   );

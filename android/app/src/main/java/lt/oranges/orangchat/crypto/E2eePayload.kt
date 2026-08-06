@@ -23,6 +23,7 @@ data class SealedAttachmentRef(
     val filename: String,
     val contentType: String,
     val size: Long,
+    val duration: Double? = null,
     val width: Int? = null,
     val height: Int? = null,
     val spoiler: Boolean? = null,

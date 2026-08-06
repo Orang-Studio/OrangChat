@@ -313,6 +313,7 @@ fun HomeScreen(
                         }
                     }
                 },
+                onMarkRead = { channel -> appViewModel.markChannelRead(channel.id) },
                 onAddChannel = { showCreateChannel = true; closeDrawer() },
                 onSearch = {
                     searchChannelId = null
@@ -672,7 +673,9 @@ fun HomeScreen(
                                             sealedAttachments,
                                         )
                                     },
-                                    onEdit = { id, content -> appViewModel.editMessage(channelId, id, content) },
+                                     onEdit = { id, content, done ->
+                                         appViewModel.editMessage(channelId, id, content, done)
+                                     },
                                     onDelete = { id -> appViewModel.deleteMessage(channelId, id) },
                                     onReport = { message, reason, done ->
                                         appViewModel.reportMessage(message, reason, done)

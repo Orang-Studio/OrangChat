@@ -1,5 +1,6 @@
 import * as RadixDialog from "@radix-ui/react-dialog";
-import { Bookmark, Download, X } from "lucide-react";
+import { useState } from "react";
+import { Bookmark, Download, RotateCcw, X, ZoomIn, ZoomOut } from "lucide-react";
 import type { Attachment } from "@orangchat/shared";
 import { formatBytes } from "./attachments";
 import { isGif, isGifFavorite, useFavoriteGifs } from "./favoriteGifs";
@@ -38,6 +39,7 @@ export function ImageLightbox({
   // the same shape a Tenor GIF already has.
   const gifUrl = new URL(attachment.url, window.location.origin).toString();
   const saved = gif && isGifFavorite(favoriteGifs, gifUrl);
+  const [scale, setScale] = useState(1);
 
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
@@ -52,7 +54,7 @@ export function ImageLightbox({
         >
           <RadixDialog.Title className="sr-only">{attachment.filename}</RadixDialog.Title>
 
-          <div className="flex shrink-0 items-center gap-3 bg-black/40 px-4 py-2.5 text-white">
+           <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-3 bg-black/40 px-4 py-2.5 text-white">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{attachment.filename}</p>
               {attachment.size > 0 && (
@@ -76,6 +78,33 @@ export function ImageLightbox({
                 {saved ? "Favourited" : "Favourite"}
               </button>
             )}
+            <button
+              type="button"
+              aria-label="Zoom out"
+              disabled={scale <= 1}
+              onClick={() => setScale((value) => Math.max(1, value - 0.5))}
+              className="rounded-lg p-1.5 transition-colors hover:bg-white/15 disabled:opacity-40"
+            >
+              <ZoomOut aria-hidden className="size-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="Reset zoom"
+              disabled={scale === 1}
+              onClick={() => setScale(1)}
+              className="rounded-lg p-1.5 transition-colors hover:bg-white/15 disabled:opacity-40"
+            >
+              <RotateCcw aria-hidden className="size-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="Zoom in"
+              disabled={scale >= 4}
+              onClick={() => setScale((value) => Math.min(4, value + 0.5))}
+              className="rounded-lg p-1.5 transition-colors hover:bg-white/15 disabled:opacity-40"
+            >
+              <ZoomIn aria-hidden className="size-4" />
+            </button>
             <a
               href={attachment.url}
               // The stored name is an opaque id, so the real one comes from here.
@@ -96,8 +125,8 @@ export function ImageLightbox({
 
           {/* Clicking the empty space around the image closes, as every other
               viewer does; the image itself must not, or a mis-drag ends it. */}
-          <div
-            className="flex min-h-0 flex-1 items-center justify-center p-4"
+           <div
+             className="absolute inset-0 flex items-center justify-center p-4"
             onClick={() => onOpenChange(false)}
           >
             <ImageContextMenu attachment={attachment}>
@@ -106,7 +135,8 @@ export function ImageLightbox({
                 alt={attachment.filename}
                 onClick={(e) => e.stopPropagation()}
                 onContextMenu={(e) => e.stopPropagation()}
-                className="max-h-full max-w-full object-contain"
+                className="max-h-full max-w-full object-contain transition-transform"
+                style={{ transform: `scale(${scale})` }}
               />
             </ImageContextMenu>
           </div>

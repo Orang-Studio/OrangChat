@@ -15,10 +15,6 @@ import { friendKeys } from "../friends/queries";
  */
 const lastStatus = new Map<string, PresenceStatus>();
 
-export function resetFriendPresence(): void {
-  lastStatus.clear();
-}
-
 export function maybeNotifyFriendOnline(
   client: QueryClient,
   userId: string,

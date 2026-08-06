@@ -341,7 +341,3 @@ export function useBlockedByVerification(channelId: string | undefined): boolean
     ),
   );
 }
-
-export const messageOutboxActions = {
-  dismissError: () => useMessageOutbox.setState({ error: null }),
-};

@@ -1,0 +1,13 @@
+Rebuilt fullscreen media preview
+
+New
+- Fullscreen images and videos now open in a dedicated media screen instead of
+  a dialog, giving the preview the phone's real display bounds.
+
+Fixed
+- Videos are centered and open with playback controls visible at the bottom.
+- Tapping media hides or restores the preview chrome and Android system bars
+  together, with no play/pause button covering the middle of the video.
+- Returning to chat hands the video surface back to the inline player without
+  restarting playback.
+- Images stay centered and support pinch, pan, and double-tap zoom.

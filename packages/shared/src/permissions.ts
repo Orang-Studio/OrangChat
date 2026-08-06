@@ -30,38 +30,11 @@ export const Permissions = {
 
 export type PermissionName = keyof typeof Permissions;
 
-/** Sensible default permissions granted to the @everyone. */
-export const DEFAULT_EVERYONE_PERMISSIONS =
-  Permissions.VIEW_CHANNEL |
-  Permissions.SEND_MESSAGES |
-  Permissions.EMBED_LINKS |
-  Permissions.ATTACH_FILES |
-  Permissions.ADD_REACTIONS |
-  Permissions.READ_MESSAGE_HISTORY |
-  Permissions.CONNECT |
-  Permissions.SPEAK |
-  Permissions.VIDEO |
-  Permissions.SCREEN_SHARE;
-export const ALL_PERMISSIONS = Object.values(Permissions).reduce(
-  (acc, bit) => acc | bit,
-  0n,
-);
-
-export function combinePermissions(bitfields: bigint[]): bigint {
-  return bitfields.reduce((acc, b) => acc | b, 0n);
-}
-
 export function hasPermission(permissions: bigint, required: bigint): boolean {
   if ((permissions & Permissions.ADMINISTRATOR) === Permissions.ADMINISTRATOR) {
     return true;
   }
   return (permissions & required) === required;
-}
-
-export function permissionNames(permissions: bigint): PermissionName[] {
-  return (Object.keys(Permissions) as PermissionName[]).filter(
-    (name) => (permissions & Permissions[name]) === Permissions[name],
-  );
 }
 
 export function serializePermissions(permissions: bigint): string {

@@ -12,15 +12,18 @@ import { initPlugins } from "./features/plugins/store";
 import { initInstalledTheme } from "./features/plugins/themes";
 import { registerServiceWorker } from "./lib/serviceWorker";
 import { initOfflineQueryCache } from "./lib/offlineQueryCache";
+import { CssOverrideScope, allowsCssOverrides } from "./app/CssOverrideScope";
 import "./styles/index.css";
 
 initTheme();
 initPrefs();
 initViewport();
-// Installed theme first (recolours variables), then enabled plugins, so a
+// Landing and legal pages always keep the shipped design. Everywhere else,
+// installed theme first (recolours variables), then enabled plugins, so a
 // plugin that reads a colour sees the theme's value, not the stock one.
-initInstalledTheme();
-initPlugins();
+const initialCssOverridesActive = allowsCssOverrides(window.location.pathname);
+initInstalledTheme(initialCssOverridesActive);
+initPlugins(initialCssOverridesActive);
 
 // Serves avatars, emoji and proxied images from disk on later loads, and is
 // what notifications are delivered through once they're enabled.
@@ -52,6 +55,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <CssOverrideScope />
         <App />
       </BrowserRouter>
     </QueryClientProvider>

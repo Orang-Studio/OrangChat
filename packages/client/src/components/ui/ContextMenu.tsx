@@ -1,5 +1,5 @@
 import * as RadixContextMenu from "@radix-ui/react-context-menu";
-import { Check, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import type { ComponentPropsWithoutRef } from "react";
 import { cn } from "../../lib/cn";
 
@@ -17,18 +17,6 @@ export const ContextMenuSeparator = (
   <RadixContextMenu.Separator
     {...props}
     className={cn("mx-1 my-1 h-px bg-border", props.className)}
-  />
-);
-
-export const ContextMenuLabel = (
-  props: ComponentPropsWithoutRef<typeof RadixContextMenu.Label>,
-) => (
-  <RadixContextMenu.Label
-    {...props}
-    className={cn(
-      "px-2.5 pb-1 pt-1.5 text-xs font-semibold uppercase tracking-wide text-ink-muted",
-      props.className,
-    )}
   />
 );
 
@@ -65,30 +53,6 @@ export function ContextMenuItem({
         className,
       )}
     />
-  );
-}
-
-export function ContextMenuCheckboxItem({
-  className,
-  children,
-  ...props
-}: ComponentPropsWithoutRef<typeof RadixContextMenu.CheckboxItem>) {
-  return (
-    <RadixContextMenu.CheckboxItem
-      {...props}
-      className={cn(
-        itemClass,
-        "data-[highlighted]:bg-primary data-[highlighted]:text-ink-on-primary",
-        className,
-      )}
-    >
-      <span className="flex size-4 shrink-0 items-center justify-center rounded border border-border-strong">
-        <RadixContextMenu.ItemIndicator>
-          <Check aria-hidden className="size-3.5" />
-        </RadixContextMenu.ItemIndicator>
-      </span>
-      {children}
-    </RadixContextMenu.CheckboxItem>
   );
 }
 

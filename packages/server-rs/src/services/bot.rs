@@ -261,6 +261,7 @@ pub async fn update(
     }
 
     if let Some(url) = avatar_url {
+        crate::services::user::check_image_url(url, "avatarUrl")?;
         sqlx::query(r#"UPDATE "User" SET "avatarUrl" = $2, "updatedAt" = now() WHERE id = $1"#)
             .bind(bot_id)
             .bind(url)

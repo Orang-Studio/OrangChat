@@ -156,7 +156,12 @@ data class E2eeTransferGrantRequest(
     val ikSigPub: String,
     val ikDhPub: String,
     val code: String,
+    /** Set when the account has no authenticator: token from requestE2eeTransferEmailCode. */
+    val loginToken: String? = null,
 )
+
+@Serializable
+data class E2eeTransferEmailCode(val loginToken: String)
 
 @Serializable
 data class E2eeBlobRequest(val blob: String, val slot: String)

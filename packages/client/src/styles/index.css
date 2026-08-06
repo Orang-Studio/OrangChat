@@ -127,6 +127,18 @@
 /* Dark-variant utilities keyed off data-theme rather than media query */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
+/* The `color-scheme` meta declares both schemes, so the browser's default
+ * canvas is white. Theme the canvas itself: any moment the body's box is
+ * shorter than the viewport - a suspending lazy route chunk swapping the
+ * tree, an overscroll, a collapsed root - would otherwise flash white. */
+html {
+  background-color: var(--oc-surface-0);
+}
+
+#root {
+  min-height: 100dvh;
+}
+
 body {
   @apply bg-surface-1 font-sans text-ink antialiased;
   overscroll-behavior: none;
@@ -197,4 +209,14 @@ body {
 
 :root[data-density="compact"] .oc-message-lead {
   margin-top: 0.375rem;
+}
+
+/* Persistent context cues should be visible without competing with the short
+ * animated flash used for search jumps. The soft token keeps these theme-aware. */
+.oc-message-pinged {
+  box-shadow: inset 2px 0 0 var(--oc-primary), 0 0 12px var(--oc-primary-soft);
+}
+
+.oc-message-replying {
+  box-shadow: inset 0 0 0 1px var(--oc-primary-soft), 0 0 12px var(--oc-primary-soft);
 }

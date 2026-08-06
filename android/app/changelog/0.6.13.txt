@@ -1,0 +1,24 @@
+Presence and device-transfer fixes
+
+Fixed
+- Leaving OrangChat no longer leaves your account showing online indefinitely.
+  The app now changes your presence to idle in the background and goes offline
+  after five minutes.
+- Returning to the app immediately restores your online presence.
+- Presence is tracked per device, so an idle phone cannot override a browser or
+  desktop app that you are actively using.
+- Stale connections now expire automatically if a disconnect is missed.
+- Adding a second device no longer requires an authenticator app: accounts
+  without two-factor authentication get a one-time email code instead, so
+  copying your encryption keys to a new phone or PC can no longer lock you out.
+
+Improved
+- The web app changes to idle after being unfocused for ten minutes while
+  remaining connected, and returns online when focused again.
+- Reading back through a conversation now shows a button to return to the
+  newest message, which says "New messages" when something arrived while you
+  were scrolled up.
+- Replying no longer depends on knowing the swipe gesture: "Reply" is now the
+  first entry in the message long-press menu.
+- Long-pressing a channel offers "Mark as read", the same action the direct
+  message list already had.

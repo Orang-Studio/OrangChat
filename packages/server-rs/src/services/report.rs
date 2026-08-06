@@ -206,6 +206,16 @@ async fn open_reported_message(
     ))
 }
 
+/// Message fields needed for a report, as read by `message`.
+type MessageRow = (
+    String,
+    String,
+    String,
+    Option<Vec<u8>>,
+    Option<i32>,
+    Option<i32>,
+);
+
 pub async fn message(
     state: &AppState,
     reporter_id: &str,
@@ -213,14 +223,7 @@ pub async fn message(
     reason: Option<&str>,
     message_key: Option<&str>,
 ) -> AppResult<ReportResult> {
-    let row: Option<(
-        String,
-        String,
-        String,
-        Option<Vec<u8>>,
-        Option<i32>,
-        Option<i32>,
-    )> = sqlx::query_as(
+    let row: Option<MessageRow> = sqlx::query_as(
         r#"SELECT "channelId", "authorId", content, ciphertext, "encEpoch", "encVersion"
            FROM "Message" WHERE id = $1"#,
     )

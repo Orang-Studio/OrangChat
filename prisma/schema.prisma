@@ -483,18 +483,22 @@ model MessageReport {
 }
 
 model PendingAttachment {
-  id          String    @id @default(cuid())
-  uploaderId  String
-  url         String
-  filename    String
-  contentType String
-  size        Int
-  width       Int?
-  height      Int?
-  storage     String
-  flagged     Boolean   @default(false)
-  expiresAt   DateTime?
-  createdAt   DateTime  @default(now())
+  id           String    @id @default(cuid())
+  uploaderId   String
+  url          String
+  filename     String
+  contentType  String
+  size         Int
+  width        Int?
+  height       Int?
+  /// Seconds, for audio and video. Captured by the sender's client at upload.
+  duration     Float?
+  /// Still image (first frame) for video, so receivers preview without the file.
+  thumbnailUrl String?
+  storage      String
+  flagged      Boolean   @default(false)
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
   uploader User @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
   @@index([uploaderId])
   @@index([createdAt])

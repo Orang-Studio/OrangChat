@@ -40,6 +40,17 @@ class EncryptionViewModel @Inject constructor(
         val transferQr: String? = null,
         val transferSas: String? = null,
         val transferError: String? = null,
+        /**
+         * True when this account has an authenticator app enrolled, so the
+         * transfer takes a TOTP code; false means an emailed one-time code.
+         */
+        val hasTwoFactor: Boolean = true,
+        /**
+         * Non-null once an email code has been requested for this transfer;
+         * the value is the token the code must be presented with.
+         */
+        val transferLoginToken: String? = null,
+        val requestingEmailCode: Boolean = false,
         val revokingDeviceId: String? = null,
         val notice: String? = null,
         /**
@@ -65,6 +76,7 @@ class EncryptionViewModel @Inject constructor(
         _state.value = _state.value.copy(
             deviceId = local?.deviceId,
             myCode = e2ee.myContactQr(),
+            hasTwoFactor = auth.currentUser?.twoFactorEnabled == true,
         )
         runCatching {
             val list = api.getMyE2eeDevices()
@@ -137,6 +149,8 @@ class EncryptionViewModel @Inject constructor(
             transferQr = null,
             transferSas = null,
             transferError = null,
+            transferLoginToken = null,
+            requestingEmailCode = false,
         )
     }
 
@@ -216,7 +230,28 @@ class EncryptionViewModel @Inject constructor(
             transferRole = TransferRole.OLD,
             transferStep = TransferStep.IDLE,
             transferError = null,
+            transferLoginToken = null,
+            requestingEmailCode = false,
         )
+    }
+
+    /** No authenticator app on this account: email a one-time code to use instead. */
+    fun requestTransferEmailCode() {
+        if (_state.value.requestingEmailCode) return
+        _state.value = _state.value.copy(requestingEmailCode = true, transferError = null)
+        viewModelScope.launch {
+            runCatching { api.requestE2eeTransferEmailCode() }
+                .onSuccess { _state.value = _state.value.copy(
+                    transferLoginToken = it.loginToken,
+                    requestingEmailCode = false,
+                ) }
+                .onFailure {
+                    _state.value = _state.value.copy(
+                        requestingEmailCode = false,
+                        transferError = it.message ?: "The email code could not be sent.",
+                    )
+                }
+        }
     }
 
     fun revokeDevice(deviceId: String) {
@@ -283,7 +318,13 @@ class EncryptionViewModel @Inject constructor(
             transferError = null,
         )
         viewModelScope.launch {
-            runCatching { e2ee.finishAdoptingDevice(handshake, code.trim()) }
+            runCatching {
+                e2ee.finishAdoptingDevice(
+                    handshake,
+                    code.trim(),
+                    _state.value.transferLoginToken,
+                )
+            }
                 .onSuccess {
                     _state.value = _state.value.copy(transferStep = TransferStep.DONE)
                     refresh()
@@ -301,6 +342,8 @@ class EncryptionViewModel @Inject constructor(
             transferQr = null,
             transferSas = null,
             transferError = null,
+            transferLoginToken = null,
+            requestingEmailCode = false,
         )
     }
 

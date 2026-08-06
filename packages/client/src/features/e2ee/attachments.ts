@@ -23,6 +23,11 @@ import {
  */
 const refs = new Map<string, SealedAttachmentRef>();
 
+type SealedBlobRef = Pick<
+  SealedAttachmentRef,
+  'fileId' | 'attachmentId' | 'key' | 'nonce' | 'contentType'
+>;
+
 export function rememberSealedAttachments(list: readonly SealedAttachmentRef[] | undefined): void {
   for (const ref of list ?? []) {
     refs.set(ref.attachmentId, ref);
@@ -35,10 +40,6 @@ export function sealedAttachmentsOf(attachmentId: string): SealedAttachmentRef |
   return refs.get(attachmentId) ?? null;
 }
 
-export function isSealedAttachment(attachmentId: string): boolean {
-  return refs.has(attachmentId);
-}
-
 /** Supporting thumbnail rows are claimed by the message but not separate files. */
 export function isSealedThumbnail(attachmentId: string): boolean {
   const ref = refs.get(attachmentId);
@@ -48,7 +49,7 @@ export function isSealedThumbnail(attachmentId: string): boolean {
 /** Object URLs are revoked with the page, so one per attachment is the cap. */
 const objectUrls = new Map<string, Promise<string>>();
 
-async function fetchSealed(ref: SealedAttachmentRef, url: string): Promise<Blob> {
+async function fetchSealed(ref: SealedBlobRef, url: string): Promise<Blob> {
   const response = await fetch(url, { credentials: 'include' });
   if (!response.ok) throw new Error('This attachment could not be downloaded.');
   const ciphertext = new Uint8Array(await response.arrayBuffer());
@@ -67,21 +68,13 @@ async function fetchSealed(ref: SealedAttachmentRef, url: string): Promise<Blob>
  * Decrypts a sealed attachment and hands back a URL the normal media elements
  * can use, so nothing downstream has to know the difference.
  */
-export function sealedObjectUrl(ref: SealedAttachmentRef, url: string): Promise<string> {
+export function sealedObjectUrl(ref: SealedBlobRef, url: string): Promise<string> {
   const existing = objectUrls.get(ref.attachmentId);
   if (existing) return existing;
   const created = fetchSealed(ref, url).then((blob) => URL.createObjectURL(blob));
   objectUrls.set(ref.attachmentId, created);
   created.catch(() => objectUrls.delete(ref.attachmentId));
   return created;
-}
-
-export async function downloadSealed(ref: SealedAttachmentRef, url: string): Promise<void> {
-  const objectUrl = await sealedObjectUrl(ref, url);
-  const anchor = document.createElement('a');
-  anchor.href = objectUrl;
-  anchor.download = ref.filename;
-  anchor.click();
 }
 
 /**

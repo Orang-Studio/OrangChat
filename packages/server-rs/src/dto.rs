@@ -387,6 +387,7 @@ pub struct ConversationDto {
     pub name: Option<String>,
     pub participants: Vec<UserDto>,
     pub last_message_at: Option<String>,
+    pub latest_message: Option<MessageDto>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -623,7 +624,11 @@ pub fn to_server_member(
     }
 }
 
-pub fn to_conversation(c: &ChannelRow, participants: &[UserRow]) -> ConversationDto {
+pub fn to_conversation(
+    c: &ChannelRow,
+    participants: &[UserRow],
+    latest_message: Option<MessageDto>,
+) -> ConversationDto {
     ConversationDto {
         id: c.id.clone(),
         conv_type: if c.channel_type == "group_dm" {
@@ -634,6 +639,7 @@ pub fn to_conversation(c: &ChannelRow, participants: &[UserRow]) -> Conversation
         name: c.name.clone(),
         participants: participants.iter().map(to_user).collect(),
         last_message_at: Some(iso(c.updated_at)),
+        latest_message,
     }
 }
 

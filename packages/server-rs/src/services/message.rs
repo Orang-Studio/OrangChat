@@ -155,6 +155,30 @@ async fn load_one(state: &AppState, message_id: &str, viewer_id: &str) -> AppRes
     Ok(dtos.remove(0))
 }
 
+/// The newest message is included with the DM list so navigation can show a
+/// preview without opening every conversation. Encrypted rows are returned as
+/// envelopes and opened by the client that owns the conversation key.
+pub async fn latest_for_channel(
+    state: &AppState,
+    channel_id: &str,
+    viewer_id: &str,
+) -> AppResult<Option<MessageDto>> {
+    let row: Option<MessageRow> = sqlx::query_as(
+        r#"SELECT * FROM "Message"
+           WHERE "channelId" = $1
+           ORDER BY "createdAt" DESC, id DESC
+           LIMIT 1"#,
+    )
+    .bind(channel_id)
+    .fetch_optional(&state.pool)
+    .await?;
+
+    match row {
+        Some(row) => Ok(Some(build_dtos(state, &[row], viewer_id).await?.remove(0))),
+        None => Ok(None),
+    }
+}
+
 /// A staged upload, on its way from `PendingAttachment` into a message.
 #[derive(sqlx::FromRow)]
 struct PendingAttachmentRow {
@@ -166,6 +190,9 @@ struct PendingAttachmentRow {
     size: i32,
     width: Option<i32>,
     height: Option<i32>,
+    duration: Option<f64>,
+    #[sqlx(rename = "thumbnailUrl")]
+    thumbnail_url: Option<String>,
     storage: String,
     flagged: bool,
     #[sqlx(rename = "expiresAt")]
@@ -208,7 +235,7 @@ async fn claim_attachments(
     let rows: Vec<PendingAttachmentRow> = sqlx::query_as(
         r#"DELETE FROM "PendingAttachment"
             WHERE id = ANY($1) AND "uploaderId" = $2
-        RETURNING id, url, filename, "contentType", size, width, height, storage, flagged, "expiresAt""#,
+        RETURNING id, url, filename, "contentType", size, width, height, duration, "thumbnailUrl", storage, flagged, "expiresAt""#,
     )
     .bind(attachment_ids)
     .bind(author_id)
@@ -249,6 +276,8 @@ async fn claim_attachments(
                 "size": r.size,
                 "width": r.width,
                 "height": r.height,
+                "duration": r.duration,
+                "thumbnailUrl": r.thumbnail_url,
                 "storage": r.storage,
                 "flagged": r.flagged,
                 "spoiler": spoilers.contains(r.id.as_str()),
@@ -268,6 +297,27 @@ pub struct Sealed {
 
 const MAX_CIPHERTEXT_BYTES: usize = 256 * 1024;
 const ENVELOPE_VERSION: i32 = 1;
+
+/// Longest plaintext message body accepted, in bytes.
+///
+/// `Message.content` is a Postgres `text`, so nothing below this layer bounds
+/// it. The ceiling is generous next to the ~4k a client will let you type, but
+/// it stops a scripted client from storing a row that every member of the
+/// channel then has to download on every history fetch. Bytes rather than chars
+/// because it is the transfer size that matters here.
+const MAX_CONTENT_BYTES: usize = 64 * 1024;
+
+/// Rejects an over-long plaintext body. Encrypted messages are bounded by
+/// [`MAX_CIPHERTEXT_BYTES`] instead, and carry an empty `content`.
+fn check_content_len(content: &str) -> AppResult<()> {
+    if content.len() > MAX_CONTENT_BYTES {
+        return Err(AppError::BadRequest(format!(
+            "Message is too long (limit {} bytes)",
+            MAX_CONTENT_BYTES
+        )));
+    }
+    Ok(())
+}
 
 /// Decides whether this send is encrypted, and refuses the two shapes that
 /// would quietly break the promise: plaintext into a channel that has latched
@@ -351,6 +401,7 @@ pub async fn send_message(
     if sealed.is_none() && content.trim().is_empty() && attachment_ids.is_empty() {
         return Err(AppError::BadRequest("Message is empty".into()));
     }
+    check_content_len(content)?;
 
     let attachments = claim_attachments(
         state,
@@ -407,6 +458,8 @@ pub async fn edit_message(
     content: &str,
     sealed: Option<&Sealed>,
 ) -> AppResult<MessageDto> {
+    check_content_len(content)?;
+
     let existing: Option<(String, String)> =
         sqlx::query_as(r#"SELECT "authorId", "channelId" FROM "Message" WHERE id = $1"#)
             .bind(message_id)

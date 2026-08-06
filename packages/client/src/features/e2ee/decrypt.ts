@@ -1,6 +1,6 @@
 import type { Attachment, Message, MessagePayload } from '@orangchat/shared';
 import { rememberSealedAttachments, sealedAttachmentsOf } from './attachments';
-import { forgetMessage, recallMessage, recallMessageSync, rememberMessage } from './cache';
+import { forgetMessage, recallMessage, rememberMessage } from './cache';
 import { open } from './conversation';
 import { noteEpoch } from './store';
 
@@ -39,6 +39,7 @@ function attachmentsFrom(payload: MessagePayload, server: Attachment[]): Attachm
       filename: ref.filename,
       contentType: ref.contentType,
       size: ref.size,
+      ...(ref.duration === undefined ? {} : { duration: ref.duration }),
       ...(ref.width === undefined ? {} : { width: ref.width }),
       ...(ref.height === undefined ? {} : { height: ref.height }),
       ...(ref.spoiler ? { spoiler: true } : {}),
@@ -109,11 +110,6 @@ export async function decryptMessages(
 /** Called when a message is edited so the old plaintext is not shown again. */
 export function forgetDecrypted(messageId: string): void {
   void forgetMessage(messageId);
-}
-
-/** Synchronous read for paths that must not await, e.g. reply previews. */
-export function decryptedTextSync(messageId: string): string | null {
-  return recallMessageSync(messageId)?.text ?? null;
 }
 
 export { sealedAttachmentsOf };

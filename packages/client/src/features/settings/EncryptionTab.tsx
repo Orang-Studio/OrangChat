@@ -195,8 +195,8 @@ export function EncryptionTab() {
               <p className="text-xs text-ink-muted">
                 Show a one-time code on this PC, then use OrangChat’s scanner on the phone. The
                 phone makes its own protected identity; this device authorizes it and sends the
-                encrypted history keys after you compare six digits and enter 2FA. The system
-                Camera app remains a fallback.
+                encrypted history keys after you compare six digits and enter a fresh security
+                code. The system Camera app remains a fallback.
               </p>
             </div>
           </div>

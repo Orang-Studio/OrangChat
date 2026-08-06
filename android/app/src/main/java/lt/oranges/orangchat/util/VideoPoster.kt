@@ -12,20 +12,21 @@ private const val CLOUDINARY_VIDEO_UPLOAD = "/video/upload/"
  * A still to show for [attachment] before anyone presses play, or null to leave
  * it dark behind the play button.
  *
- * Only stills that already exist as an image qualify. Decoding a frame on the
- * device does not: coil-video has to have the whole clip before it can read
- * frame zero, so a poster cost a silent full download of every video in the
- * channel - which is exactly why previews took longer the bigger the file was,
- * and why an attachment on OrangMove (where every clip is over 10MB) showed
- * nothing at all after paying for the download. Bytes now move when play is
- * pressed and not before.
+ * New uploads carry a real still: the sender's client captured the first frame
+ * at upload time and it is stored next to the bytes, so every storage type -
+ * local, Cloudinary and OrangMove alike - gets a preview that costs a small
+ * image instead of the clip.
  *
- * Cloudinary renders stills on demand - `so_0` is its seek-offset-zero
- * transform - so those cost one small jpg instead of the clip.
+ * Older Cloudinary rows predate that and have no stored still, so the clip
+ * itself is rendered on demand - `so_0` is Cloudinary's seek-offset-zero
+ * transform - which is what made those previews possible at all before uploads
+ * started carrying one.
  */
 fun videoPosterUrl(attachment: Attachment): VideoPoster? {
-    val href = absoluteUrl(attachment.url) ?: return null
+    val stored = absoluteUrl(attachment.thumbnailUrl)
+    if (stored != null) return VideoPoster(stored)
 
+    val href = absoluteUrl(attachment.url) ?: return null
     if (attachment.storage == "cloudinary") {
         val marker = href.indexOf(CLOUDINARY_VIDEO_UPLOAD)
         if (marker >= 0) {

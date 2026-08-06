@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Download, EyeOff, FileWarning, Lock, Maximize2, Paperclip, ShieldAlert } from 'lucide-react';
+import {
+  Download,
+  EyeOff,
+  FileWarning,
+  Lock,
+  Maximize2,
+  Paperclip,
+  ShieldAlert,
+} from 'lucide-react';
 import type { Attachment, SealedAttachmentRef } from '@orangchat/shared';
 import { Button } from '../../components/ui/Button';
 import {
@@ -8,7 +16,7 @@ import {
   sealedAttachmentsOf,
   sealedObjectUrl,
 } from '../e2ee/attachments';
-import { formatBytes, inlineUrl } from './attachments';
+import { formatBytes, formatTime, inlineUrl } from './attachments';
 import { AudioPlayer } from './AudioPlayer';
 import { ImageLightbox } from './ImageLightbox';
 import { ImageContextMenu } from './ImageContextMenu';
@@ -204,6 +212,7 @@ export function VideoAttachment({ attachment }: { attachment: Attachment }) {
   const [broken, setBroken] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [startTime, setStartTime] = useState(0);
+  const [playing, setPlaying] = useState(false);
 
   if (broken) return <FileCard attachment={attachment} />;
 
@@ -220,17 +229,29 @@ export function VideoAttachment({ attachment }: { attachment: Attachment }) {
       <div className="group relative inline-flex max-w-full overflow-hidden rounded-lg border border-border bg-black">
         <video
           src={attachment.url}
+          // The sender's client captured the first frame at upload, so the box
+          // shows the clip without fetching any of it. Old videos fall back to
+          // the dark box behind the play button.
+          poster={attachment.thumbnailUrl}
           aria-label={attachment.filename}
           width={attachment.width}
           height={attachment.height}
           controls
           controlsList="nodownload"
           playsInline
-          preload="metadata"
+          // The still does the previewing; the bytes only move on play.
+          preload="none"
           onError={() => setBroken(true)}
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
           onDoubleClick={(event) => expand(event.currentTarget)}
           className="max-h-80 max-w-full bg-black object-contain"
         />
+        {!playing && attachment.duration !== undefined && (
+          <span className="pointer-events-none absolute bottom-1.5 right-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-white">
+            {formatTime(attachment.duration)}
+          </span>
+        )}
         <button
           type="button"
           onClick={(event) =>
@@ -281,13 +302,34 @@ function Body({ attachment }: { attachment: Attachment }) {
 function SealedBody({
   attachment,
   sealed,
+  all,
 }: {
   attachment: Attachment;
   sealed: SealedAttachmentRef;
+  all: Attachment[];
 }) {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [wanted, setWanted] = useState(sealed.size <= MAX_INLINE_SEALED);
+  const isVideo = sealed.contentType.startsWith('video/');
+
+  // A sealed video's poster is its sealed thumbnail row - a small blob, so it
+  // decrypts on its own even while the main file stays behind "Decrypt".
+  const [poster, setPoster] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isVideo || !sealed.thumb) return;
+    const thumbRow = all.find((a) => a.id === sealed.thumb!.attachmentId);
+    if (!thumbRow) return;
+    let cancelled = false;
+    void sealedObjectUrl(sealed.thumb, thumbRow.url)
+      .then((resolved) => !cancelled && setPoster(resolved))
+      .catch(() => {
+        // A poster is a courtesy; the file still opens without it.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isVideo, sealed, all]);
 
   useEffect(() => {
     if (!wanted || url || failed) return;
@@ -315,6 +357,24 @@ function SealedBody({
   // Big files stay out of memory until asked for: decryption has one tag over
   // the whole file, so "play inline" means "load all of it".
   if (!wanted) {
+    if (poster) {
+      return (
+        <div className="relative max-w-sm overflow-hidden rounded-lg border border-border">
+          <img src={poster} alt={sealed.filename} className="w-full" />
+          <div className="absolute inset-x-0 bottom-0 flex items-center gap-2 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-10">
+            {sealed.duration != null && (
+              <span className="rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-medium text-white">
+                {formatTime(sealed.duration)}
+              </span>
+            )}
+            <div className="flex-1" />
+            <Button type="button" size="sm" onClick={() => setWanted(true)}>
+              Decrypt
+            </Button>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="flex max-w-sm items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2">
         <Lock aria-hidden className="size-4 shrink-0 text-ink-muted" />
@@ -338,13 +398,22 @@ function SealedBody({
     );
   }
 
-  return <Body attachment={{ ...attachment, url }} />;
+  return (
+    <Body
+      attachment={{
+        ...attachment,
+        url,
+        ...(poster ? { thumbnailUrl: poster } : {}),
+        ...(sealed.duration != null ? { duration: sealed.duration } : {}),
+      }}
+    />
+  );
 }
 
-function Resolved({ attachment }: { attachment: Attachment }) {
+function Resolved({ attachment, all }: { attachment: Attachment; all: Attachment[] }) {
   const sealed = sealedAttachmentsOf(attachment.id);
   return sealed ? (
-    <SealedBody attachment={attachment} sealed={sealed} />
+    <SealedBody attachment={attachment} sealed={sealed} all={all} />
   ) : (
     <Body attachment={attachment} />
   );
@@ -367,10 +436,10 @@ export function MessageAttachments({ attachments }: { attachments: Attachment[] 
             <Expired attachment={a} />
           ) : a.spoiler ? (
             <SpoilerShade>
-              <Resolved attachment={a} />
+              <Resolved attachment={a} all={attachments} />
             </SpoilerShade>
           ) : (
-            <Resolved attachment={a} />
+            <Resolved attachment={a} all={attachments} />
           )}
         </li>
       ))}

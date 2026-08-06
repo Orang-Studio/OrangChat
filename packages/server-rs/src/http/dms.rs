@@ -11,7 +11,7 @@ use crate::dto::{to_conversation, ConversationDto};
 use crate::error::{AppError, AppResult};
 use crate::http::{bad_request, AuthUser};
 use crate::models::{ChannelRow, UserRow};
-use crate::services::{dm, presence, rate_limit};
+use crate::services::{dm, message, presence, rate_limit};
 use crate::state::AppState;
 
 pub fn routes() -> Router<AppState> {
@@ -71,7 +71,11 @@ fn parse_user_ids(body: &Value) -> AppResult<Vec<String>> {
         .collect()
 }
 
-async fn load_conversation(state: &AppState, channel_id: &str) -> AppResult<Option<Value>> {
+async fn load_conversation(
+    state: &AppState,
+    channel_id: &str,
+    viewer_id: &str,
+) -> AppResult<Option<Value>> {
     let ch: Option<ChannelRow> = sqlx::query_as(r#"SELECT * FROM "Channel" WHERE id = $1"#)
         .bind(channel_id)
         .fetch_optional(&state.pool)
@@ -85,8 +89,9 @@ async fn load_conversation(state: &AppState, channel_id: &str) -> AppResult<Opti
     .bind(channel_id)
     .fetch_all(&state.pool)
     .await?;
+    let latest = message::latest_for_channel(state, channel_id, viewer_id).await?;
     Ok(Some(json!(
-        with_presence(state, to_conversation(&ch, &users)).await?
+        with_presence(state, to_conversation(&ch, &users, latest)).await?
     )))
 }
 
@@ -117,8 +122,9 @@ async fn list_dms(State(state): State<AppState>, user: AuthUser) -> AppResult<Js
     let rows = dm::list_conversations(&state, &user.user_id).await?;
     let mut out = Vec::with_capacity(rows.len());
     for (channel, users) in &rows {
+        let latest = message::latest_for_channel(&state, &channel.id, &user.user_id).await?;
         out.push(json!(
-            with_presence(&state, to_conversation(channel, users)).await?
+            with_presence(&state, to_conversation(channel, users, latest)).await?
         ));
     }
     Ok(Json(json!(out)))
@@ -140,7 +146,7 @@ async fn create_dm(
     let user_ids = parse_user_ids(&body)?;
     let (id, created) = dm::get_or_create_direct_channel(&state, &user.user_id, &user_ids).await?;
 
-    let conversation = load_conversation(&state, &id)
+    let conversation = load_conversation(&state, &id, &user.user_id)
         .await?
         .ok_or_else(|| AppError::Internal("Failed to load conversation".into()))?;
 
@@ -178,7 +184,7 @@ async fn add_participants(
     let user_ids = parse_user_ids(&body)?;
     dm::add_group_participants(&state, &channel_id, &user.user_id, &user_ids).await?;
 
-    let conversation = load_conversation(&state, &channel_id)
+    let conversation = load_conversation(&state, &channel_id, &user.user_id)
         .await?
         .ok_or_else(|| AppError::NotFound("Conversation not found".into()))?;
 

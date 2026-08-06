@@ -86,7 +86,22 @@ pub async fn send_device_transfer_notice(config: &Config, to: &str) -> AppResult
         config,
         to,
         "A new OrangChat encryption device was approved",
-        "<h1>Encryption device approved</h1><p>A valid two-factor code was used to approve a new end-to-end encryption device on your OrangChat account.</p><p>If this was not you, enable account lockdown and revoke the device from Settings → Encryption immediately.</p>".into(),
+        "<h1>Encryption device approved</h1><p>A security code was used to approve a new end-to-end encryption device on your OrangChat account.</p><p>If this was not you, enable account lockdown and revoke the device from Settings → Encryption immediately.</p>".into(),
+    )
+    .await
+}
+
+/// The one-time code that stands in for an authenticator app when the account
+/// has no TOTP enrolled. Same 10-minute lifetime and one-code-per-account rule
+/// as the sign-in code.
+pub async fn send_device_transfer_code(config: &Config, to: &str, code: &str) -> AppResult<()> {
+    send(
+        config,
+        to,
+        "Your OrangChat device-transfer code",
+        format!(
+            "<h1>Add a new device</h1><p>Someone is adding a new device to your OrangChat account. Enter this code on the device that already has your keys to approve it. It expires in 10 minutes.</p><p style=\"font-size:32px;font-weight:bold;letter-spacing:6px\">{code}</p><p>If this was not you, ignore this email and consider enabling account lockdown.</p>"
+        ),
     )
     .await
 }

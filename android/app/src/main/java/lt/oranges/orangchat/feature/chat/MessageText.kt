@@ -56,6 +56,7 @@ fun MessageText(
     selfId: String? = null,
     emojis: Map<String, EmojiRef> = emptyMap(),
     fontSize: androidx.compose.ui.unit.TextUnit = 14.sp,
+    onMentionClick: (String) -> Unit = {},
 ) {
     val c = OrangTheme.colors
     val blocks = if (isDirectMediaMessage(content)) emptyList()
@@ -89,7 +90,7 @@ fun MessageText(
                             .background(c.borderStrong, RoundedCornerShape(OrangRadius.xs)),
                     ) { Text("") }
                     Text(
-                        text = block.children.toAnnotated(c, fontSize),
+                        text = block.children.toAnnotated(c, fontSize, onMentionClick),
                         color = c.inkSecondary,
                         fontSize = fontSize,
                         inlineContent = inlineContent,
@@ -98,7 +99,7 @@ fun MessageText(
                 }
 
                 is MdBlock.Paragraph -> Text(
-                    text = block.children.toAnnotated(c, fontSize),
+                    text = block.children.toAnnotated(c, fontSize, onMentionClick),
                     color = c.ink,
                     fontSize = fontSize,
                     inlineContent = inlineContent,
@@ -170,33 +171,35 @@ private fun rememberEmojiInlineContent(
 private fun List<MdNode>.toAnnotated(
     c: lt.oranges.orangchat.ui.theme.OrangColors,
     fontSize: androidx.compose.ui.unit.TextUnit,
+    onMentionClick: (String) -> Unit,
 ): AnnotatedString = buildAnnotatedString {
-    appendNodes(this@toAnnotated, c, fontSize)
+    appendNodes(this@toAnnotated, c, fontSize, onMentionClick)
 }
 
 private fun androidx.compose.ui.text.AnnotatedString.Builder.appendNodes(
     nodes: List<MdNode>,
     c: lt.oranges.orangchat.ui.theme.OrangColors,
     fontSize: androidx.compose.ui.unit.TextUnit,
+    onMentionClick: (String) -> Unit,
 ) {
     nodes.forEach { node ->
         when (node) {
             is MdNode.Text -> append(node.text)
 
             is MdNode.Bold -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                appendNodes(node.children, c, fontSize)
+                appendNodes(node.children, c, fontSize, onMentionClick)
             }
 
             is MdNode.Italic -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
-                appendNodes(node.children, c, fontSize)
+                appendNodes(node.children, c, fontSize, onMentionClick)
             }
 
             is MdNode.Underline -> withStyle(SpanStyle(textDecoration = TextDecoration.Underline)) {
-                appendNodes(node.children, c, fontSize)
+                appendNodes(node.children, c, fontSize, onMentionClick)
             }
 
             is MdNode.Strike -> withStyle(SpanStyle(textDecoration = TextDecoration.LineThrough)) {
-                appendNodes(node.children, c, fontSize)
+                appendNodes(node.children, c, fontSize, onMentionClick)
             }
 
             is MdNode.Code -> withStyle(
@@ -214,13 +217,19 @@ private fun androidx.compose.ui.text.AnnotatedString.Builder.appendNodes(
                         style = SpanStyle(color = c.primary, textDecoration = TextDecoration.Underline),
                     ),
                 ),
-            ) { appendNodes(node.label, c, fontSize) }
+            ) { appendNodes(node.label, c, fontSize, onMentionClick) }
 
-            is MdNode.Mention -> withStyle(
-                SpanStyle(
-                    color = c.primary,
-                    background = if (node.isSelf) c.primary.copy(alpha = 0.30f) else c.primarySoft,
-                    fontWeight = FontWeight.Medium,
+            is MdNode.Mention -> withLink(
+                LinkAnnotation.Clickable(
+                    tag = "mention:${node.userId}",
+                    styles = TextLinkStyles(
+                        style = SpanStyle(
+                            color = c.primary,
+                            background = if (node.isSelf) c.primary.copy(alpha = 0.30f) else c.primarySoft,
+                            fontWeight = FontWeight.Medium,
+                        ),
+                    ),
+                    linkInteractionListener = { _ -> onMentionClick(node.userId) },
                 ),
             ) { append("@${node.name}") }
 

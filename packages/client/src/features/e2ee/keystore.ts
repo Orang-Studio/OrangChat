@@ -1,4 +1,4 @@
-import { fromBase64, randomBytes, toBase64 } from '@orangchat/shared';
+import { randomBytes } from '@orangchat/shared';
 
 const DB_NAME = 'orangchat-e2ee';
 const DB_VERSION = 3;
@@ -139,10 +139,6 @@ export async function saveIdentity(identity: LocalIdentity): Promise<void> {
   await run(IDENTITY, 'readwrite', (s) => s.put(record));
 }
 
-export async function clearIdentity(): Promise<void> {
-  await run(IDENTITY, 'readwrite', (s) => s.delete('self'));
-}
-
 export async function pinPeer(pin: PinnedPeer): Promise<void> {
   await run(PINS, 'readwrite', (s) => s.put(pin));
 }
@@ -150,10 +146,6 @@ export async function pinPeer(pin: PinnedPeer): Promise<void> {
 export async function getPin(userId: string): Promise<PinnedPeer | null> {
   const pin = await run<PinnedPeer | undefined>(PINS, 'readonly', (s) => s.get(userId));
   return pin ?? null;
-}
-
-export async function allPins(): Promise<PinnedPeer[]> {
-  return run<PinnedPeer[]>(PINS, 'readonly', (s) => s.getAll());
 }
 
 /**
@@ -360,11 +352,6 @@ export async function allCachedMessages(): Promise<CachedMessageRecord[]> {
   return run<CachedMessageRecord[]>(MESSAGES, 'readonly', (s) => s.getAll());
 }
 
-/** Signing out must not leave a readable history behind for the next account. */
-export async function clearCachedMessages(): Promise<void> {
-  await run(MESSAGES, 'readwrite', (s) => s.clear());
-}
-
 export interface OfflineSnapshotRecord extends SealedRecord {
   id: 'app';
   userId: string;
@@ -436,13 +423,3 @@ export async function rememberDeviceKeys(devices: readonly KnownDeviceKey[]): Pr
     tx.onerror = () => reject(tx.error);
   });
 }
-
-export async function knownDeviceKey(deviceId: string): Promise<KnownDeviceKey | null> {
-  const record = await run<KnownDeviceKey | undefined>(DEVICE_KEYS, 'readonly', (s) =>
-    s.get(deviceId),
-  );
-  return record ?? null;
-}
-
-export const encodeBytes = toBase64;
-export const decodeBytes = fromBase64;

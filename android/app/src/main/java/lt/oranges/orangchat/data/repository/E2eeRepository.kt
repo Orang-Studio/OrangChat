@@ -594,9 +594,16 @@ class E2eeRepository @Inject constructor(
             )
         }
 
-    /** SAS has matched; require a fresh TOTP and sign the new device into the log. */
-    suspend fun finishAdoptingDevice(handshake: OldDeviceHandshake, totpCode: String) =
-        withContext(Dispatchers.IO) {
+    /**
+     * SAS has matched; require a fresh security code (TOTP when the account has
+     * an authenticator, otherwise the emailed one-time code) and sign the new
+     * device into the log.
+     */
+    suspend fun finishAdoptingDevice(
+        handshake: OldDeviceHandshake,
+        code: String,
+        loginToken: String? = null,
+    ) = withContext(Dispatchers.IO) {
             val local = keystore.identity()
                 ?: throw E2eeException("This phone has no encryption identity to copy from.")
             val grant = api.requestE2eeTransferGrant(
@@ -604,7 +611,8 @@ class E2eeRepository @Inject constructor(
                     transferId = handshake.transferId,
                     ikSigPub = E2ee.toBase64(handshake.ikSigPub),
                     ikDhPub = E2ee.toBase64(handshake.ikDhPub),
-                    code = totpCode,
+                    code = code,
+                    loginToken = loginToken,
                 ),
             ).grant
 
@@ -931,11 +939,31 @@ class E2eeRepository @Inject constructor(
             val envelope = E2ee.decodeEnvelope(E2ee.fromBase64(ciphertext))
             val key = conversationKeyFor(channelId, envelope.epoch)
 
-            // Our own devices get the same treatment as anyone else's: skipping
-            // the replay here would let the server invent a device on *our*
-            // account and attribute a message to it.
+            // A sender device we already verified is trusted from the keystore
+            // alone, so a push can still check the signature while the phone is
+            // offline or the app was cold-started (the notification path has no
+            // server round-trip to spare). Fresh lookups still run for devices
+            // never seen here, and re-verify on every online path.
             val local = keystore.identity()
-            val devices = if (local != null && envelope.senderUserId == local.userId) {
+            val remembered = keystore.deviceKey(envelope.senderDeviceId)
+            val devices = if (remembered != null && remembered.first == envelope.senderUserId) {
+                listOf(
+                    E2eeDevice(
+                        id = envelope.senderDeviceId,
+                        userId = remembered.first,
+                        name = "",
+                        platform = "",
+                        ikSigPub = E2ee.toBase64(remembered.second),
+                        ikDhPub = "",
+                        bundleSig = "",
+                        createdAt = "",
+                        lastSeenAt = "",
+                    ),
+                )
+            } else if (local != null && envelope.senderUserId == local.userId) {
+                // Our own devices get the same treatment as anyone else's: skipping
+                // the replay here would let the server invent a device on *our*
+                // account and attribute a message to it.
                 val mine = api.getMyE2eeDevices()
                 val verified = verifyList(mine)
                 mine.devices.filter { verified.authorizedDeviceIds.contains(it.id) }
@@ -1016,15 +1044,10 @@ class E2eeRepository @Inject constructor(
     private fun apply(message: Message, payload: MessagePayload): Message {
         payload.attachments.orEmpty().forEach(keystore::rememberSealedAttachment)
         val refs = payload.attachments.orEmpty().associateBy { it.attachmentId }
-        val thumbnailIds = payload.attachments.orEmpty()
-            .mapNotNull { it.thumb?.attachmentId }
-            .toSet()
         return message.copy(
             content = payload.text,
-            createdAt = payload.sentAt.ifEmpty { message.createdAt },
             replyToId = payload.replyTo ?: message.replyToId,
             attachments = message.attachments
-                .filterNot { it.id in thumbnailIds }
                 .map { attachment ->
                     refs[attachment.id]?.let { ref ->
                         attachment.copy(
@@ -1033,6 +1056,7 @@ class E2eeRepository @Inject constructor(
                             size = ref.size,
                             width = ref.width,
                             height = ref.height,
+                            duration = ref.duration,
                             flagged = false,
                         )
                     } ?: attachment

@@ -99,7 +99,3 @@ export function useServerNotificationPrefs(serverId: string): ServerNotification
 export function getServerNotificationPrefs(serverId: string): ServerNotificationPrefs {
   return resolve(useServerNotifications.getState().servers[serverId]);
 }
-
-export function isServerMuted(serverId: string): boolean {
-  return getServerNotificationPrefs(serverId).mutedUntil !== null;
-}

@@ -44,6 +44,7 @@ function write(state: PersistedState): void {
 
 /** Teardowns for the currently-running plugins, so a toggle-off is clean. */
 const running = new Map<string, () => void>();
+let active = false;
 
 /** Settings a plugin will see, falling back to catalog defaults per key. */
 function resolvedSettings(pluginId: string, stored: PersistedState): PluginSettingValues {
@@ -114,7 +115,7 @@ export const usePlugins = create<PluginStore>((set, get) => ({
       enabled: on ? [...new Set([...state.enabled, id])] : state.enabled.filter((x) => x !== id),
       settings: state.settings,
     };
-    if (on) startPlugin(id, next);
+    if (on && active) startPlugin(id, next);
     else stopPlugin(id);
     write(next);
     set({ enabled: next.enabled });
@@ -183,10 +184,21 @@ export function usePluginMessageActions(): {
   );
 }
 
-/** Start every enabled plugin. Called once at app boot. */
-export function initPlugins(): void {
+/** Start or temporarily stop installed plugins without changing their saved toggles. */
+export function setPluginsActive(next: boolean): void {
+  active = next;
+  if (!next) {
+    for (const pluginId of [...running.keys()]) stopPlugin(pluginId);
+    return;
+  }
+
   const stored = read();
   for (const plugin of PLUGINS) {
     if (stored.enabled.includes(plugin.id)) startPlugin(plugin.id, stored);
   }
+}
+
+/** Start every enabled plugin. Called once at app boot. */
+export function initPlugins(initiallyActive = true): void {
+  setPluginsActive(initiallyActive);
 }

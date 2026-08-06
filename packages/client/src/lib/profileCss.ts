@@ -15,6 +15,8 @@
  *  4. Strip declarations that enable escape / exfiltration / legacy scripting:
  *     external url(), position:fixed|sticky, expression(), -moz-binding,
  *     behavior:, javascript:, @import inside values.
+ *  5. Strip `</style`, which survives the CSSOM inside a string value and would
+ *     otherwise end the <style> element the result is injected into.
  *
  * The card container additionally sets `contain: layout paint style`,
  * `isolation: isolate` and `overflow: hidden`, so even an allowed
@@ -29,6 +31,30 @@ const DANGEROUS_TOKEN = /(expression\(|javascript:|-moz-binding|behavior\s*:|@im
 
 /** Plain dotted ident, e.g. `card` or `theme.dark`; anything else is refused. */
 const LAYER_NAME = /^[\w-]+(\.[\w-]+)*$/;
+
+const STYLE_CLOSE = /<\/style/gi;
+
+/**
+ * The result is injected as the raw-text content of a <style>, which ends at the
+ * first literal `</style` - and the CSSOM happily round-trips that sequence
+ * inside a string value or attribute selector, e.g. `content: "</style><img
+ * src=x onerror=…>"`, where no other filter here matches it.
+ *
+ * Deleting a match joins the text on either side, and those halves can spell out
+ * a fresh `</style` that a single pass would never revisit (`</s</styletyle`
+ * collapses to exactly that), so repeat to a fixed point. Each pass drops seven
+ * characters, so this terminates. Nothing legitimate is lost: an inline SVG
+ * data: URI contains `</svg`, not `</style`.
+ */
+function stripStyleClose(css: string): string {
+  let out = css;
+  while (STYLE_CLOSE.test(out)) {
+    STYLE_CLOSE.lastIndex = 0;
+    out = out.replace(STYLE_CLOSE, "");
+  }
+  STYLE_CLOSE.lastIndex = 0;
+  return out;
+}
 
 /** Grouping rules that only exist in newer engines, so they can't be named directly. */
 type GroupingRule = CSSRule & {
@@ -151,7 +177,7 @@ export function sanitizeProfileCss(css: string | null | undefined, scopeClass: s
     doc.head.appendChild(style);
     const sheet = style.sheet;
     if (!sheet) return "";
-    return processRules(sheet.cssRules, `.${scopeClass}`);
+    return stripStyleClose(processRules(sheet.cssRules, `.${scopeClass}`));
   } catch {
     return "";
   }

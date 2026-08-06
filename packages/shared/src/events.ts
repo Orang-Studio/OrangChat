@@ -210,6 +210,10 @@ export interface ClientToServerEvents {
   'reaction:add': (payload: { channelId: string; messageId: string; emoji: string }) => void;
   'reaction:remove': (payload: { channelId: string; messageId: string; emoji: string }) => void;
   'presence:update': (status: PresenceStatus) => void;
+  /** Automatic foreground/idle state for this socket only. */
+  'presence:lifecycle': (status: 'online' | 'idle') => void;
+  /** Renew this socket's five-minute lease and reaffirm its lifecycle state. */
+  'presence:heartbeat': (status: 'online' | 'idle') => void;
   /**
    * Report the game the desktop client detected, or `null` when it stopped.
    *
@@ -251,13 +255,4 @@ export interface ClientToServerEvents {
     kind: 'offer' | 'answer' | 'ice' | 'ready';
     data: unknown;
   }) => void;
-}
-
-export interface SocketData {
-  userId: string;
-  username: string;
-}
-
-export interface InterServerEvents {
-  ping: () => void;
 }

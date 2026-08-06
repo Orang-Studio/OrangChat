@@ -10,7 +10,69 @@ import lt.oranges.orangchat.util.BACKEND_ORIGIN
 import lt.oranges.orangchat.util.absoluteUrl
 import lt.oranges.orangchat.util.formatFullTime
 import lt.oranges.orangchat.util.sanitizeProfileCss
+import java.time.Instant
 import java.util.Locale
+import java.util.UUID
+
+private val BADGE_INTERACTION_SCRIPT = """
+(() => {
+  const closeBadges = () => {
+    document.querySelectorAll('.oc-pf-badge[aria-expanded="true"]').forEach((badge) => {
+      badge.setAttribute('aria-expanded', 'false');
+    });
+    document.querySelectorAll('.oc-pf-badge-label').forEach((label) => {
+      label.hidden = true;
+    });
+  };
+
+  document.addEventListener('click', (event) => {
+    const badge = event.target.closest('.oc-pf-badge');
+    const wasOpen = badge?.getAttribute('aria-expanded') === 'true';
+    closeBadges();
+    if (!badge || wasOpen) return;
+
+    const row = badge.closest('.oc-pf-badges');
+    const label = row?.querySelector('.oc-pf-badge-label');
+    if (!row || !label) return;
+
+    label.textContent = badge.dataset.badgeLabel;
+    label.hidden = false;
+    const badgeBounds = badge.getBoundingClientRect();
+    const rowBounds = row.getBoundingClientRect();
+    const center = badgeBounds.left - rowBounds.left + badgeBounds.width / 2;
+    const halfLabel = label.offsetWidth / 2;
+    label.style.left = Math.max(halfLabel, Math.min(row.clientWidth - halfLabel, center)) + 'px';
+    badge.setAttribute('aria-expanded', 'true');
+  });
+
+  document.addEventListener('keydown', (event) => {
+    const badge = event.target.closest('.oc-pf-badge');
+    if (badge && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault();
+      badge.click();
+    } else if (event.key === 'Escape') {
+      closeBadges();
+    }
+  });
+})();
+
+(() => {
+  const el = document.querySelector('.oc-pf-activity-elapsed[data-started-at]');
+  if (!el) return;
+  const started = Date.parse(el.dataset.startedAt);
+  if (Number.isNaN(started)) return;
+  const pad = (n) => String(n).padStart(2, '0');
+  const tick = () => {
+    const total = Math.max(0, Math.floor((Date.now() - started) / 1000));
+    const s = total % 60;
+    const m = Math.floor(total / 60) % 60;
+    const h = Math.floor(total / 3600);
+    el.textContent = 'for ' + (h > 0 ? h + ':' + pad(m) + ':' + pad(s) : m + ':' + pad(s));
+  };
+  tick();
+  setInterval(tick, 1000);
+})();
+"""
 
 /**
  * The DOM the card WebView renders. Element structure and the oc-pf-* hook
@@ -24,6 +86,7 @@ fun buildProfileCardHtml(
     colors: OrangColors,
     presence: PresenceStatus? = null,
 ): ProfileCardHtml {
+    val badgeScriptNonce = UUID.randomUUID().toString()
     val avatar = absoluteUrl(user.avatarUrl)
     val banner = absoluteUrl(user.bannerUrl)
     val accent = user.accentColor?.let { String.format(Locale.US, "#%06X", it and 0xFFFFFF) }
@@ -43,10 +106,22 @@ fun buildProfileCardHtml(
         }
         """<span class="oc-pf-devices">$icons</span>"""
     }
-    val activity = (user.activities.firstOrNull { it.kind == "spotify" } ?: user.activities.firstOrNull())?.let {
-        val prefix = if (it.kind == "spotify") "Listening to" else "Playing"
-        val detail = it.details?.let { text -> " - ${text.escapeHtml()}" } ?: ""
-        """<p class="oc-pf-activity" data-kind="${it.kind.escapeAttr()}"><span class="oc-pf-activity-text">$prefix <span class="oc-pf-activity-name">${it.name.escapeHtml()}</span>$detail</span></p>"""
+    val activity = user.activities.firstOrNull { it.kind == "spotify" } ?: user.activities.firstOrNull()
+    val activityArtwork = activity?.imageUrl?.takeIf { it.isNotBlank() }?.let(::absoluteUrl)
+    val activityCard = activity?.let {
+        val label = if (it.kind == "spotify") "LISTENING TO" else "NOW PLAYING"
+        val icon = if (it.kind == "spotify") "&#127925;" else "&#127918;"
+        val artwork = if (activityArtwork != null) {
+            """<img class="oc-pf-activity-artwork" src="${activityArtwork.escapeAttr()}" alt="">"""
+        } else {
+            """<span class="oc-pf-activity-artwork oc-pf-activity-artwork-fallback">$icon</span>"""
+        }
+        val detail = it.details?.takeIf { text -> text.isNotBlank() }
+            ?.let { text -> """<span class="oc-pf-activity-details">${text.escapeHtml()}</span>""" } ?: ""
+        val elapsed = it.startedAt?.takeIf { start -> start.isNotBlank() }?.let { start ->
+            """<span class="oc-pf-activity-elapsed" data-started-at="${start.escapeAttr()}">for ${formatElapsed(start, System.currentTimeMillis())}</span>"""
+        } ?: ""
+        """<div class="oc-pf-activity" data-kind="${it.kind.escapeAttr()}">$artwork<span class="oc-pf-activity-text oc-pf-activity-meta"><span class="oc-pf-activity-label">$label</span><span class="oc-pf-activity-name">${it.name.escapeHtml()}</span>$detail$elapsed</span></div>"""
     } ?: ""
 
     val bannerInner = banner?.let { """<img class="oc-pf-banner-img" src="${it.escapeAttr()}" alt="">""" } ?: ""
@@ -65,9 +140,9 @@ fun buildProfileCardHtml(
         val imgs = list.joinToString("") { badge ->
             val src = "$BACKEND_ORIGIN/badges/${badge.slug}.svg"
             val alt = "${badge.label}: ${badge.description}".escapeAttr()
-            """<img class="oc-pf-badge oc-pf-badge-${badge.slug.replace('_', '-')}" data-badge="${badge.slug.escapeAttr()}" src="${src.escapeAttr()}" alt="$alt" title="$alt">"""
+            """<img class="oc-pf-badge oc-pf-badge-${badge.slug.replace('_', '-')}" data-badge="${badge.slug.escapeAttr()}" data-badge-label="${badge.label.escapeAttr()}" src="${src.escapeAttr()}" alt="$alt" title="$alt" role="button" tabindex="0" aria-expanded="false">"""
         }
-        """<div class="oc-pf-badges">$imgs</div>"""
+        """<div class="oc-pf-badges">$imgs<span class="oc-pf-badge-label" role="tooltip" hidden></span></div>"""
     } ?: ""
     val bio = user.bio?.takeIf { it.isNotBlank() }?.let {
         """<div class="oc-pf-bio oc-pf-section"><h3 class="oc-pf-heading">About me</h3><p class="oc-pf-bio-text">${it.escapeHtml()}</p></div>"""
@@ -76,11 +151,11 @@ fun buildProfileCardHtml(
         """<div class="oc-pf-member oc-pf-section"><h3 class="oc-pf-heading">Member since</h3><p class="oc-pf-member-text">${formatFullTime(it).escapeHtml()}</p></div>"""
     } ?: ""
 
-    // Avatars and banners are not all on the backend - Cloudinary serves its own
-    // origin - so the policy has to name wherever this card's images actually
-    // came from. Only those two URLs are ever put in the document, and
-    // shouldInterceptRequest still hard-blocks anything else.
-    val imageAllowlist = setOfNotNull(avatar, banner) + badgeUrls
+    // Avatars, banners and activity artwork are not all on the backend -
+    // Cloudinary serves its own origin - so the policy has to name wherever
+    // this card's images actually came from. Only those URLs are ever put in
+    // the document, and shouldInterceptRequest still hard-blocks anything else.
+    val imageAllowlist = setOfNotNull(avatar, banner, activityArtwork) + badgeUrls
     val imgSrc = (listOf(BACKEND_ORIGIN) + imageAllowlist.mapNotNull(::originOf))
         .distinct()
         .joinToString(" ")
@@ -91,7 +166,7 @@ fun buildProfileCardHtml(
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src $imgSrc data:; style-src 'unsafe-inline'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src $imgSrc data:; style-src 'unsafe-inline'; script-src 'nonce-$badgeScriptNonce'; form-action 'none'; base-uri 'none'">
 <style>${baseCss(colors, accent, status)}</style>
 <style>$themeCss</style>
 </head>
@@ -103,13 +178,14 @@ fun buildProfileCardHtml(
     <div class="oc-pf-body">
       <div class="oc-pf-head"><h2 class="oc-pf-name">${displayName.ifBlank { "-" }.escapeHtml()}</h2>$pronouns</div>
       <div class="oc-pf-identity"><p class="oc-pf-username">@${username.ifBlank { "username" }.escapeHtml()}</p>$devices</div>
-      $activity
+      $activityCard
       $badges
       $bio
       $member
     </div>
   </div>
 </div>
+<script nonce="$badgeScriptNonce">$BADGE_INTERACTION_SCRIPT</script>
 </body>
 </html>
 """.trimIndent()
@@ -177,10 +253,49 @@ body {
 .oc-pf-identity { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .oc-pf-devices { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .oc-pf-device { color: ${statusDotColor(status ?: PresenceStatus.OFFLINE, c).css()}; font-size: 13px; line-height: 1; }
-.oc-pf-activity-name { font-weight: 500; color: ${c.inkSecondary.css()}; }
-.oc-pf-activity { margin-top: 4px; color: ${c.inkMuted.css()}; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.oc-pf-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 8px; }
-.oc-pf-badge { width: 20px; height: 20px; display: block; object-fit: contain; }
+.oc-pf-activity {
+  margin-top: 8px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px;
+  border: 1px solid ${c.border.css()};
+  border-radius: 7px;
+  background: ${c.surface3.css()};
+}
+.oc-pf-activity-artwork {
+  width: 48px; height: 48px; flex-shrink: 0;
+  border-radius: 4px; object-fit: cover; display: block;
+}
+.oc-pf-activity-artwork-fallback {
+  display: flex; align-items: center; justify-content: center;
+  background: ${c.surface2.css()};
+  font-size: 24px; line-height: 1;
+}
+.oc-pf-activity-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.oc-pf-activity-label {
+  font-size: 11px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.4px;
+  color: ${c.inkMuted.css()};
+}
+.oc-pf-activity-name {
+  font-size: 14px; font-weight: 600; color: ${c.inkSecondary.css()};
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.oc-pf-activity-details {
+  font-size: 12px; color: ${c.inkMuted.css()};
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.oc-pf-activity-elapsed { font-size: 12px; color: ${c.inkMuted.css()}; white-space: nowrap; }
+.oc-pf-badges { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 8px; }
+.oc-pf-badge { width: 20px; height: 20px; display: block; object-fit: contain; cursor: pointer; }
+.oc-pf-badge:focus-visible { outline: 2px solid ${c.primary.css()}; outline-offset: 2px; border-radius: 4px; }
+.oc-pf-badge-label {
+  position: absolute; bottom: calc(100% + 6px); transform: translateX(-50%); z-index: 2;
+  padding: 6px 10px; border: 1px solid ${c.border.css()}; border-radius: 8px;
+  background: ${c.surface4.css()}; color: ${c.ink.css()};
+  font-size: 12px; font-weight: 500; line-height: 1; white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); pointer-events: none;
+}
+.oc-pf-badge-label[hidden] { display: none; }
 .oc-pf-body { border-radius: 7px; background: ${c.surface1.css()}; padding: 12px; }
 .oc-pf-head { display: flex; align-items: baseline; gap: 8px; }
 .oc-pf-name {
@@ -212,6 +327,16 @@ private fun statusDotColor(status: PresenceStatus, c: OrangColors): Color = when
     PresenceStatus.DND -> c.danger
     PresenceStatus.OFFLINE -> c.inkMuted
 }
+
+/** Static snapshot for the initial render; the embedded script keeps it ticking. */
+private fun formatElapsed(startedAt: String, now: Long): String = runCatching {
+    val total = ((now - Instant.parse(startedAt).toEpochMilli()) / 1_000).coerceAtLeast(0)
+    val seconds = total % 60
+    val minutes = (total / 60) % 60
+    val hours = total / 3_600
+    if (hours > 0) "%d:%02d:%02d".format(hours, minutes, seconds)
+    else "%d:%02d".format(minutes, seconds)
+}.getOrDefault("0:00")
 
 private fun Color.css(): String {
     val argb = toArgb()

@@ -7,6 +7,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import android.graphics.BitmapFactory
 import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -113,6 +114,32 @@ class AttachmentUploader @Inject constructor(
         )
     }
 
+    /** Some document providers omit MIME metadata; the extension still tells us
+     * enough to probe media and preserve the sealed payload's real type. */
+    private fun resolvedMimeType(info: FileInfo): String? {
+        info.mimeType?.takeUnless { it == "application/octet-stream" }?.let { return it }
+        return when (info.name.substringAfterLast('.', "").lowercase()) {
+            "png" -> "image/png"
+            "jpg", "jpeg" -> "image/jpeg"
+            "gif" -> "image/gif"
+            "webp" -> "image/webp"
+            "mp4" -> "video/mp4"
+            "m4v" -> "video/x-m4v"
+            "webm" -> "video/webm"
+            "mkv" -> "video/x-matroska"
+            "mov" -> "video/quicktime"
+            "3gp" -> "video/3gpp"
+            "mp3" -> "audio/mpeg"
+            "m4a", "mp4a" -> "audio/mp4"
+            "aac" -> "audio/aac"
+            "ogg", "oga", "opus" -> "audio/ogg"
+            "weba" -> "audio/webm"
+            "wav" -> "audio/wav"
+            "flac" -> "audio/flac"
+            else -> info.mimeType
+        }
+    }
+
     /**
      * Upload one file. [onProgress] reports 0–1 as the bytes go out; cancelling
      * the calling coroutine cancels the request in flight.
@@ -125,8 +152,74 @@ class AttachmentUploader @Inject constructor(
         if (info.size <= 0L) throw IOException("\"${info.name}\" is empty")
         if (info.size > MAX_ATTACHMENT) throw IOException("\"${info.name}\" is over the 1GB limit")
 
-        if (info.isEphemeral) uploadViaOrangMove(uri, info, onProgress)
-        else uploadToChat(uri, info, onProgress)
+        val meta = probeMedia(uri, resolvedMimeType(info))
+        if (info.isEphemeral) uploadViaOrangMove(uri, info, onProgress, meta)
+        else uploadToChat(uri, info, onProgress, meta)
+    }
+
+    /** Duration (seconds) and, for video, a first-frame still. */
+    private data class MediaMeta(val durationSeconds: Double?, val thumbnail: File?)
+
+    /**
+     * Reads a media file's headers on-device so the length - and for video the
+     * first frame - can be attached to the upload. The server stores whatever
+     * the bytes are behind encryption it cannot decode, so this is the only way
+     * a receiver gets a preview without downloading the whole file.
+     */
+    private fun probeMedia(uri: Uri, mimeType: String?): MediaMeta {
+        val isVideo = mimeType?.startsWith("video/") == true
+        val isAudio = mimeType?.startsWith("audio/") == true
+        if (!isVideo && !isAudio) return MediaMeta(null, null)
+
+        val retriever = MediaMetadataRetriever()
+        return try {
+            // A corrupt file throws here; it costs the preview, never the send.
+            runCatching { retriever.setDataSource(context, uri) }
+                .getOrElse { return MediaMeta(null, null) }
+            val durationMs = runCatching {
+                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+            }.getOrNull()
+            val durationSeconds = durationMs?.takeIf { it > 0 }?.div(1000.0)
+            val thumbnail = if (isVideo) {
+                // A hair past the very start: some encoders paint their first
+                // frames black.
+                runCatching {
+                    retriever.getFrameAtTime(1_000_000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                }.getOrNull()?.let { frame -> scaleAndSaveThumb(frame) }
+            } else {
+                null
+            }
+            MediaMeta(durationSeconds, thumbnail)
+        } finally {
+            runCatching { retriever.release() }
+        }
+    }
+
+    /** Scale a video frame down and write it as a JPEG temp file. */
+    private fun scaleAndSaveThumb(frame: Bitmap): File? {
+        val scale = minOf(1f, 400f / maxOf(frame.width, frame.height))
+        val width = maxOf(1, (frame.width * scale).toInt())
+        val height = maxOf(1, (frame.height * scale).toInt())
+        val resized = if (width == frame.width && height == frame.height) {
+            frame
+        } else {
+            Bitmap.createScaledBitmap(frame, width, height, true)
+        }
+        val output = File.createTempFile("videothumb-", ".jpg", context.cacheDir)
+        return try {
+            FileOutputStream(output).use {
+                if (!resized.compress(Bitmap.CompressFormat.JPEG, 80, it)) {
+                    throw IOException("Could not create video preview")
+                }
+            }
+            output
+        } catch (_: Exception) {
+            output.delete()
+            null
+        } finally {
+            if (resized !== frame) resized.recycle()
+            frame.recycle()
+        }
     }
 
     data class SealedUpload(
@@ -171,8 +264,10 @@ class AttachmentUploader @Inject constructor(
             } else {
                 uploadSealedFileToChat(temp, sealedInfo, onProgress)
             }
-            val dimensions = imageDimensions(uri, info.mimeType)
-            val thumbnail = createThumbnail(uri, info.mimeType)?.let { plain ->
+            val mimeType = resolvedMimeType(info)
+            val dimensions = imageDimensions(uri, mimeType)
+            val meta = probeMedia(uri, mimeType)
+            val thumbnail = (createThumbnail(uri, mimeType) ?: meta.thumbnail)?.let { plain ->
                 try {
                     sealThumbnail(plain)
                 } catch (_: Exception) {
@@ -189,8 +284,9 @@ class AttachmentUploader @Inject constructor(
                     key = E2ee.toBase64(key),
                     nonce = E2ee.toBase64(nonce),
                     filename = info.name,
-                    contentType = info.mimeType ?: "application/octet-stream",
+                    contentType = mimeType ?: "application/octet-stream",
                     size = info.size,
+                    duration = meta.durationSeconds,
                     width = dimensions?.first,
                     height = dimensions?.second,
                     thumb = thumbnail,
@@ -303,21 +399,40 @@ class AttachmentUploader @Inject constructor(
             onProgress = { sent -> onProgress(sent.toFloat() / info.size) },
         )
 
-    private suspend fun uploadToChat(uri: Uri, info: FileInfo, onProgress: (Float) -> Unit): Attachment {
-        val form = MultipartBody.Builder()
+    private suspend fun uploadToChat(
+        uri: Uri,
+        info: FileInfo,
+        onProgress: (Float) -> Unit,
+        meta: MediaMeta = MediaMeta(null, null),
+    ): Attachment {
+        val builder = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart("file", info.name, body(uri, info, onProgress))
-            .build()
+        meta.durationSeconds?.let { builder.addFormDataPart("duration", it.toString()) }
+        val thumb = meta.thumbnail
+        thumb?.let {
+            builder.addFormDataPart(
+                "thumbnail",
+                "thumb.jpg",
+                it.asRequestBody("image/jpeg".toMediaTypeOrNull()),
+            )
+        }
 
         val request = Request.Builder()
             .url("${baseUrl}uploads/attachment")
-            .post(form)
+            .post(builder.build())
             .build()
 
-        return chatClient.newCall(request).await().use { response ->
-            val text = response.body?.string().orEmpty()
-            if (!response.isSuccessful) throw IOException(errorFrom(text, "Upload failed"))
-            decodeAttachment(text)
+        return try {
+            chatClient.newCall(request).await().use { response ->
+                val text = response.body?.string().orEmpty()
+                if (!response.isSuccessful) throw IOException(errorFrom(text, "Upload failed"))
+                decodeAttachment(text)
+            }
+        } finally {
+            // The body streams the file while the call runs, so it must outlive
+            // the response above.
+            thumb?.delete()
         }
     }
 
@@ -350,6 +465,7 @@ class AttachmentUploader @Inject constructor(
         uri: Uri,
         info: FileInfo,
         onProgress: (Float) -> Unit,
+        meta: MediaMeta = MediaMeta(null, null),
     ): Attachment {
         val form = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
@@ -374,7 +490,38 @@ class AttachmentUploader @Inject constructor(
             JSONObject(text).getString("token")
         }
 
-        return registerExternal(token)
+        // The still is small, so it rides the direct route and the registration
+        // claims it by id. A preview that failed to upload costs a thumbnail,
+        // not the file.
+        val thumbnail = meta.thumbnail
+        val thumbnailId = thumbnail?.let { thumb ->
+            try {
+                uploadThumbnail(thumb).id
+            } catch (_: Exception) {
+                null
+            } finally {
+                thumb.delete()
+            }
+        }
+
+        return registerExternal(token, thumbnailId, meta.durationSeconds)
+    }
+
+    /** A client-made video still, posted as its own small attachment. */
+    private suspend fun uploadThumbnail(thumb: File): Attachment {
+        val form = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("file", "thumb.jpg", thumb.asRequestBody("image/jpeg".toMediaTypeOrNull()))
+            .build()
+        val request = Request.Builder()
+            .url("${baseUrl}uploads/attachment")
+            .post(form)
+            .build()
+        return chatClient.newCall(request).await().use { response ->
+            val text = response.body?.string().orEmpty()
+            if (!response.isSuccessful) throw IOException(errorFrom(text, "Could not upload the preview"))
+            decodeAttachment(text)
+        }
     }
 
     private suspend fun uploadFileViaOrangMove(
@@ -408,13 +555,23 @@ class AttachmentUploader @Inject constructor(
 
     /**
      * Hand the token to OrangChat, which reads the file's real name and size back
-     * from OrangMove rather than trusting anything sent from here.
+     * from OrangMove rather than trusting anything sent from here. The duration
+     * and the claimed preview row are the two things only the sender's device
+     * can know, so they come along explicitly.
      */
-    private suspend fun registerExternal(token: String): Attachment {
+    private suspend fun registerExternal(
+        token: String,
+        thumbnailId: String? = null,
+        duration: Double? = null,
+    ): Attachment {
+        val body = JSONObject().put("token", token)
+        thumbnailId?.let { body.put("thumbnailId", it) }
+        duration?.let { body.put("duration", it) }
+
         val request = Request.Builder()
             .url("${baseUrl}uploads/attachment/external")
             .post(
-                JSONObject().put("token", token).toString()
+                body.toString()
                     .toRequestBody("application/json".toMediaTypeOrNull()),
             )
             .build()

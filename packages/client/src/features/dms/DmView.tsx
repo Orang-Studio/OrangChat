@@ -98,7 +98,7 @@ export function DmView() {
     );
   }
 
-  if (!conversation || !channel) return <Navigate to="/" replace />;
+  if (!conversation || !channel) return <Navigate to="/app" replace />;
 
   const headerActions = (
     <>

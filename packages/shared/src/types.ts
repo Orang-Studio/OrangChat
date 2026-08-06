@@ -156,12 +156,6 @@ export interface E2eeDeviceList {
   head: E2eeLogHead | null;
 }
 
-export interface E2eeIdentity {
-  enrolled: boolean;
-  deviceId: string | null;
-  genesisCommitment: string | null;
-}
-
 export interface E2eeEpoch {
   id: string;
   channelId: string;
@@ -372,6 +366,19 @@ export interface Attachment {
   width?: number;
   height?: number;
   /**
+   * Seconds, for audio and video. Captured once by the sender's client at
+   * upload time, so a receiver can show how long the file is without loading
+   * any of it.
+   */
+  duration?: number;
+  /**
+   * A still image of the video's first frame, stored next to the bytes at
+   * upload time. Receivers show it as the preview instead of a dark box, which
+   * is what a `<video>` without a poster looks like until play is pressed.
+   * Absent on videos uploaded before this existed.
+   */
+  thumbnailUrl?: string;
+  /**
    * Where the bytes live. Files over 10MB go to OrangMove, which is an
    * ephemeral store - see `expiresAt`. Everything else is `cloudinary`, or
    * `local` when Cloudinary is unconfigured or the row predates the switch.
@@ -454,6 +461,7 @@ export interface Conversation {
   name: string | null;
   participants: User[];
   lastMessageAt: string | null;
+  latestMessage: Message | null;
 }
 
 export interface Invite {

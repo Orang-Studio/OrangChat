@@ -141,7 +141,28 @@ async fn main() {
 
     let (layer, io) = SocketIo::builder().build_layer();
     state.set_io(io.clone());
-    socket::setup(io, state.clone());
+    socket::setup(io.clone(), state.clone());
+
+    // Client heartbeats renew five-minute per-socket leases. Sweep often enough
+    // that a missed disconnect becomes visible promptly after its lease expires.
+    {
+        let state = state.clone();
+        let io = io.clone();
+        tokio::spawn(async move {
+            let mut ticker = tokio::time::interval(Duration::from_secs(10));
+            loop {
+                ticker.tick().await;
+                match presence::sweep_expired_leases(&state).await {
+                    Ok(users) => {
+                        for user_id in users {
+                            socket::broadcast_presence(&io, &state, &user_id, "offline").await;
+                        }
+                    }
+                    Err(e) => tracing::warn!("presence lease sweep failed: {}", e.message()),
+                }
+            }
+        });
+    }
 
     // Spotify has no push event for track changes. Poll only currently-online
     // linked users, then publish changes through the normal presence event.

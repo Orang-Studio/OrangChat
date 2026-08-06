@@ -24,6 +24,18 @@ private val COMMENT = Regex("""/\*.*?\*/""", RegexOption.DOT_MATCHES_ALL)
 private val STYLE_CLOSE = Regex("""</style""", RegexOption.IGNORE_CASE)
 
 /**
+ * Deleting a match joins the text on either side of it, and those halves can
+ * spell out a fresh `</style` that a single pass would never revisit - the
+ * input `</s</styletyle` collapses to exactly that. So repeat until the string
+ * stops changing; each pass drops seven characters, so this always terminates.
+ */
+private fun stripStyleClose(css: String): String {
+    var out = css
+    while (STYLE_CLOSE.containsMatchIn(out)) out = STYLE_CLOSE.replace(out, "")
+    return out
+}
+
+/**
  * Kotlin counterpart of packages/client/src/lib/profileCss.ts. The web version
  * re-parses through the browser's CSSOM; there is no CSSOM here before the
  * WebView has already committed to rendering, so this hand-parses instead and
@@ -39,7 +51,7 @@ fun sanitizeProfileCss(css: String?, scopeSelector: String = ".oc-profile-card")
     if (css.isNullOrBlank()) return ""
     val source = COMMENT.replace(css.take(PROFILE_CSS_MAX_LEN), " ")
     val processed = runCatching { processRules(source, scopeSelector, 0) }.getOrDefault("")
-    return STYLE_CLOSE.replace(processed, "")
+    return stripStyleClose(processed)
 }
 
 private fun processRules(input: String, scope: String, depth: Int): String {

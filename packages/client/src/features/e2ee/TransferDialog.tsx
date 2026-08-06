@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Loader2, QrCodeIcon, ShieldCheck, Smartphone } from 'lucide-react';
+import { Check, Loader2, Mail, QrCodeIcon, ShieldCheck, Smartphone } from 'lucide-react';
 import { QR_KIND } from '@orangchat/shared';
 import { Button } from '../../components/ui/Button';
 import { Dialog, DialogContent } from '../../components/ui/Dialog';
@@ -7,6 +7,7 @@ import { TextField } from '../../components/ui/TextField';
 import { useAuthStore } from '../../stores/auth';
 import { QrCode } from './QrCode';
 import { QrScanner } from './QrScanner';
+import { requestTransferEmailCode } from './api';
 import {
   adoptScannedDevice,
   awaitInvitedDevice,
@@ -34,7 +35,7 @@ function Digits({ value }: { value: string }) {
 }
 
 function TransferProgress({ step }: { step: 1 | 2 | 3 | 4 }) {
-  const labels = ['Scan', 'Compare', '2FA', 'Finish'];
+  const labels = ['Scan', 'Compare', 'Verify', 'Finish'];
   return (
     <ol aria-label="Transfer progress" className="grid grid-cols-4 gap-1">
       {labels.map((label, index) => {
@@ -153,7 +154,7 @@ function AddThisDevice({ onDone }: { onDone: () => void }) {
             <div>
               <p className="text-sm font-semibold">Digits confirmed</p>
               <p className="text-xs text-ink-muted">
-                Enter the two-factor code on the authorized device. This device is waiting for the
+                Enter the security code on the authorized device. This device is waiting for the
                 encrypted history and signed authorization.
               </p>
             </div>
@@ -221,10 +222,12 @@ function AddAnotherDevice({ onDone }: { onDone: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [loginToken, setLoginToken] = useState<string | null>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const started = useRef(false);
 
   useEffect(() => {
-    if (!twoFactorEnabled || manual || started.current) return;
+    if (manual || started.current) return;
     started.current = true;
     let cancelled = false;
     void beginDesktopInvitation()
@@ -243,24 +246,16 @@ function AddAnotherDevice({ onDone }: { onDone: () => void }) {
     return () => {
       cancelled = true;
     };
-  }, [twoFactorEnabled, manual, attempt]);
+  }, [manual, attempt]);
 
-  if (!twoFactorEnabled) {
-    return (
-      <div className="mt-3 space-y-3">
-        <div className="rounded-lg border border-warning/40 bg-warning/10 p-3">
-          <p className="text-sm font-semibold">Turn on two-factor authentication first</p>
-          <p className="mt-1 text-xs text-ink-secondary">
-            Adding an encryption device requires a fresh authenticator code. Enable 2FA under
-            Settings → Security, then return here.
-          </p>
-        </div>
-        <Button type="button" variant="secondary" className="w-full" onClick={onDone}>
-          Close
-        </Button>
-      </div>
-    );
-  }
+  const sendEmailCode = () => {
+    setSendingEmail(true);
+    setError(null);
+    void requestTransferEmailCode()
+      .then(({ loginToken: token }) => setLoginToken(token))
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setSendingEmail(false));
+  };
 
   if (!handshake) {
     if (!manual) {
@@ -417,7 +412,7 @@ function AddAnotherDevice({ onDone }: { onDone: () => void }) {
         setBusy(true);
         setError(null);
         void handshake
-          .finish(code.trim())
+          .finish(code.trim(), loginToken ?? undefined)
           .then(onDone)
           .catch((e: Error) => setError(e.message))
           .finally(() => setBusy(false));
@@ -425,15 +420,43 @@ function AddAnotherDevice({ onDone }: { onDone: () => void }) {
     >
       <TransferProgress step={3} />
       <p className="text-sm text-ink-secondary">
-        Adding a device is a security event, so it takes a fresh two-factor code. Every other device
-        on your account will be told about it.
+        Adding a device is a security event, so it takes a fresh second-factor code. Every other
+        device on your account will be told about it.
       </p>
+      {!twoFactorEnabled && !loginToken && (
+        <div className="rounded-lg border border-border bg-surface-1 p-3">
+          <p className="flex items-center gap-2 text-sm font-semibold">
+            <Mail aria-hidden className="size-4 text-primary" />
+            Use an email code instead
+          </p>
+          <p className="mt-1 text-xs text-ink-secondary">
+            This account has no authenticator app set up, so OrangChat will email a one-time code
+            to the address on your account. Check your email before entering it here.
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            className="mt-3 w-full"
+            onClick={sendEmailCode}
+            loading={sendingEmail}
+          >
+            <Mail aria-hidden className="size-4" />
+            Email me a code
+          </Button>
+        </div>
+      )}
+      {!twoFactorEnabled && loginToken && (
+        <p role="status" className="flex items-center gap-2 text-xs text-ink-secondary">
+          <Mail aria-hidden className="size-3.5 text-primary" />
+          A one-time code is on its way to your email - it expires in 10 minutes.
+        </p>
+      )}
       <TextField
-        label="Authentication code"
+        label={twoFactorEnabled ? 'Authentication code' : 'Email code'}
         value={code}
         onChange={(e) => setCode(e.target.value)}
         inputMode="numeric"
-        maxLength={8}
+        maxLength={twoFactorEnabled ? 8 : 6}
         autoFocus
       />
       {error && (
@@ -441,10 +464,26 @@ function AddAnotherDevice({ onDone }: { onDone: () => void }) {
           {error}
         </p>
       )}
-      <Button type="submit" className="w-full" loading={busy} disabled={code.trim().length === 0}>
+      <Button
+        type="submit"
+        className="w-full"
+        loading={busy}
+        disabled={code.trim().length === 0 || (!twoFactorEnabled && loginToken === null)}
+      >
         <ShieldCheck aria-hidden className="size-4" />
         Add this device
       </Button>
+      {!twoFactorEnabled && loginToken && (
+        <Button
+          type="button"
+          variant="ghost"
+          className="w-full"
+          onClick={sendEmailCode}
+          disabled={sendingEmail}
+        >
+          Resend email code
+        </Button>
+      )}
     </form>
   );
 }

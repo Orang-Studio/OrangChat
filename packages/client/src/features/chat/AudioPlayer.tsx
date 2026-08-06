@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
-import { Download, Pause, Play } from "lucide-react";
-import type { Attachment } from "@orangchat/shared";
-import { formatBytes } from "./attachments";
+import { useEffect, useRef, useState } from 'react';
+import { Download, Pause, Play } from 'lucide-react';
+import type { Attachment } from '@orangchat/shared';
+import { formatBytes, formatTime } from './attachments';
 
 /**
  * Inline player for an audio attachment.
@@ -20,13 +20,6 @@ import { formatBytes } from "./attachments";
  */
 let playing: HTMLAudioElement | null = null;
 
-function formatTime(seconds: number): string {
-  if (!Number.isFinite(seconds)) return "0:00";
-  const total = Math.floor(seconds);
-  const mins = Math.floor(total / 60);
-  return `${mins}:${String(total % 60).padStart(2, "0")}`;
-}
-
 export function AudioPlayer({
   attachment,
   expiryLabel,
@@ -41,7 +34,9 @@ export function AudioPlayer({
   const ref = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
-  const [duration, setDuration] = useState(0);
+  // The sender measured the length at upload; show it before the file's own
+  // headers arrive rather than sitting at "0:00" until play is pressed.
+  const [duration, setDuration] = useState(attachment.duration ?? 0);
 
   // Switching channels shouldn't leave a clip running out of sight. Browsers do
   // pause a media element once it's out of the document, but only after a trip
@@ -99,7 +94,7 @@ export function AudioPlayer({
       <button
         type="button"
         onClick={toggle}
-        aria-label={`${isPlaying ? "Pause" : "Play"} ${attachment.filename}`}
+        aria-label={`${isPlaying ? 'Pause' : 'Play'} ${attachment.filename}`}
         className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-ink-on-primary transition-colors hover:bg-primary-hover"
       >
         {isPlaying ? (
@@ -126,7 +121,7 @@ export function AudioPlayer({
         <p className="mt-0.5 flex gap-1 text-[11px] text-ink-muted">
           <span>
             {formatTime(current)}
-            {seekable && ` / ${formatTime(duration)}`}
+            {duration > 0 && ` / ${formatTime(duration)}`}
           </span>
           {attachment.size > 0 && <span>· {formatBytes(attachment.size)}</span>}
           {expiryLabel && <span className="truncate text-warning">· {expiryLabel}</span>}
