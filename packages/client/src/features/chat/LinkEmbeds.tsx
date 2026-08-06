@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { ExternalLink } from 'lucide-react';
 import type { Attachment } from '@orangchat/shared';
-import { getLinkPreview } from './link-preview-api';
+import { getLinkPreview, type LinkPreviewData } from './link-preview-api';
 import { getMediaProxyUrl } from './media-proxy-api';
 import { InviteCard } from '../servers/InviteCard';
 import { parseInviteUrl } from '../servers/invite-url';
@@ -162,6 +162,43 @@ function DirectMediaEmbed({ url }: { url: URL }) {
   return null;
 }
 
+/**
+ * A link the server resolved to a video of its own - an Instagram post, today.
+ * Rendered as the video, because that is what the link is; the card underneath
+ * keeps the caption and a way back to the post.
+ */
+function ResolvedVideoEmbed({ url, preview }: { url: URL; preview: LinkPreviewData }) {
+  const href = url.toString();
+  const attachment: Attachment = {
+    id: `link-${href}`,
+    url: preview.videoUrl!,
+    filename: preview.title || domainLabel(url),
+    contentType: 'video/mp4',
+    size: 0,
+  };
+
+  return (
+    <div className="mt-2 max-w-sm">
+      <VideoAttachment attachment={attachment} />
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer nofollow"
+        className="mt-1 flex items-center gap-1.5 text-xs font-medium text-ink-muted hover:text-ink-secondary"
+      >
+        {preview.siteName}
+        {preview.title && <span className="text-ink-secondary">{preview.title}</span>}
+        <ExternalLink aria-hidden className="size-3" />
+      </a>
+      {preview.description && (
+        <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-ink-secondary">
+          {preview.description}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function PageEmbed({ url }: { url: URL }) {
   const href = url.toString();
   const { data } = useQuery({
@@ -172,6 +209,8 @@ function PageEmbed({ url }: { url: URL }) {
     retry: false,
   });
   const title = data?.title || domainLabel(url);
+
+  if (data?.videoUrl) return <ResolvedVideoEmbed url={url} preview={data} />;
 
   return (
     <a

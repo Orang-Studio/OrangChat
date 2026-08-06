@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{AppError, AppResult};
 use crate::http::AuthUser;
-use crate::services::rate_limit;
+use crate::services::{instagram, rate_limit};
 use crate::state::AppState;
 
 const MAX_HTML_BYTES: usize = 512 * 1024;
@@ -34,6 +34,11 @@ struct LinkPreview {
     title: Option<String>,
     description: Option<String>,
     image_url: Option<String>,
+    /// Set when the link is a video we managed to resolve to a playable file -
+    /// an Instagram post, today. Already a signed same-origin proxy url, like
+    /// `image_url`, so a client can hand it straight to a video element; when
+    /// it is set, `image_url` is that video's poster.
+    video_url: Option<String>,
 }
 
 async fn preview(
@@ -51,25 +56,63 @@ async fn preview(
 
     let requested =
         Url::parse(&query.url).map_err(|_| AppError::BadRequest("Invalid preview URL".into()))?;
+
+    // Instagram answers a logged-out scrape with a login wall, so a reel would
+    // otherwise preview as a card for the word "Instagram". Resolving the post
+    // gives the client the video itself; a post that will not resolve (private,
+    // deleted, age-gated) falls through to that same card, which is what it
+    // would have shown anyway.
+    if let Some(shortcode) = instagram::shortcode(&requested) {
+        if let Some(post) = instagram::resolve(&state, &shortcode).await {
+            return Ok(Json(instagram_preview(&state, &requested, post).await?));
+        }
+    }
+
     let (final_url, html) = fetch_html(requested).await?;
     let mut result = parse_preview(&final_url, &html);
-    if let Some(image_url) = result.image_url.take() {
-        // The thumbnail is fetched by the *viewer's* browser, so handing back the
-        // raw third-party URL would leak every reader's IP to whoever set the
-        // og:image. Route it through our signed same-origin proxy instead, and
-        // only if the host resolves public (the proxy re-checks, but no point
-        // minting a token for something it will refuse).
-        result.image_url = match Url::parse(&image_url) {
-            Ok(image) if resolve_public_destination(&image).await.is_ok() => Some(
-                super::media_proxy::sign_media_url(&state.config.jwt_access_secret, &image_url)?,
-            ),
-            _ => None,
-        };
-    }
+    result.image_url = proxied(&state, result.image_url.as_deref()).await?;
     Ok(Json(result))
 }
 
-async fn fetch_html(mut url: Url) -> AppResult<(Url, String)> {
+/// An Instagram post as a preview: its caption as the text, its own frame as
+/// the image, and - the point of the exercise - a video url the client can play
+/// inline instead of a card linking back to a login wall.
+async fn instagram_preview(
+    state: &AppState,
+    url: &Url,
+    post: instagram::Post,
+) -> AppResult<LinkPreview> {
+    Ok(LinkPreview {
+        url: url.to_string(),
+        site_name: "Instagram".into(),
+        title: post.username.map(|name| format!("@{name}")),
+        description: post.caption,
+        image_url: proxied(state, post.image_url.as_deref()).await?,
+        video_url: proxied(state, post.video_url.as_deref()).await?,
+    })
+}
+
+/// A third-party media url in the only form a client should be handed one: a
+/// signed same-origin proxy url.
+///
+/// These are loaded by the *viewer's* browser, so returning the raw url would
+/// hand whoever set it a zero-click IP log of everyone who scrolls past. Minted
+/// only for a host that resolves public - the proxy re-checks before any bytes
+/// move, but there is no point issuing a token it will refuse.
+async fn proxied(state: &AppState, url: Option<&str>) -> AppResult<Option<String>> {
+    let Some(raw) = url else {
+        return Ok(None);
+    };
+    match Url::parse(raw) {
+        Ok(parsed) if resolve_public_destination(&parsed).await.is_ok() => Some(
+            super::media_proxy::sign_media_url(&state.config.jwt_access_secret, raw),
+        )
+        .transpose(),
+        _ => Ok(None),
+    }
+}
+
+pub(crate) async fn fetch_html(mut url: Url) -> AppResult<(Url, String)> {
     for redirect_count in 0..=MAX_REDIRECTS {
         let (host, address) = resolve_public_destination(&url).await?;
         let client = reqwest::Client::builder()
@@ -269,6 +312,9 @@ fn parse_preview(page_url: &Url, html: &str) -> LinkPreview {
         title,
         description,
         image_url,
+        // A scraped page is a page; only a resolver (see `instagram_preview`)
+        // knows a link is really a video.
+        video_url: None,
     }
 }
 

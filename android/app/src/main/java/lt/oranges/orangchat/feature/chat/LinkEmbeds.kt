@@ -40,6 +40,7 @@ import lt.oranges.orangchat.data.model.Attachment
 import lt.oranges.orangchat.data.remote.LinkPreviewData
 import lt.oranges.orangchat.feature.invite.ChatInviteEmbed
 import lt.oranges.orangchat.util.InviteLink
+import lt.oranges.orangchat.util.absoluteUrl
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 import java.time.Instant
@@ -232,6 +233,49 @@ private fun linkedAttachment(url: String, contentType: String): Attachment {
     )
 }
 
+/**
+ * A link the server resolved to a video of its own - an Instagram post, today.
+ * Shown as the video, because that is what the link is; the caption and a way
+ * back to the post sit underneath.
+ */
+@Composable
+private fun ResolvedVideoEmbed(url: String, preview: LinkPreviewData, videoUrl: String) {
+    val c = OrangTheme.colors
+    val uriHandler = LocalUriHandler.current
+    // Both urls are origin-relative proxy paths; VideoAttachment absolutises
+    // them, so they are handed over as they arrived.
+    val attachment = remember(videoUrl, preview.imageUrl) {
+        Attachment(
+            id = "link-${url.hashCode()}",
+            url = videoUrl,
+            filename = preview.title ?: "video",
+            contentType = "video/mp4",
+            size = 0,
+            thumbnailUrl = preview.imageUrl,
+        )
+    }
+    Spacer(Modifier.height(6.dp))
+    VideoAttachment(attachment, null, Instant.now())
+    Column(Modifier.fillMaxWidth().clickable { uriHandler.openUri(url) }.padding(top = 4.dp)) {
+        Text(
+            text = listOfNotNull(preview.siteName, preview.title).joinToString("  "),
+            color = c.inkMuted,
+            fontSize = 11.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        preview.description?.let { description ->
+            Text(
+                text = description,
+                color = c.inkSecondary,
+                fontSize = 12.sp,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
 @Composable
 private fun PageEmbed(url: String, host: String, viewModel: LinkPreviewViewModel) {
     var preview by remember(url) { mutableStateOf<LinkPreviewData?>(null) }
@@ -240,6 +284,11 @@ private fun PageEmbed(url: String, host: String, viewModel: LinkPreviewViewModel
     }
     val c = OrangTheme.colors
     val uriHandler = LocalUriHandler.current
+    val resolved = preview
+    if (resolved?.videoUrl != null) {
+        ResolvedVideoEmbed(url, resolved, resolved.videoUrl)
+        return
+    }
     Spacer(Modifier.height(6.dp))
     Column(
         modifier = Modifier
@@ -249,8 +298,10 @@ private fun PageEmbed(url: String, host: String, viewModel: LinkPreviewViewModel
             .clickable { uriHandler.openUri(url) },
     ) {
         preview?.imageUrl?.let { imageUrl ->
+            // The server hands back an origin-relative signed proxy path, which
+            // Coil can't fetch on its own.
             AsyncImage(
-                model = imageUrl,
+                model = absoluteUrl(imageUrl),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxWidth().height(140.dp),

@@ -17,6 +17,7 @@ pub mod event;
 pub mod friends;
 pub mod game;
 pub mod image_moderation;
+pub mod instagram;
 pub mod key_deletion;
 pub mod membership;
 pub mod message;

@@ -414,6 +414,12 @@ data class LinkPreviewData(
     val title: String? = null,
     val description: String? = null,
     val imageUrl: String? = null,
+    /**
+     * Set when the server resolved the link to a playable video (an Instagram
+     * post). Already an origin-relative proxy url, and [imageUrl] is then its
+     * poster rather than a card thumbnail.
+     */
+    val videoUrl: String? = null,
 )
 
 @Serializable
