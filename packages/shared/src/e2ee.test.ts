@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   CONVERSATION_KEY_BYTES,
-  SYSTEM_NOTICES,
+  SYSTEM_NOTICE_KINDS,
+  callNotice,
+  formatCallDuration,
+  isSystemNotice,
   describeSystemNotice,
   systemNoticeKind,
   DOMAIN,
@@ -753,40 +756,65 @@ describe('base64 helpers', () => {
 });
 
 describe('system notices', () => {
-  // These sentences are a wire contract: both clients recognise a notice by
-  // matching the text exactly, so editing one silently turns every notice
-  // already sent back into an ordinary message. The Android copy lives in
-  // android/.../feature/chat/SystemNotices.kt and has to match character for
-  // character.
-  it('pins the wire text', () => {
-    expect(SYSTEM_NOTICES).toEqual({
-      strictDisabled: 'Turned off the requirement to verify before messaging in this conversation.',
-      strictEnabled: 'Turned on the requirement to verify before messaging in this conversation.',
-      keyReset: 'Started a new encryption key for this conversation.',
-      backgroundChanged: 'Changed the chat background.',
-      backgroundRemoved: 'Removed the chat background.',
-    });
+  // The kind is a wire value the server stores on the message, so it is a
+  // contract in the same way the text used to be - except a client cannot write
+  // one. Append-only: a stored kind is what history renders from. The Android
+  // copy lives in android/.../feature/chat/SystemNotices.kt.
+  it('pins the kinds', () => {
+    expect(SYSTEM_NOTICE_KINDS).toEqual([
+      'strictDisabled',
+      'strictEnabled',
+      'keyReset',
+      'backgroundChanged',
+      'backgroundRemoved',
+      'call',
+    ]);
   });
 
-  it('recognises every notice, whitespace and all', () => {
-    for (const [kind, text] of Object.entries(SYSTEM_NOTICES)) {
-      expect(systemNoticeKind(text)).toBe(kind);
-      expect(systemNoticeKind(`  ${text}\n`)).toBe(kind);
+  it('reads the kind off the message, never off its text', () => {
+    for (const kind of SYSTEM_NOTICE_KINDS) {
+      expect(systemNoticeKind({ systemNotice: kind })).toBe(kind);
     }
+    // The whole point of the field: typing the sentence is just a message.
+    expect(systemNoticeKind({ systemNotice: null })).toBeNull();
+    expect(systemNoticeKind({})).toBeNull();
   });
 
-  it('leaves anything else an ordinary message', () => {
-    expect(systemNoticeKind('Turned off the requirement')).toBeNull();
-    expect(systemNoticeKind('')).toBeNull();
-    expect(systemNoticeKind('Changed the chat background!')).toBeNull();
+  it('treats an unknown kind as a notice it cannot re-word', () => {
+    expect(isSystemNotice({ systemNotice: 'somethingNewer' })).toBe(true);
+    expect(systemNoticeKind({ systemNotice: 'somethingNewer' })).toBeNull();
   });
 
-  it('names whoever sent it', () => {
+  it('names whoever it is about', () => {
     expect(describeSystemNotice('backgroundChanged', 'You')).toBe(
       'You changed the chat background.',
     );
     expect(describeSystemNotice('keyReset', 'Ada')).toBe(
       'Ada started a new encryption key for this conversation.',
     );
+    // A call is a card, not a sentence.
+    expect(describeSystemNotice('call', 'Ada')).toBeNull();
+  });
+
+  it('reads a call card, and refuses a malformed one', () => {
+    const data = {
+      callerId: 'u1',
+      video: true,
+      startedAt: '2026-08-06T10:00:00.000Z',
+      endedAt: '2026-08-06T10:04:05.000Z',
+      joined: ['u1', 'u2'],
+      ringing: [],
+      durationSec: 245,
+      missed: false,
+    };
+    expect(callNotice({ systemNotice: 'call', systemData: data })).toEqual(data);
+    expect(callNotice({ systemNotice: 'call', systemData: { video: true } })).toBeNull();
+    expect(callNotice({ systemNotice: 'keyReset', systemData: data })).toBeNull();
+  });
+
+  it('reads a call length off a clock', () => {
+    expect(formatCallDuration(5)).toBe('0:05');
+    expect(formatCallDuration(245)).toBe('4:05');
+    expect(formatCallDuration(3753)).toBe('1:02:33');
   });
 });

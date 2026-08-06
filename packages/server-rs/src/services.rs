@@ -32,6 +32,7 @@ pub mod role;
 pub mod server;
 pub mod sound;
 pub mod spotify;
+pub mod system_message;
 pub mod passkey;
 pub mod totp;
 pub mod update_policy;

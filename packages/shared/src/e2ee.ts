@@ -1111,57 +1111,52 @@ export function decodeContactVerifyQr(raw: string): ContactVerifyQr {
 
 /**
  * Things that happen *to* a conversation rather than in it: the verification
- * requirement going on or off, a fresh key, a new background. Each one changes
- * what the conversation is, so both people should see it - and §6.5 requires it
- * outright for the downgrade.
+ * requirement going on or off, a fresh key, a new background, a call. Each one
+ * changes what the conversation is, so everybody in it should see it - and §6.5
+ * requires it outright for the downgrade.
  *
- * There is no system-message channel to say any of this on, so each notice
- * travels as an ordinary encrypted, signed message: exactly as unforgeable as
- * anything else in the conversation, and reaching every client that can already
- * read it. Both clients then draw a recognised sentence centred and unbubbled.
+ * These used to travel as ordinary messages whose exact text every client
+ * matched, which meant anyone could forge one by typing the sentence, and the
+ * notice was attributed to whoever sent it. Now the server writes the kind into
+ * `Message.systemNotice`, a field no client can set, and only for an action the
+ * server carried out itself. `author` stays the person whose action it was, so
+ * the notice can still say who did it.
  *
- * That last part only works while every client agrees on the text to the
- * character, which makes these strings the contract. Treat them as append-only:
- * editing one turns every notice already sent back into a plain message. Add a
- * new key instead.
+ * Kinds are append-only: a stored one is what history is rendered from. An
+ * unknown kind falls back to the server's own sentence in `content`, so an old
+ * client meets a new notice with something true rather than a blank.
  */
-export const SYSTEM_NOTICES = {
-  strictDisabled: 'Turned off the requirement to verify before messaging in this conversation.',
-  strictEnabled: 'Turned on the requirement to verify before messaging in this conversation.',
-  keyReset: 'Started a new encryption key for this conversation.',
-  backgroundChanged: 'Changed the chat background.',
-  backgroundRemoved: 'Removed the chat background.',
-} as const;
+export const SYSTEM_NOTICE_KINDS = [
+  'strictDisabled',
+  'strictEnabled',
+  'keyReset',
+  'backgroundChanged',
+  'backgroundRemoved',
+  'call',
+] as const;
 
-export type SystemNoticeKind = keyof typeof SYSTEM_NOTICES;
+export type SystemNoticeKind = (typeof SYSTEM_NOTICE_KINDS)[number];
 
-/** @deprecated Use `SYSTEM_NOTICES.strictDisabled`. */
-export const STRICT_DISABLED_NOTICE = SYSTEM_NOTICES.strictDisabled;
-
-/**
- * Which notice a message is, if any. Nothing is authenticated here beyond the
- * text: anyone could type the same sentence, and a notice is attributed to
- * whoever sent it, so a forged one only ever says something about its own
- * author.
- */
-export function systemNoticeKind(content: string): SystemNoticeKind | null {
-  const text = content.trim();
-  return (
-    (Object.keys(SYSTEM_NOTICES) as SystemNoticeKind[]).find(
-      (kind) => SYSTEM_NOTICES[kind] === text,
-    ) ?? null
-  );
+export function systemNoticeKind(message: {
+  systemNotice?: string | null;
+}): SystemNoticeKind | null {
+  const kind = message.systemNotice;
+  return kind && (SYSTEM_NOTICE_KINDS as readonly string[]).includes(kind)
+    ? (kind as SystemNoticeKind)
+    : null;
 }
 
-export function isSystemNotice(content: string): boolean {
-  return systemNoticeKind(content) !== null;
+/** A message the server authored, whatever kind - including ones we don't know. */
+export function isSystemNotice(message: { systemNotice?: string | null }): boolean {
+  return !!message.systemNotice;
 }
 
 /**
- * The notice as a sentence about whoever sent it. Who turned the requirement
- * off is the whole point of sending that one, so the name leads.
+ * The notice as a sentence about whoever it is attributed to. Who turned the
+ * requirement off is the whole point of sending that one, so the name leads.
+ * `null` for kinds that are a card rather than a sentence - a call.
  */
-export function describeSystemNotice(kind: SystemNoticeKind, name: string): string {
+export function describeSystemNotice(kind: SystemNoticeKind, name: string): string | null {
   switch (kind) {
     case 'strictDisabled':
       return `${name} turned off the requirement to verify before messaging in this conversation.`;
@@ -1173,5 +1168,60 @@ export function describeSystemNotice(kind: SystemNoticeKind, name: string): stri
       return `${name} changed the chat background.`;
     case 'backgroundRemoved':
       return `${name} removed the chat background.`;
+    case 'call':
+      return null;
   }
+}
+
+/**
+ * The `systemData` of a `call` notice: one card per call, rewritten by the
+ * server as the call runs rather than a new message per state change.
+ *
+ * `joined` is everyone who was ever connected, not who is on it now, which is
+ * what makes a missed call recognisable afterwards. While `endedAt` is null the
+ * call is live and the card is a way into it.
+ */
+export interface CallNotice {
+  callerId: string;
+  video: boolean;
+  startedAt: string;
+  endedAt: string | null;
+  /** Everyone who has been connected at some point during the call. */
+  joined: string[];
+  /** Whose device is still ringing right now. Empty once the call is over. */
+  ringing: string[];
+  /** How long anyone was actually talking. Null for a call nobody answered. */
+  durationSec: number | null;
+  /** Ended with nobody but the caller ever connecting. */
+  missed: boolean;
+}
+
+/** `systemData` as a call, when that is what this message is. */
+export function callNotice(message: {
+  systemNotice?: string | null;
+  systemData?: unknown;
+}): CallNotice | null {
+  if (message.systemNotice !== 'call') return null;
+  const data = message.systemData as Partial<CallNotice> | undefined | null;
+  if (!data || typeof data.startedAt !== 'string') return null;
+  return {
+    callerId: typeof data.callerId === 'string' ? data.callerId : '',
+    video: data.video === true,
+    startedAt: data.startedAt,
+    endedAt: typeof data.endedAt === 'string' ? data.endedAt : null,
+    joined: Array.isArray(data.joined) ? data.joined : [],
+    ringing: Array.isArray(data.ringing) ? data.ringing : [],
+    durationSec: typeof data.durationSec === 'number' ? data.durationSec : null,
+    missed: data.missed === true,
+  };
+}
+
+/** "4:05" / "1:02:33" - a call length, read the way a clock is. */
+export function formatCallDuration(seconds: number): string {
+  const total = Math.max(0, Math.round(seconds));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(secs)}` : `${minutes}:${pad(secs)}`;
 }

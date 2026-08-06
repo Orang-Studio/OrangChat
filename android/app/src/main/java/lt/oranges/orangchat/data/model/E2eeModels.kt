@@ -138,6 +138,8 @@ data class E2eeMintEpochRequest(
     val id: String,
     val createdBy: String,
     val envelopes: List<E2eeEnvelopeInput>,
+    /** Say on the conversation that the key was reset. Only for a reset somebody asked for. */
+    val announce: Boolean = false,
 )
 
 @Serializable
@@ -168,3 +170,14 @@ data class E2eeBlobRequest(val blob: String, val slot: String)
 
 @Serializable
 data class E2eeBlob(val blob: String)
+
+/** Verify-before-messaging for one conversation; `null` returns it to the account setting. */
+@Serializable
+data class E2eeStrictRequest(val on: Boolean? = null)
+
+@Serializable
+data class E2eeStrictResponse(val channelId: String, val e2eeStrict: Boolean? = null)
+
+/** Every conversation this account has an override for. */
+@Serializable
+data class E2eeStrictOverrides(val overrides: Map<String, Boolean> = emptyMap())

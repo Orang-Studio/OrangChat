@@ -113,6 +113,13 @@ export const mintEpoch = (
       wrapNonce: string;
       wrapped: string;
     }[];
+    /**
+     * Whether the conversation should be told a key was started. Only a person
+     * choosing "reset the key" sets this: epochs are also minted whenever the
+     * device set changes, and announcing those would bury the conversation in
+     * notices about routine rekeying.
+     */
+    announce?: boolean;
   },
 ) => api<E2eeEpoch>(`/e2ee/channels/${channelId}/epochs`, { method: 'POST', json: body });
 

@@ -838,6 +838,13 @@ pub struct MintEpochInput {
     pub id: String,
     pub created_by: String,
     pub envelopes: Vec<EnvelopeInput>,
+    /// Whether the conversation should be told a key was started. Only a person
+    /// choosing "reset the key" sets this: epochs are also minted whenever the
+    /// device set changes, and announcing those would bury the conversation in
+    /// notices about routine rekeying. It says nothing the server has to trust -
+    /// at worst a client announces its own rekey.
+    #[serde(default)]
+    pub announce: bool,
 }
 
 /// The epoch id is minted by the client, not here, because it is the HKDF salt

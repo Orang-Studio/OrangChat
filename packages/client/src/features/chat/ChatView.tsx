@@ -256,6 +256,7 @@ export function ChatView({
       ) : (
         <MessageList
           messages={messages}
+          channel={channel}
           pendingMessageIds={pendingMessageIds}
           channelName={channelName}
           backgroundUrl={channel.backgroundUrl}

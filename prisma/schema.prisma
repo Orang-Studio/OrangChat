@@ -462,6 +462,12 @@ model ChannelParticipant {
   /// and delivery survive; the conversation is simply not listed until a new
   /// message arrives, which clears this. Group DMs delete the row instead.
   hiddenAt  DateTime?
+  /// This user's "verify before messaging" rule for this conversation; null
+  /// follows their global `e2eeStrict`. The rule is enforced on their own
+  /// device - the server holds it so that turning it on or off is an action
+  /// the server carried out, and can therefore announce as a system notice
+  /// the other side can trust. No key material is involved either way.
+  e2eeStrict Boolean?
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([channelId, userId])
@@ -473,6 +479,21 @@ model Message {
   channelId   String
   authorId    String
   content     String
+  /// Set only by the server, and only from an action it carried out itself:
+  /// "strictEnabled" | "strictDisabled" | "keyReset" | "backgroundChanged" |
+  /// "backgroundRemoved". Clients draw any message carrying one as a notice
+  /// about the conversation rather than as a line its author typed. Never
+  /// accepted on a client's send - that is the whole point of the column,
+  /// because recognising a notice by its text let anyone forge one by typing
+  /// the sentence. `authorId` stays the person whose action it was, so a
+  /// notice can still say who did it.
+  systemNotice String?
+  /// Whatever the notice needs beyond its own name, for the kinds that are a
+  /// live card rather than one sentence. A "call" carries who is on it, when it
+  /// started, and - once it is over - how long it lasted, and the server edits
+  /// this row as the call progresses. Plaintext, like `systemNotice`: it is
+  /// metadata the server already has, never anything a person typed.
+  systemData  Json?
   ciphertext  Bytes?
   encEpoch    Int?
   encVersion  Int?

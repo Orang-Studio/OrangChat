@@ -16,7 +16,6 @@ import { Dialog, DialogContent } from '../../components/ui/Dialog';
 import { cn } from '../../lib/cn';
 import { useAuthStore } from '../../stores/auth';
 import { retryBlockedMessages } from '../chat/outbox';
-import { announce } from '../chat/notices';
 import { useSecurityAlerts } from './alerts';
 import { ConfirmIdentityDialog } from './ConfirmIdentityDialog';
 import { EncryptionModeChoice, GroupModeNote, type EncryptionMode } from './EncryptionModeChoice';
@@ -100,11 +99,12 @@ export function VerifyDialog({
    */
   const tighten = () => {
     if (!channelId) return;
-    setStrictFor(channelId, true);
     // Both directions are announced, not just the downgrade: a rule that only
     // one side set is a rule the other side can only discover by tripping over
-    // it, and a message that suddenly won't send reads as a bug.
-    announce(channelId, 'strictEnabled');
+    // it, and a message that suddenly won't send reads as a bug. The notice is
+    // written by the server when it stores the setting, so it cannot be skipped
+    // by a client that would rather the other side didn't know.
+    setStrictFor(channelId, true);
     void rotate(channelId).catch((error: unknown) => {
       if (error instanceof StrictModeError) return;
       setError(error instanceof Error ? error.message : 'Could not start a new key.');
@@ -113,10 +113,9 @@ export function VerifyDialog({
 
   const relax = () => {
     if (!channelId) return;
+    // §6.5: neither party can be downgraded without the other seeing it.
     setStrictFor(channelId, false);
     retryBlockedMessages();
-    // §6.5: neither party can be downgraded without the other seeing it.
-    announce(channelId, 'strictDisabled');
   };
 
   useEffect(() => {
@@ -180,15 +179,12 @@ export function VerifyDialog({
   const reset = useMutation({
     mutationFn: () => {
       if (!channelId) throw new Error('No conversation selected');
-      return rotate(channelId);
-    },
-    onSuccess: () => {
-      setError(null);
       // Only the reset somebody asked for is announced. The automatic rotations
       // - a device joining, an epoch expiring - happen constantly and say
       // nothing about the conversation that anyone chose.
-      if (channelId) announce(channelId, 'keyReset');
+      return rotate(channelId, { announce: true });
     },
+    onSuccess: () => setError(null),
     onError: (e: Error) => setError(e.message),
   });
 

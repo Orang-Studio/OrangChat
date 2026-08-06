@@ -251,6 +251,14 @@ pub struct MessageDto {
     pub channel_id: String,
     pub author: UserDto,
     pub content: String,
+    /// Present when the server wrote this message about the conversation rather
+    /// than a person typing it: a notice kind, never anything a client sent.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub system_notice: Option<String>,
+    /// The notice's payload, for the kinds that are a card rather than a
+    /// sentence (see `services::system_message`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub system_data: Option<Json>,
     /// Existing custom emoji referenced by `content`. This is message display
     /// data, not a list of emoji the viewer is allowed to pick.
     pub emojis: Vec<EmojiDto>,
@@ -708,6 +716,8 @@ pub fn to_message(
         channel_id: m.channel_id.clone(),
         author: to_user(author),
         content: m.content.clone(),
+        system_notice: m.system_notice.clone(),
+        system_data: m.system_data.clone(),
         emojis: emojis.iter().map(to_emoji).collect(),
         created_at: iso(m.created_at),
         edited_at: iso_opt(m.edited_at),

@@ -4,6 +4,7 @@ import { TooltipProvider } from "../components/ui/Tooltip";
 import { useCustomCss } from "../lib/customCss";
 import { useAppIcon } from "../lib/appIcon";
 import { getUnreads } from "../features/unread/api";
+import { loadStrictOverrides } from "../features/e2ee/strict";
 import { unreadActions } from "../stores/unread";
 import {
   loadMessagePreviews,
@@ -40,6 +41,9 @@ export function AppShell() {
       .catch(() => {});
     void restorePushNotifications().catch(() => {});
     void loadMessagePreviews();
+    // Which conversations this account has marked "verify before messaging".
+    // Cached locally too, so the gate holds before this lands.
+    void loadStrictOverrides();
   }, []);
 
   // Someone who signed in to accept an invite lands here first - OAuth in

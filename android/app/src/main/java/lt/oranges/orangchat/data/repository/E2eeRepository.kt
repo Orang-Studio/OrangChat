@@ -29,6 +29,7 @@ import lt.oranges.orangchat.data.model.E2eeBlobRequest
 import lt.oranges.orangchat.data.model.E2eeLogEntryInput
 import lt.oranges.orangchat.data.model.E2eeMintEpochRequest
 import lt.oranges.orangchat.data.model.E2eeRevokeRequest
+import lt.oranges.orangchat.data.model.E2eeStrictRequest
 import lt.oranges.orangchat.data.model.E2eeTransferGrantRequest
 import lt.oranges.orangchat.data.model.Message
 import lt.oranges.orangchat.data.remote.ApiService
@@ -309,8 +310,21 @@ class E2eeRepository @Inject constructor(
 
     fun setGlobalStrict(enabled: Boolean) = keystore.setGlobalStrict(enabled)
 
+    /** Applied here first: the gate must hold from the moment it was asked for, not from the ack. */
     fun setStrictFor(channelId: String, enabled: Boolean?) =
         keystore.setStrictFor(channelId, enabled)
+
+    /** Store the choice server-side, so the server is the one that announces it. */
+    suspend fun pushStrictFor(channelId: String, enabled: Boolean?) = withContext(Dispatchers.IO) {
+        api.setChannelE2eeStrict(channelId, E2eeStrictRequest(on = enabled))
+        Unit
+    }
+
+    /** This account's overrides, so a fresh install enforces what was chosen elsewhere. */
+    suspend fun loadStrictOverrides() = withContext(Dispatchers.IO) {
+        val overrides = api.getMyE2eeStrict().overrides
+        for ((channelId, on) in overrides) keystore.setStrictFor(channelId, on)
+    }
 
     fun strictFor(channelId: String, channelType: String = "dm"): Boolean =
         keystore.strictFor(channelId, channelType)
@@ -758,8 +772,12 @@ class E2eeRepository @Inject constructor(
      * Mints a fresh conversation key and wraps it to every verified device. The
      * epoch id is generated here rather than by the server, because every
      * wrapping is bound to it as the HKDF salt before the request is sent.
+     *
+     * [announce] asks the server to say on the conversation that the key was
+     * reset - true only for a reset somebody asked for, since the automatic
+     * rotations happen constantly and are nobody's decision.
      */
-    suspend fun rotate(channelId: String): Int = rotation.withLock {
+    suspend fun rotate(channelId: String, announce: Boolean = false): Int = rotation.withLock {
         withContext(Dispatchers.IO) {
             val local = keystore.identity()
                 ?: throw E2eeException("This device has no encryption identity yet.")
@@ -800,7 +818,12 @@ class E2eeRepository @Inject constructor(
 
             val epoch = api.mintE2eeEpoch(
                 channelId,
-                E2eeMintEpochRequest(id = epochId, createdBy = local.deviceId, envelopes = envelopes),
+                E2eeMintEpochRequest(
+                    id = epochId,
+                    createdBy = local.deviceId,
+                    envelopes = envelopes,
+                    announce = announce,
+                ),
             )
             keystore.saveEpochKey(channelId, epoch.epoch, conversationKey)
             forgetChannelState(channelId)

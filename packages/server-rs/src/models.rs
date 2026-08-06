@@ -230,6 +230,12 @@ pub struct MessageRow {
     #[sqlx(rename = "authorId")]
     pub author_id: String,
     pub content: String,
+    /// Set only by the server, from an action it carried out itself. See
+    /// `services::system_message`.
+    #[sqlx(rename = "systemNotice")]
+    pub system_notice: Option<String>,
+    #[sqlx(rename = "systemData")]
+    pub system_data: Option<Json>,
     #[sqlx(rename = "createdAt")]
     pub created_at: NaiveDateTime,
     #[sqlx(rename = "editedAt")]

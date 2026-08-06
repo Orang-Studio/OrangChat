@@ -434,6 +434,15 @@ export interface Message {
   encEpoch?: number | null;
   encVersion?: number | null;
   /**
+   * Set by the server when it wrote this message about the conversation rather
+   * than a person typing it - see `SystemNoticeKind`. Never accepted from a
+   * client, which is what makes a notice trustworthy: `author` is the person
+   * whose action it describes, not the author of the claim.
+   */
+  systemNotice?: string | null;
+  /** A notice's payload, for the kinds that are a card rather than a sentence. */
+  systemData?: unknown;
+  /**
    * The outbox id of the local row this message confirms. Stamped by the sender's
    * own client when it recognises its send coming back, never sent over the wire.
    * Rendering keys off it so a pending row becomes its confirmed self in place

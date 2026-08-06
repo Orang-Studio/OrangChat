@@ -286,11 +286,12 @@ private const val JUMP_MAX_INITIAL_WAITS = 50
 private const val JUMP_MISSING_NOTICE_MS = 4_000L
 
 /** A message plus its grouping flag, decided chronologically before the list is
- * reversed for display. [notice] is set when the row is a system notice rather
- * than something somebody said. */
+ * reversed for display. [isNotice] is true for anything the server authored;
+ * [notice] is the kind, when it is one this build knows how to word itself. */
 private data class MessageRowData(
     val message: Message,
     val grouped: Boolean,
+    val isNotice: Boolean = false,
     val notice: SystemNotice? = null,
 )
 
@@ -307,8 +308,8 @@ private fun isGrouped(previous: Message?, message: Message): Boolean {
     if (previous == null) return false
     // A notice is a break in the conversation, not a line of it: letting the
     // message after one keep its run would hide its header behind a divider.
-    if (SystemNotice.of(message.content) != null) return false
-    if (SystemNotice.of(previous.content) != null) return false
+    if (message.isSystemNotice()) return false
+    if (previous.isSystemNotice()) return false
     if (previous.author.id != message.author.id) return false
     if (message.replyToId != null) return false
     val prev = parseInstant(previous.createdAt)?.toEpochMilli() ?: return false
@@ -419,7 +420,12 @@ fun ChatPane(
             .distinctBy(::messageRowKey)
         deduped
             .mapIndexed { i, m ->
-                MessageRowData(m, isGrouped(deduped.getOrNull(i - 1), m), SystemNotice.of(m.content))
+                MessageRowData(
+                    m,
+                    isGrouped(deduped.getOrNull(i - 1), m),
+                    m.isSystemNotice(),
+                    SystemNotice.of(m),
+                )
             }
             .asReversed()
     }
@@ -765,9 +771,20 @@ fun ChatPane(
                 // row and builds a new one, replaying the insert animation.
                 items(rows, key = { messageRowKey(it.message) }) { row ->
                     val message = row.message
-                    val notice = row.notice
-                    if (notice != null) {
-                        SystemNoticeRow(notice, message, selfId)
+                    if (row.isNotice) {
+                        val call = message.callNotice()
+                        if (call != null) {
+                            CallCardRow(
+                                message = message,
+                                notice = call,
+                                selfId = selfId,
+                                members = members,
+                                onCall = onCall,
+                                onStartCall = onStartCall,
+                            )
+                        } else {
+                            SystemNoticeRow(row.notice, message, selfId)
+                        }
                         return@items
                     }
                     MessageRow(
@@ -1183,11 +1200,16 @@ fun ChatPane(
  * remarks gets it wrong - it is a fact about the conversation. So it is drawn
  * centred and unbubbled, keeping the name, since who changed what is the whole
  * point of sending it.
+ *
+ * [notice] is null for a kind this build has never heard of, and then the
+ * sentence the server wrote stands in - which already names the actor, so a new
+ * notice on an old build reads plainly rather than not at all.
  */
 @Composable
-private fun SystemNoticeRow(notice: SystemNotice, message: Message, selfId: String) {
+private fun SystemNoticeRow(notice: SystemNotice?, message: Message, selfId: String) {
     val c = OrangTheme.colors
     val name = if (message.author.id == selfId) "You" else message.author.displayName
+    val text = notice?.describe(name) ?: message.content
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1195,7 +1217,7 @@ private fun SystemNoticeRow(notice: SystemNotice, message: Message, selfId: Stri
         horizontalArrangement = Arrangement.Center,
     ) {
         Text(
-            text = "- ${notice.describe(name)} -",
+            text = "- $text -",
             color = c.inkMuted,
             fontSize = 12.sp,
             textAlign = TextAlign.Center,

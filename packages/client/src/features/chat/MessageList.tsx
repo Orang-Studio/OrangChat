@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
 import {
+  callNotice,
   describeSystemNotice,
+  isSystemNotice,
   systemNoticeKind,
   type Message,
-  type SystemNoticeKind,
   type User,
 } from '@orangchat/shared';
 import { withinGroupWindow } from '../../lib/time';
+import { CallCard } from '../voice/CallCard';
 import { MessageItem } from './MessageItem';
 
 interface MessageListProps {
   messages: Message[];
+  /** The conversation itself - a call card needs something to ring. */
+  channel: { id: string; name: string | null; serverId: string | null };
   pendingMessageIds: Set<string>;
   channelName: string;
   /** Shared DM chat background image, drawn behind the messages. */
@@ -43,27 +47,48 @@ interface MessageListProps {
 const JUMP_MAX_PAGES = 12;
 
 /**
- * A system notice travels as an ordinary message because there is no
- * system-message channel to carry it, but reading it as one of the sender's
- * remarks gets it wrong - it is a fact about the conversation. So it is drawn
- * centred and unattributed to a bubble, keeping the name, since who changed
- * what is the whole point of sending it.
+ * A message the server wrote about the conversation, rather than a line someone
+ * typed into it. Reading it as one of the author's remarks gets it wrong, so it
+ * is drawn centred and unbubbled - keeping the name, since who changed what is
+ * the whole point of saying it.
+ *
+ * The kind comes off `message.systemNotice`, which only the server sets. A kind
+ * this build has never heard of falls back to the sentence the server wrote,
+ * which already names the actor: a new notice on an old client is plain, not
+ * missing.
  */
 function SystemNotice({
   message,
-  kind,
+  channel,
   selfId,
+  profiles,
 }: {
   message: Message;
-  kind: SystemNoticeKind;
+  channel: { id: string; name: string | null; serverId: string | null };
   selfId: string | undefined;
+  profiles?: Record<string, User>;
 }) {
+  const kind = systemNoticeKind(message);
+  const call = callNotice(message);
+  if (call) {
+    return (
+      <CallCard
+        message={message}
+        notice={call}
+        channel={channel}
+        selfId={selfId}
+        profiles={profiles}
+      />
+    );
+  }
+
   const name = message.author.id === selfId ? 'You' : message.author.displayName;
+  const text = (kind && describeSystemNotice(kind, name)) ?? message.content;
   return (
     <div className="flex justify-center px-4 py-2">
       <p role="status" className="max-w-prose text-center text-xs leading-relaxed text-ink-muted">
         <span aria-hidden>- </span>
-        {describeSystemNotice(kind, name)}
+        {text}
         <span aria-hidden> -</span>
       </p>
     </div>
@@ -77,6 +102,7 @@ function SystemNotice({
  */
 export function MessageList({
   messages,
+  channel,
   pendingMessageIds,
   channelName,
   backgroundUrl,
@@ -166,13 +192,13 @@ export function MessageList({
     () =>
       messages.map((message, i) => {
         const prev = messages[i - 1];
-        const notice = systemNoticeKind(message.content);
+        const notice = isSystemNotice(message);
         const compact =
           !!prev &&
           // A notice is a break in the conversation, not a line of it: letting
           // the message after one group into the bubble above would hide its
           // header behind a divider.
-          !systemNoticeKind(prev.content) &&
+          !isSystemNotice(prev) &&
           !notice &&
           prev.author.id === message.author.id &&
           !message.replyToId &&
@@ -215,8 +241,9 @@ export function MessageList({
               <SystemNotice
                 key={message.clientId ?? message.id}
                 message={message}
-                kind={notice}
+                channel={channel}
                 selfId={selfId}
+                profiles={mentionProfiles}
               />
             ) : (
               <MessageItem

@@ -12,7 +12,9 @@ use crate::dto::{to_channel, to_channel_overwrite};
 use crate::error::{AppError, AppResult};
 use crate::http::{bad_request, AuthUser};
 use crate::permissions::{MANAGE_CHANNELS, MANAGE_MESSAGES, MANAGE_ROLES};
-use crate::services::{audit, channel, membership, message, rate_limit, read_state, voice};
+use crate::services::{
+    audit, channel, membership, message, rate_limit, read_state, system_message, voice,
+};
 use crate::state::AppState;
 
 pub fn routes() -> Router<AppState> {
@@ -24,6 +26,7 @@ pub fn routes() -> Router<AppState> {
         .route("/channels/:channelId/read", post(mark_read))
         .route("/channels/:channelId/unread", post(mark_unread))
         .route("/me/unreads", get(unreads))
+        .route("/me/e2ee-strict", get(my_e2ee_strict))
         .route(
             "/channels/:channelId",
             get(get_channel).patch(patch_channel).delete(delete_channel),
@@ -39,6 +42,10 @@ pub fn routes() -> Router<AppState> {
             axum::routing::put(pin_message).delete(unpin_message),
         )
         .route("/channels/:channelId/background", axum::routing::put(put_background))
+        .route(
+            "/channels/:channelId/e2ee-strict",
+            axum::routing::put(put_e2ee_strict),
+        )
         .route("/channels/:channelId/voice", get(voice_participants))
 }
 
@@ -547,8 +554,22 @@ async fn put_background(
         }
     };
 
+    let removed = url.is_none();
     let updated = channel::set_channel_background(&state, &channel_id, url).await?;
     let dto = to_channel(&updated);
+    // The background is shared, so changing it changes the room for everybody in
+    // it: the notice is how the others find out it was a person and not a bug.
+    system_message::announce(
+        &state,
+        &channel_id,
+        &user.user_id,
+        if removed {
+            system_message::Notice::BackgroundRemoved
+        } else {
+            system_message::Notice::BackgroundChanged
+        },
+    )
+    .await;
     // DM participants live in the channel room (http::dms joins each socket on
     // open), so this reaches exactly the people who may see it.
     let _ = state
@@ -556,6 +577,82 @@ async fn put_background(
         .to(format!("channel:{channel_id}"))
         .emit("channel:updated", &dto);
     Ok(Json(json!(dto)))
+}
+
+/// Every conversation this user has an explicit strict override on. One request
+/// at startup, instead of threading a per-viewer field through the DM list.
+async fn my_e2ee_strict(State(state): State<AppState>, user: AuthUser) -> AppResult<Json<Value>> {
+    let rows: Vec<(String, bool)> = sqlx::query_as(
+        r#"SELECT "channelId", "e2eeStrict" FROM "ChannelParticipant"
+           WHERE "userId" = $1 AND "e2eeStrict" IS NOT NULL"#,
+    )
+    .bind(&user.user_id)
+    .fetch_all(&state.pool)
+    .await?;
+    let map: HashMap<String, bool> = rows.into_iter().collect();
+    Ok(Json(json!({ "overrides": map })))
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StrictBody {
+    /// `null` drops the override and returns this conversation to the account's
+    /// global "verify before messaging" setting.
+    on: Option<bool>,
+}
+
+/// Set this user's "verify before messaging" rule for one conversation.
+///
+/// The rule itself is enforced on their own device - the server cannot stop a
+/// client from encrypting to whoever it likes. It is stored here so that turning
+/// it on or off is an action the *server* carried out, which is what lets the
+/// server author the notice about it: the other side is told the requirement
+/// changed by something they can trust, rather than by a sentence the peer's
+/// client typed and could have lied about. No key material is involved.
+///
+/// The cost, stated plainly: the server learns which DMs a user has marked
+/// strict. It learns nothing about the conversation's contents or keys.
+async fn put_e2ee_strict(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Path(channel_id): Path<String>,
+    Json(body): Json<StrictBody>,
+) -> AppResult<Json<Value>> {
+    let ch = channel::require_channel_access(&state, &channel_id, &user.user_id).await?;
+    if ch.server_id.is_some() {
+        return Err(bad_request("Only direct conversations have this setting"));
+    }
+
+    let updated = sqlx::query(
+        r#"UPDATE "ChannelParticipant" SET "e2eeStrict" = $3
+           WHERE "channelId" = $1 AND "userId" = $2"#,
+    )
+    .bind(&channel_id)
+    .bind(&user.user_id)
+    .bind(body.on)
+    .execute(&state.pool)
+    .await?;
+    if updated.rows_affected() == 0 {
+        return Err(AppError::Permission("You are not in this conversation".into()));
+    }
+
+    // Clearing the override is a return to whatever the account already does, so
+    // there is nothing to announce; only an explicit on or off is an event.
+    if let Some(on) = body.on {
+        system_message::announce(
+            &state,
+            &channel_id,
+            &user.user_id,
+            if on {
+                system_message::Notice::StrictEnabled
+            } else {
+                system_message::Notice::StrictDisabled
+            },
+        )
+        .await;
+    }
+
+    Ok(Json(json!({ "channelId": channel_id, "e2eeStrict": body.on })))
 }
 
 async fn voice_participants(

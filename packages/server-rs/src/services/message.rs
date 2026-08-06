@@ -146,7 +146,11 @@ mod custom_emoji_tests {
     }
 }
 
-async fn load_one(state: &AppState, message_id: &str, viewer_id: &str) -> AppResult<MessageDto> {
+pub(crate) async fn load_one(
+    state: &AppState,
+    message_id: &str,
+    viewer_id: &str,
+) -> AppResult<MessageDto> {
     let row: MessageRow = sqlx::query_as(r#"SELECT * FROM "Message" WHERE id = $1"#)
         .bind(message_id)
         .fetch_one(&state.pool)

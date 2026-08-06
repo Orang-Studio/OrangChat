@@ -35,7 +35,7 @@ import lt.oranges.orangchat.data.repository.E2eeRepository
 import lt.oranges.orangchat.data.repository.ServerRepository
 import lt.oranges.orangchat.data.repository.SessionState
 import lt.oranges.orangchat.data.repository.SocialRepository
-import lt.oranges.orangchat.feature.chat.SystemNotice
+import lt.oranges.orangchat.feature.chat.isSystemNotice
 import lt.oranges.orangchat.feature.invite.PendingInviteStore
 import lt.oranges.orangchat.feature.qrlogin.PendingQrLoginStore
 import lt.oranges.orangchat.feature.share.PendingShareStore
@@ -263,6 +263,7 @@ class AppViewModel @Inject constructor(
             refreshFriends()
             refreshUnreads()
             refreshEmojis()
+            runCatching { e2eeRepository.loadStrictOverrides() }
         }
     }
 
@@ -440,11 +441,11 @@ class AppViewModel @Inject constructor(
     }
 
     fun resetConversationEncryption(channelId: String) = viewModelScope.launch {
-        runCatching { e2eeRepository.rotate(channelId) }
-            // Only the reset somebody asked for is announced. The automatic
-            // rotations - a device joining, an epoch expiring - happen constantly
-            // and say nothing about the conversation that anyone chose.
-            .onSuccess { announce(channelId, SystemNotice.KeyReset) }
+        // Only the reset somebody asked for is announced, and the server writes
+        // that notice itself. The automatic rotations - a device joining, an
+        // epoch expiring - happen constantly and say nothing about the
+        // conversation that anyone chose, so they stay silent.
+        runCatching { e2eeRepository.rotate(channelId, announce = true) }
             .onFailure { _error.value = it.message ?: "Could not reset encryption" }
     }
 
@@ -454,11 +455,11 @@ class AppViewModel @Inject constructor(
             val info = current[channelId] ?: ConversationEncryptionInfo()
             current + (channelId to info.copy(strictHere = enabled))
         }
+        // Stored server-side so the server is the one that announces it, in both
+        // directions: a rule only one side set is one the other can discover only
+        // by tripping over it.
+        viewModelScope.launch { runCatching { e2eeRepository.pushStrictFor(channelId, enabled) } }
         if (enabled) {
-            // Both directions are announced, not just the downgrade: a rule that
-            // only one side set is a rule the other can discover only by tripping
-            // over it, and a message that suddenly won't send reads as a bug.
-            announce(channelId, SystemNotice.StrictEnabled)
             // §6.5: a fresh key wrapped only to checked devices. It legitimately
             // cannot be minted until this contact *is* checked, and that is the
             // state the user just asked for - reporting it as a failure would
@@ -470,20 +471,7 @@ class AppViewModel @Inject constructor(
                     }
                 }
             }
-        } else {
-            // §6.5 requires the other person to see a downgrade.
-            announce(channelId, SystemNotice.StrictDisabled)
         }
-    }
-
-    /**
-     * Says on the conversation that something about it changed. The notice is a
-     * courtesy to the other side, so a failed send must not fail - or delay - the
-     * change it describes; losing one costs an unexplained background, blocking
-     * on one would cost the setting.
-     */
-    private fun announce(channelId: String, notice: SystemNotice) {
-        sendMessage(channelId, notice.text)
     }
 
     /**
@@ -1131,11 +1119,11 @@ class AppViewModel @Inject constructor(
             socialRepository.setDmBackground(channelId, uploaded.url)
         }
             .onSuccess {
-                applyDmBackground(channelId, it.backgroundUrl)
                 // The background is shared, so changing it changes the room for
-                // everybody in it. The notice is how the others find out it was a
-                // person and not a bug.
-                announce(channelId, SystemNotice.BackgroundChanged)
+                // everybody in it. The server writes the notice on the same
+                // request, which is how the others find out it was a person and
+                // not a bug.
+                applyDmBackground(channelId, it.backgroundUrl)
             }
             .onFailure { _error.value = it.message ?: "Upload failed" }
     }
@@ -1143,10 +1131,7 @@ class AppViewModel @Inject constructor(
     /** Clear the shared chat background. Explicit null, not a patch. */
     fun clearDmBackground(channelId: String) = viewModelScope.launch {
         runCatching { socialRepository.setDmBackground(channelId, null) }
-            .onSuccess {
-                applyDmBackground(channelId, null)
-                announce(channelId, SystemNotice.BackgroundRemoved)
-            }
+            .onSuccess { applyDmBackground(channelId, null) }
             .onFailure { _error.value = it.message ?: "Failed to clear background" }
     }
 
@@ -1582,7 +1567,7 @@ class AppViewModel @Inject constructor(
         // Nobody typed a system notice, and buzzing a phone because someone
         // picked a wallpaper is how a useful notice becomes a muted thread. It
         // is still there to read when the conversation is opened.
-        if (SystemNotice.of(message.content) != null) return
+        if (message.isSystemNotice()) return
 
         val isDm = _dms.value.any { it.id == message.channelId }
         val mentionsMe = Mentions.mentionsUser(message.content, me.id, me.username)

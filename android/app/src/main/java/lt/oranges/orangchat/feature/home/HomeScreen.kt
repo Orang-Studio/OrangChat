@@ -152,10 +152,17 @@ fun HomeScreen(
     val callGate = rememberCallPermissionGate(
         onGranted = { video ->
             pendingCallChannel?.let { channelId ->
-                // The roster only puts a name to whoever declines; an unknown
-                // conversation still calls fine.
-                val roster = dms.firstOrNull { it.id == channelId }?.participants.orEmpty()
-                callViewModel.startCall(channelId, video, roster)
+                // Answering a call that is already ringing at us goes through
+                // accept rather than start: starting would put us in the room
+                // with the phone still ringing at both ends.
+                if (callViewModel.incoming.value?.channelId == channelId) {
+                    callViewModel.accept(video)
+                } else {
+                    // The roster only puts a name to whoever declines; an unknown
+                    // conversation still calls fine.
+                    val roster = dms.firstOrNull { it.id == channelId }?.participants.orEmpty()
+                    callViewModel.startCall(channelId, video, roster)
+                }
             }
             pendingVoiceChannel?.let { (id, name) -> callViewModel.joinVoiceChannel(id, name, video) }
             pendingCallChannel = null

@@ -333,6 +333,16 @@ data class Message(
     val encEpoch: Int? = null,
     val encVersion: Int? = null,
     /**
+     * Set by the server when it wrote this message about the conversation rather
+     * than a person typing it - see [lt.oranges.orangchat.feature.chat.SystemNotice].
+     * Never accepted from a client, which is what makes a notice trustworthy:
+     * `author` is the person whose action it describes, not the author of the
+     * claim.
+     */
+    val systemNotice: String? = null,
+    /** A notice's payload, for the kinds that are a card rather than a sentence. */
+    val systemData: JsonElement? = null,
+    /**
      * The local id this row was sent under, kept after the server confirms it.
      * Lists key on this so a confirmed message stays the *same* item as its
      * optimistic row - keying on `id` alone makes the id change at confirmation

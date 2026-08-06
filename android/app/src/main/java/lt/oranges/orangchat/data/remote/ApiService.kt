@@ -16,6 +16,9 @@ import lt.oranges.orangchat.data.model.E2eeEpochKeys
 import lt.oranges.orangchat.data.model.E2eeGenesisRequest
 import lt.oranges.orangchat.data.model.E2eeMintEpochRequest
 import lt.oranges.orangchat.data.model.E2eeRevokeRequest
+import lt.oranges.orangchat.data.model.E2eeStrictOverrides
+import lt.oranges.orangchat.data.model.E2eeStrictRequest
+import lt.oranges.orangchat.data.model.E2eeStrictResponse
 import lt.oranges.orangchat.data.model.E2eeTransferEmailCode
 import lt.oranges.orangchat.data.model.E2eeTransferGrant
 import lt.oranges.orangchat.data.model.E2eeTransferGrantRequest
@@ -504,4 +507,18 @@ interface ApiService {
         @Path("channelId") channelId: String,
         @Query("deviceId") deviceId: String,
     ): E2eeEpochKeys
+
+    // ── channels.rs: per-conversation strict mode ───────
+    // Stored server-side so that turning it on or off is an action the server
+    // carried out, and can therefore be announced by the server rather than by
+    // the client that asked for it.
+
+    @GET("me/e2ee-strict")
+    suspend fun getMyE2eeStrict(): E2eeStrictOverrides
+
+    @PUT("channels/{channelId}/e2ee-strict")
+    suspend fun setChannelE2eeStrict(
+        @Path("channelId") channelId: String,
+        @Body body: E2eeStrictRequest,
+    ): E2eeStrictResponse
 }

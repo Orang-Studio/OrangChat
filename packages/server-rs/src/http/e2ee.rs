@@ -8,7 +8,9 @@ use crate::error::{AppError, AppResult};
 use crate::http::{bad_request, AuthUser, ClientIp};
 use crate::http::auth::{store_email_login_code, verify_email_login_code};
 use crate::models::UserRow;
-use crate::services::{channel, e2ee, email, key_deletion, push, rate_limit, totp};
+use crate::services::{
+    channel, e2ee, email, key_deletion, push, rate_limit, system_message, totp,
+};
 use crate::state::AppState;
 
 pub fn routes() -> Router<AppState> {
@@ -533,6 +535,15 @@ async fn mint_epoch(
     .await?;
 
     let epoch = e2ee::mint_epoch(&state, &channel_id, &user.user_id, &body).await?;
+    if body.announce {
+        system_message::announce(
+            &state,
+            &channel_id,
+            &user.user_id,
+            system_message::Notice::KeyReset,
+        )
+        .await;
+    }
     let payload = json!({ "channelId": channel_id, "epoch": epoch });
     if let Ok(members) =
         crate::services::dm::get_conversation_participants(&state, &channel_id).await

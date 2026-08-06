@@ -98,7 +98,7 @@ async function wrapForEveryone(
  * epoch id is generated here rather than by the server, because every wrapping
  * is bound to it as the HKDF salt before the server ever sees the request.
  */
-export async function rotate(channelId: string): Promise<number> {
+export async function rotate(channelId: string, options: { announce?: boolean } = {}): Promise<number> {
   const identity = await identityOrThrow();
   const state = await getChannelE2eeState(channelId);
   await assertMayEncryptTo(
@@ -118,6 +118,10 @@ export async function rotate(channelId: string): Promise<number> {
     id: epochId,
     createdBy: identity.deviceId,
     envelopes,
+    // The notice, when there is one, is written by the server off the back of
+    // this same request - so it says a key was started because one was, not
+    // because a client said so.
+    ...(options.announce ? { announce: true } : {}),
   });
 
   await saveEpochKey(channelId, epoch.epoch, conversationKey);
