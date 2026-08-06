@@ -930,6 +930,17 @@ Both clients can decrypt in the notification path, so the payload becomes:
   data-only, so no FCM-side change.
 - **Failure mode is a placeholder, never a crash.** "New message from Vakaris" is
   an acceptable notification; a swallowed exception that shows nothing is not.
+- **The decrypt is opt-out.** A device-local "Show message text" setting (web:
+  Settings → System → Notifications; Android: Settings → Privacy →
+  Notifications) turns the placeholder into the only thing a notification ever
+  says. When it is off the envelope is never opened at all — the keys stay
+  unused rather than producing a plaintext the device has been told to withhold
+  — and the server-composed `body` for a plaintext channel is dropped with it,
+  so the setting does not lie about which conversations it covers. Device-local
+  because which screens are safe to read over is a property of the phone, not of
+  the account; the web copy lives in IndexedDB (`orangchat-e2ee`, store
+  `settings`) because a service worker cannot see localStorage, and the worker is
+  what runs when the app is closed.
 
 Note the metadata reality: the push service (Google/Mozilla/Apple) learns that
 this account received something, and when. Nothing we can do about that here.

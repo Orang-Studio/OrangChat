@@ -1,7 +1,33 @@
 import { api } from "./api";
 import { syncEpochKeys } from "../features/e2ee/conversation";
+import { NOTIFICATION_PREVIEWS, getSetting, setSetting } from "../features/e2ee/keystore";
 
 const PREF_KEY = "oc-notifications";
+
+/**
+ * Whether a notification may show what a message actually said.
+ *
+ * Kept in IndexedDB rather than localStorage because the service worker is the
+ * other half of this setting and cannot see localStorage - and the worker is
+ * what runs when the app is closed, which is exactly when a push arrives. The
+ * page mirrors it in memory so a socket-driven notification, which has no
+ * business awaiting a database, can be composed synchronously.
+ */
+let previews = true;
+
+export function messagePreviewsEnabled(): boolean {
+  return previews;
+}
+
+/** Load the mirror. Until this resolves the default (show) stands. */
+export async function loadMessagePreviews(): Promise<void> {
+  previews = await getSetting(NOTIFICATION_PREVIEWS, true).catch(() => true);
+}
+
+export async function setMessagePreviews(on: boolean): Promise<void> {
+  previews = on;
+  await setSetting(NOTIFICATION_PREVIEWS, on);
+}
 
 export function notificationsPreferred(): boolean {
   return localStorage.getItem(PREF_KEY) !== "off";

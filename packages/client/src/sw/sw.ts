@@ -205,6 +205,8 @@ const DB_NAME = 'orangchat-e2ee';
 const EPOCH_KEYS = 'epochKeys';
 const HEADS = 'heads';
 const DEVICE_KEYS = 'deviceKeys';
+const SETTINGS = 'settings';
+const NOTIFICATION_PREVIEWS = 'notificationPreviews';
 
 /**
  * How long an open client gets to fetch the missing keys before the retry.
@@ -319,6 +321,25 @@ function fallbackBody(payload: PushPayload): string {
 }
 
 /**
+ * Whether this device is willing to show what a message said.
+ *
+ * Read per push rather than cached: the worker outlives any one setting change,
+ * and a user who has just turned previews off is owed that on the next
+ * notification, not the next restart. Written by the app (keystore.setSetting);
+ * a browser that has never opened it has no record, and the default stands.
+ */
+async function previewsEnabled(): Promise<boolean> {
+  const db = await openDb();
+  if (!db) return true;
+  try {
+    const record = await get<{ key: string; value: boolean }>(db, SETTINGS, NOTIFICATION_PREVIEWS);
+    return typeof record?.value === 'boolean' ? record.value : true;
+  } finally {
+    db.close();
+  }
+}
+
+/**
  * Decrypt, and when the first pass fails because a key has not reached this
  * device yet, have an open client fetch it before giving up. Rotations sync on
  * the next channel open or socket event, so a tab that was asleep through one
@@ -415,8 +436,16 @@ self.addEventListener('push', (event: PushEvent) => {
       // they are about the account, not the conversation on screen.
       if (payload.kind !== 'security' && (await isConversationOnScreen(payload.href))) return;
 
+      // Told not to show message text: the envelope is never opened - the keys
+      // stay unused rather than producing a plaintext this device has been told
+      // to withhold - and the server's own preview for an unencrypted channel is
+      // dropped with it. A setting that hid only the encrypted half would be a
+      // setting that lies. Calls and security notices carry no message text.
       let body = payload.body;
-      if (payload.ciphertext) {
+      const previews = payload.kind === 'message' ? await previewsEnabled() : true;
+      if (!previews) {
+        body = fallbackBody(payload);
+      } else if (payload.ciphertext) {
         body = (await decryptWithSync(payload)) ?? fallbackBody(payload);
       }
 

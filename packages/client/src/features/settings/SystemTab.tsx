@@ -5,6 +5,9 @@ import {
   notificationsSupported,
   disablePushNotifications,
   enablePushNotifications,
+  loadMessagePreviews,
+  messagePreviewsEnabled,
+  setMessagePreviews,
 } from "../../lib/notifications";
 import { useConnectionStore } from "../../stores/connection";
 import { Button } from "../../components/ui/Button";
@@ -72,6 +75,29 @@ function NotificationsRow() {
       }}
       label="Desktop notifications"
       hint="Push alerts for direct messages and @mentions, even when OrangChat is closed."
+    />
+  );
+}
+
+function MessagePreviewsRow() {
+  const [previews, setPreviews] = useState(messagePreviewsEnabled());
+
+  // The in-memory mirror is seeded once at app start; re-read on mount so this
+  // screen is right even in a tab that opened straight into settings.
+  useEffect(() => {
+    void loadMessagePreviews().then(() => setPreviews(messagePreviewsEnabled()));
+  }, []);
+
+  if (!notificationsSupported()) return null;
+  return (
+    <Toggle
+      checked={previews}
+      onChange={(next) => {
+        setPreviews(next);
+        void setMessagePreviews(next).catch(() => setPreviews(!next));
+      }}
+      label="Show message text"
+      hint="Off, notifications show who wrote and nothing more. Encrypted messages are then never unlocked to make a notification at all. This browser only."
     />
   );
 }
@@ -182,9 +208,10 @@ export function SystemTab() {
         </div>
       )}
 
-      <div className={desktop ? "border-t border-border pt-5" : undefined}>
+      <div className={`space-y-3 ${desktop ? "border-t border-border pt-5" : ""}`}>
         <SectionTitle>Notifications</SectionTitle>
         <NotificationsRow />
+        <MessagePreviewsRow />
       </div>
 
       <div className="space-y-2 border-t border-border pt-5">

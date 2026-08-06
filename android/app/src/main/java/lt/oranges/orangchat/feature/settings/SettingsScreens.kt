@@ -66,6 +66,7 @@ private fun screenModifier(c: lt.oranges.orangchat.ui.theme.OrangColors) =
 fun PrivacyScreen(self: SelfUser, onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
     val c = OrangTheme.colors
     val error by vm.privacyError.collectAsStateWithLifecycle()
+    val prefs by vm.prefs.collectAsStateWithLifecycle()
     var explainerOpen by remember { mutableStateOf(false) }
 
     Column(modifier = screenModifier(c)) {
@@ -102,6 +103,14 @@ fun PrivacyScreen(self: SelfUser, onBack: () -> Unit, vm: SettingsViewModel = hi
                     hint = "Let people see when you're typing.",
                     checked = self.typingIndicators,
                     onCheckedChange = vm::setTypingIndicators,
+                )
+            }
+            SettingSection("Notifications") {
+                SettingsToggleRow(
+                    label = "Show message text",
+                    hint = "Off, the shade and lock screen show who wrote and nothing more. Encrypted messages are then never unlocked to make a notification at all. This phone only.",
+                    checked = prefs.notificationPreviews,
+                    onCheckedChange = vm::setNotificationPreviews,
                 )
             }
             SettingSection("Encryption") {

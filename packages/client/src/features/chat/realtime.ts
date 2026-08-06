@@ -42,7 +42,11 @@ import { callActions } from '../voice/callStore';
 import { unreadActions } from '../../stores/unread';
 import { getActiveChannel } from '../unread/active';
 import { markChannelRead } from '../unread/api';
-import { clearConversationNotifications, notify } from '../../lib/notifications';
+import {
+  clearConversationNotifications,
+  messagePreviewsEnabled,
+  notify,
+} from '../../lib/notifications';
 import { maybeNotifyFriendOnline } from './friendPresence';
 import { bumpTyping, clearTyping } from './typing';
 import { matchPendingLocalId, registerMessageOutbox, resolvePending } from './outbox';
@@ -144,7 +148,12 @@ export function registerRealtime(client: QueryClient): void {
           : mentioned
             ? `${p.author.displayName} mentioned you`
             : p.author.displayName,
-        body: p.preview.slice(0, 140),
+        // The title already names the author, so the withheld body says only
+        // that there is something to read. Withholding it here matters as much
+        // as in the worker: this is the path that fires while a tab is open,
+        // and a shade that stays quiet only when the app is closed is not a
+        // setting anyone asked for.
+        body: messagePreviewsEnabled() ? p.preview.slice(0, 140) : 'New message',
         icon: p.author.avatarUrl ?? undefined,
         href: isDm ? `/dms/${p.channelId}` : `/servers/${p.serverId}/channels/${p.channelId}`,
         tag: p.channelId,

@@ -5,7 +5,11 @@ import { useCustomCss } from "../lib/customCss";
 import { useAppIcon } from "../lib/appIcon";
 import { getUnreads } from "../features/unread/api";
 import { unreadActions } from "../stores/unread";
-import { restorePushNotifications, setNotificationNavigator } from "../lib/notifications";
+import {
+  loadMessagePreviews,
+  restorePushNotifications,
+  setNotificationNavigator,
+} from "../lib/notifications";
 import { takePendingInvite } from "../features/servers/invite-url";
 import { CallStage } from "../features/voice/CallStage";
 import { CallErrorToast } from "../features/voice/CallErrorToast";
@@ -35,6 +39,7 @@ export function AppShell() {
       })
       .catch(() => {});
     void restorePushNotifications().catch(() => {});
+    void loadMessagePreviews();
   }, []);
 
   // Someone who signed in to accept an invite lands here first - OAuth in

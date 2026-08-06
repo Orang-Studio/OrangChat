@@ -28,6 +28,7 @@ data class DevicePrefs(
     val compactMessages: Boolean = false,
     val joinMuted: Boolean = false,
     val joinWithVideo: Boolean = false,
+    val notificationPreviews: Boolean = true,
 )
 
 /** Drives the 2FA enrollment wizard shown on the Security screen. */
@@ -92,6 +93,7 @@ class SettingsViewModel @Inject constructor(
             compactMessages = tokenStore.compactMessages,
             joinMuted = tokenStore.joinMuted,
             joinWithVideo = tokenStore.joinWithVideo,
+            notificationPreviews = tokenStore.notificationPreviews,
         ),
     )
     val prefs: StateFlow<DevicePrefs> = _prefs.asStateFlow()
@@ -156,6 +158,11 @@ class SettingsViewModel @Inject constructor(
         _prefs.value = _prefs.value.copy(joinWithVideo = on)
     }
 
+    fun setNotificationPreviews(on: Boolean) {
+        tokenStore.notificationPreviews = on
+        _prefs.value = _prefs.value.copy(notificationPreviews = on)
+    }
+
     fun resetPrefs() {
         _prefs.value = DevicePrefs()
         tokenStore.fontScale = 1f
@@ -163,6 +170,7 @@ class SettingsViewModel @Inject constructor(
         tokenStore.compactMessages = false
         tokenStore.joinMuted = false
         tokenStore.joinWithVideo = false
+        tokenStore.notificationPreviews = true
     }
 
     // ── Privacy ─────────────────────────────────────────

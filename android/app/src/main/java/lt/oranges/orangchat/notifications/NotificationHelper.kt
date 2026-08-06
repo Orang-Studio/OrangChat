@@ -45,6 +45,7 @@ import lt.oranges.orangchat.MainActivity
 import lt.oranges.orangchat.feature.chat.BubbleActivity
 import lt.oranges.orangchat.R
 import lt.oranges.orangchat.data.model.DmCall
+import lt.oranges.orangchat.data.local.TokenStore
 import lt.oranges.orangchat.util.absoluteUrl
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -57,6 +58,7 @@ import javax.inject.Singleton
 @Singleton
 class NotificationHelper @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val tokenStore: TokenStore,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val history = context.getSharedPreferences("notification_messages", Context.MODE_PRIVATE)
@@ -179,11 +181,30 @@ class NotificationHelper @Inject constructor(
         messageId: String? = null,
     ) {
         val staged = stageMessage(
-            channelId, title, body, senderId, senderName, senderAvatarUrl, isGroup, messageId,
+            channelId, title, preview(body, senderName, isGroup), senderId, senderName,
+            senderAvatarUrl, isGroup, messageId,
         ) ?: return
         staged.post()
         staged.refine?.let { refine -> scope.launch { refine() } }
     }
+
+    /**
+     * What this device is willing to say a message contained.
+     *
+     * The one place the preference is applied, so it holds for both routes a
+     * message can arrive by - the live socket and a push - and for the stored
+     * thread they share, which is redrawn on every later notification. Callers
+     * that can avoid producing the text at all should still check
+     * [previewsEnabled] first; this is the backstop, not the optimisation.
+     */
+    private fun preview(body: String, senderName: String, isGroup: Boolean): String = when {
+        previewsEnabled -> body
+        isGroup -> "New message from $senderName"
+        else -> "New message"
+    }
+
+    /** Whether a notification may show what a message said. See [TokenStore]. */
+    val previewsEnabled: Boolean get() = tokenStore.notificationPreviews
 
     /**
      * The notification to put up now, and the better one to follow it with once

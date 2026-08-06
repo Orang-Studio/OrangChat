@@ -67,8 +67,13 @@ class FcmService : FirebaseMessagingService() {
             )
         } else {
             val senderName = message.data["senderName"] ?: title
+            // Nothing to gain from opening an envelope whose plaintext this
+            // device has been told not to show - and something to lose: the
+            // decrypt is the most expensive thing on this path, and it is spent
+            // inside the few seconds FCM gives the process to post at all.
+            // NotificationHelper substitutes the placeholder either way.
             val text = message.data["ciphertext"]
-                ?.takeIf { it.isNotBlank() }
+                ?.takeIf { it.isNotBlank() && notificationHelper.previewsEnabled }
                 ?.let { ciphertext -> openEnvelope(channelId, ciphertext, message.data) }
 
             notificationHelper.notifyMessage(

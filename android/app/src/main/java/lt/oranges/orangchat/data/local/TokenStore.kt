@@ -114,6 +114,18 @@ class TokenStore(context: Context) {
         get() = prefs.getBoolean(KEY_JOIN_VIDEO, false)
         set(value) = prefs.edit().putBoolean(KEY_JOIN_VIDEO, value).apply()
 
+    /**
+     * Whether a notification may show what a message actually said.
+     *
+     * Off, the shade shows who wrote and nothing else, and an encrypted push is
+     * never opened at all - the keys stay unused rather than producing text this
+     * device has been told not to display. Device-local by design: which screens
+     * are safe to read over is a property of the phone, not of the account.
+     */
+    var notificationPreviews: Boolean
+        get() = prefs.getBoolean(KEY_NOTIFICATION_PREVIEWS, true)
+        set(value) = prefs.edit().putBoolean(KEY_NOTIFICATION_PREVIEWS, value).apply()
+
     companion object {
         const val KEY_ACCESS = "access_token"
         const val KEY_COOKIES = "cookies"
@@ -126,5 +138,6 @@ class TokenStore(context: Context) {
         const val KEY_COMPACT = "pref_compact_messages"
         const val KEY_JOIN_MUTED = "pref_join_muted"
         const val KEY_JOIN_VIDEO = "pref_join_video"
+        const val KEY_NOTIFICATION_PREVIEWS = "pref_notification_previews"
     }
 }

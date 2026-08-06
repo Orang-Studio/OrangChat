@@ -1,7 +1,7 @@
 import { randomBytes } from '@orangchat/shared';
 
 const DB_NAME = 'orangchat-e2ee';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const IDENTITY = 'identity';
 const PINS = 'pins';
 const EPOCH_KEYS = 'epochKeys';
@@ -10,6 +10,7 @@ const MESSAGES = 'messages';
 const QUEUE = 'queue';
 const DEVICE_KEYS = 'deviceKeys';
 const OFFLINE = 'offline';
+const SETTINGS = 'settings';
 
 export interface LocalIdentity {
   userId: string;
@@ -85,6 +86,12 @@ function openDb(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(OFFLINE)) {
         db.createObjectStore(OFFLINE, { keyPath: 'id' });
+      }
+      // Device-local preferences the service worker has to be able to read.
+      // A worker cannot see localStorage, so anything that has to hold while
+      // the app is closed - which is exactly when a push arrives - lives here.
+      if (!db.objectStoreNames.contains(SETTINGS)) {
+        db.createObjectStore(SETTINGS, { keyPath: 'key' });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -422,4 +429,25 @@ export async function rememberDeviceKeys(devices: readonly KnownDeviceKey[]): Pr
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+}
+
+/** Whether notifications on this device may show what a message said. */
+export const NOTIFICATION_PREVIEWS = 'notificationPreviews';
+
+/**
+ * Read a device-local setting the service worker also reads.
+ *
+ * Defaulting to `fallback` on a missing record matters more than it looks: a
+ * browser that has never opened the app has no store to read, and a push that
+ * arrives first must behave like the default rather than like "off".
+ */
+export async function getSetting(key: string, fallback: boolean): Promise<boolean> {
+  const record = await run<{ key: string; value: boolean } | undefined>(SETTINGS, 'readonly', (s) =>
+    s.get(key),
+  ).catch(() => undefined);
+  return typeof record?.value === 'boolean' ? record.value : fallback;
+}
+
+export async function setSetting(key: string, value: boolean): Promise<void> {
+  await run(SETTINGS, 'readwrite', (s) => s.put({ key, value }));
 }

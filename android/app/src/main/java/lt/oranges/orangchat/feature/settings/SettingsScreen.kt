@@ -158,7 +158,7 @@ private fun SettingsRoot(
                 )
                 SettingsNavRow(
                     "Privacy",
-                    "Messages, friend requests, typing",
+                    "Messages, friend requests, typing, notifications",
                     onClick = { onOpen(SettingsPage.PRIVACY) },
                 )
                 SettingsNavRow(
