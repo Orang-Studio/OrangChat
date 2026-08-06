@@ -1,23 +1,23 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Camera, Mic, Paperclip, SendHorizontal, Square, X } from "lucide-react";
-import type { Message, ServerMember } from "@orangchat/shared";
-import { cn } from "../../lib/cn";
-import { usePrefs } from "../../lib/prefs";
-import { Avatar } from "../../components/Avatar";
-import { Dialog, DialogContent } from "../../components/ui/Dialog";
-import { Button } from "../../components/ui/Button";
-import { emitTyping, sendMessage } from "./socket-actions";
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AlertTriangle, Camera, Mic, Paperclip, SendHorizontal, Trash2, X } from 'lucide-react';
+import type { Message, ServerMember } from '@orangchat/shared';
+import { cn } from '../../lib/cn';
+import { usePrefs } from '../../lib/prefs';
+import { Avatar } from '../../components/Avatar';
+import { Dialog, DialogContent } from '../../components/ui/Dialog';
+import { Button } from '../../components/ui/Button';
+import { emitTyping, sendMessage } from './socket-actions';
 import {
   isEphemeral,
   MAX_PER_MESSAGE,
   uploadAttachment,
   uploadSealedAttachment,
-} from "./attachments";
-import { isEncrypted } from "../e2ee/store";
-import { ComposerAttachments, isSettled, type PendingUpload } from "./ComposerAttachments";
-import { ExpressionPicker } from "./ExpressionPicker";
-import { normalizeCustomEmojiNames, useEmojiMap } from "../emojis/queries";
-import { clearDraft, loadDraft, saveDraft, saveDraftNow } from "./drafts";
+} from './attachments';
+import { isEncrypted } from '../e2ee/store';
+import { ComposerAttachments, isSettled, type PendingUpload } from './ComposerAttachments';
+import { ExpressionPicker } from './ExpressionPicker';
+import { normalizeCustomEmojiNames, useEmojiMap } from '../emojis/queries';
+import { clearDraft, loadDraft, saveDraft, saveDraftNow } from './drafts';
 
 /**
  * One packet per window while the user is actually typing, and none at all in a
@@ -29,39 +29,51 @@ const TYPING_THROTTLE_MS = 4_000;
 const MAX_LENGTH = 4_000;
 const MENTION_LIMIT = 8;
 
+/**
+ * How far the pointer has to travel off the mic before a swipe counts. Far
+ * enough that the wobble of holding a phone one-handed never trips it, close
+ * enough to reach with the same thumb that is already pressing.
+ */
+const VOICE_SWIPE_PX = 72;
+
+/**
+ * A press shorter than this was a click, not a hold. Anything this brief is
+ * inaudible anyway, so it is discarded with a hint rather than sent as a
+ * quarter-second of room tone.
+ */
+const VOICE_MIN_HOLD_MS = 600;
+
 function recordingMimeType(): string | undefined {
-  if (typeof MediaRecorder === "undefined") return undefined;
-  return ["audio/ogg;codecs=opus", "audio/webm;codecs=opus", "audio/mp4"].find((type) =>
+  if (typeof MediaRecorder === 'undefined') return undefined;
+  return ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus', 'audio/mp4'].find((type) =>
     MediaRecorder.isTypeSupported(type),
   );
 }
 
-type PastedTokenKind = "login" | "bot";
+type PastedTokenKind = 'login' | 'bot';
 
 /** Schema match only - nothing here is validated against the server. A login
  * token is a v4 UUID; a bot token is `<base64url(bot id)>.<32 random bytes>`. */
 function findPastedTokenKind(text: string): PastedTokenKind | null {
-  if (
-    /\b[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i.test(text)
-  ) {
-    return "login";
+  if (/\b[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i.test(text)) {
+    return 'login';
   }
   if (/\b[A-Za-z0-9_-]{6,24}\.[A-Za-z0-9_-]{32,80}\b/.test(text)) {
-    return "bot";
+    return 'bot';
   }
   return null;
 }
 
 function recordingExtension(mimeType: string): string {
-  if (mimeType.startsWith("audio/ogg")) return "ogg";
-  if (mimeType.startsWith("audio/mp4")) return "m4a";
+  if (mimeType.startsWith('audio/ogg')) return 'ogg';
+  if (mimeType.startsWith('audio/mp4')) return 'm4a';
   // `.weba` lets the server distinguish an audio WebM from a video WebM.
-  return "weba";
+  return 'weba';
 }
 
 function formatRecordingTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
-  return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
+  return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
 interface ComposerProps {
@@ -90,7 +102,7 @@ export function Composer({
   members = [],
 }: ComposerProps) {
   const emojiMap = useEmojiMap();
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [uploads, setUploads] = useState<PendingUpload[]>([]);
@@ -112,12 +124,19 @@ export function Composer({
   const recordingStartedAt = useRef(0);
   const [recording, setRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  // A locked recording keeps going with nothing held down, so it is driven by
+  // the stop and delete buttons instead of by the pointer.
+  const [recordingLocked, setRecordingLocked] = useState(false);
+  /** How far the holding pointer has travelled, in px; drives the swipe hints. */
+  const [recordingDrag, setRecordingDrag] = useState(0);
+  /** The live hold, or null once it has been released, locked or discarded. */
+  const hold = useRef<{ x: number; startedAt: number } | null>(null);
   // Uploads outlive the render that started them; a ref keeps cleanup honest
   // even when the component unmounts mid-flight.
   const live = useRef<PendingUpload[]>([]);
   live.current = uploads;
   // Latest draft, so the channel-switch cleanup can persist what's in the box.
-  const draftRef = useRef("");
+  const draftRef = useRef('');
   draftRef.current = draft;
 
   useEffect(() => {
@@ -135,14 +154,14 @@ export function Composer({
   // Load this channel's saved draft on open; persist it on the way out.
   useEffect(() => {
     setMention(null);
-    setDraft("");
+    setDraft('');
     // Throttle windows are per-conversation; carrying one across a channel
     // switch would swallow the first keystroke in the new channel.
     lastTypingSent.current = 0;
     let cancelled = false;
     void loadDraft(channelId).then((text) => {
       // don't clobber anything typed while the load was in flight.
-      if (!cancelled && draftRef.current === "") setDraft(text);
+      if (!cancelled && draftRef.current === '') setDraft(text);
     });
     return () => {
       cancelled = true;
@@ -155,11 +174,14 @@ export function Composer({
   useEffect(
     () => () => {
       recordingCancelled.current = true;
-      if (recorder.current && recorder.current.state !== "inactive") recorder.current.stop();
+      if (recorder.current && recorder.current.state !== 'inactive') recorder.current.stop();
       recordingStream.current?.getTracks().forEach((track) => track.stop());
       recorder.current = null;
       recordingStream.current = null;
+      hold.current = null;
       setRecording(false);
+      setRecordingLocked(false);
+      setRecordingDrag(0);
       for (const u of live.current) {
         u.abort();
         if (u.preview) URL.revokeObjectURL(u.preview);
@@ -176,9 +198,7 @@ export function Composer({
     const q = mention.query.toLowerCase();
     return members
       .filter(
-        (m) =>
-          labelOf(m).toLowerCase().includes(q) ||
-          m.user.username.toLowerCase().includes(q),
+        (m) => labelOf(m).toLowerCase().includes(q) || m.user.username.toLowerCase().includes(q),
       )
       .slice(0, MENTION_LIMIT);
   }, [mention, members]);
@@ -262,7 +282,7 @@ export function Composer({
         ephemeral: isEphemeral(file),
         progress: 0,
         spoiler: false,
-        preview: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
+        preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
         abort: () => controller.abort(),
       };
       setUploads((prev) => [...prev, entry]);
@@ -275,21 +295,19 @@ export function Composer({
       // before anything leaves the machine, so the upload the server sees is an
       // opaque blob and a length (§7).
       const upload = isEncrypted(channelId)
-        ? uploadSealedAttachment(file, handle).then(
-            ({ attachment, supportingAttachments, ref }) =>
-              patch(key, { attachment, supportingAttachments, sealed: ref, progress: 1 }),
+        ? uploadSealedAttachment(file, handle).then(({ attachment, supportingAttachments, ref }) =>
+            patch(key, { attachment, supportingAttachments, sealed: ref, progress: 1 }),
           )
         : uploadAttachment(file, handle).then((attachment) =>
             patch(key, { attachment, progress: 1 }),
           );
 
-      void upload
-        .catch((err: unknown) => {
-          // Cancelling is the user's own doing - drop(key) already removed the
-          // entry, so there's nothing to report.
-          if (err instanceof DOMException && err.name === "AbortError") return;
-          patch(key, { error: err instanceof Error ? err.message : "Upload failed" });
-        });
+      void upload.catch((err: unknown) => {
+        // Cancelling is the user's own doing - drop(key) already removed the
+        // entry, so there's nothing to report.
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        patch(key, { error: err instanceof Error ? err.message : 'Upload failed' });
+      });
     }
   };
 
@@ -297,7 +315,7 @@ export function Composer({
     if (recording || sending) return;
     const mimeType = recordingMimeType();
     if (!mimeType || !navigator.mediaDevices?.getUserMedia) {
-      setError("Voice recording is not supported by this browser");
+      setError('Voice recording is not supported by this browser');
       return;
     }
     setError(null);
@@ -329,26 +347,35 @@ export function Composer({
       };
       next.onerror = () => {
         recordingCancelled.current = true;
-        setError("Voice recording failed");
+        setError('Voice recording failed');
       };
       next.start(250);
       setRecordingSeconds(0);
       setRecording(true);
+      // The mic can take a while to open - a permission prompt, a slow device -
+      // and by then the press may be over. Rather than lose the recording,
+      // hand it to the buttons, which is where a pointer-less recording belongs.
+      if (!hold.current) setRecordingLocked(true);
     } catch (err) {
       recordingStream.current?.getTracks().forEach((track) => track.stop());
       recordingStream.current = null;
       recorder.current = null;
-      setError(err instanceof DOMException && err.name === "NotAllowedError"
-        ? "Microphone access is required to record a voice message"
-        : "Could not start voice recording");
+      setError(
+        err instanceof DOMException && err.name === 'NotAllowedError'
+          ? 'Microphone access is required to record a voice message'
+          : 'Could not start voice recording',
+      );
     }
   };
 
   const finishRecording = (cancel: boolean) => {
     const active = recorder.current;
+    hold.current = null;
+    setRecordingLocked(false);
+    setRecordingDrag(0);
     if (!active) return;
     recordingCancelled.current = cancel;
-    if (active.state === "inactive") {
+    if (active.state === 'inactive') {
       recordingStream.current?.getTracks().forEach((track) => track.stop());
       recordingStream.current = null;
       recorder.current = null;
@@ -356,6 +383,50 @@ export function Composer({
     } else {
       active.stop();
     }
+  };
+
+  // ── Hold to record ──────────────────────────────────────
+  //
+  // Press and hold the mic, let go to send. Swipe left to hand the recording to
+  // the buttons and get your finger back; swipe right to throw it away. Keyboard
+  // users get the locked form directly - a control that only works while held is
+  // no control at all without a pointer.
+
+  const beginHold = (clientX: number) => {
+    if (recording || sending) return;
+    hold.current = { x: clientX, startedAt: Date.now() };
+    setRecordingLocked(false);
+    setRecordingDrag(0);
+    void startRecording();
+  };
+
+  const moveHold = (clientX: number) => {
+    const active = hold.current;
+    if (!active || recordingLocked) return;
+    const dx = clientX - active.x;
+    setRecordingDrag(dx);
+    if (dx <= -VOICE_SWIPE_PX) {
+      hold.current = null;
+      setRecordingDrag(0);
+      setRecordingLocked(true);
+    } else if (dx >= VOICE_SWIPE_PX) {
+      finishRecording(true);
+    }
+  };
+
+  const endHold = () => {
+    const active = hold.current;
+    if (!active) return;
+    hold.current = null;
+    setRecordingDrag(0);
+    // Too brief to hear, and almost always a click by somebody who expected the
+    // old press-to-start button. Say what the mic wants instead of sending it.
+    if (Date.now() - active.startedAt < VOICE_MIN_HOLD_MS) {
+      finishRecording(true);
+      setError('Hold the mic to record, then let go to send');
+      return;
+    }
+    finishRecording(false);
   };
 
   const uploading = uploads.some((u) => !isSettled(u));
@@ -368,7 +439,7 @@ export function Composer({
   const send = async () => {
     if (!canSend) return;
     if (failed.length > 0) {
-      setError("Remove the attachments that failed to upload first");
+      setError('Remove the attachments that failed to upload first');
       return;
     }
     const content = normalizeCustomEmojiNames(draft.trim(), emojiMap);
@@ -391,7 +462,7 @@ export function Composer({
           .filter((u) => u.sealed)
           .map((u) => ({ ...u.sealed!, ...(u.spoiler ? { spoiler: true } : {}) })),
       });
-      setDraft("");
+      setDraft('');
       clearDraft(channelId);
       // The sent message clears the indicator on every receiver, so the next
       // keystroke has to be treated as a fresh start rather than falling inside
@@ -403,7 +474,7 @@ export function Composer({
     } catch (err) {
       // The uploads survive a failed send - they're still staged server-side, so
       // the same ids work on a retry.
-      setError(err instanceof Error ? err.message : "Failed to send");
+      setError(err instanceof Error ? err.message : 'Failed to send');
     } finally {
       setSending(false);
       textarea.current?.focus();
@@ -432,7 +503,7 @@ export function Composer({
       await sendMessage({ channelId, content: url, replyToId: replyTo?.id });
       onClearReply();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send GIF");
+      setError(err instanceof Error ? err.message : 'Failed to send GIF');
     } finally {
       setSending(false);
       textarea.current?.focus();
@@ -444,28 +515,28 @@ export function Composer({
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (menuOpen) {
-      if (e.key === "ArrowDown") {
+      if (e.key === 'ArrowDown') {
         e.preventDefault();
         setActiveIndex((i) => (i + 1) % matches.length);
         return;
       }
-      if (e.key === "ArrowUp") {
+      if (e.key === 'ArrowUp') {
         e.preventDefault();
         setActiveIndex((i) => (i - 1 + matches.length) % matches.length);
         return;
       }
-      if (e.key === "Enter" || e.key === "Tab") {
+      if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault();
         pick(matches[activeIndex]!);
         return;
       }
-      if (e.key === "Escape") {
+      if (e.key === 'Escape') {
         e.preventDefault();
         setMention(null);
         return;
       }
     }
-    if (e.key !== "Enter" || e.shiftKey) return;
+    if (e.key !== 'Enter' || e.shiftKey) return;
     // sendOnEnter off ⇒ Enter is a newline and Ctrl/⌘+Enter sends instead.
     if (sendOnEnter || e.ctrlKey || e.metaKey) {
       e.preventDefault();
@@ -479,7 +550,7 @@ export function Composer({
     if (files.length === 0) {
       // A pasted login or bot token is not an upload; warn before it lands in
       // the box, where a stray Enter would post it to the conversation.
-      const text = e.clipboardData.getData("text/plain");
+      const text = e.clipboardData.getData('text/plain');
       if (text.trim()) {
         const kind = findPastedTokenKind(text);
         if (kind) {
@@ -511,7 +582,7 @@ export function Composer({
     <div
       className="px-3 pb-3 md:px-4 md:pb-5"
       onDragOver={(e) => {
-        if (!e.dataTransfer.types.includes("Files")) return;
+        if (!e.dataTransfer.types.includes('Files')) return;
         e.preventDefault();
         setDragging(true);
       }}
@@ -521,7 +592,7 @@ export function Composer({
         setDragging(false);
       }}
       onDrop={(e) => {
-        if (!e.dataTransfer.types.includes("Files")) return;
+        if (!e.dataTransfer.types.includes('Files')) return;
         e.preventDefault();
         setDragging(false);
         addFiles(Array.from(e.dataTransfer.files));
@@ -530,8 +601,7 @@ export function Composer({
       {replyTo && (
         <div className="flex items-center justify-between rounded-t-xl border border-b-0 border-border bg-surface-1 px-3 py-1.5 text-xs text-ink-secondary">
           <span className="truncate">
-            Replying to{" "}
-            <span className="font-semibold text-ink">{replyTo.author.displayName}</span>
+            Replying to <span className="font-semibold text-ink">{replyTo.author.displayName}</span>
           </span>
           <button
             type="button"
@@ -557,15 +627,13 @@ export function Composer({
                   }}
                   onMouseEnter={() => setActiveIndex(i)}
                   className={cn(
-                    "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm",
-                    i === activeIndex ? "bg-primary-soft text-ink" : "text-ink-secondary",
+                    'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm',
+                    i === activeIndex ? 'bg-primary-soft text-ink' : 'text-ink-secondary',
                   )}
                 >
                   <Avatar user={m.user} className="size-6" />
                   <span className="truncate font-medium">{labelOf(m)}</span>
-                  <span className="truncate text-xs text-ink-muted">
-                    @{m.user.username}
-                  </span>
+                  <span className="truncate text-xs text-ink-muted">@{m.user.username}</span>
                 </button>
               </li>
             ))}
@@ -576,9 +644,9 @@ export function Composer({
 
         <div
           className={cn(
-            "flex items-end gap-2 border border-border bg-surface-3 px-3 py-2",
-            replyTo || uploads.length > 0 ? "rounded-b-xl" : "rounded-xl",
-            dragging && "border-primary bg-primary-soft",
+            'flex items-end gap-2 border border-border bg-surface-3 px-3 py-2',
+            replyTo || uploads.length > 0 ? 'rounded-b-xl' : 'rounded-xl',
+            dragging && 'border-primary bg-primary-soft',
           )}
         >
           <input
@@ -589,7 +657,7 @@ export function Composer({
             onChange={(e) => {
               addFiles(Array.from(e.target.files ?? []));
               // Let the same file be picked again after removing it.
-              e.target.value = "";
+              e.target.value = '';
             }}
           />
           <input
@@ -600,7 +668,7 @@ export function Composer({
             className="hidden"
             onChange={(e) => {
               addFiles(Array.from(e.target.files ?? []));
-              e.target.value = "";
+              e.target.value = '';
             }}
           />
           {!recording && (
@@ -625,9 +693,32 @@ export function Composer({
             </>
           )}
           {recording ? (
-            <div className="flex min-w-0 flex-1 items-center gap-2 py-1 text-sm text-ink-secondary">
+            <div className="flex min-w-0 flex-1 items-center gap-3 py-1 text-sm text-ink-secondary">
               <span className="size-2 shrink-0 animate-pulse rounded-full bg-danger" aria-hidden />
-              <span>Recording {formatRecordingTime(recordingSeconds)}</span>
+              <span>{formatRecordingTime(recordingSeconds)}</span>
+              {/* The hint has to say which way does what while the pointer is
+                  still down: a swipe with no label is a gesture nobody finds.
+                  Each half lights up as its own threshold comes into reach. */}
+              {recordingLocked ? (
+                <span className="text-xs text-ink-muted">Locked - send when you're done</span>
+              ) : (
+                <span className="flex items-center gap-3 text-xs">
+                  <span
+                    className={
+                      recordingDrag <= -VOICE_SWIPE_PX / 2 ? 'text-primary' : 'text-ink-muted'
+                    }
+                  >
+                    &lsaquo; lock
+                  </span>
+                  <span
+                    className={
+                      recordingDrag >= VOICE_SWIPE_PX / 2 ? 'text-danger' : 'text-ink-muted'
+                    }
+                  >
+                    delete &rsaquo;
+                  </span>
+                </span>
+              )}
             </div>
           ) : (
             <textarea
@@ -639,52 +730,74 @@ export function Composer({
               onPaste={onPaste}
               onClick={syncMention}
               onKeyUp={(e) => {
-                if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) syncMention();
+                if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) syncMention();
               }}
-              placeholder={dragging ? "Drop files to attach" : `Message #${channelName}`}
+              placeholder={dragging ? 'Drop files to attach' : `Message #${channelName}`}
               aria-label={`Message #${channelName}`}
-              rows={Math.min(8, draft.split("\n").length)}
+              rows={Math.min(8, draft.split('\n').length)}
               className="max-h-48 flex-1 resize-none bg-transparent py-1 text-base leading-relaxed placeholder:text-ink-muted focus:outline-none md:text-sm"
             />
           )}
-          {recording ? (
+          {recording && recordingLocked ? (
             <>
               <button
                 type="button"
-                aria-label="Cancel recording"
+                aria-label="Delete recording"
                 onClick={() => finishRecording(true)}
-                className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-1 hover:text-ink"
+                className="rounded-lg p-2 text-danger transition-colors hover:bg-danger/10"
               >
-                <X aria-hidden className="size-5" />
+                <Trash2 aria-hidden className="size-5" />
               </button>
               <button
                 type="button"
-                aria-label="Stop recording"
+                aria-label="Send voice message"
                 onClick={() => finishRecording(false)}
-                className="rounded-lg p-2 text-danger transition-colors hover:bg-danger/10"
+                className="rounded-lg p-2 text-primary transition-colors hover:bg-primary-soft"
               >
-                <Square aria-hidden className="size-5 fill-current" />
+                <SendHorizontal aria-hidden className="size-5" />
               </button>
             </>
           ) : (
             <>
               <button
                 type="button"
-                aria-label="Record voice message"
-                onClick={() => void startRecording()}
-                className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-1 hover:text-ink"
+                aria-label="Hold to record a voice message"
+                // Keyboard has no hold, so it starts the locked form outright -
+                // the same one the stop and delete buttons already drive.
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter' && e.key !== ' ') return;
+                  e.preventDefault();
+                  if (!recording) {
+                    setRecordingLocked(true);
+                    void startRecording();
+                  }
+                }}
+                onPointerDown={(e) => {
+                  if (e.pointerType === 'mouse' && e.button !== 0) return;
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  beginHold(e.clientX);
+                }}
+                onPointerMove={(e) => moveHold(e.clientX)}
+                onPointerUp={endHold}
+                onPointerCancel={() => finishRecording(true)}
+                className={cn(
+                  'touch-none rounded-lg p-2 transition-colors',
+                  recording ? 'text-danger' : 'text-ink-muted hover:bg-surface-1 hover:text-ink',
+                )}
               >
-                <Mic aria-hidden className="size-5" />
+                <Mic aria-hidden className={recording ? 'size-6' : 'size-5'} />
               </button>
-              <button
-                type="button"
-                aria-label="Send message"
-                disabled={!canSend}
-                onClick={() => void send()}
-                className="rounded-lg p-2 text-primary transition-colors hover:bg-primary-soft disabled:opacity-40 disabled:hover:bg-transparent"
-              >
-                <SendHorizontal aria-hidden className="size-5" />
-              </button>
+              {!recording && (
+                <button
+                  type="button"
+                  aria-label="Send message"
+                  disabled={!canSend}
+                  onClick={() => void send()}
+                  className="rounded-lg p-2 text-primary transition-colors hover:bg-primary-soft disabled:opacity-40 disabled:hover:bg-transparent"
+                >
+                  <SendHorizontal aria-hidden className="size-5" />
+                </button>
+              )}
             </>
           )}
         </div>
@@ -700,24 +813,24 @@ export function Composer({
         <Dialog open onOpenChange={(open) => !open && setTokenWarning(null)}>
           <DialogContent
             title={
-              tokenWarning.kind === "login"
-                ? "That looks like a login token"
-                : "That looks like a bot token"
+              tokenWarning.kind === 'login'
+                ? 'That looks like a login token'
+                : 'That looks like a bot token'
             }
           >
             <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/10 p-3">
               <AlertTriangle aria-hidden className="mt-0.5 size-5 shrink-0 text-warning" />
               <p className="text-sm text-ink-secondary">
-                {tokenWarning.kind === "login" ? (
+                {tokenWarning.kind === 'login' ? (
                   <>
-                    A login token lets anyone who has it sign into an OrangChat account. Pasting
-                    it here would hand that account to everyone who can read this conversation.
+                    A login token lets anyone who has it sign into an OrangChat account. Pasting it
+                    here would hand that account to everyone who can read this conversation.
                   </>
                 ) : (
                   <>
-                    A bot token is the password for a bot account: anyone with it can sign in as
-                    the bot, post in its servers and read its conversations. Pasting it here would
-                    hand that control to everyone who can read this conversation.
+                    A bot token is the password for a bot account: anyone with it can sign in as the
+                    bot, post in its servers and read its conversations. Pasting it here would hand
+                    that control to everyone who can read this conversation.
                   </>
                 )}
               </p>

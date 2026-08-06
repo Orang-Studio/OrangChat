@@ -73,7 +73,6 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
@@ -255,6 +254,20 @@ private fun formatRecordingTime(totalSeconds: Long): String {
     val minutes = totalSeconds / 60
     return "$minutes:${(totalSeconds % 60).toString().padStart(2, '0')}"
 }
+
+/**
+ * How far the finger has to travel off the mic before a swipe counts. Far
+ * enough that the wobble of holding a phone one-handed never trips it, close
+ * enough to reach with the same thumb that is already pressing.
+ */
+private val VOICE_SWIPE_THRESHOLD = 72.dp
+
+/**
+ * A press shorter than this was a tap, not a hold. Anything this brief is
+ * inaudible anyway, so it is discarded with a hint rather than sent as a
+ * quarter-second of room tone.
+ */
+private const val VOICE_MIN_HOLD_MS = 600L
 
 /**
  * Older pages a jump is allowed to pull in before it gives up. 12 pages of 50
@@ -1676,6 +1689,11 @@ private fun Composer(
     val context = LocalContext.current
     val voiceRecorder = remember(context) { VoiceMessageRecorder(context) }
     var recording by remember(channelId) { mutableStateOf(false) }
+    // A locked recording keeps going with nothing held down, so it is driven by
+    // the stop and delete buttons instead of by the finger.
+    var recordingLocked by remember(channelId) { mutableStateOf(false) }
+    /** How far the holding finger has travelled, in px; drives the swipe hints. */
+    var recordingDrag by remember(channelId) { mutableStateOf(0f) }
     var recordingStartedAt by remember(channelId) { mutableStateOf(0L) }
     var recordingSeconds by remember(channelId) { mutableStateOf(0L) }
     var recordingError by remember(channelId) { mutableStateOf<String?>(null) }
@@ -1715,8 +1733,13 @@ private fun Composer(
             }.onSuccess {
                 recordingStartedAt = System.currentTimeMillis()
                 recordingSeconds = 0L
+                recordingDrag = 0f
                 recordingError = null
                 recording = true
+                // The finger that asked for this is long gone - it went to the
+                // permission dialog - so there is nothing left holding the mic
+                // down. Start locked rather than recording into a void.
+                recordingLocked = true
             }.onFailure {
                 recordingError = "Could not start voice recording"
             }
@@ -1725,9 +1748,15 @@ private fun Composer(
         }
     }
 
-    fun startVoiceRecording() {
-        if (recording || channelId == null) return
+    /**
+     * Begins a hold-to-record. Returns whether anything is actually recording,
+     * so the gesture can stop tracking a press that only opened the permission
+     * dialog.
+     */
+    fun startVoiceRecording(): Boolean {
+        if (recording || channelId == null) return false
         recordingError = null
+        recordingDrag = 0f
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
             runCatching {
                 voiceRecorder.start()
@@ -1735,27 +1764,36 @@ private fun Composer(
                 recordingStartedAt = System.currentTimeMillis()
                 recordingSeconds = 0L
                 recording = true
+                recordingLocked = false
             }.onFailure {
                 recordingError = "Could not start voice recording"
             }
         } else {
             recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
+        return recording
     }
 
     fun finishVoiceRecording(cancel: Boolean) {
         if (!recording) return
-        val uri = if (cancel) {
+        // Too brief to hear, and almost always a tap by somebody who expected the
+        // old press-to-start button. Say what the mic wants instead of sending it.
+        val tapped = !cancel && System.currentTimeMillis() - recordingStartedAt < VOICE_MIN_HOLD_MS
+        val uri = if (cancel || tapped) {
             voiceRecorder.cancel()
             null
         } else {
             voiceRecorder.stop()
         }
         recording = false
-        if (!cancel && uri != null && channelId != null) {
-            drafts.add(listOf(uri), channelId, temporaryUris = setOf(uri))
-        } else if (!cancel && uri == null) {
-            recordingError = "The recording was too short"
+        recordingLocked = false
+        recordingDrag = 0f
+        when {
+            tapped -> recordingError = "Hold the mic to record, then let go to send"
+            cancel -> Unit
+            uri != null && channelId != null ->
+                drafts.add(listOf(uri), channelId, temporaryUris = setOf(uri))
+            uri == null -> recordingError = "The recording was too short"
         }
     }
 
@@ -2024,6 +2062,7 @@ private fun Composer(
                 .padding(horizontal = 14.dp, vertical = 12.dp),
         ) {
             if (recording) {
+                val threshold = with(LocalDensity.current) { VOICE_SWIPE_THRESHOLD.toPx() }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -2033,10 +2072,27 @@ private fun Composer(
                         modifier = Modifier.size(8.dp).background(c.danger, CircleShape),
                     )
                     Text(
-                        "Recording ${formatRecordingTime(recordingSeconds)}",
+                        formatRecordingTime(recordingSeconds),
                         color = c.inkSecondary,
                         fontSize = 14.sp,
                     )
+                    // The hint has to say which way does what while the finger is
+                    // still down: a swipe with no label is a gesture nobody finds.
+                    // Each half lights up as its own threshold comes into reach.
+                    if (!recordingLocked) {
+                        Text(
+                            "‹ lock",
+                            color = if (recordingDrag <= -threshold / 2) c.primary else c.inkMuted,
+                            fontSize = 13.sp,
+                        )
+                        Text(
+                            "delete ›",
+                            color = if (recordingDrag >= threshold / 2) c.danger else c.inkMuted,
+                            fontSize = 13.sp,
+                        )
+                    } else {
+                        Text("Locked - tap send when you're done", color = c.inkMuted, fontSize = 13.sp)
+                    }
                 }
             } else {
                 if (textState.text.isEmpty()) {
@@ -2066,52 +2122,101 @@ private fun Composer(
             }
         }
         Spacer(Modifier.width(8.dp))
-        if (recording) {
+        if (recording && recordingLocked) {
             Icon(
-                Icons.Default.Close,
-                contentDescription = "Cancel recording",
-                tint = c.inkMuted,
+                Icons.Default.Delete,
+                contentDescription = "Delete recording",
+                tint = c.danger,
                 modifier = Modifier
                     .size(38.dp)
                     .clickable { finishVoiceRecording(cancel = true) }
                     .padding(7.dp),
             )
-            Icon(
-                Icons.Default.Stop,
-                contentDescription = "Stop recording",
-                tint = c.danger,
+            Box(
                 modifier = Modifier
-                    .size(38.dp)
-                    .clickable { finishVoiceRecording(cancel = false) }
-                    .padding(7.dp),
-            )
+                    .size(44.dp)
+                    .background(c.primary, CircleShape)
+                    .clickable { finishVoiceRecording(cancel = false) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.Send,
+                    contentDescription = "Send voice message",
+                    tint = c.inkOnPrimary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
         } else {
             if (channelId != null) {
+                // One composable for both the idle mic and the held one: the
+                // gesture below lives on this node, and swapping it out mid-press
+                // would tear down the pointer loop with the finger still down.
                 Icon(
                     Icons.Default.Mic,
-                    contentDescription = "Record voice message",
-                    tint = c.inkMuted,
+                    contentDescription = "Hold to record a voice message",
+                    tint = if (recording) c.danger else c.inkMuted,
                     modifier = Modifier
-                        .size(38.dp)
-                        .clickable { startVoiceRecording() }
+                        .size(if (recording) 44.dp else 38.dp)
+                        .pointerInput(channelId) {
+                            val threshold = VOICE_SWIPE_THRESHOLD.toPx()
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                down.consume()
+                                if (!startVoiceRecording()) return@awaitEachGesture
+                                var settled = false
+                                while (!settled) {
+                                    val change = awaitPointerEvent().changes
+                                        .firstOrNull { it.id == down.id }
+                                        ?: break
+                                    recordingDrag = change.position.x - down.position.x
+                                    change.consume()
+                                    when {
+                                        // Left hands the recording over to the
+                                        // buttons; the finger is free after this,
+                                        // so the gesture stops watching it.
+                                        recordingDrag <= -threshold -> {
+                                            recordingLocked = true
+                                            recordingDrag = 0f
+                                            settled = true
+                                        }
+                                        recordingDrag >= threshold -> {
+                                            finishVoiceRecording(cancel = true)
+                                            settled = true
+                                        }
+                                        !change.pressed -> {
+                                            finishVoiceRecording(cancel = false)
+                                            settled = true
+                                        }
+                                    }
+                                }
+                                // A pointer that vanished - the gesture was stolen,
+                                // or the window went away - must not leave the mic
+                                // recording forever with nothing on screen saying so.
+                                if (!settled && recording && !recordingLocked) {
+                                    finishVoiceRecording(cancel = true)
+                                }
+                            }
+                        }
                         .padding(7.dp),
                 )
             }
             // The return affordance floats over history; giving it a row of its own
             // would shorten the conversation precisely when someone is reading it.
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .background(if (enabled) c.primary else c.surface4, CircleShape)
-                    .clickable(enabled = enabled) { sendDraft() },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.Send,
-                    contentDescription = submitLabel ?: "Send",
-                    tint = if (enabled) c.inkOnPrimary else c.inkMuted,
-                    modifier = Modifier.size(20.dp),
-                )
+            if (!recording) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(if (enabled) c.primary else c.surface4, CircleShape)
+                        .clickable(enabled = enabled) { sendDraft() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Send,
+                        contentDescription = submitLabel ?: "Send",
+                        tint = if (enabled) c.inkOnPrimary else c.inkMuted,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
         }
     }
