@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Accessibility,
   Download,
+  Gamepad2,
   Info,
   Link2,
   Lock,
@@ -38,6 +39,7 @@ import { useAuthStore, authStoreActions } from "../../stores/auth";
 import { updateProfile } from "../auth/api";
 import { logout } from "../auth/session";
 import { SectionTitle } from "./controls";
+import { ActivityTab } from "./ActivityTab";
 import { ConnectionsTab } from "./ConnectionsTab";
 import { PrivacyTab } from "./PrivacyTab";
 import { SharingTab } from "./SharingTab";
@@ -693,6 +695,7 @@ function AppIconSection() {
 type SettingsSection =
   | "profile"
   | "connections"
+  | "activity"
   | "privacy"
   | "sharing"
   | "security"
@@ -708,28 +711,56 @@ type SettingsSection =
   | "download"
   | "about";
 
-const NAV: { id: SettingsSection; label: string; icon: typeof UserIcon }[] = [
-  { id: "profile", label: "Profile", icon: UserIcon },
-  { id: "connections", label: "Connections", icon: Link2 },
-  { id: "privacy", label: "Privacy", icon: Sliders },
-  { id: "sharing", label: "Camera & Mic", icon: Video },
-  { id: "security", label: "Security", icon: ShieldCheck },
-  { id: "qr_sign_in", label: "Scan sign-in QR", icon: ScanLine },
-  { id: "devices", label: "Devices", icon: Monitor },
-  { id: "encryption", label: "Encryption", icon: Lock },
-  { id: "plugins", label: "Plugins", icon: Puzzle },
-  { id: "themes", label: "Theme", icon: Palette },
-  { id: "profile_themes", label: "Profile theme", icon: Paintbrush },
-  { id: "accessibility", label: "Accessibility", icon: Accessibility },
-  { id: "appearance", label: "Appearance", icon: Paintbrush },
-  { id: "system", label: "System", icon: Monitor },
-  { id: "download", label: "Download app", icon: Download },
-  { id: "about", label: "About", icon: Info },
+interface SettingsNavItem {
+  id: SettingsSection;
+  label: string;
+  icon: typeof UserIcon;
+}
+
+const NAV_GROUPS: { title: string; items: SettingsNavItem[] }[] = [
+  {
+    title: "Account",
+    items: [
+      { id: "profile", label: "Profile", icon: UserIcon },
+      { id: "connections", label: "Connections", icon: Link2 },
+      { id: "activity", label: "Activity", icon: Gamepad2 },
+    ],
+  },
+  {
+    title: "Privacy & Security",
+    items: [
+      { id: "privacy", label: "Privacy", icon: Sliders },
+      { id: "security", label: "Security", icon: ShieldCheck },
+      { id: "encryption", label: "Encryption", icon: Lock },
+      { id: "devices", label: "Devices", icon: Monitor },
+      { id: "qr_sign_in", label: "Scan sign-in QR", icon: ScanLine },
+    ],
+  },
+  {
+    title: "Appearance",
+    items: [
+      { id: "themes", label: "Theme", icon: Palette },
+      { id: "profile_themes", label: "Profile theme", icon: Paintbrush },
+      { id: "appearance", label: "Appearance", icon: Paintbrush },
+      { id: "accessibility", label: "Accessibility", icon: Accessibility },
+      { id: "plugins", label: "Plugins", icon: Puzzle },
+    ],
+  },
+  {
+    title: "App",
+    items: [
+      { id: "sharing", label: "Camera & Mic", icon: Video },
+      { id: "system", label: "System", icon: Monitor },
+      { id: "download", label: "Download app", icon: Download },
+      { id: "about", label: "About", icon: Info },
+    ],
+  },
 ];
 
 const SECTION_TITLE: Record<SettingsSection, string> = {
   profile: "Profile",
   connections: "Connections",
+  activity: "Activity",
   privacy: "Privacy",
   sharing: "Camera & Microphone",
   security: "Security",
@@ -760,6 +791,8 @@ function SectionBody({
       return <ConnectionsTab />;
     case "privacy":
       return <PrivacyTab />;
+    case "activity":
+      return <ActivityTab />;
     case "sharing":
       return <SharingTab />;
     case "security":
@@ -805,23 +838,33 @@ export function UserSettingsDialog({
             aria-label="Settings sections"
             className="flex shrink-0 gap-1 overflow-x-auto border-b border-border bg-surface-0/40 p-2 md:w-60 md:flex-col md:overflow-y-auto md:border-b-0 md:border-r md:p-3"
           >
-            {NAV.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                type="button"
-                aria-current={section === id}
-                onClick={() => setSection(id)}
-                className={cn(
-                  "flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                  "md:w-full",
-                  section === id
-                    ? "bg-primary-soft text-primary"
-                    : "text-ink-secondary hover:bg-surface-3 hover:text-ink",
-                )}
-              >
-                <Icon aria-hidden className="size-4 shrink-0" />
-                {label}
-              </button>
+            {NAV_GROUPS.map((group) => (
+              <div key={group.title} className="shrink-0 md:shrink">
+                <p
+                  aria-hidden
+                  className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-ink-muted first:pt-0"
+                >
+                  {group.title}
+                </p>
+                {group.items.map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-current={section === id}
+                    onClick={() => setSection(id)}
+                    className={cn(
+                      "flex w-full shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                      "md:w-full",
+                      section === id
+                        ? "bg-primary-soft text-primary"
+                        : "text-ink-secondary hover:bg-surface-3 hover:text-ink",
+                    )}
+                  >
+                    <Icon aria-hidden className="size-4 shrink-0" />
+                    {label}
+                  </button>
+                ))}
+              </div>
             ))}
             <div className="mt-auto hidden border-t border-border pt-1 md:block">
               <button

@@ -1,9 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import type { DmPrivacy, FriendRequestPrivacy, UpdateProfileInput } from "@orangchat/shared";
-import { Button } from "../../components/ui/Button";
 import { cn } from "../../lib/cn";
-import { desktop, type GameOverride } from "../../lib/desktop";
 import { authStoreActions, useAuthStore } from "../../stores/auth";
 import { updateProfile } from "../auth/api";
 import { ConfirmIdentityDialog } from "../e2ee/ConfirmIdentityDialog";
@@ -61,176 +59,6 @@ function ChoiceList<T extends string>({
           </span>
         </button>
       ))}
-    </div>
-  );
-}
-
-function GameOverrides({ enabled }: { enabled: boolean }) {
-  const listProcesses = desktop?.listGameProcesses;
-  const getOverrides = desktop?.getGameOverrides;
-  const setOverrides = desktop?.setGameOverrides;
-  const [expanded, setExpanded] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [processes, setProcesses] = useState<string[]>([]);
-  const [overrides, setLocalOverrides] = useState<GameOverride[]>([]);
-  const [selectedProcess, setSelectedProcess] = useState("");
-  const [gameName, setGameName] = useState("");
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!getOverrides) return;
-    let cancelled = false;
-    void getOverrides()
-      .then((saved) => {
-        if (!cancelled) setLocalOverrides(saved);
-      })
-      .catch(() => {
-        if (!cancelled) setError("Could not load your allowed games.");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [getOverrides]);
-
-  if (!listProcesses || !getOverrides || !setOverrides) {
-    return (
-      <p className="text-xs text-ink-muted">
-        Custom game detection is available in the desktop app.
-      </p>
-    );
-  }
-
-  const openPicker = async () => {
-    setExpanded(true);
-    setError(null);
-    if (!enabled) return;
-    setLoading(true);
-    try {
-      const running = await listProcesses();
-      setProcesses(running);
-      setSelectedProcess((current) => (running.includes(current) ? current : (running[0] ?? "")));
-    } catch {
-      setError("Could not read the running process list.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const save = async (next: GameOverride[]) => {
-    setError(null);
-    try {
-      setLocalOverrides(await setOverrides(next));
-    } catch {
-      setError("Could not save your allowed games.");
-    }
-  };
-
-  const addOverride = async () => {
-    const name = gameName.trim();
-    if (!selectedProcess || !name) return;
-    const next = overrides.filter((item) => item.process !== selectedProcess);
-    await save([...next, { process: selectedProcess, name }]);
-    setGameName("");
-  };
-
-  return (
-    <div className="space-y-3 rounded-lg border border-border p-3">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium">Game not detected?</p>
-          <p className="text-xs text-ink-muted">
-            Allow a running process and choose the game name shown to others.
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          disabled={!enabled}
-          loading={loading}
-          onClick={() => void openPicker()}
-        >
-          {expanded ? "Refresh" : "Choose"}
-        </Button>
-      </div>
-
-      {!enabled && (
-        <p className="text-xs text-ink-muted">
-          Turn activity sharing on to inspect running processes.
-        </p>
-      )}
-
-      {expanded && enabled && (
-        <div className="space-y-3 border-t border-border pt-3">
-          {processes.length > 0 ? (
-            <>
-              <label className="block text-sm font-medium text-ink-secondary">
-                Running process
-                <select
-                  value={selectedProcess}
-                  onChange={(event) => setSelectedProcess(event.target.value)}
-                  className="mt-1.5 w-full rounded-lg border border-border bg-surface-1 px-3 py-2 text-sm"
-                >
-                  {processes.map((processName) => (
-                    <option key={processName} value={processName}>
-                      {processName}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block text-sm font-medium text-ink-secondary">
-                Game name
-                <input
-                  value={gameName}
-                  maxLength={128}
-                  placeholder="What should friends see?"
-                  onChange={(event) => setGameName(event.target.value)}
-                  className="mt-1.5 h-10 w-full rounded-lg border border-border bg-surface-1 px-3 text-sm text-ink placeholder:text-ink-muted"
-                />
-              </label>
-              <Button
-                type="button"
-                size="sm"
-                disabled={!selectedProcess || !gameName.trim()}
-                onClick={() => void addOverride()}
-              >
-                Add game
-              </Button>
-            </>
-          ) : (
-            !loading && <p className="text-xs text-ink-muted">No running processes were found.</p>
-          )}
-        </div>
-      )}
-
-      {overrides.length > 0 && (
-        <div className="space-y-2 border-t border-border pt-3">
-          {overrides.map((override) => (
-            <div key={override.process} className="flex items-center justify-between gap-3 text-sm">
-              <span className="min-w-0">
-                <span className="block truncate font-medium">{override.name}</span>
-                <span className="block truncate text-xs text-ink-muted">{override.process}</span>
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  void save(overrides.filter((item) => item.process !== override.process))
-                }
-              >
-                Remove
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {error && (
-        <p role="alert" className="text-xs text-danger">
-          {error}
-        </p>
-      )}
     </div>
   );
 }
@@ -302,17 +130,6 @@ export function PrivacyTab() {
           title="Stop requiring verification"
           explanation="Turning this off lowers the bar for every new conversation, so it takes more than an open session."
         />
-      </div>
-
-      <div className="space-y-3 border-t border-border pt-5">
-        <SectionTitle>Activity</SectionTitle>
-        <Toggle
-          checked={user.gameActivity}
-          onChange={(gameActivity) => mutation.mutate({ gameActivity })}
-          label="Display the game you're playing"
-          hint="The desktop app checks running process names and shares a match with your friends. This is off by default."
-        />
-        <GameOverrides enabled={user.gameActivity} />
       </div>
 
       <div className="space-y-3 border-t border-border pt-5">

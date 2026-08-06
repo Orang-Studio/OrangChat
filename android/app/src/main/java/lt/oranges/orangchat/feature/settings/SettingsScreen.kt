@@ -139,7 +139,7 @@ private fun SettingsRoot(
                 }
             }
 
-            SettingSection("Settings") {
+            SettingSection("Account") {
                 SettingsNavRow(
                     "Profile",
                     "Display name, avatar, bio, accent, CSS",
@@ -150,26 +150,13 @@ private fun SettingsRoot(
                     "Ready-made styles for your profile card",
                     onClick = { onOpen(SettingsPage.PROFILE_THEMES) },
                 )
-                SettingsNavRow(
-                    "Appearance",
-                    "Theme",
-                    onClick = { onOpen(SettingsPage.APPEARANCE) },
-                    trailing = themeSummary,
-                )
+            }
+
+            SettingSection("Privacy & Security") {
                 SettingsNavRow(
                     "Privacy",
                     "Messages, friend requests, typing, notifications",
                     onClick = { onOpen(SettingsPage.PRIVACY) },
-                )
-                SettingsNavRow(
-                    "Camera & Microphone",
-                    "Call sharing defaults",
-                    onClick = { onOpen(SettingsPage.SHARING) },
-                )
-                SettingsNavRow(
-                    "Call ringtone",
-                    "What incoming calls sound like",
-                    onClick = { onOpen(SettingsPage.RINGTONE) },
                 )
                 SettingsNavRow(
                     "Security",
@@ -187,11 +174,36 @@ private fun SettingsRoot(
                     "Keys, device log, verifying people",
                     onClick = { onOpen(SettingsPage.ENCRYPTION) },
                 )
+            }
+
+            SettingSection("Appearance") {
+                SettingsNavRow(
+                    "Appearance",
+                    "Theme",
+                    onClick = { onOpen(SettingsPage.APPEARANCE) },
+                    trailing = themeSummary,
+                )
                 SettingsNavRow(
                     "Accessibility",
                     "Text size, motion, density",
                     onClick = { onOpen(SettingsPage.ACCESSIBILITY) },
                 )
+            }
+
+            SettingSection("Communication") {
+                SettingsNavRow(
+                    "Camera & Microphone",
+                    "Call sharing defaults",
+                    onClick = { onOpen(SettingsPage.SHARING) },
+                )
+                SettingsNavRow(
+                    "Call ringtone",
+                    "What incoming calls sound like",
+                    onClick = { onOpen(SettingsPage.RINGTONE) },
+                )
+            }
+
+            SettingSection("System") {
                 SettingsNavRow(
                     "System",
                     "Connection and server info",
