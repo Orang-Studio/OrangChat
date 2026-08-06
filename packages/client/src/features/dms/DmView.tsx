@@ -8,6 +8,7 @@ import { api } from "../../lib/api";
 import { useAuthStore } from "../../stores/auth";
 import { Avatar } from "../../components/Avatar";
 import { ChatView } from "../chat/ChatView";
+import { announce } from "../chat/notices";
 import { uploadImage } from "../uploads/api";
 import { EncryptionBadge } from "../e2ee/EncryptionBadge";
 import { PlaintextNotice } from "../e2ee/PlaintextNotice";
@@ -83,6 +84,9 @@ export function DmView() {
         json: { url },
       });
       applyBackground(channel.backgroundUrl);
+      // The background is shared, so changing it changes the room for everybody
+      // in it. A notice is how the others find out it was a person and not a bug.
+      if (channelId) announce(channelId, "backgroundChanged");
     } catch {
       // Keep the old background; an upload or save failure is not worth a dialog.
     } finally {
@@ -98,6 +102,7 @@ export function DmView() {
         json: { url: null },
       });
       applyBackground(channel.backgroundUrl);
+      if (channelId) announce(channelId, "backgroundRemoved");
     } finally {
       setBackgroundBusy(false);
     }

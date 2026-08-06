@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   CONVERSATION_KEY_BYTES,
+  SYSTEM_NOTICES,
+  describeSystemNotice,
+  systemNoticeKind,
   DOMAIN,
   E2EE_VERSION,
   MESSAGE_NONCE,
@@ -240,7 +243,12 @@ describe('sealing and opening', () => {
   it('round-trips a message', async () => {
     const key = randomBytes(CONVERSATION_KEY_BYTES);
     const pair = await signingPair();
-    const envelope = await sealMessage(key, ctx, new TextEncoder().encode('hello'), pair.privateKey);
+    const envelope = await sealMessage(
+      key,
+      ctx,
+      new TextEncoder().encode('hello'),
+      pair.privateKey,
+    );
     const plaintext = await openMessage(key, ctx.channelId, envelope, pair.publicKey);
     expect(new TextDecoder().decode(plaintext)).toBe('hello');
   });
@@ -272,7 +280,12 @@ describe('sealing and opening', () => {
     const key = randomBytes(CONVERSATION_KEY_BYTES);
     const honest = await signingPair();
     const impostor = await signingPair();
-    const envelope = await sealMessage(key, ctx, new TextEncoder().encode('hi'), impostor.privateKey);
+    const envelope = await sealMessage(
+      key,
+      ctx,
+      new TextEncoder().encode('hi'),
+      impostor.privateKey,
+    );
     await expect(openMessage(key, ctx.channelId, envelope, honest.publicKey)).rejects.toThrow(
       /signature/,
     );
@@ -574,9 +587,7 @@ describe('pairing SAS', () => {
 
   it('differs when the pair secret differs', async () => {
     const shared = randomBytes(32);
-    expect(await pairSas(shared, randomBytes(32))).not.toBe(
-      await pairSas(shared, randomBytes(32)),
-    );
+    expect(await pairSas(shared, randomBytes(32))).not.toBe(await pairSas(shared, randomBytes(32)));
   });
 });
 
@@ -738,5 +749,44 @@ describe('base64 helpers', () => {
   it('round-trips arbitrary bytes', () => {
     const bytes = randomBytes(257);
     expect(bytesEqual(fromBase64(toBase64(bytes)), bytes)).toBe(true);
+  });
+});
+
+describe('system notices', () => {
+  // These sentences are a wire contract: both clients recognise a notice by
+  // matching the text exactly, so editing one silently turns every notice
+  // already sent back into an ordinary message. The Android copy lives in
+  // android/.../feature/chat/SystemNotices.kt and has to match character for
+  // character.
+  it('pins the wire text', () => {
+    expect(SYSTEM_NOTICES).toEqual({
+      strictDisabled: 'Turned off the requirement to verify before messaging in this conversation.',
+      strictEnabled: 'Turned on the requirement to verify before messaging in this conversation.',
+      keyReset: 'Started a new encryption key for this conversation.',
+      backgroundChanged: 'Changed the chat background.',
+      backgroundRemoved: 'Removed the chat background.',
+    });
+  });
+
+  it('recognises every notice, whitespace and all', () => {
+    for (const [kind, text] of Object.entries(SYSTEM_NOTICES)) {
+      expect(systemNoticeKind(text)).toBe(kind);
+      expect(systemNoticeKind(`  ${text}\n`)).toBe(kind);
+    }
+  });
+
+  it('leaves anything else an ordinary message', () => {
+    expect(systemNoticeKind('Turned off the requirement')).toBeNull();
+    expect(systemNoticeKind('')).toBeNull();
+    expect(systemNoticeKind('Changed the chat background!')).toBeNull();
+  });
+
+  it('names whoever sent it', () => {
+    expect(describeSystemNotice('backgroundChanged', 'You')).toBe(
+      'You changed the chat background.',
+    );
+    expect(describeSystemNotice('keyReset', 'Ada')).toBe(
+      'Ada started a new encryption key for this conversation.',
+    );
   });
 });

@@ -1110,25 +1110,68 @@ export function decodeContactVerifyQr(raw: string): ContactVerifyQr {
 }
 
 /**
- * §6.5 requires a downgrade to be visible to both people, and there is no
- * system-message channel to say it on - so it goes as an ordinary encrypted,
- * signed message, exactly as unforgeable as anything else in the conversation.
+ * Things that happen *to* a conversation rather than in it: the verification
+ * requirement going on or off, a fresh key, a new background. Each one changes
+ * what the conversation is, so both people should see it - and §6.5 requires it
+ * outright for the downgrade.
  *
- * Both clients render this one sentence as a centred notice rather than as a
- * bubble, which is only possible while they agree on it to the character. That
- * makes the string itself the contract: changing it turns every notice already
- * sent back into a plain message, so treat it as append-only and add a new
- * constant instead.
+ * There is no system-message channel to say any of this on, so each notice
+ * travels as an ordinary encrypted, signed message: exactly as unforgeable as
+ * anything else in the conversation, and reaching every client that can already
+ * read it. Both clients then draw a recognised sentence centred and unbubbled.
+ *
+ * That last part only works while every client agrees on the text to the
+ * character, which makes these strings the contract. Treat them as append-only:
+ * editing one turns every notice already sent back into a plain message. Add a
+ * new key instead.
  */
-export const STRICT_DISABLED_NOTICE =
-  'Turned off the requirement to verify before messaging in this conversation.';
+export const SYSTEM_NOTICES = {
+  strictDisabled: 'Turned off the requirement to verify before messaging in this conversation.',
+  strictEnabled: 'Turned on the requirement to verify before messaging in this conversation.',
+  keyReset: 'Started a new encryption key for this conversation.',
+  backgroundChanged: 'Changed the chat background.',
+  backgroundRemoved: 'Removed the chat background.',
+} as const;
+
+export type SystemNoticeKind = keyof typeof SYSTEM_NOTICES;
+
+/** @deprecated Use `SYSTEM_NOTICES.strictDisabled`. */
+export const STRICT_DISABLED_NOTICE = SYSTEM_NOTICES.strictDisabled;
 
 /**
- * Whether a message is that notice. Nothing is authenticated here beyond the
- * text: anyone could type the same sentence, and the notice is attributed to
+ * Which notice a message is, if any. Nothing is authenticated here beyond the
+ * text: anyone could type the same sentence, and a notice is attributed to
  * whoever sent it, so a forged one only ever says something about its own
  * author.
  */
-export function isStrictDisabledNotice(content: string): boolean {
-  return content.trim() === STRICT_DISABLED_NOTICE;
+export function systemNoticeKind(content: string): SystemNoticeKind | null {
+  const text = content.trim();
+  return (
+    (Object.keys(SYSTEM_NOTICES) as SystemNoticeKind[]).find(
+      (kind) => SYSTEM_NOTICES[kind] === text,
+    ) ?? null
+  );
+}
+
+export function isSystemNotice(content: string): boolean {
+  return systemNoticeKind(content) !== null;
+}
+
+/**
+ * The notice as a sentence about whoever sent it. Who turned the requirement
+ * off is the whole point of sending that one, so the name leads.
+ */
+export function describeSystemNotice(kind: SystemNoticeKind, name: string): string {
+  switch (kind) {
+    case 'strictDisabled':
+      return `${name} turned off the requirement to verify before messaging in this conversation.`;
+    case 'strictEnabled':
+      return `${name} turned on the requirement to verify before messaging in this conversation.`;
+    case 'keyReset':
+      return `${name} started a new encryption key for this conversation.`;
+    case 'backgroundChanged':
+      return `${name} changed the chat background.`;
+    case 'backgroundRemoved':
+      return `${name} removed the chat background.`;
+  }
 }

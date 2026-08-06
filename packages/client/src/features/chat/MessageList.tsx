@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
-import { isStrictDisabledNotice, type Message, type User } from '@orangchat/shared';
+import {
+  describeSystemNotice,
+  systemNoticeKind,
+  type Message,
+  type SystemNoticeKind,
+  type User,
+} from '@orangchat/shared';
 import { withinGroupWindow } from '../../lib/time';
 import { MessageItem } from './MessageItem';
 
@@ -37,19 +43,27 @@ interface MessageListProps {
 const JUMP_MAX_PAGES = 12;
 
 /**
- * A downgrade notice (§6.5) travels as an ordinary message because there is no
+ * A system notice travels as an ordinary message because there is no
  * system-message channel to carry it, but reading it as one of the sender's
  * remarks gets it wrong - it is a fact about the conversation. So it is drawn
- * centred and unattributed to a bubble, keeping the name, since who turned the
- * requirement off is the whole point of sending it.
+ * centred and unattributed to a bubble, keeping the name, since who changed
+ * what is the whole point of sending it.
  */
-function SystemNotice({ message, selfId }: { message: Message; selfId: string | undefined }) {
+function SystemNotice({
+  message,
+  kind,
+  selfId,
+}: {
+  message: Message;
+  kind: SystemNoticeKind;
+  selfId: string | undefined;
+}) {
   const name = message.author.id === selfId ? 'You' : message.author.displayName;
   return (
     <div className="flex justify-center px-4 py-2">
       <p role="status" className="max-w-prose text-center text-xs leading-relaxed text-ink-muted">
         <span aria-hidden>- </span>
-        {name} turned off the requirement to verify before messaging in this conversation.
+        {describeSystemNotice(kind, name)}
         <span aria-hidden> -</span>
       </p>
     </div>
@@ -152,17 +166,18 @@ export function MessageList({
     () =>
       messages.map((message, i) => {
         const prev = messages[i - 1];
+        const notice = systemNoticeKind(message.content);
         const compact =
           !!prev &&
           // A notice is a break in the conversation, not a line of it: letting
           // the message after one group into the bubble above would hide its
           // header behind a divider.
-          !isStrictDisabledNotice(prev.content) &&
-          !isStrictDisabledNotice(message.content) &&
+          !systemNoticeKind(prev.content) &&
+          !notice &&
           prev.author.id === message.author.id &&
           !message.replyToId &&
           withinGroupWindow(prev.createdAt, message.createdAt);
-        return { message, compact };
+        return { message, compact, notice };
       }),
     [messages],
   );
@@ -194,9 +209,14 @@ export function MessageList({
         {/* column-reverse: first DOM child = visual bottom. Render newest first. */}
         {[...rows]
           .reverse()
-          .map(({ message, compact }) =>
-            isStrictDisabledNotice(message.content) ? (
-              <SystemNotice key={message.clientId ?? message.id} message={message} selfId={selfId} />
+          .map(({ message, compact, notice }) =>
+            notice ? (
+              <SystemNotice
+                key={message.clientId ?? message.id}
+                message={message}
+                kind={notice}
+                selfId={selfId}
+              />
             ) : (
               <MessageItem
                 key={message.clientId ?? message.id}

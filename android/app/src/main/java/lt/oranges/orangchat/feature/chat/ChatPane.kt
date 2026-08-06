@@ -131,6 +131,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -271,8 +272,13 @@ private const val JUMP_MAX_INITIAL_WAITS = 50
 private const val JUMP_MISSING_NOTICE_MS = 4_000L
 
 /** A message plus its grouping flag, decided chronologically before the list is
- * reversed for display. */
-private data class MessageRowData(val message: Message, val grouped: Boolean)
+ * reversed for display. [notice] is set when the row is a system notice rather
+ * than something somebody said. */
+private data class MessageRowData(
+    val message: Message,
+    val grouped: Boolean,
+    val notice: SystemNotice? = null,
+)
 
 /** Namespaced so a local client id can never collide with a server message id. */
 private fun messageRowKey(message: Message): String =
@@ -285,6 +291,10 @@ private fun messageRowKey(message: Message): String =
  */
 private fun isGrouped(previous: Message?, message: Message): Boolean {
     if (previous == null) return false
+    // A notice is a break in the conversation, not a line of it: letting the
+    // message after one keep its run would hide its header behind a divider.
+    if (SystemNotice.of(message.content) != null) return false
+    if (SystemNotice.of(previous.content) != null) return false
     if (previous.author.id != message.author.id) return false
     if (message.replyToId != null) return false
     val prev = parseInstant(previous.createdAt)?.toEpochMilli() ?: return false
@@ -393,7 +403,9 @@ fun ChatPane(
             .distinctBy { it.id }
             .distinctBy(::messageRowKey)
         deduped
-            .mapIndexed { i, m -> MessageRowData(m, isGrouped(deduped.getOrNull(i - 1), m)) }
+            .mapIndexed { i, m ->
+                MessageRowData(m, isGrouped(deduped.getOrNull(i - 1), m), SystemNotice.of(m.content))
+            }
             .asReversed()
     }
 
@@ -716,6 +728,11 @@ fun ChatPane(
                 // row and builds a new one, replaying the insert animation.
                 items(rows, key = { messageRowKey(it.message) }) { row ->
                     val message = row.message
+                    val notice = row.notice
+                    if (notice != null) {
+                        SystemNoticeRow(notice, message, selfId)
+                        return@items
+                    }
                     MessageRow(
                         message = message,
                         pending = message.id in pendingMessageIds,
@@ -1119,6 +1136,32 @@ fun ChatPane(
                     ) { Text("Cancel", color = c.inkSecondary) }
                 }
             },
+        )
+    }
+}
+
+/**
+ * A system notice travels as an ordinary message because there is no
+ * system-message channel to carry it, but reading it as one of the sender's
+ * remarks gets it wrong - it is a fact about the conversation. So it is drawn
+ * centred and unbubbled, keeping the name, since who changed what is the whole
+ * point of sending it.
+ */
+@Composable
+private fun SystemNoticeRow(notice: SystemNotice, message: Message, selfId: String) {
+    val c = OrangTheme.colors
+    val name = if (message.author.id == selfId) "You" else message.author.displayName
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = "- ${notice.describe(name)} -",
+            color = c.inkMuted,
+            fontSize = 12.sp,
+            textAlign = TextAlign.Center,
         )
     }
 }

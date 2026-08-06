@@ -31,9 +31,8 @@ export interface LoginChallenge {
  * `skipPasskey` and `lostAuthenticator` each step the account down one rung of
  * the second-factor ladder, towards the emailed code.
  */
-export const login = (
-  input: LoginInput & { skipPasskey?: boolean; lostAuthenticator?: boolean },
-) => api<LoginChallenge>('/auth/login', { method: 'POST', json: input });
+export const login = (input: LoginInput & { skipPasskey?: boolean; lostAuthenticator?: boolean }) =>
+  api<LoginChallenge>('/auth/login', { method: 'POST', json: input });
 
 // ── Passkey sign-in ─────────────────────────────────────
 //
