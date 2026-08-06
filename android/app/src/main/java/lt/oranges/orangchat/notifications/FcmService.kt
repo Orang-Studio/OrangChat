@@ -5,10 +5,20 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import lt.oranges.orangchat.data.repository.E2eeRepository
 import lt.oranges.orangchat.util.AppForegroundState
 import javax.inject.Inject
 
+/**
+ * Where a push becomes a notification.
+ *
+ * The governing constraint is time. FCM hands this thread a message and gives
+ * the process a few seconds of life around it; whatever has not been posted by
+ * then is not late, it is gone. So every path here is bounded, and the
+ * notification goes up with whatever is known rather than waiting for anything
+ * that would make it better.
+ */
 @AndroidEntryPoint
 class FcmService : FirebaseMessagingService() {
     @Inject lateinit var notificationHelper: NotificationHelper
@@ -36,7 +46,13 @@ class FcmService : FirebaseMessagingService() {
             notificationHelper.clearConversationNotifications(channelId)
             return
         }
-        if (AppForegroundState.isForeground) return
+        // The only thing worth suppressing is a notification for the very
+        // conversation on screen. Dropping every push while the app happens to
+        // be foreground - trusting the socket to have delivered it - is silent
+        // loss whenever the socket is reconnecting, which is exactly when a
+        // push is the only thing that arrives.
+        if (AppForegroundState.isOnScreen(channelId)) return
+
         val title = message.data["title"] ?: "OrangChat"
         val body = message.data["body"].orEmpty()
         val avatarUrl = message.data["avatarUrl"]?.takeIf { it.isNotBlank() }
@@ -51,30 +67,11 @@ class FcmService : FirebaseMessagingService() {
             )
         } else {
             val senderName = message.data["senderName"] ?: title
-            // docs/E2EE.md §8: an encrypted conversation has no body for the
-            // server to compose, so the envelope arrives instead and is opened
-            // here. Failure is a placeholder, never nothing - a swallowed
-            // exception that shows no notification is the bug to avoid.
-            val text = message.data["ciphertext"]?.takeIf { it.isNotBlank() }?.let { ciphertext ->
-                runBlocking {
-                    runCatching {
-                        e2eeRepository.open(
-                            channelId,
-                            ciphertext,
-                            message.data["senderId"].orEmpty(),
-                        ).text
-                    }.onFailure { throwable ->
-                        // The placeholder is deliberate, but the reason must not
-                        // vanish with it - this is the only window we ever get
-                        // into why a push would not open.
-                        Log.w(TAG, "push envelope for $channelId did not open", throwable)
-                    }.getOrNull()
-                } ?: "New message"
-            }
+            val text = message.data["ciphertext"]
+                ?.takeIf { it.isNotBlank() }
+                ?.let { ciphertext -> openEnvelope(channelId, ciphertext, message.data) }
 
-            // The blocking variant: this thread is all that keeps the process
-            // alive, so the avatar has to land before we return.
-            notificationHelper.notifyMessageNow(
+            notificationHelper.notifyMessage(
                 channelId = channelId,
                 title = title.ifBlank { senderName },
                 body = text ?: body,
@@ -87,7 +84,45 @@ class FcmService : FirebaseMessagingService() {
         }
     }
 
+    /**
+     * Open an encrypted push envelope (docs/E2EE.md §8), or fall back to a
+     * placeholder.
+     *
+     * Bounded, because it has to be: the keys are local, but a repository that
+     * decides it needs to reach the server for an epoch it has never seen would
+     * otherwise sit here on a dead radio until the process is killed - taking
+     * the notification with it. A timeout costs this one message its text; no
+     * timeout costs it the notification entirely.
+     *
+     * Failure is a placeholder, never nothing.
+     */
+    private fun openEnvelope(
+        channelId: String,
+        ciphertext: String,
+        data: Map<String, String>,
+    ): String = runBlocking {
+        withTimeoutOrNull(DECRYPT_TIMEOUT_MS) {
+            runCatching {
+                e2eeRepository.open(channelId, ciphertext, data["senderId"].orEmpty()).text
+            }.onFailure { throwable ->
+                // The placeholder is deliberate, but the reason must not vanish
+                // with it - this is the only window we ever get into why a push
+                // would not open.
+                Log.w(TAG, "push envelope for $channelId did not open", throwable)
+            }.getOrNull()
+        } ?: run {
+            Log.w(TAG, "push envelope for $channelId did not open in time")
+            null
+        } ?: "New message"
+    }
+
     companion object {
         private const val TAG = "FcmService"
+
+        /**
+         * Long enough for a local unwrap on a cold-started process, short enough
+         * to leave room to actually post inside FCM's window.
+         */
+        private const val DECRYPT_TIMEOUT_MS = 3_000L
     }
 }

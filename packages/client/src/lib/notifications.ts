@@ -113,9 +113,33 @@ export async function clearConversationNotifications(channelId: string): Promise
   notifications?.forEach((notification) => notification.close());
 }
 
+/**
+ * Point the server at a subscription the browser replaced on its own. The
+ * worker resubscribes the moment it happens; this is what tells the server,
+ * since a worker holds no access token of its own.
+ */
+async function registerRenewedSubscription(subscription: PushSubscriptionJSON): Promise<void> {
+  if (!subscription.endpoint) return;
+  await api<void>("/push/subscriptions", {
+    method: "PUT",
+    json: {
+      kind: "webpush",
+      endpoint: subscription.endpoint,
+      p256dh: subscription.keys?.p256dh,
+      auth: subscription.keys?.auth,
+      label: navigator.userAgent.slice(0, 200),
+    },
+  });
+}
+
 if (notificationsSupported()) {
   navigator.serviceWorker.addEventListener("message", (event) => {
     if (event.data?.type === "notification:navigate" && navigatorFn) navigatorFn(event.data.href);
+    // The browser retired this device's subscription and the worker made a new
+    // one. Until the server has it, every push goes to an endpoint that is gone.
+    if (event.data?.type === "push:resubscribed" && event.data.subscription) {
+      void registerRenewedSubscription(event.data.subscription).catch(() => {});
+    }
     // A push envelope could not be opened and the worker is asking for the
     // keys it is missing - rotations sync on channel open, and this tab may
     // have been asleep through one. Best effort: a retry covers it if so.

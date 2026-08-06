@@ -304,6 +304,60 @@ async function decryptWithSync(payload: PushPayload): Promise<string | null> {
   return decrypt(payload);
 }
 
+/**
+ * Whether a focused window is already showing the route this notification would
+ * open. `href` is the app's own route for the conversation (`/dms/<id>`, or the
+ * channel path inside a server), and a WindowClient's url follows client-side
+ * navigation, so comparing the two answers "is the user reading this right now"
+ * without needing to ask the page.
+ */
+async function isConversationOnScreen(href: string | undefined): Promise<boolean> {
+  if (!href) return false;
+  const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  return windows.some((client) => {
+    if (!(client as WindowClient).focused) return false;
+    try {
+      return new URL(client.url).pathname === new URL(href, self.location.origin).pathname;
+    } catch {
+      return false;
+    }
+  });
+}
+
+/**
+ * The browser can retire a push subscription on its own - a key rotation, a
+ * storage eviction - and the endpoint the server holds then points at nothing.
+ * Nothing surfaces: pushes are accepted and silently dropped until somebody
+ * reopens the app, which is why this looked like notifications that "stopped
+ * working" rather than a subscription that had been replaced.
+ *
+ * Resubscribing here restores delivery immediately; an open client re-registers
+ * the new endpoint, and if there is none, the app's own restore on next load
+ * picks up the subscription this handler created.
+ */
+self.addEventListener('pushsubscriptionchange', (event: Event) => {
+  const change = event as PushSubscriptionChangeEvent;
+  (event as ExtendableEvent).waitUntil(
+    (async () => {
+      const key = change.oldSubscription?.options?.applicationServerKey;
+      if (!key) return;
+      const renewed = await self.registration.pushManager
+        .subscribe({ userVisibleOnly: true, applicationServerKey: key })
+        .catch(() => null);
+      if (!renewed) return;
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      windows.forEach((client) =>
+        client.postMessage({ type: 'push:resubscribed', subscription: renewed.toJSON() }),
+      );
+    })(),
+  );
+});
+
+interface PushSubscriptionChangeEvent extends ExtendableEvent {
+  readonly oldSubscription: PushSubscription | null;
+  readonly newSubscription: PushSubscription | null;
+}
+
 self.addEventListener('push', (event: PushEvent) => {
   event.waitUntil(
     (async () => {
@@ -318,17 +372,13 @@ self.addEventListener('push', (event: PushEvent) => {
         return;
       }
 
-      // A focused window normally makes a notification redundant - the user is
-      // already looking at the app. Not for a security notice: it is about the
-      // account rather than the conversation on screen, and the one it has to
-      // reach is somebody who may be several screens away from Settings.
-      if (payload.kind !== 'security') {
-        const windows = await self.clients.matchAll({
-          type: 'window',
-          includeUncontrolled: true,
-        });
-        if (windows.some((client) => (client as WindowClient).focused)) return;
-      }
+      // Redundant only when the user is looking at this very conversation. A
+      // focused tab reading something else is not told about a message at all
+      // if we stop here, and that is a real hole rather than a tidy-up: the
+      // socket the app relies on instead is exactly what has failed whenever a
+      // push is the thing that got through. Security notices never collapse -
+      // they are about the account, not the conversation on screen.
+      if (payload.kind !== 'security' && (await isConversationOnScreen(payload.href))) return;
 
       let body = payload.body;
       if (payload.ciphertext) {

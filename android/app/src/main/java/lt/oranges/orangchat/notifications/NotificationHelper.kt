@@ -155,7 +155,17 @@ class NotificationHelper @Inject constructor(
     /**
      * Raise a message notification. [title] is the author/DM/channel label,
      * [body] the rendered message text. Notifications collapse per-channel.
-     * Avatar I/O happens off this thread.
+     *
+     * The notification is on screen before this returns, always. The face on it
+     * is whatever this device already holds; when the sender's portrait has
+     * never been fetched, it goes up with their initial and the portrait
+     * replaces it a moment later without buzzing again.
+     *
+     * Nothing here waits on the network, and that is the whole point. FCM gives
+     * a push a few seconds of process life on a device that may have just woken
+     * up, and the previous version spent them on an avatar download with an
+     * eight-second timeout - so a notification that lost that race was not
+     * delayed, it was never shown at all.
      */
     fun notifyMessage(
         channelId: String,
@@ -167,38 +177,24 @@ class NotificationHelper @Inject constructor(
         isGroup: Boolean = false,
         messageId: String? = null,
     ) {
-        val post = stageMessage(
+        val staged = stageMessage(
             channelId, title, body, senderId, senderName, senderAvatarUrl, isGroup, messageId,
         ) ?: return
-        scope.launch { post() }
+        staged.post()
+        staged.refine?.let { refine -> scope.launch { refine() } }
     }
 
     /**
-     * Same, but the avatar is fetched and the notification posted before this
-     * returns. FCM calls it from its own background thread: a push can arrive
-     * with the app not running at all, and a fire-and-forget download would be
-     * racing the process being torn down the moment we hand control back.
+     * The notification to put up now, and the better one to follow it with once
+     * the sender's portrait has been fetched. [refine] is null when there is
+     * nothing to improve - no avatar url, or one already on this device.
      */
-    fun notifyMessageNow(
-        channelId: String,
-        title: String,
-        body: String,
-        senderId: String = title,
-        senderName: String = title,
-        senderAvatarUrl: String? = null,
-        isGroup: Boolean = false,
-        messageId: String? = null,
-    ) {
-        stageMessage(
-            channelId, title, body, senderId, senderName, senderAvatarUrl, isGroup, messageId,
-        )?.invoke()
-    }
+    private class Staged(val post: () -> Unit, val refine: (() -> Unit)?)
 
     /**
      * Record the message and hand back the work that posts it, or null if this
      * notification is not to be shown. Recording happens up front so two fast
-     * messages keep their arrival order even if the second sender's avatar
-     * downloads first.
+     * messages keep their arrival order.
      */
     private fun stageMessage(
         channelId: String,
@@ -209,10 +205,19 @@ class NotificationHelper @Inject constructor(
         senderAvatarUrl: String?,
         isGroup: Boolean,
         messageId: String?,
-    ): (() -> Unit)? {
+    ): Staged? {
         if (!hasPermission()) return null
         // Muted-for-an-hour channels stay silent until the window lapses.
         if (isMuted(channelId)) return null
+        // The socket and the push both deliver, on purpose - either one alone
+        // has a case it misses. The second one to arrive must not buzz the
+        // phone a second time for a message already sitting in the shade.
+        if (messageId != null && synchronized(historyLock) {
+                storedMessages(channelId).any { it.messageId == messageId }
+            }
+        ) {
+            return null
+        }
 
         // Remember what a background reply needs to rebuild this conversation's
         // notification without the message that prompted it in hand - including
@@ -232,12 +237,32 @@ class NotificationHelper @Inject constructor(
             notificationGenerations[channelId] = generation
             messages to generation
         }
-        return {
-            val avatar = avatarFor(senderAvatarUrl, senderName)
+        val post = {
+            val avatar = avatarFor(senderAvatarUrl, senderName, fetch = false)
             postConversationMessage(
                 channelId, title, body, senderId, senderName, avatar, avatar, isGroup, messages, generation,
             )
         }
+        // Only worth a second pass when the face is not already here: a repost
+        // that changes nothing still costs a rebuild of the whole thread.
+        val refine = if (isAvatarPending(senderAvatarUrl)) {
+            {
+                val avatar = avatarFor(senderAvatarUrl, senderName)
+                postConversationMessage(
+                    channelId, title, body, senderId, senderName, avatar, avatar, isGroup,
+                    messages, generation, alertOnce = true,
+                )
+            }
+        } else {
+            null
+        }
+        return Staged(post, refine)
+    }
+
+    /** True when [rawUrl] names a portrait this device has not fetched yet. */
+    private fun isAvatarPending(rawUrl: String?): Boolean {
+        val url = absoluteUrl(rawUrl) ?: return false
+        return avatarCache.get(url) == null && !avatarFile(url).exists()
     }
 
     @SuppressLint("MissingPermission") // hasPermission() gates every caller; notify is also caught.
@@ -743,21 +768,32 @@ class NotificationHelper @Inject constructor(
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val notification = NotificationCompat.Builder(context, CHANNEL_CALLS)
-            .setSmallIcon(R.drawable.ic_notification)
-            // Push arrives on FCM's own background thread, so the caller's
-            // picture can be fetched before the call is put on screen.
-            .setLargeIcon(avatarFor(callerAvatarUrl, callerName))
-            .setContentTitle(title)
-            .setContentText(body)
-            .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setCategory(NotificationCompat.CATEGORY_CALL)
-            .setOngoing(true)
-            .setContentIntent(full)
-            .setFullScreenIntent(full, true)
-            .build()
-        runCatching {
-            NotificationManagerCompat.from(context).notify(callNotificationId(channelId), notification)
+        val ring = { avatar: Bitmap ->
+            val notification = NotificationCompat.Builder(context, CHANNEL_CALLS)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setLargeIcon(avatar)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setContentIntent(full)
+                .setFullScreenIntent(full, true)
+                .build()
+            runCatching {
+                NotificationManagerCompat.from(context)
+                    .notify(callNotificationId(channelId), notification)
+            }
+            Unit
+        }
+        // A ring is the one notification that is worthless late: the caller
+        // hangs up long before an avatar download would have finished. It goes
+        // up with whatever face is already here, and gains the real one only if
+        // the fetch beats the call being answered.
+        ring(avatarFor(callerAvatarUrl, callerName, fetch = false))
+        if (isAvatarPending(callerAvatarUrl)) {
+            scope.launch { ring(avatarFor(callerAvatarUrl, callerName)) }
         }
     }
 

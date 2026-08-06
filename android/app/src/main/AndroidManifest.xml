@@ -147,6 +147,13 @@
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
 
+        <!-- Registers this device's FCM token when the app could not: without it
+             the server has nothing to push to and notifications never arrive. -->
+        <service
+            android:name=".notifications.PushTokenJobService"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+
         <!-- Hands the downloaded APK to the system installer: a file:// uri is
              rejected outright from API 24 on. -->
         <provider

@@ -231,6 +231,11 @@ class AppViewModel @Inject constructor(
 
     init {
         observeSocket()
+        // The push path runs in this process but has no view of navigation, so
+        // the open conversation is mirrored somewhere both paths can read it.
+        viewModelScope.launch {
+            _currentChannelId.collect { AppForegroundState.setVisibleChannel(it) }
+        }
     }
 
     fun bootstrap() {
@@ -1490,8 +1495,7 @@ class AppViewModel @Inject constructor(
 
         val isDm = _dms.value.any { it.id == message.channelId }
         val mentionsMe = Mentions.mentionsUser(message.content, me.id, me.username)
-        val focused = AppForegroundState.isForeground && _currentChannelId.value == message.channelId
-        if (focused) return
+        if (AppForegroundState.isOnScreen(message.channelId)) return
         // Non-DM, non-mention server chatter while merely backgrounded is noisy;
         // notify for DMs and mentions always, and for other messages only when
         // that channel isn't the one currently open in the foreground.
