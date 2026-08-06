@@ -25,6 +25,7 @@ linux:
       arch: [x64]
   icon: build/icon.png
   category: Network
+  executableName: orangchat
   artifactName: OrangChat-${version}-${arch}.${ext}
 
 publish:
