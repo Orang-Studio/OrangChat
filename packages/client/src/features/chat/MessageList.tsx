@@ -184,13 +184,14 @@ export function MessageList({
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
+      {/* The conversation still has to be readable on top of whatever picture
+          someone picked, so the photo sits under a scrim in the surface colour
+          rather than directly behind the text. */}
       {backgroundUrl && (
-        <img
-          src={backgroundUrl}
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-        />
+        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+          <img src={backgroundUrl} alt="" className="h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-surface-2/80" />
+        </div>
       )}
       {missingJump && (
         <p

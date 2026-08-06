@@ -1,9 +1,16 @@
 import { useMemo, useRef, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Image, Loader2, Phone, Trash2, UserPlus, Video } from "lucide-react";
+import { Image, ImagePlus, Loader2, Phone, Trash2, UserPlus, Video } from "lucide-react";
 import type { Channel, Conversation, ServerMember } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "../../components/ui/DropdownMenu";
 import { api } from "../../lib/api";
 import { useAuthStore } from "../../stores/auth";
 import { Avatar } from "../../components/Avatar";
@@ -19,6 +26,9 @@ import { conversationToChannel, dmKeys, useConversations } from "./queries";
 import { DmIntro } from "./DmIntro";
 import { NewDmDialog } from "./NewDmDialog";
 import { ActivityStatus } from "../../components/ActivityStatus";
+
+const headerButtonClass =
+  "rounded-lg p-2 transition-colors disabled:pointer-events-none disabled:opacity-40";
 
 function HeaderButton({
   label,
@@ -42,7 +52,7 @@ function HeaderButton({
       aria-label={label}
       title={label}
       className={cn(
-        "rounded-lg p-2 transition-colors disabled:pointer-events-none disabled:opacity-40",
+        headerButtonClass,
         glow
           ? "text-success shadow-[0_0_12px_rgba(63,189,110,0.6)] hover:bg-surface-3"
           : "text-ink-muted hover:bg-surface-3 hover:text-ink",
@@ -177,22 +187,43 @@ export function DmView() {
       >
         <Video aria-hidden className="size-4" />
       </HeaderButton>
-      <HeaderButton
-        label={conversation.backgroundUrl ? "Change chat background" : "Set chat background"}
-        disabled={backgroundBusy}
-        onClick={() => backgroundInput.current?.click()}
-      >
-        {backgroundBusy ? (
-          <Loader2 aria-hidden className="size-4 animate-spin" />
-        ) : (
-          <Image aria-hidden className="size-4" />
-        )}
-      </HeaderButton>
-      {conversation.backgroundUrl && (
-        <HeaderButton label="Remove chat background" disabled={backgroundBusy} onClick={() => void removeBackground()}>
-          <Trash2 aria-hidden className="size-4" />
-        </HeaderButton>
-      )}
+      {/* One control, not two: a bare remove icon next to the picker reads as
+          "close the conversation", and it changes the room for everyone in it.
+          Behind a menu, both choices are named. */}
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          aria-label="Chat background"
+          title="Chat background"
+          disabled={backgroundBusy}
+          className={cn(headerButtonClass, "text-ink-muted hover:bg-surface-3 hover:text-ink")}
+        >
+          {backgroundBusy ? (
+            <Loader2 aria-hidden className="size-4 animate-spin" />
+          ) : (
+            <Image aria-hidden className="size-4" />
+          )}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Chat background</DropdownMenuLabel>
+          {conversation.backgroundUrl && (
+            <img
+              src={conversation.backgroundUrl}
+              alt=""
+              className="mx-1 mb-1 h-20 w-full rounded-lg border border-border object-cover"
+            />
+          )}
+          <DropdownMenuItem onSelect={() => backgroundInput.current?.click()}>
+            <ImagePlus aria-hidden className="size-4" />
+            {conversation.backgroundUrl ? "Change picture" : "Choose a picture"}
+          </DropdownMenuItem>
+          {conversation.backgroundUrl && (
+            <DropdownMenuItem danger onSelect={() => void removeBackground()}>
+              <Trash2 aria-hidden className="size-4" />
+              Remove for everyone
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
       {conversation.type === "group_dm" && (
         <HeaderButton label="Add people" onClick={() => setAddOpen(true)}>
           <UserPlus aria-hidden className="size-4" />

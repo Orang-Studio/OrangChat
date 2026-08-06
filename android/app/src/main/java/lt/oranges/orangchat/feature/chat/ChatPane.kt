@@ -400,6 +400,7 @@ fun ChatPane(
     var contactVerifyBusy by remember { mutableStateOf(false) }
     var contactVerifyError by remember { mutableStateOf<String?>(null) }
     var contactVerified by remember { mutableStateOf(false) }
+    var backgroundMenuOpen by remember { mutableStateOf(false) }
     val backgroundPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
     ) { uri -> if (uri != null) onSetBackground?.invoke(uri) }
@@ -673,28 +674,46 @@ fun ChatPane(
                 )
             }
             if (onSetBackground != null) {
-                Icon(
-                    Icons.Default.Photo,
-                    contentDescription = "Set chat background",
-                    tint = if (backgroundUrl != null) c.inkMuted else c.inkSecondary,
-                    modifier = Modifier
-                        .clickable {
-                            backgroundPicker.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                            )
-                        }
-                        .padding(6.dp)
-                        .size(20.dp),
-                )
-                if (backgroundUrl != null && onRemoveBackground != null) {
+                // One control, not two: a bare X beside the picker reads as
+                // "close the conversation", and it changes the room for
+                // everyone in it. Behind a menu, both choices are named.
+                Box {
                     Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Remove chat background",
+                        Icons.Default.Photo,
+                        contentDescription = "Chat background",
                         tint = c.inkSecondary,
                         modifier = Modifier
-                            .clickable(onClick = onRemoveBackground)
+                            .clickable { backgroundMenuOpen = true }
                             .padding(6.dp)
                             .size(20.dp),
+                    )
+                    OrangDropdownMenu(
+                        expanded = backgroundMenuOpen,
+                        onDismiss = { backgroundMenuOpen = false },
+                        items = buildList {
+                            add(
+                                MenuItem(
+                                    if (backgroundUrl != null) "Change picture" else "Choose a picture",
+                                    Icons.Default.Photo,
+                                ) {
+                                    backgroundPicker.launch(
+                                        PickVisualMediaRequest(
+                                            ActivityResultContracts.PickVisualMedia.ImageOnly,
+                                        ),
+                                    )
+                                },
+                            )
+                            if (backgroundUrl != null && onRemoveBackground != null) {
+                                add(
+                                    MenuItem(
+                                        "Remove for everyone",
+                                        Icons.Default.Delete,
+                                        destructive = true,
+                                        onClick = onRemoveBackground,
+                                    ),
+                                )
+                            }
+                        },
                     )
                 }
             }
@@ -720,7 +739,9 @@ fun ChatPane(
         // would shorten the conversation precisely when someone is reading it.
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             // Shared DM background, under everything else. Plaintext, like
-            // avatars: everyone in the conversation sees the same image.
+            // avatars: everyone in the conversation sees the same image. The
+            // scrim on top is what keeps the messages readable over whatever
+            // picture somebody picked.
             if (backgroundUrl != null) {
                 AsyncImage(
                     model = absoluteUrl(backgroundUrl),
@@ -728,6 +749,7 @@ fun ChatPane(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
+                Box(Modifier.fillMaxSize().background(c.surface2.copy(alpha = 0.8f)))
             }
             // Messages. reverseLayout: first item = visual bottom = newest.
             LazyColumn(
