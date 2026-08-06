@@ -9,7 +9,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "pnpm build && electron .",
     "dist:win": "pnpm build && electron-builder --win nsis zip",
-    "dist:win:docker": "pnpm build && node scripts/docker-build.mjs"
+    "dist:win:docker": "pnpm build && node scripts/docker-build.mjs",
+    "dist:linux": "pnpm build && electron-builder --linux AppImage"
   },
   "devDependencies": {
     "@types/node": "^20.17.10",

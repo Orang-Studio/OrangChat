@@ -23,7 +23,12 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
  * and shared with descendants via its activity-scoped Hilt instance.
  */
 @Composable
-fun OrangChatNavHost() {
+fun OrangChatNavHost(
+    /** A conversation to land in as soon as the shell exists - a bubble's own
+     *  channel, kept out of the process-wide pending store so expanding one
+     *  cannot move the main window. */
+    initialChannelId: String? = null,
+) {
     val appViewModel: AppViewModel = hiltViewModel()
     val session by appViewModel.session.collectAsStateWithLifecycle()
     val pendingShare by appViewModel.pendingShare.collectAsStateWithLifecycle()
@@ -38,7 +43,11 @@ fun OrangChatNavHost() {
             if (pendingShare != null) {
                 ShareScreen(share = pendingShare!!, onDismiss = appViewModel::clearPendingShare)
             } else {
-                HomeScreen(appViewModel = appViewModel, self = s.user)
+                HomeScreen(
+                    appViewModel = appViewModel,
+                    self = s.user,
+                    initialChannelId = initialChannelId,
+                )
             }
         }
     }

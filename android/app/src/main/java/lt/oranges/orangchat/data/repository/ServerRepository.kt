@@ -48,6 +48,12 @@ class ServerRepository @Inject constructor(
 
     suspend fun getServer(serverId: String): ServerDetail = api.getServer(serverId)
 
+    /**
+     * One channel on its own. A notification names the conversation it came from
+     * and nothing else, so this is how a tap finds the server to open behind it.
+     */
+    suspend fun getChannel(channelId: String): Channel = api.getChannel(channelId)
+
     suspend fun updateServer(serverId: String, name: String? = null, iconUrl: String? = null): Server =
         api.updateServer(serverId, UpdateServerRequest(name, iconUrl))
 

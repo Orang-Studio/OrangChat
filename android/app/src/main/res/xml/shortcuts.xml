@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Makes the conversation shortcuts published alongside message notifications
+    (NotificationHelper.postConversationMessage) usable as share targets.
+
+    Those shortcuts already carry this category, but a category matches nothing
+    until a share-target declares it - so without this file the direct-share row
+    of the system share sheet never offers an OrangChat conversation, and the
+    long-lived shortcut only ever serves the notification. The conversations
+    guide treats the two as one feature, and this is the half that was missing.
+
+    Sharing lands on MainActivity's existing ACTION_SEND handling; the chosen
+    conversation arrives as the shortcut id.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <share-target android:targetClass="lt.oranges.orangchat.MainActivity">
+        <data android:mimeType="*/*" />
+        <category android:name="lt.oranges.orangchat.CONVERSATION" />
+    </share-target>
+</shortcuts>

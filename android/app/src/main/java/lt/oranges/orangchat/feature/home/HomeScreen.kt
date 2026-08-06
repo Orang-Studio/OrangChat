@@ -70,6 +70,8 @@ private enum class Overlay { NONE, FRIENDS, NEW_GROUP, SETTINGS, SEARCH, SERVER_
 fun HomeScreen(
     appViewModel: AppViewModel,
     self: SelfUser,
+    /** Opened once on first composition; a bubble's conversation. */
+    initialChannelId: String? = null,
     themeViewModel: ThemeViewModel = hiltViewModel(),
     callViewModel: CallViewModel = hiltViewModel(),
     settingsViewModel: SettingsViewModel = hiltViewModel(),
@@ -90,6 +92,7 @@ fun HomeScreen(
     val themePref by themeViewModel.preference.collectAsStateWithLifecycle()
     val devicePrefs by settingsViewModel.prefs.collectAsStateWithLifecycle()
     val connected by appViewModel.connected.collectAsStateWithLifecycle()
+    val pendingConversation by appViewModel.pendingConversation.collectAsStateWithLifecycle()
     val pendingInvite by appViewModel.pendingInvite.collectAsStateWithLifecycle()
     val pendingQrLogin by appViewModel.pendingQrLogin.collectAsStateWithLifecycle()
     val pendingVerify by appViewModel.pendingVerify.collectAsStateWithLifecycle()
@@ -209,6 +212,30 @@ fun HomeScreen(
     // Leaving the chat puts the rail back on screen, so a drawer left open
     // would otherwise show it twice.
     LaunchedEffect(chatOpen) { if (!chatOpen) drawerState.close() }
+
+    // A notification tap, a conversation shortcut or a bubble names a channel
+    // and expects to land in it. Overlays and the drawer come down with it -
+    // arriving behind a settings screen would read as the tap having done
+    // nothing at all.
+    val openConversation: suspend (String) -> Unit = { channelId ->
+        appViewModel.openConversation(channelId) { isDm ->
+            homeSelected = isDm
+            overlay = Overlay.NONE
+            searchChannelId = null
+            openChat = true
+        }
+        drawerState.close()
+    }
+    LaunchedEffect(pendingConversation) {
+        val channelId = pendingConversation ?: return@LaunchedEffect
+        appViewModel.clearPendingConversation()
+        openConversation(channelId)
+    }
+    // A bubble is only ever its own conversation, so it is opened directly
+    // rather than through the store the rest of the app shares.
+    LaunchedEffect(initialChannelId) {
+        initialChannelId?.let { openConversation(it) }
+    }
 
     // The drawer slides in over an expanded call stage. Once it settles open the
     // stage is fully hidden, so drop it then - closing the drawer should come

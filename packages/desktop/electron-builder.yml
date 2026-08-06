@@ -19,6 +19,13 @@ win:
       arch: [x64]
   icon: build/icon.ico
   artifactName: OrangChat-${version}-${arch}.${ext}
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+  icon: build/icon.png
+  category: Network
+  artifactName: OrangChat-${version}-${arch}.${ext}
 
 publish:
   provider: generic

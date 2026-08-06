@@ -119,7 +119,25 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="orangchat" android:host="device-transfer" />
             </intent-filter>
+
+            <!-- Lets the conversation shortcuts published with message
+                 notifications appear in the share sheet's direct-share row. -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
+
+        <!-- The conversation behind a notification bubble. A bubble can only
+             host an activity that is embeddable, resizeable and document-
+             launched, none of which a singleTask MainActivity can be - so it
+             gets its own entry point rather than a flag on that one. -->
+        <activity
+            android:name=".feature.chat.BubbleActivity"
+            android:allowEmbedded="true"
+            android:documentLaunchMode="always"
+            android:exported="false"
+            android:resizeableActivity="true"
+            android:theme="@style/Theme.OrangChat" />
 
         <service
             android:name=".notifications.FcmService"

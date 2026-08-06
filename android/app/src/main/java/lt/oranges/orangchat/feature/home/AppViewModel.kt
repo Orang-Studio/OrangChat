@@ -72,6 +72,7 @@ class AppViewModel @Inject constructor(
     private val unreadStore: UnreadStore,
     private val offlineCache: OfflineCache,
     private val pendingInviteStore: PendingInviteStore,
+    private val pendingConversationStore: PendingConversationStore,
     private val pendingQrLoginStore: PendingQrLoginStore,
     private val pendingShareStore: PendingShareStore,
     private val pendingVerifyStore: lt.oranges.orangchat.feature.verify.PendingVerifyStore,
@@ -98,6 +99,9 @@ class AppViewModel @Inject constructor(
     /** Unread dots + mention badges; hydrated on login, then kept live. */
     val unreads = unreadStore.states
 
+    /** A conversation a notification, shortcut or bubble asked us to open. */
+    val pendingConversation = pendingConversationStore.channelId
+
     /** An invite link the app was opened with, once there's a shell to show it. */
     val pendingInvite = pendingInviteStore.code
     val pendingShare = pendingShareStore.share
@@ -111,6 +115,8 @@ class AppViewModel @Inject constructor(
 
     fun clearPendingVerify() = pendingVerifyStore.consume()
     fun clearPendingTransfer() = pendingTransferStore.consume()
+
+    fun clearPendingConversation() = pendingConversationStore.consume()
 
     fun clearPendingInvite() = pendingInviteStore.consume()
     fun clearPendingShare() = pendingShareStore.consume()
@@ -613,6 +619,33 @@ class AppViewModel @Inject constructor(
         scheduleNavigationCache()
         notificationHelper.clearConversationNotifications(channelId)
         viewModelScope.launch { runCatching { serverRepository.markChannelRead(channelId) } }
+    }
+
+    /**
+     * Open a conversation named from outside the shell - a notification tap, a
+     * conversation shortcut, a bubble - reporting whether it turned out to be a
+     * DM so the caller can put the right area behind it.
+     *
+     * A notification carries a channel id and nothing else, and on a cold start
+     * neither the DM list nor any server is loaded yet. Asking the server which
+     * one owns the channel is what keeps the chat from opening nameless, with no
+     * members to mention and nothing behind the back button.
+     */
+    fun openConversation(channelId: String, onOpened: (isDm: Boolean) -> Unit) = viewModelScope.launch {
+        val known = _dms.value.any { it.id == channelId } ||
+            _serverDetail.value?.channels?.any { it.id == channelId } == true
+        val serverId = if (known) {
+            _serverDetail.value?.channels?.firstOrNull { it.id == channelId }?.serverId
+        } else {
+            runCatching { serverRepository.getChannel(channelId).serverId }.getOrNull()
+        }
+        if (serverId != null && serverId != _serverDetail.value?.server?.id) {
+            selectServer(serverId).join()
+        }
+        selectChannel(channelId)
+        // Nothing owns it, so it is a DM - including one whose list has not
+        // arrived yet, which is the usual case on a cold start from a tap.
+        onOpened(serverId == null)
     }
 
     /** Read a conversation without opening it - the long-press menu's action. */

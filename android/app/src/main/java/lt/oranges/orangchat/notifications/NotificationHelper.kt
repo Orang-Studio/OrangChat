@@ -42,6 +42,7 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import lt.oranges.orangchat.MainActivity
+import lt.oranges.orangchat.feature.chat.BubbleActivity
 import lt.oranges.orangchat.R
 import lt.oranges.orangchat.data.model.DmCall
 import lt.oranges.orangchat.util.absoluteUrl
@@ -298,7 +299,7 @@ class NotificationHelper @Inject constructor(
             .apply { senderAvatar?.let { setIcon(IconCompat.createWithBitmap(it)) } }
             .build()
         val self = Person.Builder().setName("You").setKey(SELF_KEY).build()
-        val shortcutId = "conversation:$channelId"
+        val shortcutId = CONVERSATION_SHORTCUT_PREFIX + channelId
         val shortcut = ShortcutInfoCompat.Builder(context, shortcutId)
             .setShortLabel(title)
             .setLongLived(true)
@@ -346,6 +347,7 @@ class NotificationHelper @Inject constructor(
             .setShortcutInfo(shortcut)
             .setShortcutId(shortcutId)
             .setLocusId(LocusIdCompat(shortcutId))
+            .setBubbleMetadata(bubbleMetadata(channelId, conversationIcon))
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
@@ -369,6 +371,35 @@ class NotificationHelper @Inject constructor(
                     .notify(channelId.hashCode(), notification)
             }
         }
+    }
+
+    /**
+     * What the system needs to float this conversation as a bubble.
+     *
+     * Offering it is all the app can do: the shade shows the bubble affordance,
+     * and only the user's own choice - per conversation - ever promotes one.
+     * Nothing is auto-expanded and the notification is never suppressed in
+     * favour of the bubble, so a conversation the user has not bubbled behaves
+     * exactly as it did before.
+     */
+    private fun bubbleMetadata(channelId: String, icon: Bitmap): NotificationCompat.BubbleMetadata {
+        val intent = Intent(context, BubbleActivity::class.java).apply {
+            action = Intent.ACTION_VIEW
+            putExtra(EXTRA_CHANNEL_ID, channelId)
+        }
+        val pending = PendingIntent.getActivity(
+            context,
+            BUBBLE_REQUEST_OFFSET + channelId.hashCode(),
+            intent,
+            // Mutable by requirement: the system fills in the window's own
+            // launch options before starting the activity.
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+        )
+        return NotificationCompat.BubbleMetadata.Builder(pending, IconCompat.createWithBitmap(icon))
+            .setDesiredHeight(BUBBLE_HEIGHT_DP)
+            .setAutoExpandBubble(false)
+            .setSuppressNotification(false)
+            .build()
     }
 
     /**
@@ -841,6 +872,15 @@ class NotificationHelper @Inject constructor(
         /** Keeps a call's id off the message notification for the same channel. */
         private const val CALL_ID_SALT = 0x7C_A11
         private const val CONVERSATION_CATEGORY = "lt.oranges.orangchat.CONVERSATION"
+        /** Namespaces a conversation's shortcut id. Shared with the share sheet,
+         *  which hands the id back as the destination the user picked. */
+        const val CONVERSATION_SHORTCUT_PREFIX = "conversation:"
+        /** Keeps a bubble's PendingIntent distinct from the tap-to-open one for
+         *  the same conversation - they differ only in mutability, and a
+         *  collision would hand one of them the other's target. */
+        private const val BUBBLE_REQUEST_OFFSET = 0x0B0B
+        /** Tall enough for a few messages and the composer, per the bubble docs. */
+        private const val BUBBLE_HEIGHT_DP = 600
         private const val MAX_CONVERSATION_MESSAGES = 10
         private const val HISTORY_SCHEMA = 3
         /** Portrait edge in px: what the shade asks for at the largest density. */

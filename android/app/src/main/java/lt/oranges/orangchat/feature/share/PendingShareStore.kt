@@ -11,6 +11,13 @@ import javax.inject.Singleton
 data class PendingShare(
     val text: String = "",
     val uris: List<Uri> = emptyList(),
+    /**
+     * The conversation the user picked in the share sheet's direct-share row,
+     * if they picked one. Android delivers that choice as the id of the
+     * long-lived conversation shortcut the notification published, not as a
+     * destination the app can act on directly.
+     */
+    val channelId: String? = null,
 )
 
 @Singleton

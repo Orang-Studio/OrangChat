@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import lt.oranges.orangchat.feature.home.PendingConversationStore
 import lt.oranges.orangchat.feature.invite.PendingInviteStore
 import lt.oranges.orangchat.feature.qrlogin.PendingQrLoginStore
 import lt.oranges.orangchat.feature.verify.PendingVerifyStore
@@ -55,6 +56,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var callManager: CallManager
     @Inject lateinit var notificationHelper: NotificationHelper
     @Inject lateinit var pendingInviteStore: PendingInviteStore
+    @Inject lateinit var pendingConversationStore: PendingConversationStore
     @Inject lateinit var pendingShareStore: PendingShareStore
     @Inject lateinit var pendingQrLoginStore: PendingQrLoginStore
     @Inject lateinit var pendingVerifyStore: PendingVerifyStore
@@ -64,7 +66,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         applyLockScreenFlags(intent)
-        clearOpenedConversation(intent)
+        openConversation(intent)
         captureInviteLink(intent)
         captureQrLogin(intent)
         captureSharedContent(intent)
@@ -136,7 +138,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         applyLockScreenFlags(intent)
-        clearOpenedConversation(intent)
+        openConversation(intent)
         captureInviteLink(intent)
         captureQrLogin(intent)
         captureSharedContent(intent)
@@ -156,9 +158,17 @@ class MainActivity : ComponentActivity() {
         setTurnScreenOn(incomingCall)
     }
 
-    private fun clearOpenedConversation(intent: Intent?) {
+    /**
+     * Open whatever conversation the app was launched into - a notification tap,
+     * a conversation shortcut, a bubble - and take its notification out of the
+     * shade. Until this existed a tapped notification only dropped the user
+     * wherever the app happened to be, which for the one gesture the whole
+     * notification exists to invite is close to useless.
+     */
+    private fun openConversation(intent: Intent?) {
         intent?.getStringExtra(NotificationHelper.EXTRA_CHANNEL_ID)?.let {
             notificationHelper.clearConversationNotifications(it)
+            pendingConversationStore.offer(it)
         }
     }
 
@@ -203,7 +213,16 @@ class MainActivity : ComponentActivity() {
             }
         }.distinct()
         val text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString().orEmpty()
-        if (text.isNotBlank() || uris.isNotEmpty()) pendingShareStore.offer(PendingShare(text, uris))
+        // Picked from the share sheet's direct-share row rather than from the
+        // app's own icon: Android names the choice with the id of the long-lived
+        // conversation shortcut the notification published.
+        val channelId = intent.getStringExtra(Intent.EXTRA_SHORTCUT_ID)
+            ?.takeIf { it.startsWith(NotificationHelper.CONVERSATION_SHORTCUT_PREFIX) }
+            ?.removePrefix(NotificationHelper.CONVERSATION_SHORTCUT_PREFIX)
+            ?.takeIf { it.isNotBlank() }
+        if (text.isNotBlank() || uris.isNotEmpty()) {
+            pendingShareStore.offer(PendingShare(text, uris, channelId))
+        }
     }
 
     /** Keep an active call visible as a system PiP window when Home is pressed. */
