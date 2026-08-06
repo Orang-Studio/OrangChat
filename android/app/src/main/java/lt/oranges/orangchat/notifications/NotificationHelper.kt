@@ -244,14 +244,18 @@ class NotificationHelper @Inject constructor(
                 channelId, title, body, senderId, senderName, avatar, avatar, isGroup, messages, generation,
             )
         }
-        // Only worth a second pass when the face is not already here: a repost
-        // that changes nothing still costs a rebuild of the whole thread.
-        val refine = if (isAvatarPending(senderAvatarUrl)) {
+        // Only worth a second pass when some face in it is not already here: a
+        // repost that changes nothing still costs a rebuild of the whole thread.
+        // Every face, not just the sender's - the rest of a group thread is
+        // drawn cache-only, so anyone whose portrait this device has never
+        // fetched keeps their initial for as long as they are not the one who
+        // wrote last, which on a busy channel is indefinitely.
+        val refine = if (messages.any { isAvatarPending(it.avatarUrl) }) {
             {
                 val avatar = avatarFor(senderAvatarUrl, senderName)
                 postConversationMessage(
                     channelId, title, body, senderId, senderName, avatar, avatar, isGroup,
-                    messages, generation, alertOnce = true,
+                    messages, generation, alertOnce = true, fetchAvatars = true,
                 )
             }
         } else {
@@ -260,9 +264,11 @@ class NotificationHelper @Inject constructor(
         return Staged(post, refine)
     }
 
-    /** True when [rawUrl] names a portrait this device has not fetched yet. */
+    /** True when [rawUrl] names a portrait this device has not fetched yet, or
+     *  one old enough that the url may since have been given other bytes. */
     private fun isAvatarPending(rawUrl: String?): Boolean {
         val url = absoluteUrl(rawUrl) ?: return false
+        if (isStale(url)) return true
         return avatarCache.get(url) == null && !avatarFile(url).exists()
     }
 
@@ -279,6 +285,7 @@ class NotificationHelper @Inject constructor(
         messages: List<StoredMessage>,
         generation: Long,
         alertOnce: Boolean = false,
+        fetchAvatars: Boolean = false,
     ) {
 
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -323,10 +330,11 @@ class NotificationHelper @Inject constructor(
                     .setKey(message.senderId)
                     .setIcon(
                         IconCompat.createWithBitmap(
-                            // Cache-only for the older messages: the one that
-                            // prompted this notification is the only face worth
-                            // holding the post back for.
-                            avatarFor(message.avatarUrl, message.senderName, fetch = false),
+                            // Cache-only on the way up: the face that prompted
+                            // this notification is the only one worth holding
+                            // the post back for. The refine pass that follows
+                            // is off the critical path and fetches them all.
+                            avatarFor(message.avatarUrl, message.senderName, fetch = fetchAvatars),
                         ),
                     )
                     .build()
@@ -409,13 +417,34 @@ class NotificationHelper @Inject constructor(
      * and a second copy of it says nothing about who is writing.
      */
     private fun avatarFor(rawUrl: String?, name: String, fetch: Boolean = true): Bitmap {
-        val url = absoluteUrl(rawUrl)
-        if (url != null) {
+        val url = absoluteUrl(rawUrl) ?: return initialsAvatar(name)
+        // A face this device already holds is only worth going back for when the
+        // url it is filed under can now be serving different bytes.
+        val refresh = fetch && isStale(url)
+        if (!refresh) {
             avatarCache.get(url)?.let { return it }
             loadAvatarFromDisk(url)?.let { return it }
-            if (fetch) loadAvatar(url)?.let { return it }
         }
-        return initialsAvatar(name)
+        if (fetch) loadAvatar(url)?.let { return it }
+        // The refetch found no network. Yesterday's portrait still says who
+        // wrote far better than their initial does.
+        return avatarCache.get(url) ?: loadAvatarFromDisk(url) ?: initialsAvatar(name)
+    }
+
+    /**
+     * Whether a cached portrait may have been replaced under the same url.
+     *
+     * `/uploads/<file>` names one file forever, and so does a third-party cdn
+     * url - cache those and you are done. `/api/media/asset/<kind>/<id>` names a
+     * *row*: changing a picture keeps the url and only changes what it serves
+     * (the server revalidates it rather than pinning it, see media_proxy.rs). A
+     * url-keyed cache with no expiry therefore shows whichever face this device
+     * happened to see first, for as long as the file survives.
+     */
+    private fun isStale(url: String): Boolean {
+        if (!url.contains(ASSET_ROUTE)) return false
+        val modified = avatarFile(url).lastModified()
+        return modified > 0L && System.currentTimeMillis() - modified > ASSET_MAX_AGE_MS
     }
 
     /** Face fetched on an earlier notification, so a phone with no network at
@@ -886,6 +915,12 @@ class NotificationHelper @Inject constructor(
         /** Portrait edge in px: what the shade asks for at the largest density. */
         private const val AVATAR_PX = 128
         private const val AVATAR_TIMEOUT_MS = 8_000
+        /** The api route whose bytes can change without its url changing. */
+        private const val ASSET_ROUTE = "/api/media/asset/"
+        /** How long a portrait fetched from [ASSET_ROUTE] is trusted before it
+         *  is fetched again. Long enough that a chatty channel refetches
+         *  nothing; short enough that a new picture shows up the same day. */
+        private const val ASSET_MAX_AGE_MS = 12L * 60 * 60 * 1000
         /** The brand orange the in-app initial avatar uses. */
         private const val AVATAR_FALLBACK_COLOR = 0xFFFF6A1A.toInt()
     }

@@ -67,10 +67,6 @@ const MAX_BYTES = 4 * 1024 * 1024;
 /**
  * Which paths are safe to serve from disk without asking.
  *
- * Every one of these names bytes that cannot change: an asset id and an upload
- * filename are minted per upload (a new avatar is a new url, never a rewrite of
- * the old one), and a proxy url is keyed by the remote url it stands for.
- *
  * Attachments are deliberately absent. They are access-controlled, often large,
  * and video among them is fetched by range - all three are reasons for the
  * network to stay in the loop. They carry `immutable` and an entity tag of
@@ -78,10 +74,43 @@ const MAX_BYTES = 4 * 1024 * 1024;
  */
 function isCacheableMedia(url: URL): boolean {
   return (
-    url.pathname.startsWith('/api/media/asset/') ||
+    url.pathname.startsWith(ASSET_ROUTE) ||
     url.pathname === '/api/media/proxy' ||
     url.pathname.startsWith('/uploads/')
   );
+}
+
+const ASSET_ROUTE = '/api/media/asset/';
+
+/**
+ * Whether a cached response may have been replaced under the same url.
+ *
+ * An upload filename and a proxy url both name their own bytes - cache them and
+ * you are done. `/api/media/asset/<kind>/<id>` names a *row*: changing a picture
+ * keeps the url and only changes what it serves, which is why the server
+ * revalidates that route rather than pinning it. Serving it cache-first and
+ * never going back froze every face at whichever one this browser saw first.
+ */
+function isMutableAsset(url: URL): boolean {
+  return url.pathname.startsWith(ASSET_ROUTE);
+}
+
+/**
+ * Refresh a cached asset behind the response already handed back. A failure
+ * leaves the stored copy alone: offline, yesterday's portrait is the best
+ * answer there is.
+ */
+async function revalidate(cache: Cache, request: Request): Promise<void> {
+  try {
+    // `no-cache` forces a conditional request rather than letting the http
+    // cache answer from the very entry this is trying to get past.
+    const response = await fetch(request, { cache: 'no-cache' });
+    if (!(await cacheable(response))) return;
+    await cache.put(request, response);
+    await trim(cache);
+  } catch {
+    /* no network: keep what we have */
+  }
 }
 
 /**
@@ -106,10 +135,16 @@ async function cacheable(response: Response): Promise<boolean> {
   return Number.isFinite(declared) && declared > 0 ? declared <= MAX_BYTES : true;
 }
 
-async function fromCacheOrNetwork(request: Request): Promise<Response> {
+async function fromCacheOrNetwork(event: FetchEvent): Promise<Response> {
+  const request = event.request;
   const cache = await caches.open(MEDIA_CACHE);
   const hit = await cache.match(request);
-  if (hit) return hit;
+  if (hit) {
+    // Stale-while-revalidate, and only where the bytes can actually move: the
+    // render is never held back, but the next one shows the current picture.
+    if (isMutableAsset(new URL(request.url))) event.waitUntil(revalidate(cache, request));
+    return hit;
+  }
 
   const response = await fetch(request);
   if (await cacheable(response)) {
@@ -135,7 +170,7 @@ self.addEventListener('fetch', (event: FetchEvent) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin || !isCacheableMedia(url)) return;
 
-  event.respondWith(fromCacheOrNetwork(request));
+  event.respondWith(fromCacheOrNetwork(event));
 });
 
 /**
