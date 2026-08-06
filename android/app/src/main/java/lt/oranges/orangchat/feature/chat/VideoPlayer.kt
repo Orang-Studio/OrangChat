@@ -247,15 +247,18 @@ fun VideoAttachment(
     val storedPoster = remember(attachment.id) { videoPosterUrl(attachment) }
     val posterUrl = sealedPoster ?: storedPoster?.url
 
-    // Upload metadata is only a guess to lay out with until the decoder reports
-    // the real shape.
     val metadataAspect = remember(attachment.width, attachment.height) {
         val w = attachment.width
         val h = attachment.height
-        if (w != null && h != null && w > 0 && h > 0) w.toFloat() / h else DEFAULT_ASPECT
+        if (w != null && h != null && w > 0 && h > 0) w.toFloat() / h else null
     }
-    val trueAspect = if (active && MediaPlayback.videoAspect > 0f) MediaPlayback.videoAspect else metadataAspect
-    val boxAspect = trueAspect.coerceIn(MIN_INLINE_ASPECT, MAX_INLINE_ASPECT)
+    // The still is a frame of this clip, so its shape is the clip's shape - which
+    // is what keeps the row from jumping to a different size on the first press.
+    var posterAspect by remember(attachment.id) { mutableStateOf<Float?>(null) }
+    val knownAspect = metadataAspect ?: posterAspect
+    val decoderAspect = if (active && MediaPlayback.videoAspect > 0f) MediaPlayback.videoAspect else null
+    val trueAspect = decoderAspect ?: knownAspect ?: DEFAULT_ASPECT
+    val boxAspect = (knownAspect ?: trueAspect).coerceIn(MIN_INLINE_ASPECT, MAX_INLINE_ASPECT)
     val shape = RoundedCornerShape(OrangRadius.lg)
 
     Column {
@@ -287,6 +290,12 @@ fun VideoAttachment(
                         .build(),
                     contentDescription = attachment.filename,
                     contentScale = ContentScale.Fit,
+                    onSuccess = { state ->
+                        val size = state.painter.intrinsicSize
+                        if (size.width > 0f && size.height > 0f) {
+                            posterAspect = size.width / size.height
+                        }
+                    },
                     modifier = Modifier.fillMaxSize(),
                 )
             }
