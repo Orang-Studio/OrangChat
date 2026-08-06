@@ -378,3 +378,24 @@ pub struct ConnectionRow {
     #[sqlx(rename = "createdAt")]
     pub created_at: NaiveDateTime,
 }
+
+#[derive(Debug, Clone, FromRow)]
+pub struct PasskeyRow {
+    pub id: String,
+    #[sqlx(rename = "userId")]
+    pub user_id: String,
+    /// Looked up by SQL rather than read in Rust - it is how a discoverable
+    /// sign-in finds the account - but the column is part of the row.
+    #[allow(dead_code)]
+    #[sqlx(rename = "credentialId")]
+    pub credential_id: String,
+    /// webauthn-rs's own serialised credential; see prisma/schema.prisma.
+    pub credential: Json,
+    pub name: String,
+    #[sqlx(rename = "backedUp")]
+    pub backed_up: bool,
+    #[sqlx(rename = "createdAt")]
+    pub created_at: NaiveDateTime,
+    #[sqlx(rename = "lastUsedAt")]
+    pub last_used_at: Option<NaiveDateTime>,
+}

@@ -28,6 +28,13 @@ import lt.oranges.orangchat.data.remote.RevokeResult
 import lt.oranges.orangchat.data.remote.SessionsResult
 import lt.oranges.orangchat.data.remote.SignupRequest
 import lt.oranges.orangchat.data.remote.TwoFactorCodeRequest
+import lt.oranges.orangchat.data.model.LoginChallenge
+import lt.oranges.orangchat.data.remote.Passkey
+import lt.oranges.orangchat.data.remote.PasskeyChallenge
+import lt.oranges.orangchat.data.remote.PasskeyFinishRequest
+import lt.oranges.orangchat.data.remote.PasskeyListResult
+import lt.oranges.orangchat.data.remote.PasskeyNameRequest
+import lt.oranges.orangchat.data.remote.PasskeyRegisterFinishRequest
 import lt.oranges.orangchat.data.remote.TwoFactorDisableRequest
 import lt.oranges.orangchat.data.remote.TwoFactorEnableResult
 import lt.oranges.orangchat.data.remote.TwoFactorPasswordRequest
@@ -38,6 +45,7 @@ import lt.oranges.orangchat.data.remote.UploadResponse
 import lt.oranges.orangchat.realtime.SocketManager
 import lt.oranges.orangchat.notifications.PushTokenRegistrar
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 import okhttp3.MultipartBody
 import retrofit2.HttpException
@@ -132,8 +140,54 @@ class AuthRepository @Inject constructor(
      * session, so this returns the token that [verifyEmailCode] needs rather
      * than flipping [session]. Any authenticator code is still checked here.
      */
-    suspend fun login(email: String, password: String, totpCode: String? = null): String =
-        api.login(LoginRequest(email.trim(), password, totpCode?.trim()?.ifBlank { null })).loginToken
+    suspend fun login(
+        email: String,
+        password: String,
+        totpCode: String? = null,
+        skipPasskey: Boolean = false,
+    ): LoginChallenge =
+        api.login(
+            LoginRequest(
+                email = email.trim(),
+                password = password,
+                totpCode = totpCode?.trim()?.ifBlank { null },
+                skipPasskey = true.takeIf { skipPasskey },
+            ),
+        )
+
+    // ── Passkeys ────────────────────────────────────────
+
+    /** Opens a sign-in ceremony for a device that hasn't said who it is. */
+    suspend fun startPasskeySignIn(): PasskeyChallenge = api.startPasskeySignIn()
+
+    /**
+     * Closes a ceremony - either shape - and opens the session. This is the whole
+     * login: the authenticator already proved the device, the person and the
+     * origin, so nothing weaker is asked for on top.
+     */
+    suspend fun finishPasskeySignIn(ceremonyToken: String, response: JsonElement) {
+        applyAuth(api.finishPasskeySignIn(PasskeyFinishRequest(ceremonyToken, response)))
+    }
+
+    suspend fun passkeys(): PasskeyListResult = api.getPasskeys()
+
+    suspend fun startPasskeyRegistration(password: String?, code: String): PasskeyChallenge =
+        api.startPasskeyRegistration(TwoFactorDisableRequest(password?.ifBlank { null }, code.trim()))
+
+    suspend fun finishPasskeyRegistration(
+        ceremonyToken: String,
+        name: String,
+        response: JsonElement,
+    ): Passkey = api.finishPasskeyRegistration(
+        PasskeyRegisterFinishRequest(ceremonyToken, name.trim(), response),
+    ).passkey
+
+    suspend fun renamePasskey(id: String, name: String): Passkey =
+        api.renamePasskey(id, PasskeyNameRequest(name.trim())).passkey
+
+    suspend fun deletePasskey(id: String, password: String?, code: String) {
+        api.deletePasskey(id, TwoFactorDisableRequest(password?.ifBlank { null }, code.trim()))
+    }
 
     /** Second half: the mailed code is what actually opens the session. */
     suspend fun verifyEmailCode(loginToken: String, code: String) {

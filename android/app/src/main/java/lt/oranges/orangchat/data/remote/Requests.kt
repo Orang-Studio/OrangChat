@@ -25,6 +25,12 @@ data class LoginRequest(
     val password: String,
     /** Required only when the account has 2FA on; a recovery code also works. */
     val totpCode: String? = null,
+    /**
+     * Asks for the emailed code even on an account that has a passkey - the way
+     * out for someone whose authenticator isn't to hand. Not a bypass: the
+     * password is checked either way.
+     */
+    val skipPasskey: Boolean? = null,
 )
 
 /** Second half of a login: the token from /auth/login plus the mailed code. */
@@ -74,6 +80,55 @@ data class TwoFactorStatus(
     val enabled: Boolean = false,
     val backupCodesRemaining: Int = 0,
 )
+
+// ── Passkeys ────────────────────────────────────────────
+//
+// A ceremony is two calls: the server states a challenge, the authenticator
+// signs it, the server checks its own challenge back. [ceremonyToken] is the
+// thread between them, and the challenge and the response are passed through as
+// raw JSON - Credential Manager speaks the WebAuthn JSON shapes directly, so
+// re-modelling them here would only be a chance to get them wrong.
+
+@Serializable
+data class PasskeyChallenge(
+    val challenge: JsonElement? = null,
+    val ceremonyToken: String = "",
+)
+
+@Serializable
+data class PasskeyFinishRequest(
+    val ceremonyToken: String,
+    val response: JsonElement,
+)
+
+@Serializable
+data class PasskeyRegisterFinishRequest(
+    val ceremonyToken: String,
+    val name: String,
+    val response: JsonElement,
+)
+
+@Serializable
+data class Passkey(
+    val id: String,
+    val name: String = "Passkey",
+    /** Whether the authenticator syncs it - i.e. whether losing the device loses it. */
+    val backedUp: Boolean = false,
+    val createdAt: String = "",
+    val lastUsedAt: String? = null,
+)
+
+@Serializable
+data class PasskeyListResult(
+    val passkeys: List<Passkey> = emptyList(),
+    val max: Int = 0,
+)
+
+@Serializable
+data class PasskeyResult(val passkey: Passkey)
+
+@Serializable
+data class PasskeyNameRequest(val name: String)
 
 /** `/health` payload - reports the running backend's build and dependencies. */
 @Serializable

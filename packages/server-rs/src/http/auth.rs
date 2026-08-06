@@ -19,7 +19,7 @@ use crate::http::{bad_request, valid_email, valid_username, AuthUser, ClientIp};
 use crate::ids::cuid;
 use crate::models::UserRow;
 use crate::oauth;
-use crate::services::{account, badge, presence, qr, rate_limit, totp, user};
+use crate::services::{account, badge, passkey, presence, qr, rate_limit, totp, user};
 use crate::state::AppState;
 
 const OAUTH_STATE_COOKIE: &str = "oc_oauth_state";
@@ -30,6 +30,10 @@ pub fn routes() -> Router<AppState> {
         .route("/login", post(login))
         .route("/login/email-2fa", post(verify_email_2fa))
         .route("/login/email-2fa/resend", post(resend_email_2fa))
+        // Sign-in with a passkey. `start` is reachable logged-out and names no
+        // account - the credential the browser picks is what names it.
+        .route("/passkey/start", post(passkey_start))
+        .route("/passkey/finish", post(passkey_finish))
         .route("/verify-email", get(verify_email))
         .route("/verify-email/resend", post(resend_verification))
         .route("/recaptcha/config", get(recaptcha_config))
@@ -419,8 +423,10 @@ async fn verify_email_2fa(
         .and_then(Value::as_str)
         .unwrap_or_default();
     let code = body.get("code").and_then(Value::as_str).unwrap_or_default();
-    verify_email_login_code(&state, token, code).await?;
+    // Read the account *before* verifying: a successful check burns the code, and
+    // this same row is the only link from the login token back to a user.
     let row: Option<UserRow> = sqlx::query_as(r#"SELECT u.* FROM "User" u JOIN "EmailLoginCode" c ON c."userId" = u.id WHERE c."loginTokenHash" = $1 AND c."usedAt" IS NULL AND c."expiresAt" > now() AND c.attempts < 5 AND u."emailVerifiedAt" IS NOT NULL"#).bind(token_hash(token)).fetch_optional(&state.pool).await?;
+    verify_email_login_code(&state, token, code).await?;
     let user = row.ok_or_else(|| AppError::Unauthorized("Invalid or expired code".into()))?;
     let (result, cookie) = issue_session(&state, &user, DeviceInfo::new(&headers, &ip)).await?;
     Ok((jar.add(cookie), Json(result)))
@@ -652,11 +658,95 @@ async fn login(
         rate_limit::LOGIN_FAILURES_PER_ACCOUNT,
     )
     .await;
+    // An account with a passkey is asked for that instead of an emailed code:
+    // it is phishing-resistant where a code read off a screen is not, and it is
+    // one tap instead of a round trip through a mail server. `skipPasskey` is
+    // the way back out for someone whose authenticator isn't to hand.
+    let skip_passkey = body
+        .get("skipPasskey")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    if !skip_passkey && passkey::count(&state, &user.id).await? > 0 {
+        let (challenge, ceremony) = passkey::start_known(&state, &user.id).await?;
+        return Ok(Json(json!({
+            "passkeyRequired": true,
+            "challenge": challenge,
+            "ceremonyToken": ceremony,
+        })));
+    }
+
     let login_token = random_token();
     issue_email_login_code(&state, &user, &login_token).await?;
     Ok(Json(
         json!({ "email2faRequired": true, "loginToken": login_token }),
     ))
+}
+
+/// Opens a sign-in ceremony for a browser that hasn't said who it is.
+///
+/// Reachable logged-out and deliberately incurious: it hands out a challenge and
+/// nothing else, so it cannot be used to ask whether an account exists.
+async fn passkey_start(
+    State(state): State<AppState>,
+    ClientIp(ip): ClientIp,
+) -> AppResult<Json<Value>> {
+    rate_limit::check(&state, "passkey", &ip, rate_limit::LOGIN_PER_IP).await?;
+    let (challenge, token) = passkey::start_discoverable(&state).await?;
+    Ok(Json(
+        json!({ "challenge": challenge, "ceremonyToken": token }),
+    ))
+}
+
+/// Finishes either sign-in shape - passkey-only, or passkey-as-second-factor -
+/// and issues the session.
+///
+/// This is the whole login: no password, and no emailed code even on an account
+/// with 2FA on. A completed ceremony already proves possession of the
+/// authenticator and that it checked a biometric or a PIN before signing, over a
+/// channel the browser bound to this origin. Asking for a weaker factor on top
+/// of a stronger one buys nothing.
+async fn passkey_finish(
+    State(state): State<AppState>,
+    ClientIp(ip): ClientIp,
+    headers: axum::http::HeaderMap,
+    jar: CookieJar,
+    Json(body): Json<Value>,
+) -> AppResult<impl IntoResponse> {
+    rate_limit::check(&state, "passkey", &ip, rate_limit::LOGIN_PER_IP).await?;
+    let token = body
+        .get("ceremonyToken")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let response = serde_json::from_value(
+        body.get("response")
+            .cloned()
+            .ok_or_else(|| bad_request("Invalid input"))?,
+    )
+    .map_err(|_| bad_request("That passkey couldn't be read"))?;
+
+    let user = passkey::finish_authentication(&state, token, response).await?;
+
+    // The same gates the password path applies, because this path skips it.
+    if user.lockdown_at.is_some() {
+        return Err(AppError::Unauthorized(
+            "This account is locked down. Lift it from a device that's still signed in.".into(),
+        ));
+    }
+    if user.email_verified_at.is_none() {
+        return Err(AppError::Unauthorized(
+            "Verify your email before signing in".into(),
+        ));
+    }
+
+    rate_limit::reset(
+        &state,
+        "login:fail",
+        &user.id,
+        rate_limit::LOGIN_FAILURES_PER_ACCOUNT,
+    )
+    .await;
+    let (result, cookie) = issue_session(&state, &user, DeviceInfo::new(&headers, &ip)).await?;
+    Ok((jar.add(cookie), Json(result)))
 }
 
 async fn record_login_failure(state: &AppState, user_id: &str) {

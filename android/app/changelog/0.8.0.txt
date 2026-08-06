@@ -1,0 +1,11 @@
+Passkeys
+
+New
+- Sign in with your fingerprint, face or device PIN instead of a password.
+- Accounts that have a passkey are asked for it first - it is phishing-resistant,
+  so it beats the emailed code. Email codes remain as a fallback.
+- Add, rename, and remove passkeys under Settings > Security.
+
+Fixed
+- Passkeys shared with the site and the Android app: a passkey created in the
+  browser works in the app and the other way around.

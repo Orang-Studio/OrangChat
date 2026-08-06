@@ -452,6 +452,14 @@ data class AuthResult(
 data class LoginChallenge(
     val email2faRequired: Boolean = false,
     val loginToken: String = "",
+    /**
+     * Set instead of [email2faRequired] on an account that has a passkey: it is
+     * phishing-resistant where a mailed code is not, so it is asked for first.
+     */
+    val passkeyRequired: Boolean = false,
+    /** The WebAuthn request, passed straight to Credential Manager. */
+    val challenge: JsonElement? = null,
+    val ceremonyToken: String = "",
 )
 
 /** POST /auth/signup: the account exists but cannot sign in until verified. */

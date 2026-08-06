@@ -78,6 +78,36 @@ interface ApiService {
     @POST("auth/login/email-2fa/resend")
     suspend fun resendEmailTwoFactor(@Body body: ResendEmailTwoFactorRequest): OkResult
 
+    // ── passkeys ────────────────────────────────────────
+    //
+    // `start` names no account: the credential the device offers is what names
+    // it. `finish` closes both this flow and the passkey-as-second-factor one,
+    // so it is the only call that mints a session either way.
+    @POST("auth/passkey/start")
+    suspend fun startPasskeySignIn(): PasskeyChallenge
+
+    @POST("auth/passkey/finish")
+    suspend fun finishPasskeySignIn(@Body body: PasskeyFinishRequest): AuthResult
+
+    @GET("security/passkeys")
+    suspend fun getPasskeys(): PasskeyListResult
+
+    /** Password-gated (plus a 2FA code when on): adding a passkey adds a way in. */
+    @POST("security/passkeys/register/start")
+    suspend fun startPasskeyRegistration(@Body body: TwoFactorDisableRequest): PasskeyChallenge
+
+    @POST("security/passkeys/register/finish")
+    suspend fun finishPasskeyRegistration(@Body body: PasskeyRegisterFinishRequest): PasskeyResult
+
+    @PATCH("security/passkeys/{id}")
+    suspend fun renamePasskey(@Path("id") id: String, @Body body: PasskeyNameRequest): PasskeyResult
+
+    @HTTP(method = "DELETE", path = "security/passkeys/{id}", hasBody = true)
+    suspend fun deletePasskey(
+        @Path("id") id: String,
+        @Body body: TwoFactorDisableRequest,
+    ): Response<Unit>
+
     @POST("auth/refresh")
     suspend fun refresh(): AuthResult
 

@@ -1,6 +1,6 @@
 use std::env;
 
-use base64::engine::general_purpose::STANDARD;
+use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use base64::Engine as _;
 
 use crate::services::update_policy::{PlatformPolicy, UpdatePolicy};
@@ -11,6 +11,19 @@ pub struct Config {
     pub node_env: String,
     pub port: u16,
     pub client_origin: String,
+    /// Extra WebAuthn origins the Android app signs its passkey ceremonies with.
+    ///
+    /// A native app has no web origin, so Credential Manager puts
+    /// `android:apk-key-hash:<base64url sha256 of the signing certificate>` in
+    /// the client data instead of `https://chat.oranges.lt`. That is not a URL
+    /// the relying party can guess, so unless the app's signing key is listed
+    /// here every ceremony from the phone is rejected as a foreign origin - the
+    /// same key that has to appear in `/.well-known/assetlinks.json` for the
+    /// device half to work at all. Configured as SHA-256 fingerprints
+    /// (`ANDROID_CERT_FINGERPRINTS`, comma-separated, colons optional) so the
+    /// value can be copied straight out of assetlinks.json; add the debug
+    /// keystore's fingerprint there to test a debug build.
+    pub android_origins: Vec<String>,
     pub database_url: String,
     pub redis_url: String,
     pub jwt_access_secret: String,
@@ -110,6 +123,7 @@ impl Config {
             );
         }
         let vapid = vapid_credentials()?;
+        let android_origins = android_origins()?;
 
         Ok(Config {
             node_env: env::var("NODE_ENV").unwrap_or_else(|_| "development".into()),
@@ -119,6 +133,7 @@ impl Config {
                 .unwrap_or(3001),
             client_origin: env::var("CLIENT_ORIGIN")
                 .unwrap_or_else(|_| "http://localhost:5173".into()),
+            android_origins,
             database_url,
             redis_url: env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6380".into()),
             jwt_access_secret: env::var("JWT_ACCESS_SECRET")
@@ -209,6 +224,44 @@ fn parse_attachment_encryption_key(encoded: &str) -> Result<[u8; 32], String> {
          generate one with `openssl rand -base64 32`"
             .to_string()
     })
+}
+
+/// SHA-256 of the certificate the published OrangChat Android app is signed
+/// with, and the same fingerprint deploy/assetlinks.json publishes. It is the
+/// default rather than a required env var so a stock deployment accepts the
+/// store build; anything else (a debug keystore, a fork's own key) has to be
+/// named explicitly.
+const DEFAULT_ANDROID_FINGERPRINT: &str =
+    "D7:25:35:7E:07:C4:E5:7F:E5:40:38:1E:5E:DC:AA:A3:E1:B1:C7:30:C5:5D:18:C2:35:15:05:CA:D6:F9:41:45";
+
+/// Turns the configured signing-certificate fingerprints into the origins the
+/// Android platform actually puts in client data. See `Config::android_origins`.
+fn android_origins() -> Result<Vec<String>, String> {
+    opt("ANDROID_CERT_FINGERPRINTS")
+        .unwrap_or_else(|| DEFAULT_ANDROID_FINGERPRINT.to_string())
+        .split(',')
+        .map(str::trim)
+        .filter(|f| !f.is_empty())
+        .map(android_origin)
+        .collect()
+}
+
+fn android_origin(fingerprint: &str) -> Result<String, String> {
+    let hex = fingerprint.replace([':', ' '], "");
+    if hex.len() != 64 {
+        return Err(format!(
+            "ANDROID_CERT_FINGERPRINTS: `{fingerprint}` is not a SHA-256 fingerprint \
+             (expected 32 hex bytes, optionally colon-separated)"
+        ));
+    }
+    let bytes = (0..32)
+        .map(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16))
+        .collect::<Result<Vec<u8>, _>>()
+        .map_err(|_| format!("ANDROID_CERT_FINGERPRINTS: `{fingerprint}` is not hex"))?;
+    Ok(format!(
+        "android:apk-key-hash:{}",
+        URL_SAFE_NO_PAD.encode(bytes)
+    ))
 }
 
 fn req(key: &str) -> Result<String, String> {
@@ -383,5 +436,37 @@ mod cloudinary_url_tests {
     fn rejects_bad_attachment_encryption_keys() {
         assert!(parse_attachment_encryption_key("not base64!").is_err());
         assert!(parse_attachment_encryption_key(&STANDARD.encode([1_u8; 31])).is_err());
+    }
+}
+
+#[cfg(test)]
+mod android_origin_tests {
+    use super::{android_origin, DEFAULT_ANDROID_FINGERPRINT};
+
+    /// The encoding is fixed by Android, not by us: base64url of the raw
+    /// fingerprint bytes with the padding stripped. Getting it subtly wrong
+    /// (standard base64, or padding kept) rejects every ceremony from the app
+    /// with nothing but "invalid origin" to go on, so it is pinned here.
+    #[test]
+    fn encodes_the_release_fingerprint() {
+        assert_eq!(
+            android_origin(DEFAULT_ANDROID_FINGERPRINT).unwrap(),
+            "android:apk-key-hash:1yU1fgfE5X_lQDgeXtyqo-GxxzDFXRjCNRUFytb5QUU"
+        );
+    }
+
+    #[test]
+    fn accepts_fingerprints_without_colons() {
+        let plain = DEFAULT_ANDROID_FINGERPRINT.replace(':', "");
+        assert_eq!(
+            android_origin(&plain).unwrap(),
+            android_origin(DEFAULT_ANDROID_FINGERPRINT).unwrap()
+        );
+    }
+
+    #[test]
+    fn rejects_anything_that_is_not_a_sha256() {
+        assert!(android_origin("AB:CD").is_err());
+        assert!(android_origin(&"Z".repeat(64)).is_err());
     }
 }

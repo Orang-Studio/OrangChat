@@ -36,8 +36,8 @@ android {
         // bytes, so older releases cannot honestly implement that contract.
         minSdk = 31
         targetSdk = 35
-        versionCode = 62
-        versionName = "0.7.4"
+        versionCode = 63
+        versionName = "0.8.0"
         buildConfigField("String", "KLIPY_API_KEY", "\"$klipyApiKey\"")
         vectorDrawables { useSupportLibrary = true }
     }
@@ -141,6 +141,8 @@ dependencies {
     implementation(libs.coil.video)
     implementation(libs.datastore.preferences)
     implementation(libs.security.crypto)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
     implementation(libs.zxing.core)
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)

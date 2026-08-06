@@ -1,19 +1,24 @@
 //! Account-security REST (2FA), mounted under /api/security. Requires auth.
 
-use axum::extract::State;
-use axum::routing::{delete, get, post};
+use axum::extract::{Path, State};
+use axum::routing::{delete, get, patch, post};
 use axum::{Json, Router};
 use serde_json::{json, Value};
 
 use crate::auth::verify_password;
 use crate::error::{AppError, AppResult};
 use crate::http::{bad_request, valid_email, AuthUser};
-use crate::models::UserRow;
-use crate::services::{account, rate_limit, totp};
+use crate::models::{PasskeyRow, UserRow};
+use crate::services::{account, passkey, rate_limit, totp};
 use crate::state::AppState;
+use crate::timefmt::{iso, iso_opt};
 
 pub fn routes() -> Router<AppState> {
     Router::new()
+        .route("/passkeys", get(list_passkeys))
+        .route("/passkeys/register/start", post(register_passkey_start))
+        .route("/passkeys/register/finish", post(register_passkey_finish))
+        .route("/passkeys/:id", patch(rename_passkey).delete(delete_passkey))
         .route("/2fa", get(status))
         .route("/2fa/setup", post(setup))
         .route("/2fa/enable", post(enable))
@@ -25,6 +30,104 @@ pub fn routes() -> Router<AppState> {
         .route("/standing", get(standing))
         .route("/messages", delete(delete_all_messages))
         .route("/confirm", post(confirm_identity))
+}
+
+// ── Passkeys ────────────────────────────────────────────────────────────────
+//
+// Enrolment and removal only. The sign-in half lives in http/auth.rs, where the
+// session-issuing machinery is - see services/passkey.rs for why a passkey is
+// allowed to end a login on its own.
+
+fn to_passkey(row: &PasskeyRow) -> Value {
+    json!({
+        "id": row.id,
+        "name": row.name,
+        // Whether the authenticator syncs it to a keychain, which is the
+        // difference between "lose the phone, lose the key" and not.
+        "backedUp": row.backed_up,
+        "createdAt": iso(row.created_at),
+        "lastUsedAt": iso_opt(row.last_used_at),
+    })
+}
+
+async fn list_passkeys(State(state): State<AppState>, user: AuthUser) -> AppResult<Json<Value>> {
+    let rows = passkey::list(&state, &user.user_id).await?;
+    Ok(Json(json!({
+        "passkeys": rows.iter().map(to_passkey).collect::<Vec<_>>(),
+        "max": passkey::MAX_PER_USER,
+    })))
+}
+
+/// Password-gated like every other credential change here. A passkey is a way
+/// in, so a hijacked session must not be able to quietly add one and keep the
+/// account after the password is changed back.
+async fn register_passkey_start(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Json(body): Json<Value>,
+) -> AppResult<Json<Value>> {
+    limit(&state, &user.user_id).await?;
+    let row = fetch_user(&state, &user.user_id).await?;
+    check_password(&row, &body)?;
+    check_totp(&state, &row, &body).await?;
+
+    let (challenge, token) = passkey::start_registration(&state, &row).await?;
+    Ok(Json(json!({ "challenge": challenge, "ceremonyToken": token })))
+}
+
+/// No password here: the token being finished was only handed out after one, and
+/// it is bound to this account and single-use.
+async fn register_passkey_finish(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Json(body): Json<Value>,
+) -> AppResult<Json<Value>> {
+    let token = field(&body, "ceremonyToken").unwrap_or_default();
+    let name = field(&body, "name").unwrap_or_default();
+    let response = serde_json::from_value(
+        body.get("response")
+            .cloned()
+            .ok_or_else(|| bad_request("Invalid input"))?,
+    )
+    .map_err(|_| bad_request("That passkey couldn't be read"))?;
+
+    let row = passkey::finish_registration(&state, &user.user_id, token, response, name).await?;
+    Ok(Json(json!({ "passkey": to_passkey(&row) })))
+}
+
+/// Cosmetic, so the session alone is enough - the worst a rename can do is
+/// confuse the owner about which key is which.
+async fn rename_passkey(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Path(id): Path<String>,
+    Json(body): Json<Value>,
+) -> AppResult<Json<Value>> {
+    let row = passkey::rename(
+        &state,
+        &user.user_id,
+        &id,
+        field(&body, "name").unwrap_or_default(),
+    )
+    .await?;
+    Ok(Json(json!({ "passkey": to_passkey(&row) })))
+}
+
+/// Gated like `disable`: taking a factor away is exactly what someone who stole
+/// the session would want to do first.
+async fn delete_passkey(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Path(id): Path<String>,
+    Json(body): Json<Value>,
+) -> AppResult<Json<Value>> {
+    limit(&state, &user.user_id).await?;
+    let row = fetch_user(&state, &user.user_id).await?;
+    check_password(&row, &body)?;
+    check_totp(&state, &row, &body).await?;
+
+    passkey::remove(&state, &user.user_id, &id).await?;
+    Ok(Json(json!({ "deleted": true })))
 }
 
 /// Proves whoever is holding this session is the account owner, without changing

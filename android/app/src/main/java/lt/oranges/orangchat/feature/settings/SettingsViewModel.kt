@@ -13,9 +13,12 @@ import lt.oranges.orangchat.data.model.FriendRequestPrivacy
 import lt.oranges.orangchat.data.remote.AccountStanding
 import lt.oranges.orangchat.data.remote.UpdateMeRequest
 import lt.oranges.orangchat.data.remote.DeviceSession
+import lt.oranges.orangchat.data.remote.Passkey
 import lt.oranges.orangchat.data.remote.TwoFactorSetup
 import lt.oranges.orangchat.data.repository.AuthRepository
 import lt.oranges.orangchat.data.repository.ServerRepository
+import lt.oranges.orangchat.feature.auth.Passkeys
+import retrofit2.HttpException
 import javax.inject.Inject
 
 const val FONT_SCALE_MIN = 0.85f
@@ -75,6 +78,18 @@ data class CredentialsUi(
     val error: String? = null,
     /** Success line shown after a change; cleared when a new form is opened. */
     val done: String? = null,
+)
+
+/**
+ * Drives the passkeys section on the Security screen. [busy] covers the whole
+ * section so a rename or removal in flight disables the add form too.
+ */
+data class PasskeysUi(
+    val loading: Boolean = true,
+    val passkeys: List<Passkey> = emptyList(),
+    val max: Int = 0,
+    val busy: Boolean = false,
+    val error: String? = null,
 )
 
 @HiltViewModel
@@ -264,6 +279,110 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun dismissCodes() = refreshTwoFactor()
+
+    // ── Passkeys ────────────────────────────────────────
+    private val _passkeys = MutableStateFlow(PasskeysUi())
+    val passkeys: StateFlow<PasskeysUi> = _passkeys.asStateFlow()
+
+    fun refreshPasskeys() {
+        viewModelScope.launch {
+            _passkeys.value = PasskeysUi(loading = true)
+            runCatching { authRepository.passkeys() }
+                .onSuccess {
+                    _passkeys.value = PasskeysUi(loading = false, passkeys = it.passkeys, max = it.max)
+                }
+                .onFailure {
+                    _passkeys.value = PasskeysUi(
+                        loading = false,
+                        error = passkeyMessage(it, "Could not load passkeys"),
+                    )
+                }
+        }
+    }
+
+    /**
+     * Adds a passkey: the password (plus a 2FA code when on) buys the ceremony,
+     * the device enrols a credential, and finish registers it. `context` must be
+     * the Activity - Credential Manager raises its sheet over it.
+     */
+    fun addPasskey(
+        context: android.content.Context,
+        name: String,
+        password: String,
+        code: String,
+        onDone: () -> Unit,
+    ) {
+        val current = _passkeys.value
+        viewModelScope.launch {
+            _passkeys.value = current.copy(busy = true, error = null)
+            runCatching {
+                val started = authRepository.startPasskeyRegistration(password, code)
+                val options = Passkeys.optionsOf(started.challenge)
+                    ?: throw IllegalStateException("The server sent an empty passkey request.")
+                val response = Passkeys.create(context, options)
+                authRepository.finishPasskeyRegistration(started.ceremonyToken, name, response)
+            }
+                .onSuccess { refreshPasskeys(); onDone() }
+                .onFailure { _passkeys.value = current.copy(busy = false, error = passkeyMessage(it)) }
+        }
+    }
+
+    fun renamePasskey(id: String, name: String, onDone: () -> Unit) {
+        val current = _passkeys.value
+        viewModelScope.launch {
+            _passkeys.value = current.copy(busy = true, error = null)
+            runCatching { authRepository.renamePasskey(id, name) }
+                .onSuccess { refreshPasskeys(); onDone() }
+                .onFailure {
+                    _passkeys.value = current.copy(busy = false, error = passkeyMessage(it, "Could not rename"))
+                }
+        }
+    }
+
+    fun removePasskey(
+        id: String,
+        password: String,
+        code: String,
+        onDone: () -> Unit,
+    ) {
+        val current = _passkeys.value
+        viewModelScope.launch {
+            _passkeys.value = current.copy(busy = true, error = null)
+            runCatching { authRepository.deletePasskey(id, password, code) }
+                .onSuccess { refreshPasskeys(); onDone() }
+                .onFailure {
+                    _passkeys.value =
+                        current.copy(busy = false, error = passkeyMessage(it, "Could not remove the passkey"))
+                }
+        }
+    }
+
+    fun clearPasskeyError() { _passkeys.value = _passkeys.value.copy(error = null) }
+
+    /**
+     * Dismissing the system sheet is the common outcome and not a failure.
+     *
+     * Anything the server rejected explains itself in its own JSON body; without
+     * digging that out, [HttpException.message] is only ever "HTTP 400 Bad
+     * Request", which tells the person at the phone nothing they can act on.
+     */
+    private fun passkeyMessage(e: Throwable, fallback: String = "That didn't work. Try again."): String = when (e) {
+        is Passkeys.Cancelled -> "That was cancelled."
+        is HttpException -> serverMessage(e) ?: when (e.code()) {
+            401 -> "Incorrect password."
+            429 -> "Too many attempts. Wait a moment and try again."
+            else -> fallback
+        }
+        else -> e.message ?: fallback
+    }
+
+    /** The `error` field of AppError's JSON body, when the response carries one. */
+    private fun serverMessage(e: HttpException): String? =
+        runCatching { e.response()?.errorBody()?.string() }.getOrNull()
+            ?.let { Regex("\"error\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"").find(it) }
+            ?.groupValues?.get(1)
+            ?.replace("\\\"", "\"")
+            ?.takeIf { it.isNotBlank() }
 
     // ── Credentials ─────────────────────────────────────
     private val _credentials = MutableStateFlow(CredentialsUi())

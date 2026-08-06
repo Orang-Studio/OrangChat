@@ -92,6 +92,7 @@ model User {
   deviceLog              DeviceLogEntry[]
   keyDeletionRequests    KeyDeletionRequest[]
   messageReports         MessageReport[]
+  passkeys               Passkey[]
 }
 
 model EmailVerification {
@@ -170,6 +171,37 @@ model Connection {
   createdAt DateTime @default(now())
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([userId, provider, providerId])
+  @@index([userId])
+}
+
+/// A WebAuthn credential. The private half never leaves the authenticator, so
+/// what is stored here proves nothing on its own - it only verifies signatures.
+///
+/// A passkey outranks TOTP as a second factor and can stand in for the whole
+/// login: the authenticator has already checked the user (biometric or PIN) and
+/// is bound to this origin, which is more than a password plus a code that can
+/// be read aloud over the phone. See services::passkey.
+model Passkey {
+  id           String   @id @default(cuid())
+  userId       String
+  /// The authenticator's credential id, base64url. Unique across all accounts:
+  /// a discoverable credential is looked up by this alone, before any user is
+  /// known, so a collision would be an ambiguous sign-in.
+  credentialId String   @unique
+  /// webauthn-rs's serialised `Passkey`, holding the public key, signature
+  /// counter and transport hints. Opaque here on purpose - the shape belongs to
+  /// the library, and parsing it in SQL would pin us to its version.
+  credential   Json
+  /// What the user calls it ("Phone", "YubiKey"). Named at registration from
+  /// the authenticator's own AAGUID where we recognise it, renameable after.
+  name         String
+  /// True when the authenticator says the key is synced to a cloud keychain.
+  /// Worth surfacing: a synced key survives a lost phone, a device-bound one
+  /// does not, and that changes whether it is safe to be someone's only one.
+  backedUp     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  lastUsedAt   DateTime?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId])
 }
 

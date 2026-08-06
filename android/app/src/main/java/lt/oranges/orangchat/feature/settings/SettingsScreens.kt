@@ -17,10 +17,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.TextButton
 import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,6 +47,7 @@ import lt.oranges.orangchat.BuildConfig
 import lt.oranges.orangchat.data.model.DmPrivacy
 import lt.oranges.orangchat.data.model.FriendRequestPrivacy
 import lt.oranges.orangchat.data.model.SelfUser
+import lt.oranges.orangchat.data.remote.Passkey
 import lt.oranges.orangchat.feature.e2ee.EncryptionExplainerDialog
 import lt.oranges.orangchat.feature.e2ee.HowEncryptionWorksLink
 import lt.oranges.orangchat.feature.updates.UpdateUiState
@@ -308,6 +311,259 @@ fun DevicesScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
     }
 }
 
+// ── Passkeys ─────────────────────────────────────────────
+
+@Composable
+private fun PasskeysSection(self: SelfUser, vm: SettingsViewModel) {
+    val c = OrangTheme.colors
+    // Credential Manager raises its sheet over the Activity, so the ceremony
+    // needs this context rather than the application one.
+    val context = LocalContext.current
+    val ui by vm.passkeys.collectAsStateWithLifecycle()
+
+    var adding by remember { mutableStateOf(false) }
+    var addName by remember { mutableStateOf("") }
+    var addPassword by remember { mutableStateOf("") }
+    var addCode by remember { mutableStateOf("") }
+    var removing by remember { mutableStateOf<String?>(null) }
+    var renaming by remember { mutableStateOf<String?>(null) }
+    var renameDraft by remember { mutableStateOf("") }
+
+    val needsCode = self.twoFactorEnabled
+    val full = !ui.loading && ui.max > 0 && ui.passkeys.size >= ui.max
+
+    LaunchedEffect(Unit) { vm.refreshPasskeys() }
+
+    fun closeAdd() {
+        adding = false
+        addName = ""
+        addPassword = ""
+        addCode = ""
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Passkeys", color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            "Sign in with your fingerprint, face or device PIN instead of a password. " +
+                "A passkey only works on the site that created it, so it can't be phished - " +
+                "which is why we ask for one instead of an emailed code when your account has one.",
+            color = c.inkSecondary,
+            fontSize = 13.sp,
+        )
+
+        val sectionError = ui.error
+        if (sectionError != null) {
+            Text(sectionError, color = c.danger, fontSize = 13.sp)
+        }
+
+        when {
+            ui.loading -> Text("Loading…", color = c.inkMuted, fontSize = 14.sp)
+            ui.passkeys.isEmpty() -> Text("No passkeys yet.", color = c.inkSecondary, fontSize = 14.sp)
+            else -> ui.passkeys.forEach { passkey ->
+                PasskeyRow(
+                    passkey = passkey,
+                    needsCode = needsCode,
+                    busy = ui.busy,
+                    removing = removing == passkey.id,
+                    onRemoveOpen = {
+                        vm.clearPasskeyError()
+                        removing = passkey.id
+                    },
+                    onRemoveCancel = { removing = null },
+                    onRemove = { password, code ->
+                        vm.removePasskey(passkey.id, password, code) { removing = null }
+                    },
+                    onRenameOpen = {
+                        vm.clearPasskeyError()
+                        renaming = passkey.id
+                        renameDraft = passkey.name
+                    },
+                )
+            }
+        }
+
+        if (adding) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OrangTextField(
+                    value = addName,
+                    onValueChange = { addName = it.take(60); vm.clearPasskeyError() },
+                    label = "Name",
+                    placeholder = "Personal phone",
+                    hint = "So you can tell it apart from your other devices later.",
+                )
+                OrangTextField(
+                    value = addPassword,
+                    onValueChange = { addPassword = it; vm.clearPasskeyError() },
+                    label = "Current password",
+                    isPassword = true,
+                )
+                if (needsCode) {
+                    OrangTextField(
+                        value = addCode,
+                        onValueChange = { addCode = it.take(32); vm.clearPasskeyError() },
+                        label = "Authenticator code",
+                        placeholder = "123456",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OrangButton(
+                        text = "Create passkey",
+                        onClick = {
+                            vm.addPasskey(context, addName, addPassword, addCode) { closeAdd() }
+                        },
+                        enabled = addPassword.isNotBlank() && !ui.busy,
+                        loading = ui.busy,
+                        size = ButtonSize.Sm,
+                    )
+                    OrangButton(
+                        text = "Cancel",
+                        onClick = { closeAdd(); vm.clearPasskeyError() },
+                        variant = ButtonVariant.Ghost,
+                        size = ButtonSize.Sm,
+                    )
+                }
+            }
+        } else {
+            OrangButton(
+                text = "Add a passkey",
+                onClick = { vm.clearPasskeyError(); adding = true },
+                variant = ButtonVariant.Secondary,
+                enabled = !full && !ui.busy,
+                size = ButtonSize.Sm,
+            )
+            if (full) {
+                Text(
+                    "You've reached the limit of ${ui.max} passkeys. Remove one to add another.",
+                    color = c.inkSecondary,
+                    fontSize = 12.sp,
+                )
+            }
+        }
+    }
+
+    renaming?.let { id ->
+        AlertDialog(
+            onDismissRequest = { if (!ui.busy) renaming = null },
+            title = { Text("Rename passkey", color = c.ink) },
+            text = {
+                OrangTextField(
+                    value = renameDraft,
+                    onValueChange = { renameDraft = it.take(60) },
+                    label = "Name",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = renameDraft.isNotBlank() && !ui.busy,
+                    onClick = { vm.renamePasskey(id, renameDraft.trim()) { renaming = null } },
+                ) { Text("Rename", color = c.primary) }
+            },
+            dismissButton = {
+                TextButton(onClick = { renaming = null }) {
+                    Text("Cancel", color = c.inkSecondary)
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun PasskeyRow(
+    passkey: Passkey,
+    needsCode: Boolean,
+    busy: Boolean,
+    removing: Boolean,
+    onRemoveOpen: () -> Unit,
+    onRemoveCancel: () -> Unit,
+    onRemove: (String, String) -> Unit,
+    onRenameOpen: () -> Unit,
+) {
+    val c = OrangTheme.colors
+    var password by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(c.surface1, RoundedCornerShape(OrangRadius.lg))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(passkey.name.ifBlank { "Passkey" }, color = c.ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text(
+                    "Added ${formatFullTime(passkey.createdAt)}" +
+                        (passkey.lastUsedAt?.let { " · last used ${formatFullTime(it)}" } ?: " · never used"),
+                    color = c.inkSecondary,
+                    fontSize = 12.sp,
+                )
+                if (passkey.backedUp) {
+                    Text("Synced to your device's keychain.", color = c.inkSecondary, fontSize = 12.sp)
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+            OrangButton(
+                text = "Rename",
+                onClick = onRenameOpen,
+                variant = ButtonVariant.Ghost,
+                size = ButtonSize.Sm,
+                enabled = !busy,
+            )
+            OrangButton(
+                text = "Remove",
+                onClick = onRemoveOpen,
+                variant = ButtonVariant.Danger,
+                size = ButtonSize.Sm,
+                enabled = !busy,
+            )
+        }
+
+        if (removing) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "Removing this only affects OrangChat. Delete it from the device's own " +
+                        "passkey settings too, or it will keep showing up there.",
+                    color = c.inkSecondary,
+                    fontSize = 13.sp,
+                )
+                OrangTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = "Current password",
+                    isPassword = true,
+                )
+                if (needsCode) {
+                    OrangTextField(
+                        value = code,
+                        onValueChange = { code = it.take(32) },
+                        label = "Authenticator code",
+                        placeholder = "123456",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OrangButton(
+                        text = "Remove passkey",
+                        onClick = { onRemove(password, code) },
+                        variant = ButtonVariant.Danger,
+                        enabled = password.isNotBlank() && !busy,
+                        loading = busy,
+                        size = ButtonSize.Sm,
+                    )
+                    OrangButton(
+                        text = "Cancel",
+                        onClick = onRemoveCancel,
+                        variant = ButtonVariant.Ghost,
+                        size = ButtonSize.Sm,
+                    )
+                }
+            }
+        }
+    }
+}
+
 // ── Security (2FA) ──────────────────────────────────────
 
 @Composable
@@ -333,6 +589,10 @@ fun SecurityScreen(
             HorizontalDivider(color = c.border)
 
             CredentialsSection(self, hasPassword, vm)
+
+            HorizontalDivider(color = c.border)
+
+            PasskeysSection(self, vm)
 
             HorizontalDivider(color = c.border)
 

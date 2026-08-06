@@ -1,6 +1,6 @@
 [package]
 name = "orangchat-server"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 publish = false
 
@@ -62,7 +62,7 @@ scraper = "0.27"
 url = "2"
 
 cuid = "1"
-uuid = { version = "1", features = ["v4"] }
+uuid = { version = "1", features = ["v4", "v5"] }
 p256 = { version = "0.13", default-features = false, features = ["ecdsa", "pkcs8", "std"] }
 sha1 = "0.10"
 sha2 = "0.10"
@@ -77,6 +77,15 @@ dotenvy = "0.15"
 thiserror = "2"
 futures = "0.3"
 totp-rs = { version = "5.7.2", features = ["qr", "gen_secret"] }
+# `danger-allow-state-serialisation` is what lets the in-progress ceremony state
+# be parked in Redis between /start and /finish. The name warns against handing
+# that state to the client, which we never do - it is stored server-side under an
+# opaque token, exactly as the crate's own examples do it.
+webauthn-rs = { version = "0.5", features = [
+    "danger-allow-state-serialisation",
+    "conditional-ui",
+    "resident-key-support",
+] }
 
 [profile.release]
 opt-level = 3

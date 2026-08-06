@@ -15,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,6 +23,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -43,6 +45,9 @@ fun AuthScreens(viewModel: AuthViewModel = hiltViewModel()) {
     var showSignup by rememberSaveable { mutableStateOf(false) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val c = OrangTheme.colors
+    // Credential Manager raises its sheet over the Activity, so the ceremony
+    // needs this context rather than the application one.
+    val context = LocalContext.current
 
     Box(
         modifier = Modifier.fillMaxSize().padding(24.dp),
@@ -79,6 +84,10 @@ fun AuthScreens(viewModel: AuthViewModel = hiltViewModel()) {
                     onVerifyEmailCode = viewModel::verifyEmailCode,
                     onResendEmailCode = viewModel::resendEmailCode,
                     onCancelEmailCode = viewModel::cancelEmailCode,
+                    onSignInWithPasskey = { viewModel.signInWithPasskey(context) },
+                    onAnswerPasskey = { viewModel.answerPasskey(context) },
+                    onEmailCodeInstead = { e, p -> viewModel.login(e, p, skipPasskey = true) },
+                    onCancelPasskey = viewModel::cancelPasskey,
                 )
             }
 
@@ -106,12 +115,56 @@ private fun LoginForm(
     onVerifyEmailCode: (String) -> Unit,
     onResendEmailCode: () -> Unit,
     onCancelEmailCode: () -> Unit,
+    onSignInWithPasskey: () -> Unit,
+    onAnswerPasskey: () -> Unit,
+    onEmailCodeInstead: (String, String) -> Unit,
+    onCancelPasskey: () -> Unit,
 ) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var code by rememberSaveable { mutableStateOf("") }
     var emailCode by rememberSaveable { mutableStateOf("") }
     var reveal by remember { mutableStateOf(false) }
+
+    // The password checked out and the account wants its passkey: hold the
+    // ceremony open, and dive straight into the system sheet - the click that
+    // submitted the password is the gesture, and a second click would only add
+    // a step. Keyed on the token so a retry of the same ceremony doesn't refire.
+    if (state.passkeyPrompt != null) {
+        LaunchedEffect(state.passkeyPrompt.ceremonyToken) {
+            onAnswerPasskey()
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
+            Text(
+                "Confirm with your passkey to finish signing in.",
+                color = OrangTheme.colors.inkSecondary,
+                fontSize = 14.sp,
+            )
+            ErrorText(state.error)
+            OrangButton(
+                text = "Use passkey",
+                onClick = onAnswerPasskey,
+                size = ButtonSize.Lg,
+                loading = state.loading,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            // The way out for someone whose authenticator isn't to hand. It
+            // re-submits the password, so this is a fallback and not a bypass.
+            OrangButton(
+                text = "Email me a code instead",
+                onClick = { onEmailCodeInstead(email, password) },
+                variant = ButtonVariant.Ghost,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OrangButton(
+                text = "Back",
+                onClick = onCancelPasskey,
+                variant = ButtonVariant.Ghost,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        return
+    }
 
     // Every login ends here: the password (and any authenticator code) checked
     // out, and the server mailed a one-time code to finish the sign-in with.
@@ -207,6 +260,12 @@ private fun LoginForm(
             onClick = { onSubmit(email, password, null) },
             size = ButtonSize.Lg,
             loading = state.loading,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OrangButton(
+            text = "Sign in with a passkey",
+            onClick = onSignInWithPasskey,
+            variant = ButtonVariant.Ghost,
             modifier = Modifier.fillMaxWidth(),
         )
     }

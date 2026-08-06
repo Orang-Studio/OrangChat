@@ -17,6 +17,7 @@ import { TextField } from "../../components/ui/TextField";
 import { authStoreActions, useAuthStore } from "../../stores/auth";
 import { formatFullTime } from "../../lib/time";
 import { SectionTitle } from "./controls";
+import { PasskeysSection } from "./PasskeysSection";
 import {
   changeEmail,
   changePassword,
@@ -948,6 +949,10 @@ export function SecurityTab() {
 
       <div className="border-t border-border pt-5">
         <CredentialsSection />
+      </div>
+
+      <div className="border-t border-border pt-5">
+        <PasskeysSection />
       </div>
 
       <div className="border-t border-border pt-5">

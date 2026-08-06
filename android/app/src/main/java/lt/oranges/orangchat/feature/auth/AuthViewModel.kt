@@ -1,5 +1,6 @@
 package lt.oranges.orangchat.feature.auth
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -7,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import lt.oranges.orangchat.data.remote.PasskeyChallenge
 import lt.oranges.orangchat.data.repository.AuthRepository
 import retrofit2.HttpException
 import javax.inject.Inject
@@ -22,6 +24,12 @@ data class AuthFormState(
      * starting over.
      */
     val loginToken: String? = null,
+    /**
+     * Non-null once the password checked out and the account wants a passkey
+     * instead of the emailed code - the phishing-resistant path is offered
+     * first. The ceremony's other half is the challenge the device signs.
+     */
+    val passkeyPrompt: PasskeyChallenge? = null,
     /** Non-error status line, e.g. confirming a code was sent again. */
     val notice: String? = null,
     /** Signup went through; the account waits on its verification link. */
@@ -36,17 +44,22 @@ class AuthViewModel @Inject constructor(
     private val _state = MutableStateFlow(AuthFormState())
     val state: StateFlow<AuthFormState> = _state.asStateFlow()
 
-    fun login(email: String, password: String, totpCode: String? = null) {
+    fun login(email: String, password: String, totpCode: String? = null, skipPasskey: Boolean = false) {
         if (!validate(email, password)) return
         val needs2fa = _state.value.needsTwoFactor
         run(keepTwoFactor = needs2fa) {
-            // Success here is only a mailed code; the session comes later. A
-            // blank token would strand the code screen with nothing to send.
-            val token = authRepository.login(email, password, totpCode)
-            if (token.isBlank()) {
-                AuthFormState(error = "Could not start the sign-in. Try again.")
-            } else {
-                AuthFormState(loginToken = token)
+            // Success here is only the first step of a login; the session comes
+            // later, via an emailed code or a passkey.
+            val challenge = authRepository.login(email, password, totpCode, skipPasskey)
+            when {
+                // The password checked out and this account prefers a passkey to
+                // the mailed code: hold the ceremony open until the device signs.
+                challenge.passkeyRequired && challenge.ceremonyToken.isNotBlank() && challenge.challenge != null ->
+                    AuthFormState(passkeyPrompt = PasskeyChallenge(challenge.challenge, challenge.ceremonyToken))
+                // A blank token would strand the code screen with nothing to send.
+                challenge.loginToken.isBlank() ->
+                    AuthFormState(error = "Could not start the sign-in. Try again.")
+                else -> AuthFormState(loginToken = challenge.loginToken)
             }
         }
     }
@@ -60,6 +73,46 @@ class AuthViewModel @Inject constructor(
             AuthFormState()
         }
     }
+
+    // ── Passkeys ──────────────────────────────────────────
+
+    /**
+     * A whole sign-in with nothing but a passkey: the device proves the person,
+     * so no password or code is asked for on top. `context` must be the
+     * Activity - Credential Manager raises its sheet over it.
+     */
+    fun signInWithPasskey(context: Context) {
+        if (_state.value.loading) return
+        run {
+            val started = authRepository.startPasskeySignIn()
+            val response = Passkeys.get(context, optionsOf(started))
+            authRepository.finishPasskeySignIn(started.ceremonyToken, response)
+            // The session flips and the auth screens are replaced.
+            AuthFormState()
+        }
+    }
+
+    /**
+     * Answers a pending ceremony - the one the password bought when the account
+     * has a passkey. Dismissing the sheet leaves the prompt in place so the
+     * user can retry or pick the emailed code instead.
+     */
+    fun answerPasskey(context: Context) {
+        val prompt = _state.value.passkeyPrompt ?: return
+        run(keepPasskey = true) {
+            val response = Passkeys.get(context, optionsOf(prompt))
+            authRepository.finishPasskeySignIn(prompt.ceremonyToken, response)
+            AuthFormState()
+        }
+    }
+
+    /** Abandons the passkey step; the next login starts from scratch. */
+    fun cancelPasskey() { _state.value = AuthFormState() }
+
+    /** The platform wants the inside of `publicKey`, not the envelope. */
+    private fun optionsOf(challenge: PasskeyChallenge): String =
+        Passkeys.optionsOf(challenge.challenge)
+            ?: throw IllegalStateException("The server sent an empty passkey request.")
 
     fun resendEmailCode() {
         val token = _state.value.loginToken ?: return
@@ -93,10 +146,17 @@ class AuthViewModel @Inject constructor(
     private fun run(
         keepTwoFactor: Boolean = false,
         keepLoginToken: Boolean = false,
+        keepPasskey: Boolean = false,
         block: suspend () -> AuthFormState,
     ) {
         val token = _state.value.loginToken.takeIf { keepLoginToken }
-        _state.value = AuthFormState(loading = true, needsTwoFactor = keepTwoFactor, loginToken = token)
+        val prompt = _state.value.passkeyPrompt.takeIf { keepPasskey }
+        _state.value = AuthFormState(
+            loading = true,
+            needsTwoFactor = keepTwoFactor,
+            loginToken = token,
+            passkeyPrompt = prompt,
+        )
         viewModelScope.launch {
             try {
                 _state.value = block()
@@ -112,9 +172,21 @@ class AuthViewModel @Inject constructor(
                 } else {
                     _state.value = AuthFormState(loginToken = token, error = serverMessage(e, body, token != null))
                 }
+            } catch (e: Passkeys.Cancelled) {
+                // Dismissing the sheet is the common outcome and not a failure.
+                _state.value = AuthFormState(
+                    passkeyPrompt = prompt,
+                    error = "That was cancelled. Try again, or use an email code.",
+                )
+            } catch (e: Passkeys.NoneAvailable) {
+                _state.value = AuthFormState(
+                    passkeyPrompt = prompt,
+                    error = "No passkey for OrangChat on this device. Try again, or use an email code.",
+                )
             } catch (e: Exception) {
                 _state.value = AuthFormState(
                     loginToken = token,
+                    passkeyPrompt = prompt,
                     error = e.message ?: "Something went wrong. Try again.",
                 )
             }

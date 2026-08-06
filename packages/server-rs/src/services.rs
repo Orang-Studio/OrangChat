@@ -31,6 +31,7 @@ pub mod role;
 pub mod server;
 pub mod sound;
 pub mod spotify;
+pub mod passkey;
 pub mod totp;
 pub mod update_policy;
 pub mod user;
