@@ -120,6 +120,7 @@ class NotificationHelper @Inject constructor(
      * decides what replaces what: a second warning about a different event must
      * not overwrite the first.
      */
+    @SuppressLint("MissingPermission") // hasPermission() gates the call; notify re-checks on the way out.
     fun notifySecurity(tag: String, title: String, body: String) {
         if (!hasPermission()) return
         val intent = Intent(context, MainActivity::class.java).apply {
