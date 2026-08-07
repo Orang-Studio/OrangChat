@@ -126,6 +126,18 @@ class TokenStore(context: Context) {
         get() = prefs.getBoolean(KEY_NOTIFICATION_PREVIEWS, true)
         set(value) = prefs.edit().putBoolean(KEY_NOTIFICATION_PREVIEWS, value).apply()
 
+    /**
+     * Whether this install has already put the notification question to the user.
+     *
+     * The platform cannot answer this on its own:
+     * shouldShowRequestPermissionRationale is false both before the first ask and
+     * after a permanent denial, so without a flag of our own we cannot tell a new
+     * user from one who has already said no twice - and would nag the second.
+     */
+    var notificationPermissionAsked: Boolean
+        get() = prefs.getBoolean(KEY_NOTIFICATION_ASKED, false)
+        set(value) = prefs.edit().putBoolean(KEY_NOTIFICATION_ASKED, value).apply()
+
     companion object {
         const val KEY_ACCESS = "access_token"
         const val KEY_COOKIES = "cookies"
@@ -139,5 +151,6 @@ class TokenStore(context: Context) {
         const val KEY_JOIN_MUTED = "pref_join_muted"
         const val KEY_JOIN_VIDEO = "pref_join_video"
         const val KEY_NOTIFICATION_PREVIEWS = "pref_notification_previews"
+        const val KEY_NOTIFICATION_ASKED = "pref_notification_permission_asked"
     }
 }

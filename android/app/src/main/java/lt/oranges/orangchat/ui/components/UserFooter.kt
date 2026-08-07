@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.minimumInteractiveComponentSize
 import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -34,7 +35,9 @@ fun UserFooter(
         modifier = modifier
             .fillMaxWidth()
             .background(c.surface0)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            // Trimmed end padding: the settings target is 48dp wide now and carries
+            // its own slack, so the glyph stays where it was.
+            .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Avatar(self.asUser(), size = 34.dp)
@@ -56,6 +59,7 @@ fun UserFooter(
             contentDescription = "User settings",
             tint = c.inkMuted,
             modifier = Modifier
+                .minimumInteractiveComponentSize()
                 .size(32.dp)
                 .clickable(onClick = onOpenSettings)
                 .padding(7.dp),

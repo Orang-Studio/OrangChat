@@ -1,5 +1,6 @@
-import { app, dialog, type BrowserWindow } from "electron";
+import { app, type BrowserWindow } from "electron";
 import { autoUpdater } from "electron-updater";
+import { messageBoxWhenVisible } from "./modal";
 
 const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
@@ -24,8 +25,7 @@ function activeWindow(): BrowserWindow | null {
 function messageBox(
   options: Electron.MessageBoxOptions,
 ): Promise<Electron.MessageBoxReturnValue> {
-  const window = activeWindow();
-  return window ? dialog.showMessageBox(window, options) : dialog.showMessageBox(options);
+  return messageBoxWhenVisible(activeWindow(), options);
 }
 
 async function promptToInstall(version: string): Promise<void> {

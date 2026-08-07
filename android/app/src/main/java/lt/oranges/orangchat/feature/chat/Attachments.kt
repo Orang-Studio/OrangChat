@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.minimumInteractiveComponentSize
 import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -172,7 +173,10 @@ private fun UploadChip(
                 Icons.Default.Close,
                 contentDescription = if (upload.settled) "Remove ${upload.name}" else "Cancel upload of ${upload.name}",
                 tint = c.inkMuted,
-                modifier = Modifier.size(16.dp).clickable(onClick = onRemove),
+                modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .size(16.dp)
+                    .clickable(onClick = onRemove),
             )
         }
 

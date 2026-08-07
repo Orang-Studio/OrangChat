@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ArrowDown, Loader2 } from 'lucide-react';
 import {
   callNotice,
   describeSystemNotice,
@@ -17,6 +17,13 @@ interface MessageListProps {
   /** The conversation itself - a call card needs something to ring. */
   channel: { id: string; name: string | null; serverId: string | null };
   pendingMessageIds: Set<string>;
+  /** Rows the server refused: localId → server's reason. */
+  failedMessages: { localId: string; failure: string }[];
+  /** Re-send a failed row. */
+  onRetryMessage: (localId: string) => void;
+  /** Abandon a failed row. Without this a permanent rejection - no send
+   * permission, deleted channel - wedges the row on screen for good. */
+  onDiscardMessage: (localId: string) => void;
   channelName: string;
   /** Shared DM chat background image, drawn behind the messages. */
   backgroundUrl?: string | null;
@@ -41,10 +48,21 @@ interface MessageListProps {
   mentionProfiles?: Record<string, User>;
   /** Called once a `jumpToId` has been acted on, so the URL can be cleaned. */
   onJumpHandled?: () => void;
+  /** Newest-read point (ISO) for the unread divider; null hides it. */
+  readWatermark?: string | null;
+  /** Advance the read watermark - called with the newest message while the
+   * list sits at the bottom, so unread stays unread while scrolled up. */
+  onReadUpTo?: (message: Message) => void;
 }
 
 /** How many older pages a jump will pull in before giving up on finding it. */
 const JUMP_MAX_PAGES = 12;
+
+/** Rendered-row budget: scrollback beyond this is capped off until asked for,
+ * so deep history can't grow the DOM without bound. */
+const RENDER_CAP = 600;
+const RENDER_CAP_STEP = 400;
+const RENDER_CAP_MAX = 2000;
 
 /**
  * A message the server wrote about the conversation, rather than a line someone
@@ -96,14 +114,18 @@ function SystemNotice({
 }
 
 /**
- * Scrollable message pane. Uses `flex-col-reverse` so the browser natively
- * pins the view to the bottom for new messages and preserves the scroll
- * position when older pages prepend - no manual scroll math.
+ * Scrollable message pane. Rendered oldest→newest so a screen reader reads the
+ * log forward; the scroll position is managed manually instead (see the layout
+ * effect): snap to the bottom while the user is at it, and shift by however
+ * much older pages grew when they load, so the visible rows never move.
  */
 export function MessageList({
   messages,
   channel,
   pendingMessageIds,
+  failedMessages,
+  onRetryMessage,
+  onDiscardMessage,
   channelName,
   backgroundUrl,
   hasOlder,
@@ -119,12 +141,154 @@ export function MessageList({
   replyToId,
   mentionProfiles,
   onJumpHandled,
+  readWatermark,
+  onReadUpTo,
 }: MessageListProps) {
   const topSentinel = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const [flashId, setFlashId] = useState<string | null>(null);
   const [missingJump, setMissingJump] = useState(false);
   const flashTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // "At the present" is a scroll-position question. With a top-down flex
+  // column that means the bottom edge of the viewport, within a small slop.
+  const [atBottom, setAtBottom] = useState(true);
+  const atBottomRef = useRef(true);
+  // Snapshotted once per mount (this component remounts with its keyed-by-
+  // channel.id parent, so that's once per channel opened): the point new-
+  // message comparisons hold steady against for the whole viewing session.
+  // Reading the live watermark instead would self-erase the divider/count
+  // the instant the list reaches the bottom, since the effect below advances
+  // the persisted value on exactly that condition.
+  const enteredWatermarkRef = useRef(readWatermark ?? null);
+  // Older-history fetch in flight (top sentinel crossed): when it lands, the
+  // rows must not jump, so the scroll offset is shifted by the added height.
+  const olderLoadPending = useRef(false);
+  // Scroll metrics from the previous layout pass, for that same shift.
+  const prevHeight = useRef(0);
+  // DOM budget for deep scrollback; a deep-link jump drops the cap for the
+  // session, because a jump has to be able to reach the row it names.
+  const [renderCap, setRenderCap] = useState(RENDER_CAP);
+  const [hasJumped, setHasJumped] = useState(false);
+
+  useEffect(() => {
+    if (jumpToId) setHasJumped(true);
+  }, [jumpToId]);
+
+  const capped = !hasJumped && !jumpToId && messages.length > renderCap;
+  // Everything the user can see is the newest messages; older ones sit behind
+  // a "load earlier" edge until they are asked for.
+  const rendered = useMemo(() => {
+    if (!capped) return messages;
+    return messages.slice(-renderCap);
+  }, [messages, capped, renderCap]);
+
+  const expandHistory = useCallback(() => {
+    // The added rows land above the viewport, so preserve the scroll position
+    // the same way an older-page fetch does.
+    olderLoadPending.current = true;
+    setRenderCap((c) => (c >= RENDER_CAP_MAX ? Infinity : c + RENDER_CAP_STEP));
+  }, []);
+
+  const onScroll = useCallback(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const bottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 24;
+    if (bottom !== atBottomRef.current) {
+      atBottomRef.current = bottom;
+      setAtBottom(bottom);
+    }
+  }, []);
+
+  const handleLoadOlder = useCallback(() => {
+    olderLoadPending.current = true;
+    onLoadOlder();
+  }, [onLoadOlder]);
+
+  // Manual scroll management, the price of chronological DOM order (a screen
+  // reader used to walk the log newest-first): pin to the bottom while the
+  // user is at it, and preserve the visible rows when older pages prepend.
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const height = el.scrollHeight;
+    const delta = height - prevHeight.current;
+    prevHeight.current = height;
+    if (delta === 0) {
+      olderLoadPending.current = false;
+    } else if (atBottomRef.current) {
+      el.scrollTop = el.scrollHeight;
+      olderLoadPending.current = false;
+    } else if (delta > 0 && olderLoadPending.current) {
+      el.scrollTop += delta;
+      olderLoadPending.current = false;
+    }
+  }, [messages, rendered, hasOlder, isLoadingOlder]);
+
+  // Images, video posters and link embeds settle their height after the layout
+  // effect above has already run. The browser used to absorb that for free;
+  // with `overflow-anchor: none` it no longer does, so the rows would slide out
+  // from under a user sitting at the bottom. `load` does not bubble - capture.
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const onContentLoad = () => {
+      if (atBottomRef.current) el.scrollTop = el.scrollHeight;
+      prevHeight.current = el.scrollHeight;
+    };
+    el.addEventListener('load', onContentLoad, true);
+    return () => el.removeEventListener('load', onContentLoad, true);
+  }, []);
+
+  // The composer growing to a second line, the connection banner mounting, a
+  // reply bar appearing - none of these change scrollHeight, only the
+  // scroller's own clientHeight, so the layout effect above never sees them
+  // (its delta is scrollHeight - scrollHeight). Watch the scroller's own box
+  // and re-pin the same way.
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => {
+      if (atBottomRef.current) el.scrollTop = el.scrollHeight;
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const failedById = useMemo(
+    () => new Map(failedMessages.map((f) => [f.localId, f.failure])),
+    [failedMessages],
+  );
+
+  // While the list sits at the bottom the newest message is by definition read;
+  // anything newer than the watermark arrived while the user was elsewhere.
+  useEffect(() => {
+    if (!atBottom || !onReadUpTo) return;
+    const newest = messages[messages.length - 1];
+    if (newest) onReadUpTo(newest);
+  }, [messages, atBottom, onReadUpTo]);
+
+  // First row the user hasn't read yet (chronological index), and how many
+  // newer than the entry-time watermark there are in total. Both skip the
+  // user's own messages: you have read what you just wrote, and a divider
+  // sitting above your own line while the button counts zero reads as a bug.
+  const isUnread = useCallback(
+    (m: Message) => {
+      const watermark = enteredWatermarkRef.current;
+      return !!watermark && m.createdAt > watermark && m.author.id !== selfId;
+    },
+    [selfId],
+  );
+  const firstUnreadIndex = useMemo(
+    () => messages.findIndex(isUnread),
+    [messages, isUnread],
+  );
+  const newCount = useMemo(
+    () => messages.filter(isUnread).length,
+    [messages, isUnread],
+  );
+  // Same position, relative to the rendered window (outside it, no divider).
+  const cutIndex = messages.length - rendered.length;
+  const firstUnreadInView = firstUnreadIndex >= cutIndex ? firstUnreadIndex - cutIndex : -1;
 
   // The jump loop reads these while it awaits, long after its closure was made.
   const latest = useRef({ hasOlder, isLoadingOlder, onLoadOlder });
@@ -167,19 +331,21 @@ export function MessageList({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jumpToId, messages.length > 0]);
 
-  // Load older history when the (visual) top sentinel scrolls into view.
+  // Load older history when the (visual) top sentinel scrolls into view. The
+  // cap state is a dependency: the sentinel only exists while uncapped, and
+  // the observer has to (re)attach the moment it appears.
   useEffect(() => {
     const el = topSentinel.current;
     if (!el || !hasOlder) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) onLoadOlder();
+        if (entries[0]?.isIntersecting) handleLoadOlder();
       },
       { root: scroller.current, rootMargin: '200px' },
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [hasOlder, onLoadOlder]);
+  }, [hasOlder, handleLoadOlder, capped]);
 
   const byId = useMemo(() => {
     const map = new Map<string, Message>();
@@ -187,11 +353,13 @@ export function MessageList({
     return map;
   }, [messages]);
 
-  // Chronological walk decides grouping; the DOM renders reversed.
+  // Chronological walk decides grouping. Runs over the rendered window, so
+  // the row before the first rendered message (the cap edge) does not exist
+  // and the first row simply renders as a lead - the grouping stays honest.
   const rows = useMemo(
     () =>
-      messages.map((message, i) => {
-        const prev = messages[i - 1];
+      rendered.map((message, i) => {
+        const prev = rendered[i - 1];
         const notice = isSystemNotice(message);
         const compact =
           !!prev &&
@@ -205,7 +373,7 @@ export function MessageList({
           withinGroupWindow(prev.createdAt, message.createdAt);
         return { message, compact, notice };
       }),
-    [messages],
+    [rendered],
   );
 
   return (
@@ -229,44 +397,27 @@ export function MessageList({
       )}
       <div
         ref={scroller}
-        className="flex flex-1 flex-col-reverse overflow-y-auto pb-2"
+        onScroll={onScroll}
+        className="flex flex-1 flex-col overflow-y-auto pb-2 [overflow-anchor:none]"
         role="log"
         aria-label={`Messages in ${channelName}`}
       >
-        {/* column-reverse: first DOM child = visual bottom. Render newest first. */}
-        {[...rows]
-          .reverse()
-          .map(({ message, compact, notice }) =>
-            notice ? (
-              <SystemNotice
-                key={message.clientId ?? message.id}
-                message={message}
-                channel={channel}
-                selfId={selfId}
-                profiles={mentionProfiles}
-              />
-            ) : (
-              <MessageItem
-                key={message.clientId ?? message.id}
-                message={message}
-                pending={pendingMessageIds.has(message.id)}
-                compact={compact}
-                replyTo={message.replyToId ? byId.get(message.replyToId) : undefined}
-                isOwn={message.author.id === selfId}
-                canManage={canManage}
-                onReply={onReply}
-                onJumpTo={(id) => void jumpTo(id)}
-                flash={flashId === message.id}
-                replying={replyToId === message.id}
-                mentionNames={mentionNames}
-                mentionUsers={mentionUsers}
-                selfId={selfId}
-                mentionProfiles={mentionProfiles}
-              />
-            ),
-          )}
-
-        {hasOlder ? (
+        {/* `flex-col-reverse` used to pin a short conversation to the bottom
+            for free; plain `flex-col` doesn't, so a spacer eats the surplus
+            space above the content instead whenever the log is shorter than
+            the viewport. */}
+        <div aria-hidden className="mt-auto" />
+        {/* Oldest first in the DOM, so a screen reader walks the log forward.
+            The browser anchoring is off - the layout effect owns the scroll. */}
+        {capped ? (
+          <button
+            type="button"
+            onClick={expandHistory}
+            className="mx-auto my-3 block rounded-md border border-border bg-surface-2 px-3 py-1.5 text-xs font-medium text-ink-secondary transition-colors hover:bg-surface-3 hover:text-ink"
+          >
+            Load earlier messages
+          </button>
+        ) : hasOlder ? (
           <div ref={topSentinel} className="flex justify-center py-4">
             {isLoadingOlder && (
               <Loader2 aria-hidden className="size-5 animate-spin text-ink-muted" />
@@ -282,7 +433,77 @@ export function MessageList({
             </div>
           ))
         )}
+        {rows.map(({ message, compact, notice }, i) => {
+          // The divider belongs between the last read row and the first new
+          // one. Hidden while at the bottom, where a new message arriving
+          // would make it flicker.
+          const dividerHere = !atBottom && i === firstUnreadInView;
+          return (
+            <Fragment key={message.clientId ?? message.id}>
+              {dividerHere && (
+                <div
+                  role="separator"
+                  aria-label="New messages start here"
+                  className="flex items-center gap-3 px-4 py-2"
+                >
+                  <span aria-hidden className="h-px flex-1 bg-border" />
+                  <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                    New messages
+                  </span>
+                  <span aria-hidden className="h-px flex-1 bg-border" />
+                </div>
+              )}
+              {notice ? (
+                <SystemNotice
+                  message={message}
+                  channel={channel}
+                  selfId={selfId}
+                  profiles={mentionProfiles}
+                />
+              ) : (
+                <MessageItem
+                  message={message}
+                  pending={pendingMessageIds.has(message.id) && !failedById.has(message.id)}
+                  failed={failedById.has(message.id)}
+                  failure={failedById.get(message.id)}
+                  onRetry={() => onRetryMessage(message.id)}
+                  onDiscard={() => onDiscardMessage(message.id)}
+                  compact={compact}
+                  replyTo={message.replyToId ? byId.get(message.replyToId) : undefined}
+                  isOwn={message.author.id === selfId}
+                  canManage={canManage}
+                  onReply={onReply}
+                  onJumpTo={(id) => void jumpTo(id)}
+                  flash={flashId === message.id}
+                  replying={replyToId === message.id}
+                  mentionNames={mentionNames}
+                  mentionUsers={mentionUsers}
+                  selfId={selfId}
+                  mentionProfiles={mentionProfiles}
+                />
+              )}
+            </Fragment>
+          );
+        })}
       </div>
+
+      {/* Scrolled up? The only way back to the newest message used to be
+          scrolling; a jump button with the waiting count fixes that. */}
+      {!atBottom && (
+        <button
+          type="button"
+          onClick={() => {
+            const el = scroller.current;
+            if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+          }}
+          className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-surface-3 px-3 py-1.5 text-xs font-medium text-ink shadow-lg transition-colors hover:bg-surface-4"
+        >
+          <ArrowDown aria-hidden className="size-3.5" />
+          {newCount > 0
+            ? `${newCount > 99 ? '99+' : newCount} new message${newCount === 1 ? '' : 's'}`
+            : 'Jump to present'}
+        </button>
+      )}
     </div>
   );
 }

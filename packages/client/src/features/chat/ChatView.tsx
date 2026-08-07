@@ -3,12 +3,14 @@ import { useSearchParams } from "react-router-dom";
 import {
   AtSign,
   Hash,
+  Info,
   Loader2,
   Lock,
   Menu,
   MoreVertical,
   Search,
   ShieldAlert,
+  TriangleAlert,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -30,15 +32,20 @@ import {
 } from "../../components/ui/DropdownMenu";
 import { useMyPermissions } from "../servers/queries";
 import { useMessages } from "../messages/queries";
+import { discardMessage, retryMessage, useFailedMessages } from "./outbox";
 import { SearchDialog } from "../search/SearchDialog";
+import { Dialog, DialogContent } from "../../components/ui/Dialog";
 import { setActiveChannel } from "../unread/active";
 import { markChannelRead } from "../unread/api";
 import { unreadActions } from "../../stores/unread";
+import { readWatermarkActions, useReadWatermark } from "../../stores/readWatermark";
 import { clearConversationNotifications } from "../../lib/notifications";
 import { useDocumentTitle } from "../../lib/useDocumentTitle";
 import { useE2eeChannel } from "../e2ee/useE2eeChannel";
 import { useChannelRoom } from "./socket-actions";
 import { MessageList } from "./MessageList";
+import { ConnectionBanner } from "./ConnectionBanner";
+import { Tooltip } from "../../components/ui/Tooltip";
 import { Composer } from "./Composer";
 import { TypingIndicator } from "./TypingIndicator";
 
@@ -95,6 +102,7 @@ export function ChatView({
   const selfId = useAuthStore((s) => s.user?.id);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [topicOpen, setTopicOpen] = useState(false);
   // `?m=<id>` - what a copied message link carries. The list scrolls to it once
   // history is in, then the param is dropped so a reload doesn't re-jump.
   const [searchParams, setSearchParams] = useSearchParams();
@@ -112,8 +120,27 @@ export function ChatView({
     return () => setActiveChannel(null);
   }, [channel.id]);
 
-  const { messages, pendingMessageIds, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } =
-    useMessages(channel.id);
+  const {
+    messages,
+    pendingMessageIds,
+    isLoading,
+    isError,
+    refetch,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useMessages(channel.id);
+  const failedMessages = useFailedMessages(channel.id);
+  const readWatermark = useReadWatermark(channel.id);
+  // Advance the watermark only while the list is at the bottom (MessageList
+  // gates the call), so messages that arrive while the user is scrolled up
+  // stay behind the unread divider until they are actually seen.
+  const advanceRead = useCallback(
+    (message: Message) => {
+      readWatermarkActions.mark(channel.id, message.id, message.createdAt);
+    },
+    [channel.id],
+  );
   const { data: perms } = useMyPermissions(channel.serverId ?? undefined);
   const canManage = perms !== undefined && hasPermission(perms, Permissions.MANAGE_MESSAGES);
 
@@ -175,19 +202,35 @@ export function ChatView({
         {channel.topic && (
           <>
             <span aria-hidden className="mx-1 hidden h-4 w-px bg-border md:block" />
-            <p className="hidden truncate text-sm text-ink-secondary md:block">{channel.topic}</p>
+            <p
+              title={channel.topic}
+              className="hidden truncate text-sm text-ink-secondary md:block"
+            >
+              {channel.topic}
+            </p>
+            {/* Below md the topic has no room next to the title; a tap opens
+                it in a dialog instead of hiding it entirely. */}
+            <button
+              type="button"
+              onClick={() => setTopicOpen(true)}
+              aria-label={`Channel topic: ${channel.topic}`}
+              className="ml-1 rounded-lg p-1.5 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink md:hidden"
+            >
+              <Info aria-hidden className="size-4" />
+            </button>
           </>
         )}
         <div className="ml-auto flex items-center gap-1">
           {encryption.encrypted &&
             (encryptionBadge ?? (
-              <span
-                title="Messages in this conversation are end-to-end encrypted"
-                className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-ink-muted"
-              >
-                <Lock aria-hidden className="size-4" />
-                <span className="hidden sm:inline">Encrypted</span>
-              </span>
+              // The word "Encrypted" is dropped below sm to save room; the
+              // tooltip keeps the meaning reachable there (touch = long press).
+              <Tooltip label="Messages in this conversation are end-to-end encrypted">
+                <span className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-ink-muted">
+                  <Lock aria-hidden className="size-4" />
+                  <span className="hidden sm:inline">Encrypted</span>
+                </span>
+              </Tooltip>
             ))}
           {headerActions}
           {/* Search leads the overflow, and stands on its own when nothing else
@@ -238,6 +281,10 @@ export function ChatView({
         </div>
       </header>
 
+      {/* A dead socket surfaces here, where the user is typing, not only on the
+          empty home pane and buried in settings. */}
+      <ConnectionBanner />
+
       {/* Encrypted conversations are searched on this device: the server's
           `content ILIKE` cannot see them at all, so routing a DM search through
           it would return nothing and call that an answer. */}
@@ -249,7 +296,29 @@ export function ChatView({
         onOpenChange={setSearchOpen}
       />
 
-      {isLoading && messages.length === 0 ? (
+      <Dialog open={topicOpen} onOpenChange={setTopicOpen}>
+        <DialogContent title="Channel topic">
+          <p className="text-sm leading-relaxed text-ink-secondary">{channel.topic}</p>
+        </DialogContent>
+      </Dialog>
+
+      {/* A failed history fetch must never read as "start of the channel":
+          that welcome screen makes the messages look deleted. */}
+      {isError && messages.length === 0 ? (
+        <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
+          <TriangleAlert aria-hidden className="size-6 text-danger" />
+          <p className="text-sm text-ink-secondary">
+            Couldn't load messages. Check your connection and try again.
+          </p>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-ink-on-primary transition-colors hover:bg-primary-hover"
+          >
+            Try again
+          </button>
+        </div>
+      ) : isLoading && messages.length === 0 ? (
         <div className="flex flex-1 items-center justify-center">
           <Loader2 aria-hidden className="size-6 animate-spin text-ink-muted" />
         </div>
@@ -258,6 +327,11 @@ export function ChatView({
           messages={messages}
           channel={channel}
           pendingMessageIds={pendingMessageIds}
+          failedMessages={failedMessages}
+          onRetryMessage={retryMessage}
+          onDiscardMessage={discardMessage}
+          readWatermark={readWatermark}
+          onReadUpTo={advanceRead}
           channelName={channelName}
           backgroundUrl={channel.backgroundUrl}
           hasOlder={!!hasNextPage}

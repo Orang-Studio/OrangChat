@@ -13,6 +13,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,8 +24,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -55,6 +60,7 @@ import lt.oranges.orangchat.feature.voice.DmCallScreen
 import lt.oranges.orangchat.feature.voice.SessionKind
 import lt.oranges.orangchat.feature.voice.CallViewModel
 import lt.oranges.orangchat.feature.voice.rememberCallPermissionGate
+import lt.oranges.orangchat.notifications.hasNotificationPermission
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
 private enum class Overlay { NONE, FRIENDS, NEW_GROUP, SETTINGS, SEARCH, SERVER_SETTINGS, ROLES, MEMBERS, AUDIT_LOG }
@@ -81,6 +87,7 @@ fun HomeScreen(
     val currentChannelId by appViewModel.currentChannelId.collectAsStateWithLifecycle()
     val messages by appViewModel.messages.collectAsStateWithLifecycle()
     val pendingMessageIds by appViewModel.pendingMessageIds.collectAsStateWithLifecycle()
+    val failedMessageIds by appViewModel.failedMessageIds.collectAsStateWithLifecycle()
     val typing by appViewModel.typing.collectAsStateWithLifecycle()
     val presence by appViewModel.presence.collectAsStateWithLifecycle()
     val presenceDevices by appViewModel.presenceDevices.collectAsStateWithLifecycle()
@@ -109,15 +116,59 @@ fun HomeScreen(
     // Who the conversation long-press menu may offer "Remove friend" for.
     val friendIds = remember(friends) { friends.map { it.user.id }.toSet() }
 
-    // Ask for notification permission once on Android 13+ so live-socket message
-    // notifications can be posted while backgrounded.
+    // On Android 13+ posting a notification needs permission, and the system
+    // dialog is a one-shot: once it is dismissed it never comes back, so a
+    // reflexive "Deny" from someone who had no idea what was being asked is
+    // permanent. Put the question in the app's own words first and spend that
+    // single system prompt only on a yes.
+    //
+    // Saying no here is taken for an answer - nothing nags afterwards. The way
+    // back in is Settings > Privacy > Notifications, which offers to open the
+    // system screen whenever the permission is missing.
+    val context = LocalContext.current
+    var notifRationale by remember { mutableStateOf(false) }
     val notifPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
-    ) { /* result handled by NotificationHelper.hasPermission at post time */ }
+    ) { /* result handled by hasNotificationPermission at post time */ }
     LaunchedEffect(Unit) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            !hasNotificationPermission(context) &&
+            !settingsViewModel.notificationPermissionAsked
+        ) {
+            notifRationale = true
         }
+    }
+    if (notifRationale) {
+        val dismissRationale = {
+            // Recorded on either answer, so "Not now" is not re-asked on every
+            // launch - the Privacy screen is where a change of mind belongs.
+            settingsViewModel.markNotificationPermissionAsked()
+            notifRationale = false
+        }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = dismissRationale,
+            title = { androidx.compose.material3.Text("Get notified about messages?") },
+            text = {
+                androidx.compose.material3.Text(
+                    "OrangChat can let you know when someone messages or calls you " +
+                        "while the app is closed. Without this, messages only arrive " +
+                        "while you have OrangChat open.",
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    dismissRationale()
+                    notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                }) {
+                    androidx.compose.material3.Text("Allow")
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = dismissRationale) {
+                    androidx.compose.material3.Text("Not now")
+                }
+            },
+        )
     }
 
     val activeCall by callViewModel.current.collectAsStateWithLifecycle()
@@ -133,6 +184,7 @@ fun HomeScreen(
     val channelsAtStart by appViewModel.channelsAtStart.collectAsStateWithLifecycle()
     val conversationEncryption by appViewModel.conversationEncryption.collectAsStateWithLifecycle()
     val e2eeError by appViewModel.e2eeError.collectAsStateWithLifecycle()
+    val error by appViewModel.error.collectAsStateWithLifecycle()
     val auditLog by appViewModel.auditLog.collectAsStateWithLifecycle()
     val auditLogLoading by appViewModel.auditLogLoading.collectAsStateWithLifecycle()
     val serverIconUploading by appViewModel.serverIconUploading.collectAsStateWithLifecycle()
@@ -215,6 +267,16 @@ fun HomeScreen(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val closeDrawer: () -> Unit = { scope.launch { drawerState.close() }; Unit }
+
+    // Show each error once and clear it, so the same message can be raised
+    // again later - leaving it set would make a repeat of the same failure
+    // look like nothing happened.
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(error) {
+        val message = error ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(message)
+        appViewModel.clearError()
+    }
 
     // Leaving the chat puts the rail back on screen, so a drawer left open
     // would otherwise show it twice.
@@ -683,6 +745,9 @@ fun HomeScreen(
                                     channelId = channelId,
                                     messages = messages[channelId].orEmpty(),
                                     pendingMessageIds = pendingMessageIds,
+                                    failedMessageIds = failedMessageIds,
+                                    onRetryMessage = appViewModel::retryFailedMessage,
+                                    onDiscardMessage = appViewModel::discardFailedMessage,
                                     selfId = self.id,
                                     // A DM's mentionable people are its
                                     // participants, not the members of whatever
@@ -818,6 +883,26 @@ fun HomeScreen(
                     callDock()
                 }
             }
+        }
+    }
+
+    // Every failed action in the AppViewModel writes `error`, and until now
+    // nothing read it - a refresh, an upload or a join could fail in total
+    // silence. One host sits over the whole shell (settings takeover included,
+    // since that is rendered from here too) and speaks each one once.
+    //
+    // MainActivity already pads the whole tree by WindowInsets.safeDrawing, so
+    // this deliberately adds no inset padding of its own.
+    Box(modifier = Modifier.fillMaxSize()) {
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(12.dp),
+        ) { data ->
+            Snackbar(
+                snackbarData = data,
+                containerColor = OrangTheme.colors.surface3,
+                contentColor = OrangTheme.colors.ink,
+            )
         }
     }
 

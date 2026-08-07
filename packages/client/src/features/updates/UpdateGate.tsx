@@ -49,9 +49,9 @@ export function UpdateGate() {
         type="button"
         onClick={dismiss}
         aria-label="Dismiss update notice"
-        className="rounded p-1 text-ink-muted hover:bg-surface-3 hover:text-ink"
+        className="rounded-lg p-2.5 text-ink-muted hover:bg-surface-3 hover:text-ink"
       >
-        <X aria-hidden className="size-4" />
+        <X aria-hidden className="size-5" />
       </button>
     </div>
   );

@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
+import androidx.compose.material3.minimumInteractiveComponentSize
 import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -101,14 +102,20 @@ fun FriendsScreen(
                                 Icons.AutoMirrored.Filled.Message,
                                 contentDescription = "Message",
                                 tint = c.inkSecondary,
-                                modifier = Modifier.size(22.dp).clickable { onMessage(friend.user.id) },
+                                modifier = Modifier
+                                    .minimumInteractiveComponentSize()
+                                    .size(22.dp)
+                                    .clickable { onMessage(friend.user.id) },
                             )
-                            Spacer(Modifier.width(16.dp))
+                            // No spacer: the 48dp targets already sit the glyphs apart.
                             Icon(
                                 Icons.Default.Close,
                                 contentDescription = "Remove",
                                 tint = c.danger,
-                                modifier = Modifier.size(22.dp).clickable { onRemove(friend.user.id) },
+                                modifier = Modifier
+                                    .minimumInteractiveComponentSize()
+                                    .size(22.dp)
+                                    .clickable { onRemove(friend.user.id) },
                             )
                         },
                     )
@@ -119,15 +126,14 @@ fun FriendsScreen(
                 if (incoming.isNotEmpty()) item { SectionLabel("Incoming") }
                 items(incoming, key = { it.id }) { req ->
                     FriendRow(req.user.displayName, req.user.username, req.user.avatarUrl, null, trailing = {
-                        Icon(Icons.Default.Check, "Accept", tint = c.success, modifier = Modifier.size(24.dp).clickable { onAccept(req.id) })
-                        Spacer(Modifier.width(16.dp))
-                        Icon(Icons.Default.Close, "Decline", tint = c.danger, modifier = Modifier.size(24.dp).clickable { onDecline(req.id) })
+                        Icon(Icons.Default.Check, "Accept", tint = c.success, modifier = Modifier.minimumInteractiveComponentSize().size(24.dp).clickable { onAccept(req.id) })
+                        Icon(Icons.Default.Close, "Decline", tint = c.danger, modifier = Modifier.minimumInteractiveComponentSize().size(24.dp).clickable { onDecline(req.id) })
                     })
                 }
                 if (outgoing.isNotEmpty()) item { SectionLabel("Outgoing") }
                 items(outgoing, key = { "out-${it.id}" }) { req ->
                     FriendRow(req.user.displayName, req.user.username, req.user.avatarUrl, null, trailing = {
-                        Icon(Icons.Default.Close, "Cancel", tint = c.inkMuted, modifier = Modifier.size(22.dp).clickable { onDecline(req.id) })
+                        Icon(Icons.Default.Close, "Cancel", tint = c.inkMuted, modifier = Modifier.minimumInteractiveComponentSize().size(22.dp).clickable { onDecline(req.id) })
                     })
                 }
             }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode, type TouchEvent } from "react";
+import { useEffect, useRef, useState, type ReactNode, type TouchEvent } from "react";
 import { useLocation } from "react-router-dom";
 import { cn } from "../lib/cn";
 import { ServerRail } from "../features/servers/ServerRail";
@@ -6,8 +6,10 @@ import { panelActions, usePanelStore } from "../stores/panels";
 
 const SWIPE_MIN_X = 56;
 
-const isMobile = () => window.matchMedia("(max-width: 767px)").matches;
-const isBelowLg = () => window.matchMedia("(max-width: 1023px)").matches;
+const MOBILE_QUERY = "(max-width: 767px)";
+const BELOW_LG_QUERY = "(max-width: 1023px)";
+const isMobile = () => window.matchMedia(MOBILE_QUERY).matches;
+const isBelowLg = () => window.matchMedia(BELOW_LG_QUERY).matches;
 
 interface PanelShellProps {
   /** Column next to the server rail (channel list / DM list). */
@@ -28,6 +30,36 @@ export function PanelShell({ sidebar, aside, children }: PanelShellProps) {
   const right = usePanelStore((s) => s.right);
   const { pathname } = useLocation();
   const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const leftRef = useRef<HTMLDivElement>(null);
+  const rightRef = useRef<HTMLDivElement>(null);
+
+  // The drawers are translated off-screen, not removed, so a closed one stays
+  // focusable and screen-reader-visible - tabbing from the chat header walks
+  // straight into the hidden channel list. inert removes it from tab order
+  // and the a11y tree (aria-hidden alone still leaves controls Tab-reachable).
+  const [mobile, setMobile] = useState(isMobile);
+  const [belowLg, setBelowLg] = useState(isBelowLg);
+  useEffect(() => {
+    const mqMobile = window.matchMedia(MOBILE_QUERY);
+    const mqLg = window.matchMedia(BELOW_LG_QUERY);
+    const apply = () => {
+      setMobile(mqMobile.matches);
+      setBelowLg(mqLg.matches);
+    };
+    apply();
+    mqMobile.addEventListener("change", apply);
+    mqLg.addEventListener("change", apply);
+    return () => {
+      mqMobile.removeEventListener("change", apply);
+      mqLg.removeEventListener("change", apply);
+    };
+  }, []);
+
+  useEffect(() => {
+    // Above the breakpoint the drawer is a static column and must stay live.
+    if (leftRef.current) leftRef.current.inert = !left && mobile;
+    if (rightRef.current) rightRef.current.inert = !right && belowLg;
+  }, [left, right, mobile, belowLg]);
 
   useEffect(() => {
     panelActions.closeAll();
@@ -63,6 +95,8 @@ export function PanelShell({ sidebar, aside, children }: PanelShellProps) {
       onTouchEnd={onTouchEnd}
     >
       <div
+        ref={leftRef}
+        aria-hidden={!left && mobile}
         className={cn(
           // Height matches the app shell's visual-viewport height so an open
           // keyboard doesn't leave the drawer running underneath it.
@@ -79,6 +113,8 @@ export function PanelShell({ sidebar, aside, children }: PanelShellProps) {
 
       {aside && (
         <div
+          ref={rightRef}
+          aria-hidden={!right && belowLg}
           className={cn(
             "fixed top-0 right-0 z-40 flex h-[var(--oc-vvh,100dvh)] pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] transition-transform duration-200 ease-out",
             "lg:static lg:z-auto lg:h-auto lg:translate-x-0 lg:pb-0 lg:pt-0 lg:transition-none",

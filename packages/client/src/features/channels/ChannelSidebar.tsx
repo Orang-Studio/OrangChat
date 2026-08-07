@@ -269,9 +269,9 @@ export function ChannelSidebar({ server, channels, members, roles }: ChannelSide
               type="button"
               onClick={() => setCreateOpen(true)}
               aria-label="Create channel"
-              className="rounded p-0.5 text-ink-muted transition-colors hover:text-ink"
+              className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
             >
-              <Plus aria-hidden className="size-4" />
+              <Plus aria-hidden className="size-5" />
             </button>
           )}
         </div>

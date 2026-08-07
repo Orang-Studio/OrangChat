@@ -6,7 +6,6 @@ import {
   ipcMain,
   nativeImage,
   session,
-  dialog,
   systemPreferences,
 } from "electron";
 import { join } from "node:path";
@@ -26,6 +25,7 @@ import { registerDownloads } from "./downloads";
 import { createTray, setTrayAttention, setTrayIcon } from "./tray";
 import { syncAutoLaunch } from "./autoLaunch";
 import { setUnreadBadge } from "./badge";
+import { messageBoxWhenVisible } from "./modal";
 import { GamePresence } from "./gamePresence";
 import {
   registerUpdater,
@@ -54,7 +54,18 @@ let mainWindow: BrowserWindow | null = null;
 let gamePresence: GamePresence | null = null;
 let quitting = false;
 
-if (!app.requestSingleInstanceLock()) {
+/**
+ * False in a second copy launched while one is already running - which is what
+ * the taskbar shortcut does every time, since closing only hides the first copy
+ * to the tray.
+ *
+ * app.quit() is asynchronous and does not stop this script, so without the flag
+ * the losing copy still reaches the ready handler below and stands up a second
+ * tray icon, a second window and a competing global shortcut in the moment
+ * before it dies. The copy that holds the lock takes over from "second-instance".
+ */
+const isPrimaryInstance = app.requestSingleInstanceLock();
+if (!isPrimaryInstance) {
   app.quit();
 }
 
@@ -161,15 +172,13 @@ function createWindow(startHidden: boolean): BrowserWindow {
 
   window.webContents.on("render-process-gone", (_event, details) => {
     if (details.reason === "clean-exit") return;
-    void dialog
-      .showMessageBox(window, {
-        type: "error",
-        title: "OrangChat stopped responding",
-        message: "The app crashed and needs to reload.",
-        buttons: ["Reload", "Quit"],
-        defaultId: 0,
-      })
-      .then(({ response }) => (response === 0 ? window.reload() : quitApp()));
+    void messageBoxWhenVisible(window, {
+      type: "error",
+      title: "OrangChat stopped responding",
+      message: "The app crashed and needs to reload.",
+      buttons: ["Reload", "Quit"],
+      defaultId: 0,
+    }).then(({ response }) => (response === 0 ? window.reload() : quitApp()));
   });
 
   window.webContents.on("did-fail-load", (_e, errorCode, errorDescription, validatedURL, isMainFrame) => {
@@ -186,7 +195,7 @@ function createWindow(startHidden: boolean): BrowserWindow {
 }
 
 async function showOfflineDialog(window: BrowserWindow, reason: string, url: string): Promise<void> {
-  const { response } = await dialog.showMessageBox(window, {
+  const { response } = await messageBoxWhenVisible(window, {
     type: "warning",
     title: "Can't reach OrangChat",
     message: "Can't reach chat.oranges.lt",
@@ -267,6 +276,8 @@ app.on("window-all-closed", () => {
 });
 
 void app.whenReady().then(() => {
+  if (!isPrimaryInstance) return;
+
   const defaultSession = session.defaultSession;
 
   // The window is hard-locked to APP_ORIGIN by the navigation guards and the

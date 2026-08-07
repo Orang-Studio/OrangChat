@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -409,11 +410,14 @@ private fun CustomEmojiGrid(
         contentPadding = PaddingValues(4.dp),
     ) {
         items(emojis, key = { it.id }) { emoji ->
+            // Fills its grid cell instead of sitting as a 40dp island in it: same
+            // 48dp row height as before, no dead gaps between neighbours.
             Box(
                 modifier = Modifier
-                    .padding(4.dp)
-                    .size(40.dp)
-                    .clickable { onPick(emoji) },
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .clickable { onPick(emoji) }
+                    .padding(4.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 AsyncImage(
@@ -464,23 +468,32 @@ private fun GifGrid(
                         .background(c.surface1)
                         .clickable { onPick(gif) },
                 )
+                // A 48dp target that takes the tap, with the 26dp chip still drawn
+                // in the corner where it was - growing the circle itself would have
+                // buried the GIF under its own bookmark button.
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                        .size(26.dp)
-                        .clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.5f))
+                        .size(48.dp)
                         .clickable { onToggleFavorite(gif) },
-                    contentAlignment = Alignment.Center,
+                    contentAlignment = Alignment.TopEnd,
                 ) {
-                    Icon(
-                        if (saved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                        contentDescription = if (saved) "Remove ${gif.title} from favorites"
-                        else "Save ${gif.title} to favorites",
-                        tint = if (saved) c.primary else Color.White,
-                        modifier = Modifier.size(16.dp),
-                    )
+                    Box(
+                        modifier = Modifier
+                            .padding(4.dp)
+                            .size(26.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.5f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            if (saved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                            contentDescription = if (saved) "Remove ${gif.title} from favorites"
+                            else "Save ${gif.title} to favorites",
+                            tint = if (saved) c.primary else Color.White,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
                 }
             }
         }

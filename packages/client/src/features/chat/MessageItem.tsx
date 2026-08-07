@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
-import { Pencil, Pin, Reply, SmilePlus, Trash2 } from "lucide-react";
+import { Pencil, Pin, Reply, SmilePlus, Trash2, TriangleAlert } from "lucide-react";
 import type { Message, User } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
 import { ContextMenu, ContextMenuTrigger } from "../../components/ui/ContextMenu";
@@ -24,6 +24,14 @@ export interface MessageItemProps {
   message: Message;
   /** Optimistic local row waiting for server confirmation. */
   pending?: boolean;
+  /** The server rejected this row; it stays visible until retried. */
+  failed?: boolean;
+  /** Server's reason for refusing the send. */
+  failure?: string;
+  /** Re-send the failed row. */
+  onRetry?: () => void;
+  /** Abandon the failed row. */
+  onDiscard?: () => void;
   /** Render compact (no avatar/header) - same author, close in time. */
   compact: boolean;
   /** The message this one replies to, when loaded. */
@@ -179,6 +187,10 @@ function EditForm({ message, onDone }: { message: Message; onDone: () => void })
 export function MessageItem({
   message,
   pending = false,
+  failed = false,
+  failure,
+  onRetry,
+  onDiscard,
   compact,
   replyTo,
   isOwn,
@@ -216,16 +228,19 @@ export function MessageItem({
   return (
     <>
       <ContextMenu>
-        <ContextMenuTrigger asChild disabled={pending}>
+        <ContextMenuTrigger asChild disabled={pending || failed}>
           <div
             data-message-id={message.id}
-            onClick={pending ? undefined : onTap}
-            aria-label={pending ? "Sending message" : undefined}
+            onClick={pending || failed ? undefined : onTap}
+            aria-label={
+              pending ? "Sending message" : failed ? "Message failed to send" : undefined
+            }
             className={cn(
               "oc-message group relative px-4 py-0.5 hover:bg-surface-3/40",
               !compact && "oc-message-lead mt-3",
               touchActions && "bg-surface-3/40",
               pending && "pointer-events-none opacity-50",
+              failed && "bg-danger/5",
               pinged && "oc-message-pinged border-l-2 border-primary bg-primary/[0.06] hover:bg-primary/10",
               replying && "oc-message-replying bg-primary/[0.08] hover:bg-primary/10",
               // Static rather than animated so it still lands under reduced motion.
@@ -330,6 +345,33 @@ export function MessageItem({
 
                 {!editing && <LinkEmbeds content={message.content} />}
 
+                {/* The server refused this row. Keep the words, say why, and
+                    offer both ways out - silently dropping it was losing user
+                    text, but a rejection the server will never accept needs a
+                    way off the screen too. */}
+                {failed && (
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                    <span className="flex min-w-0 items-center gap-1.5 font-medium text-danger">
+                      <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
+                      <span className="truncate">{failure ?? "Failed to send"}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={onRetry}
+                      className="font-semibold text-primary transition-colors hover:text-primary-hover"
+                    >
+                      Retry
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onDiscard}
+                      className="font-semibold text-danger transition-colors hover:text-danger/80"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
+
                 {/* Reactions */}
                 {message.reactions.length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-1">
@@ -365,7 +407,7 @@ export function MessageItem({
             </div>
 
             {/* Hover actions (tap-toggled on touch) */}
-            {!editing && !pending && (
+            {!editing && !pending && !failed && (
               <div
                 className={cn(
                   "absolute -top-3 right-4 hidden items-center gap-0.5 rounded-lg border border-border bg-surface-2 p-0.5 shadow group-hover:flex",
@@ -420,7 +462,7 @@ export function MessageItem({
             )}
           </div>
         </ContextMenuTrigger>
-        {!pending && (
+        {!pending && !failed && (
           <MessageContextMenu
             message={message}
             isOwn={isOwn}

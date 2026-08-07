@@ -27,6 +27,9 @@ import { clearDraft, loadDraft, saveDraft, saveDraftNow } from './drafts';
  */
 const TYPING_THROTTLE_MS = 4_000;
 const MAX_LENGTH = 4_000;
+/** How close to MAX_LENGTH the draft has to get before the running count
+ * shows up - close enough to matter, not wallpaper from the first character. */
+const LENGTH_WARNING_THRESHOLD = MAX_LENGTH - 400;
 const MENTION_LIMIT = 8;
 
 /**
@@ -115,6 +118,9 @@ export function Composer({
   } | null>(null);
   const lastTypingSent = useRef(0);
   const textarea = useRef<HTMLTextAreaElement>(null);
+  // A paste that was cut to fit MAX_LENGTH deserves a word, not silence.
+  const [truncatedNotice, setTruncatedNotice] = useState(false);
+  const truncateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
   const recorder = useRef<MediaRecorder | null>(null);
@@ -150,6 +156,10 @@ export function Composer({
   useEffect(() => {
     textarea.current?.focus();
   }, [replyTo, channelId]);
+
+  useEffect(() => () => {
+    if (truncateTimer.current) clearTimeout(truncateTimer.current);
+  }, []);
 
   // Load this channel's saved draft on open; persist it on the way out.
   useEffect(() => {
@@ -559,6 +569,18 @@ export function Composer({
           return;
         }
       }
+      // Anything else goes in natively - where maxLength cuts a long paste
+      // with no word about it. Flag the cut the same way the token path does.
+      if (text.length > 0) {
+        const el = textarea.current;
+        const start = el?.selectionStart ?? draft.length;
+        const end = el?.selectionEnd ?? start;
+        if (draft.length - (end - start) + text.length > MAX_LENGTH) {
+          setTruncatedNotice(true);
+          if (truncateTimer.current) clearTimeout(truncateTimer.current);
+          truncateTimer.current = setTimeout(() => setTruncatedNotice(false), 4000);
+        }
+      }
       return;
     }
     e.preventDefault();
@@ -569,7 +591,13 @@ export function Composer({
     const el = textarea.current;
     const start = el?.selectionStart ?? draft.length;
     const end = el?.selectionEnd ?? start;
-    const next = `${draft.slice(0, start)}${text}${draft.slice(end)}`.slice(0, MAX_LENGTH);
+    const full = `${draft.slice(0, start)}${text}${draft.slice(end)}`;
+    if (full.length > MAX_LENGTH) {
+      setTruncatedNotice(true);
+      if (truncateTimer.current) clearTimeout(truncateTimer.current);
+      truncateTimer.current = setTimeout(() => setTruncatedNotice(false), 4000);
+    }
+    const next = full.slice(0, MAX_LENGTH);
     onChange(next);
     requestAnimationFrame(() => {
       const caret = Math.min(start + text.length, next.length);
@@ -607,18 +635,23 @@ export function Composer({
             type="button"
             aria-label="Cancel reply"
             onClick={onClearReply}
-            className="rounded p-0.5 text-ink-muted transition-colors hover:text-ink"
+            className="rounded-lg p-2.5 text-ink-muted transition-colors hover:text-ink"
           >
-            <X aria-hidden className="size-3.5" />
+            <X aria-hidden className="size-5" />
           </button>
         </div>
       )}
 
       <div className="relative">
         {menuOpen && (
-          <ul className="absolute bottom-full z-20 mb-2 max-h-64 w-full overflow-y-auto rounded-xl border border-border bg-surface-4 p-1 shadow-2xl">
+          <ul
+            id="oc-mention-listbox"
+            role="listbox"
+            aria-label="Mention suggestions"
+            className="absolute bottom-full z-20 mb-2 max-h-64 w-full overflow-y-auto rounded-xl border border-border bg-surface-4 p-1 shadow-2xl"
+          >
             {matches.map((m, i) => (
-              <li key={m.userId}>
+              <li key={m.userId} role="option" id={`oc-mention-option-${i}`} aria-selected={i === activeIndex}>
                 <button
                   type="button"
                   onMouseDown={(e) => {
@@ -725,6 +758,13 @@ export function Composer({
               ref={textarea}
               value={draft}
               maxLength={MAX_LENGTH}
+              role="combobox"
+              aria-expanded={menuOpen}
+              aria-controls={menuOpen ? 'oc-mention-listbox' : undefined}
+              aria-autocomplete="list"
+              aria-activedescendant={
+                menuOpen ? `oc-mention-option-${activeIndex}` : undefined
+              }
               onChange={(e) => onChange(e.target.value)}
               onKeyDown={onKeyDown}
               onPaste={onPaste}
@@ -799,6 +839,25 @@ export function Composer({
                 </button>
               )}
             </>
+          )}
+          {/* The truncation notice is worth announcing once; the running count
+              below it is not - at one key per character near the limit, a
+              polite live region would read out every single keystroke. */}
+          {truncatedNotice && (
+            <p role="status" className="shrink-0 text-[10px] font-medium text-warning">
+              Paste cut off — {MAX_LENGTH.toLocaleString()} characters max
+            </p>
+          )}
+          {!truncatedNotice && draft.length >= LENGTH_WARNING_THRESHOLD && (
+            <p
+              aria-live="off"
+              className={cn(
+                'shrink-0 text-[10px] tabular-nums',
+                draft.length >= MAX_LENGTH ? 'font-semibold text-danger' : 'text-ink-muted',
+              )}
+            >
+              {draft.length.toLocaleString()}/{MAX_LENGTH.toLocaleString()}
+            </p>
           )}
         </div>
       </div>

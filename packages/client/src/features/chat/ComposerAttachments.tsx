@@ -75,23 +75,23 @@ function Chip({
               upload.spoiler ? `Don't mark ${upload.name} as a spoiler` : `Mark ${upload.name} as a spoiler`
             }
             title={upload.spoiler ? "Marked as spoiler" : "Mark as spoiler"}
-            className={`rounded p-0.5 transition-colors ${
+            className={`rounded-lg p-2 transition-colors ${
               upload.spoiler ? "text-primary" : "text-ink-muted hover:text-ink"
             }`}
           >
             {upload.spoiler ? (
-              <EyeOff aria-hidden className="size-3.5" />
+              <EyeOff aria-hidden className="size-4" />
             ) : (
-              <Eye aria-hidden className="size-3.5" />
+              <Eye aria-hidden className="size-4" />
             )}
           </button>
           <button
             type="button"
             onClick={onRemove}
             aria-label={uploading ? `Cancel upload of ${upload.name}` : `Remove ${upload.name}`}
-            className="rounded p-0.5 text-ink-muted transition-colors hover:text-ink"
+            className="rounded-lg p-2 text-ink-muted transition-colors hover:text-ink"
           >
-            <X aria-hidden className="size-3.5" />
+            <X aria-hidden className="size-4" />
           </button>
         </div>
       </div>

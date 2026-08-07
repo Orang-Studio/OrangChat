@@ -178,6 +178,20 @@ class SettingsViewModel @Inject constructor(
         _prefs.value = _prefs.value.copy(notificationPreviews = on)
     }
 
+    /**
+     * Whether the notification question has been put to this install already.
+     *
+     * Deliberately not part of [DevicePrefs]: it is a record of something that
+     * happened, not a setting anyone chose, and [resetPrefs] restoring display
+     * defaults should not re-open a question the user has already answered.
+     */
+    val notificationPermissionAsked: Boolean
+        get() = tokenStore.notificationPermissionAsked
+
+    fun markNotificationPermissionAsked() {
+        tokenStore.notificationPermissionAsked = true
+    }
+
     fun resetPrefs() {
         _prefs.value = DevicePrefs()
         tokenStore.fontScale = 1f

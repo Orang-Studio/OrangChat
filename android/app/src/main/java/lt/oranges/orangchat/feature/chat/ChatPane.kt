@@ -48,7 +48,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.maxLength
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
@@ -63,6 +65,7 @@ import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.EmojiEmotions
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Tag
@@ -79,6 +82,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.minimumInteractiveComponentSize
 import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -130,6 +134,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -248,6 +253,19 @@ private const val GROUP_WINDOW_MS = 5 * 60 * 1000L
  */
 private const val TYPING_THROTTLE_MS = 4_000L
 
+/**
+ * Longest message the composer will accept. Matches the web composer's own cap
+ * so the same draft is sendable from either client; the server's limit is far
+ * higher and byte-based, so this is a UX ceiling rather than a validation one.
+ */
+private const val MESSAGE_MAX_LENGTH = 4_000
+
+/**
+ * How close to [MESSAGE_MAX_LENGTH] the draft has to get before the running
+ * count appears. A counter that is always on is noise on a one-line reply.
+ */
+private const val MESSAGE_LENGTH_WARNING_THRESHOLD = MESSAGE_MAX_LENGTH - 400
+
 /** How long a jumped-to message stays lit before fading back. */
 private const val HIGHLIGHT_MS = 1_600L
 
@@ -325,6 +343,10 @@ fun ChatPane(
     channelId: String,
     messages: List<Message>,
     pendingMessageIds: Set<String> = emptySet(),
+    /** Rows the server refused; shown in place with a retry, not deleted. */
+    failedMessageIds: Set<String> = emptySet(),
+    onRetryMessage: (String) -> Unit = {},
+    onDiscardMessage: (String) -> Unit = {},
     selfId: String,
     members: List<ServerMember>,
     presence: Map<String, PresenceStatus>,
@@ -790,6 +812,9 @@ fun ChatPane(
                     MessageRow(
                         message = message,
                         pending = message.id in pendingMessageIds,
+                        failed = message.id in failedMessageIds,
+                        onRetry = { onRetryMessage(message.id) },
+                        onDiscard = { onDiscardMessage(message.id) },
                         selfId = selfId,
                         presence = presence[message.author.id],
                         grouped = row.grouped,
@@ -926,7 +951,9 @@ fun ChatPane(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(c.surface3)
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                    // Vertical padding dropped: the 48dp cancel target now sets the
+                    // bar's height, so the bar grows once rather than twice over.
+                    .padding(start = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
@@ -948,7 +975,10 @@ fun ChatPane(
                     Icons.Default.Close,
                     contentDescription = "Cancel reply",
                     tint = c.inkMuted,
-                    modifier = Modifier.size(16.dp).clickable { replyTo = null },
+                    modifier = Modifier
+                        .minimumInteractiveComponentSize()
+                        .size(16.dp)
+                        .clickable { replyTo = null },
                 )
             }
         }
@@ -1230,6 +1260,10 @@ private fun SystemNoticeRow(notice: SystemNotice?, message: Message, selfId: Str
 private fun MessageRow(
     message: Message,
     pending: Boolean,
+    /** The server refused this one. It keeps its place, with a way to act on it. */
+    failed: Boolean,
+    onRetry: () -> Unit,
+    onDiscard: () -> Unit,
     selfId: String,
     presence: PresenceStatus?,
     grouped: Boolean,
@@ -1342,8 +1376,11 @@ private fun MessageRow(
                     Modifier
                 },
             )
-            .pointerInput(message.id, isMine, pending) {
-                if (!pending) detectSwipeToReply(
+            .pointerInput(message.id, isMine, pending, failed) {
+                // Replying to or editing a message that never reached the
+                // server is meaningless - the actions a failed row offers are
+                // its own retry and delete.
+                if (!pending && !failed) detectSwipeToReply(
                     onDelta = { amount ->
                         dragging = true
                         dragScope.launch {
@@ -1379,7 +1416,7 @@ private fun MessageRow(
             // Long-press, not tap: a tap lands on a message constantly while
             // reading, and every one of them used to open this menu.
             .combinedClickable(
-                enabled = !pending,
+                enabled = !pending && !failed,
                 onClick = {},
                 onLongClick = {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -1396,19 +1433,22 @@ private fun MessageRow(
     ) {
         // A grouped message keeps the avatar column's width so text stays aligned,
         // but shows the timestamp there on hover-free mobile it stays blank.
+        // The avatar column is 48dp so the tap target is, while the avatar is drawn
+        // top-left at its old 38dp; the gap below shrinks by the same 10dp, so text
+        // still starts 50dp in and grouped rows still line up with ungrouped ones.
         if (grouped) {
-            Spacer(Modifier.width(38.dp))
+            Spacer(Modifier.width(48.dp))
         } else {
-            Avatar(
-                message.author,
-                size = 38.dp,
-                status = presence,
+            Box(
                 // Takes the tap before the row's own click, so opening a profile
                 // does not also open the message menu behind it.
-                modifier = Modifier.clickable { onOpenProfile(message.author) },
-            )
+                modifier = Modifier.size(48.dp).clickable { onOpenProfile(message.author) },
+                contentAlignment = Alignment.TopStart,
+            ) {
+                Avatar(message.author, size = 38.dp, status = presence)
+            }
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(2.dp))
         Column(modifier = Modifier.weight(1f)) {
             // Reply context, as a single quoted line above the message.
             repliedTo?.let { parent ->
@@ -1539,9 +1579,30 @@ private fun MessageRow(
                             Icons.Default.AddReaction,
                             contentDescription = "Add reaction",
                             tint = c.inkMuted,
-                            modifier = Modifier.size(20.dp).clickable { emojiOpen = true },
+                            modifier = Modifier
+                                .minimumInteractiveComponentSize()
+                                .size(20.dp)
+                                .clickable { emojiOpen = true },
                         )
                     }
+                }
+            }
+            // The row stayed on screen instead of being deleted, so it has to
+            // say why it is still here and what can be done about it.
+            if (failed) {
+                Spacer(Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.ErrorOutline,
+                        contentDescription = null,
+                        tint = c.danger,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text("Not sent", color = c.danger, fontSize = 11.sp)
+                    Spacer(Modifier.width(4.dp))
+                    FailedMessageAction("Retry", c.primary, onRetry)
+                    FailedMessageAction("Delete", c.danger, onDiscard)
                 }
             }
         }
@@ -1579,6 +1640,24 @@ private fun MessageRow(
         }
     }
     }
+}
+
+/**
+ * A text action on a failed message. Small type, but a full 48dp target - these
+ * are the only two things that row can do, so neither may be a near-miss.
+ */
+@Composable
+private fun FailedMessageAction(label: String, tint: Color, onClick: () -> Unit) {
+    Text(
+        label,
+        color = tint,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier
+            .minimumInteractiveComponentSize()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+    )
 }
 
 @Composable
@@ -2048,6 +2127,24 @@ private fun Composer(
         }
     }
 
+    // Once the cap is in reach, say where the draft stands - the transformation
+    // above simply stops accepting characters, and silence at the limit reads as
+    // a broken keyboard. Sits above the row so the input never shifts under a
+    // thumb that is mid-sentence.
+    val draftLength = textState.text.length
+    if (draftLength >= MESSAGE_LENGTH_WARNING_THRESHOLD) {
+        val atLimit = draftLength >= MESSAGE_MAX_LENGTH
+        Text(
+            "$draftLength/$MESSAGE_MAX_LENGTH",
+            color = if (atLimit) c.danger else c.inkMuted,
+            fontSize = 12.sp,
+            fontWeight = if (atLimit) FontWeight.SemiBold else FontWeight.Normal,
+            modifier = Modifier
+                .align(Alignment.End)
+                .padding(horizontal = 16.dp, vertical = 2.dp),
+        )
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -2149,6 +2246,10 @@ private fun Composer(
                     textStyle = TextStyle(color = c.ink, fontSize = 15.sp),
                     cursorBrush = SolidColor(c.primary),
                     lineLimits = TextFieldLineLimits.MultiLine(),
+                    // Rejects the overflowing edit rather than truncating after
+                    // the fact, so a paste that doesn't fit leaves the existing
+                    // draft alone instead of replacing it with a clipped version.
+                    inputTransformation = InputTransformation.maxLength(MESSAGE_MAX_LENGTH),
                     // BasicTextField defaults to no capitalization - that default is
                     // why Gboard auto-capitalized everywhere but here.
                     keyboardOptions = KeyboardOptions(

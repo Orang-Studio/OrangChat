@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 import type {
@@ -8,6 +9,7 @@ import type {
 } from "@orangchat/shared";
 import { socket } from "../../lib/socket";
 import { useAuthStore } from "../../stores/auth";
+import { toast } from "../../stores/toasts";
 import { seal } from "../e2ee/conversation";
 import { allQueued, deleteQueued, openLocal, putQueued, sealLocal } from "../e2ee/keystore";
 import { isEncrypted } from "../e2ee/store";
@@ -34,6 +36,10 @@ interface PendingOutgoing {
   sealedCiphertext?: string;
   /** Set while strict mode is holding this back; see §6.5. */
   awaitingVerification?: boolean;
+  /** Set when the server rejected the send. The row stays put so the user can
+   * retry it from the message list instead of losing their words. */
+  failed?: boolean;
+  failure?: string;
 }
 
 interface OutboxState {
@@ -214,12 +220,23 @@ async function flushOutbox(): Promise<void> {
   flushing = true;
   try {
     // Strict mode blocks one conversation, not the outbox: a message held back
-    // for an unverified DM must not stop everything else from going.
+    // for an unverified DM must not stop everything else from going. A message
+    // the server rejected stays where it is too, but only leaves on retry.
     const blocked = new Set<string>();
+
+    // Sweep entries belonging to a previous account up front. The in-loop check
+    // below used to be the only cleanup, but the `find` now skips rejected rows,
+    // so a message account A failed to send would never be reached again - and
+    // it outlives a logout, since nothing else empties this store.
+    const currentAuthor = useAuthStore.getState().user?.id;
+    for (const stale of useMessageOutbox.getState().entries) {
+      if (stale.authorId !== currentAuthor) removeEntry(stale.localId);
+    }
+
     while (socket.connected) {
       const entry = useMessageOutbox
         .getState()
-        .entries.find((candidate) => !blocked.has(candidate.payload.channelId));
+        .entries.find((candidate) => !blocked.has(candidate.payload.channelId) && !candidate.failed);
       if (!entry) break;
 
       // Never leak a queued message into a different account after logout.
@@ -241,17 +258,30 @@ async function flushOutbox(): Promise<void> {
           await persistQueued(entry);
           continue;
         }
-        removeEntry(entry.localId);
-        useMessageOutbox.setState({
-          error: error instanceof Error ? error.message : "Failed to send message",
-        });
+        // The server refused it. Never drop the text: keep the row so the
+        // message stays visible with a retry affordance (useFailedMessages).
+        const failure = error instanceof Error ? error.message : "Failed to send message";
+        useMessageOutbox.setState((state) => ({
+          entries: state.entries.map((candidate) =>
+            candidate.localId === entry.localId
+              ? { ...candidate, failed: true, failure }
+              : candidate,
+          ),
+        }));
+        toast.error(`Message not sent: ${failure}`);
       }
     }
   } finally {
     flushing = false;
     // Covers a message being queued after the loop saw an empty outbox but
-    // before this flush completed.
-    if (socket.connected && useMessageOutbox.getState().entries.some((e) => !e.awaitingVerification)) {
+    // before this flush completed. Only entries the loop would actually pick
+    // up count: a rejected one is skipped by the `find` above, so counting it
+    // here would schedule a flush that does nothing and schedules another -
+    // a microtask loop, which never yields and so hangs the tab.
+    if (
+      socket.connected &&
+      useMessageOutbox.getState().entries.some((e) => !e.awaitingVerification && !e.failed)
+    ) {
       queueMicrotask(() => void flushOutbox());
     }
   }
@@ -304,10 +334,16 @@ export function queueMessage(payload: OutgoingMessagePayload): Message {
 }
 
 /** The server broadcasts before acknowledging. Find the local row this echo
- * confirms, so it can be stamped and reconciled rather than duplicated. */
+ * confirms, so it can be stamped and reconciled rather than duplicated.
+ *
+ * Excludes failed rows: they stay on screen until retried or discarded, and
+ * without this a later identical send (retyped after the first attempt
+ * failed) would match the old failed entry by content and silently retire it,
+ * leaving the user unable to tell which attempt actually went through. */
 export function matchPendingLocalId(message: Message): string | undefined {
   return useMessageOutbox.getState().entries.find(
     (candidate) =>
+      !candidate.failed &&
       candidate.authorId === message.author.id &&
       candidate.payload.channelId === message.channelId &&
       (message.ciphertext
@@ -339,5 +375,57 @@ export function useBlockedByVerification(channelId: string | undefined): boolean
     state.entries.some(
       (entry) => entry.payload.channelId === channelId && entry.awaitingVerification === true,
     ),
+  );
+}
+
+/** Send again a message the server previously refused, leaving it visible
+ * meanwhile so the user can see what they are re-sending. */
+export function retryMessage(localId: string): void {
+  useMessageOutbox.setState((state) => ({
+    entries: state.entries.map((entry) =>
+      entry.localId === localId
+        ? { ...entry, failed: false, failure: undefined }
+        : entry,
+    ),
+  }));
+  void flushOutbox();
+}
+
+/** Drop a rejected message for good. The server will not take it and the user
+ * has said so; the words are theirs to abandon. */
+export function discardMessage(localId: string): void {
+  removeEntry(localId);
+}
+
+/** Failed rows for one conversation: the text stays in the list, flagged red,
+ * with its server error, until it is retried or discarded.
+ *
+ * The selector returns the entries themselves - references the store owns - so
+ * `useShallow` can match them across calls. Mapping to fresh objects in there
+ * instead would hand `useSyncExternalStore` a new snapshot on every call, which
+ * is an unbounded re-render; the shaping belongs in the memo below.
+ */
+export function useFailedMessages(
+  channelId: string | undefined,
+): { localId: string; message: Message; failure: string }[] {
+  const selfId = useAuthStore((state) => state.user?.id);
+  const failed = useMessageOutbox(
+    useShallow((state) =>
+      state.entries.filter(
+        (entry) =>
+          entry.authorId === selfId &&
+          entry.payload.channelId === channelId &&
+          entry.failed,
+      ),
+    ),
+  );
+  return useMemo(
+    () =>
+      failed.map((entry) => ({
+        localId: entry.localId,
+        message: entry.message,
+        failure: entry.failure ?? "Failed to send message",
+      })),
+    [failed],
   );
 }

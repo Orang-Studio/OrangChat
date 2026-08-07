@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { bootstrapSession } from "../features/auth/session";
 import { GuestOnly, RequireAuth } from "./guards";
 import { AndroidAppBanner } from "../components/AndroidAppBanner";
+import { Toaster } from "../components/ui/Toaster";
 import { SplashScreen } from "../components/SplashScreen";
 import { AppShell } from "./AppShell";
 import { HomeLayout } from "./HomeLayout";
@@ -42,6 +43,7 @@ export function App() {
   return (
     <>
       <AndroidAppBanner />
+      <Toaster />
       <Suspense fallback={<SplashScreen />}>
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />

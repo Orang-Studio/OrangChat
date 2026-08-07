@@ -80,9 +80,9 @@ export function DialogContent({
         <div className="mt-4">{children}</div>
         <RadixDialog.Close
           aria-label="Close"
-          className="absolute right-4 top-4 rounded-md p-1 text-ink-muted transition-colors hover:text-ink"
+          className="absolute right-2 top-2 rounded-lg p-3 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink"
         >
-          <X aria-hidden className="size-4" />
+          <X aria-hidden className="size-5" />
         </RadixDialog.Close>
       </RadixDialog.Content>
     </RadixDialog.Portal>

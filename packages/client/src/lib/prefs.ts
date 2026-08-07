@@ -78,6 +78,9 @@ export function applyPrefs(prefs: LocalPrefs): void {
 }
 
 export function setPref<K extends keyof LocalPrefs>(key: K, value: LocalPrefs[K]): void {
+  // Once the user picks a value here (or in a past session), the OS setting
+  // stops driving it - the choice is theirs.
+  explicitlySet.add(key);
   const next = { ...usePrefs.getState(), [key]: value };
   usePrefs.setState(next, true);
   write(next);
@@ -86,19 +89,49 @@ export function setPref<K extends keyof LocalPrefs>(key: K, value: LocalPrefs[K]
 
 export const getPrefs = () => usePrefs.getState();
 
-/** Honour the OS-level motion setting until the user overrides it here. */
+/** Preferences the user has set themselves, in any session. */
+const explicitlySet = new Set<keyof LocalPrefs>();
+
+/** Apply an OS preference change to a key the user never touched. Kept out of
+ * localStorage on purpose: persisted, it would read as a choice next session
+ * and stop the OS from ever being followed again. */
+function followOs(key: "reducedMotion" | "highContrast", matches: boolean): void {
+  if (explicitlySet.has(key)) return;
+  const next = { ...usePrefs.getState(), [key]: matches };
+  usePrefs.setState(next, true);
+  applyPrefs(next);
+}
+
+/** Honour the OS-level motion and contrast settings until the user overrides
+ * them here - and keep following them if the OS setting changes mid-session. */
 export function initPrefs(): void {
   const stored = read();
+  let parsed: Partial<LocalPrefs> = {};
   let raw: string | null = null;
   try {
     raw = localStorage.getItem(STORAGE_KEY);
   } catch {
     /* ignore */
   }
-  const untouched = !raw || !("reducedMotion" in (JSON.parse(raw || "{}") as object));
-  if (untouched && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-    stored.reducedMotion = true;
+  try {
+    parsed = JSON.parse(raw ?? "{}") as Partial<LocalPrefs>;
+  } catch {
+    /* ignore */
   }
+  // A choice made in an earlier session still counts as made.
+  for (const key of Object.keys(parsed)) explicitlySet.add(key as keyof LocalPrefs);
   usePrefs.setState(stored, true);
-  applyPrefs(stored);
+  if (!explicitlySet.has("reducedMotion")) {
+    followOs("reducedMotion", window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
+  }
+  if (!explicitlySet.has("highContrast")) {
+    followOs("highContrast", window.matchMedia?.("(prefers-contrast: more)").matches ?? false);
+  }
+  window.matchMedia?.("(prefers-reduced-motion: reduce)").addEventListener("change", (e) =>
+    followOs("reducedMotion", e.matches),
+  );
+  window.matchMedia?.("(prefers-contrast: more)").addEventListener("change", (e) =>
+    followOs("highContrast", e.matches),
+  );
+  applyPrefs(usePrefs.getState());
 }

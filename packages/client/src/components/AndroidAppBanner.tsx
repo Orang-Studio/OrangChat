@@ -101,9 +101,9 @@ export function AndroidAppBanner() {
         type="button"
         onClick={dismiss}
         aria-label="Dismiss Android app download"
-        className="shrink-0 rounded-md p-1 text-ink-muted transition-colors hover:bg-surface-4 hover:text-ink"
+        className="shrink-0 rounded-lg p-2.5 text-ink-muted transition-colors hover:bg-surface-4 hover:text-ink"
       >
-        <X aria-hidden className="size-4" />
+        <X aria-hidden className="size-5" />
       </button>
     </aside>
   );

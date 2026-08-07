@@ -25,6 +25,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '../../components/ui/ContextMenu';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { VoicePanel } from '../voice/VoicePanel';
 import { callActions } from '../voice/callStore';
 import { useAuthStore } from '../../stores/auth';
@@ -78,20 +79,30 @@ function ConversationRow({
   // be noise racing the read receipt.
   const unread = !active && unreadCount > 0;
   const [profileOpen, setProfileOpen] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
 
   const markRead = useMutation({
     mutationFn: () => markChannelRead(conversation.id),
     onSuccess: () => unreadActions.clear(conversation.id),
   });
+  // Both confirms stay open across their mutation, so the dialog's own spinner
+  // and inline error are what report the outcome - closing on click would have
+  // left `loading` and `error` below unreachable, and a toast is a poor place
+  // to learn that the thing you just confirmed did not happen.
   const remove = useMutation({
     mutationFn: (userId: string) => removeFriend(userId),
-    onSuccess: (_v, userId) => removeFriendFromCache(client, userId),
+    onSuccess: (_v, userId) => {
+      removeFriendFromCache(client, userId);
+      setConfirmRemove(false);
+    },
   });
   const leave = useMutation({
     mutationFn: () => leaveDm(conversation.id),
     onSuccess: () => {
       unreadActions.clear(conversation.id);
       void client.invalidateQueries({ queryKey: dmKeys.list });
+      setConfirmLeave(false);
       // Standing in a conversation that is no longer listed leaves the user on
       // a dead route, so step out of it first.
       if (active) navigate('/app');
@@ -186,7 +197,7 @@ function ConversationRow({
           {other && isFriend && (
             <>
               <ContextMenuSeparator />
-              <ContextMenuItem danger onSelect={() => remove.mutate(other.id)}>
+              <ContextMenuItem danger onSelect={() => setConfirmRemove(true)}>
                 <UserX aria-hidden className="size-4" />
                 Remove Friend
               </ContextMenuItem>
@@ -194,7 +205,7 @@ function ConversationRow({
           )}
 
           <ContextMenuSeparator />
-          <ContextMenuItem danger onSelect={() => leave.mutate()}>
+          <ContextMenuItem danger onSelect={() => setConfirmLeave(true)}>
             {isGroup ? (
               <LogOut aria-hidden className="size-4" />
             ) : (
@@ -218,6 +229,42 @@ function ConversationRow({
       </ContextMenu>
 
       {other && <ProfileDialog user={other} open={profileOpen} onOpenChange={setProfileOpen} />}
+
+      {/* Both irreversible, neither should fire on a menu tap alone. */}
+      <ConfirmDialog
+        open={confirmRemove}
+        // Reset on close, or a failure the user backed out of greets them again
+        // the next time they open the dialog.
+        onOpenChange={(next) => {
+          setConfirmRemove(next);
+          if (!next) remove.reset();
+        }}
+        title={`Remove ${other?.displayName ?? "this user"}?`}
+        description="They'll be removed from your friends, and you'll need a new request to reconnect. Your message history stays."
+        confirmLabel="Remove Friend"
+        danger
+        loading={remove.isPending}
+        error={remove.isError ? remove.error.message : undefined}
+        onConfirm={() => other && remove.mutate(other.id)}
+      />
+      <ConfirmDialog
+        open={confirmLeave}
+        onOpenChange={(next) => {
+          setConfirmLeave(next);
+          if (!next) leave.reset();
+        }}
+        title={isGroup ? `Leave ${name}?` : "Close this conversation?"}
+        description={
+          isGroup
+            ? "You'll need to be re-invited to come back, and you'll stop seeing new messages."
+            : "You can start a new conversation with this person any time, but the message list here will be closed."
+        }
+        confirmLabel={isGroup ? "Leave Group" : "Close DM"}
+        danger
+        loading={leave.isPending}
+        error={leave.isError ? leave.error.message : undefined}
+        onConfirm={() => leave.mutate()}
+      />
     </>
   );
 }
@@ -289,18 +336,18 @@ export function DmSidebar() {
               onClick={() => setNewGroupOpen(true)}
               aria-label="New group"
               title="New group"
-              className="rounded p-0.5 text-ink-muted transition-colors hover:text-ink"
+              className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
             >
-              <Users aria-hidden className="size-4" />
+              <Users aria-hidden className="size-5" />
             </button>
             <button
               type="button"
               onClick={() => setNewDmOpen(true)}
               aria-label="New direct message"
               title="New direct message"
-              className="rounded p-0.5 text-ink-muted transition-colors hover:text-ink"
+              className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
             >
-              <Plus aria-hidden className="size-4" />
+              <Plus aria-hidden className="size-5" />
             </button>
           </div>
         </div>

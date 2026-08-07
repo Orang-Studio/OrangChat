@@ -28,6 +28,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Icon
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.ui.text.style.TextOverflow
 import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -83,29 +85,38 @@ fun ChannelListPane(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(c.surface1)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                // The icons carry their own 48dp height now, which is exactly what
+                // the old 14dp vertical padding around a 20dp glyph came to - so the
+                // header keeps its height while the targets grow.
+                .padding(start = 16.dp, end = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(detail.server.name, color = c.ink, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.weight(1f))
+            Text(
+                detail.server.name,
+                color = c.ink,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
             Icon(
                 Icons.Default.Search,
                 contentDescription = "Search messages",
                 tint = c.inkSecondary,
-                modifier = Modifier.size(20.dp).clickable(onClick = onSearch),
+                modifier = Modifier.minimumInteractiveComponentSize().size(20.dp).clickable(onClick = onSearch),
             )
-            Spacer(Modifier.width(12.dp))
             Icon(
                 Icons.Default.Settings,
                 contentDescription = "Server settings",
                 tint = c.inkSecondary,
-                modifier = Modifier.size(20.dp).clickable(onClick = onServerSettings),
+                modifier = Modifier.minimumInteractiveComponentSize().size(20.dp).clickable(onClick = onServerSettings),
             )
-            Spacer(Modifier.width(12.dp))
             Icon(
                 Icons.Default.Add,
                 contentDescription = "Add channel",
                 tint = c.inkSecondary,
-                modifier = Modifier.size(20.dp).clickable(onClick = onAddChannel),
+                modifier = Modifier.minimumInteractiveComponentSize().size(20.dp).clickable(onClick = onAddChannel),
             )
         }
         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(c.border))

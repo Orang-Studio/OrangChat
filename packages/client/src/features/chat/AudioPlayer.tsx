@@ -133,9 +133,9 @@ export function AudioPlayer({
         // The stored name is an opaque id, so the real one comes from here.
         download={attachment.filename}
         aria-label={`Download ${attachment.filename}`}
-        className="shrink-0 rounded-md p-1 text-ink-muted transition-colors hover:text-ink"
+        className="shrink-0 rounded-lg p-2.5 text-ink-muted transition-colors hover:text-ink"
       >
-        <Download aria-hidden className="size-4" />
+        <Download aria-hidden className="size-5" />
       </a>
     </div>
   );

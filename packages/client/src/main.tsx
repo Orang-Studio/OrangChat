@@ -13,6 +13,7 @@ import { initInstalledTheme } from "./features/plugins/themes";
 import { registerServiceWorker } from "./lib/serviceWorker";
 import { initOfflineQueryCache } from "./lib/offlineQueryCache";
 import { CssOverrideScope, allowsCssOverrides } from "./app/CssOverrideScope";
+import { ErrorBoundary } from "./app/ErrorBoundary";
 import "./styles/index.css";
 
 initTheme();
@@ -53,11 +54,13 @@ registerE2eeBootstrap();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <CssOverrideScope />
-        <App />
-      </BrowserRouter>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <CssOverrideScope />
+          <App />
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
   </StrictMode>,
 );

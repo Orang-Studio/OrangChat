@@ -147,13 +147,7 @@ class NotificationHelper @Inject constructor(
         }
     }
 
-    fun hasPermission(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
-        return ContextCompat.checkSelfPermission(
-            context,
-            android.Manifest.permission.POST_NOTIFICATIONS,
-        ) == PackageManager.PERMISSION_GRANTED
-    }
+    fun hasPermission(): Boolean = hasNotificationPermission(context)
 
     /**
      * Raise a message notification. [title] is the author/DM/channel label,

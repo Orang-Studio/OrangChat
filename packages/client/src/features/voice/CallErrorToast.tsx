@@ -24,9 +24,9 @@ function Toast({
         type="button"
         onClick={onDismiss}
         aria-label="Dismiss"
-        className="rounded p-0.5 text-ink-muted transition-colors hover:text-ink"
+        className="rounded-lg p-2 text-ink-muted transition-colors hover:text-ink"
       >
-        <X aria-hidden className="size-3.5" />
+        <X aria-hidden className="size-4" />
       </button>
     </div>
   );

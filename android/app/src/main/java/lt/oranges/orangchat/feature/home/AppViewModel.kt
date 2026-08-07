@@ -176,6 +176,15 @@ class AppViewModel @Inject constructor(
     private val _pendingMessageIds = MutableStateFlow<Set<String>>(emptySet())
     val pendingMessageIds: StateFlow<Set<String>> = _pendingMessageIds.asStateFlow()
 
+    /**
+     * Rows the server refused, still on screen awaiting a retry or a delete.
+     *
+     * Disjoint from [pendingMessageIds] by construction: a row is in flight or
+     * it has failed, never both, and retrying moves it back across.
+     */
+    private val _failedMessageIds = MutableStateFlow<Set<String>>(emptySet())
+    val failedMessageIds: StateFlow<Set<String>> = _failedMessageIds.asStateFlow()
+
     private data class PendingOutgoing(
         val localId: String,
         val channelId: String,
@@ -186,6 +195,18 @@ class AppViewModel @Inject constructor(
     )
 
     private val pendingOutbox = mutableListOf<PendingOutgoing>()
+
+    /**
+     * What a rejected row needs to be sent again, held out of [pendingOutbox]
+     * so the flush loop does not pick it back up on its own - the server said
+     * no, and retrying is the user's call.
+     *
+     * In memory only, unlike [pendingOutbox], which is mirrored into the
+     * encrypted queue store. Persisting these would put them back through
+     * restorePendingMessages on the next launch, which re-sends them - the
+     * exact loop the reject path exists to break.
+     */
+    private val failedOutbox = mutableListOf<PendingOutgoing>()
     private var outboxJob: Job? = null
 
     private val _typing = MutableStateFlow<Map<String, Set<String>>>(emptyMap())
@@ -716,7 +737,11 @@ class AppViewModel @Inject constructor(
                 val items = e2eeRepository.decryptAll(page.items.reversed())
                 _messages.update { current ->
                     val existing = current[channelId].orEmpty()
-                    val pending = existing.filter { it.id in _pendingMessageIds.value }
+                    // Failed rows are local-only too, and the server knows
+                    // nothing about them - without this a history refresh would
+                    // quietly delete the very rows the retry affordance is for.
+                    val local = _pendingMessageIds.value + _failedMessageIds.value
+                    val pending = existing.filter { it.id in local }
                     current + (channelId to mergeHistoryPage(existing, items, pending))
                 }
                 scheduleMessageCache(channelId)
@@ -840,9 +865,13 @@ class AppViewModel @Inject constructor(
                             return@launch
                         }
                         // A live server rejection (permissions, slowmode, etc.)
-                        // will not improve after reconnecting; remove that row
-                        // and surface the actual error instead of retrying it.
+                        // will not improve after reconnecting, so the row comes
+                        // out of the queue rather than being retried forever.
+                        // It moves to the failed set instead of being deleted:
+                        // the text stays on screen with a retry against it, for
+                        // the case where the reason was temporary after all.
                         rejectPendingMessage(pending.localId)
+                        failedOutbox += pending
                         pendingOutbox.removeAll { it.localId == pending.localId }
                         e2eeRepository.removeQueuedMessage(pending.localId)
                         // The server's own rejections are written for people and
@@ -925,6 +954,9 @@ class AppViewModel @Inject constructor(
             return
         }
         _pendingMessageIds.update { it - localId }
+        // A retry that lands clears the failure with it.
+        _failedMessageIds.update { it - localId }
+        failedOutbox.removeAll { it.localId == localId }
         // Carry the local id onto the confirmed row. The list keys on it, so the
         // message keeps its identity across the id changing and simply loses the
         // pending styling instead of being torn down and re-inserted.
@@ -940,8 +972,44 @@ class AppViewModel @Inject constructor(
         scheduleMessageCache(confirmed.channelId)
     }
 
+    /**
+     * The server refused this row. Keep it on screen, marked as failed.
+     *
+     * It used to be deleted outright, which threw away text the user had
+     * written and typically could not reproduce, with nothing left behind to
+     * say it had happened. Now the row stays put and the chat offers a retry
+     * and a delete against it.
+     */
     private fun rejectPendingMessage(localId: String) {
         _pendingMessageIds.update { it - localId }
+        _failedMessageIds.update { it + localId }
+    }
+
+    /** Put a rejected row back in the queue and try it again. */
+    fun retryFailedMessage(localId: String) {
+        val failed = failedOutbox.firstOrNull { it.localId == localId } ?: return
+        failedOutbox.removeAll { it.localId == localId }
+        _failedMessageIds.update { it - localId }
+        pendingOutbox += failed
+        // Back into the queue store as well, so a retry that is still waiting
+        // on a reconnect survives the app being closed - the same guarantee an
+        // ordinary send gets.
+        e2eeRepository.saveQueuedMessage(
+            failed.localId,
+            failed.channelId,
+            failed.content,
+            failed.replyToId,
+            failed.attachmentIds,
+            failed.sealedAttachments,
+        )
+        _pendingMessageIds.update { it + localId }
+        flushPendingMessages()
+    }
+
+    /** Drop a rejected row for good - the old reject behaviour, now on request. */
+    fun discardFailedMessage(localId: String) {
+        failedOutbox.removeAll { it.localId == localId }
+        _failedMessageIds.update { it - localId }
         _messages.update { current ->
             current.mapValues { (_, messages) -> messages.filterNot { it.id == localId } }
         }

@@ -52,6 +52,8 @@ import lt.oranges.orangchat.feature.e2ee.EncryptionExplainerDialog
 import lt.oranges.orangchat.feature.e2ee.HowEncryptionWorksLink
 import lt.oranges.orangchat.feature.updates.UpdateUiState
 import lt.oranges.orangchat.feature.updates.UpdateViewModel
+import lt.oranges.orangchat.notifications.appNotificationSettingsIntent
+import lt.oranges.orangchat.notifications.rememberNotificationPermissionState
 import lt.oranges.orangchat.ui.components.ButtonSize
 import lt.oranges.orangchat.ui.components.ButtonVariant
 import lt.oranges.orangchat.ui.components.OrangButton
@@ -71,6 +73,13 @@ fun PrivacyScreen(self: SelfUser, onBack: () -> Unit, vm: SettingsViewModel = hi
     val error by vm.privacyError.collectAsStateWithLifecycle()
     val prefs by vm.prefs.collectAsStateWithLifecycle()
     var explainerOpen by remember { mutableStateOf(false) }
+
+    // Granting happens in system settings, i.e. outside this process, so the
+    // answer is re-read on every resume - otherwise a user who just turned
+    // notifications on would come back to a screen still telling them they
+    // are off.
+    val context = LocalContext.current
+    val notificationsAllowed = rememberNotificationPermissionState()
 
     Column(modifier = screenModifier(c)) {
         SettingsTopBar("Privacy", onBack)
@@ -109,6 +118,16 @@ fun PrivacyScreen(self: SelfUser, onBack: () -> Unit, vm: SettingsViewModel = hi
                 )
             }
             SettingSection("Notifications") {
+                // The first-run prompt takes "no" for an answer and never asks
+                // again, and the permission can be revoked from the system at
+                // any time. This row is the whole way back from either.
+                if (!notificationsAllowed) {
+                    SettingsNavRow(
+                        label = "Notifications are turned off",
+                        subtitle = "Android is not letting OrangChat notify you about messages or calls. Turn them on in system settings.",
+                        onClick = { context.startActivity(appNotificationSettingsIntent(context)) },
+                    )
+                }
                 SettingsToggleRow(
                     label = "Show message text",
                     hint = "Off, the shade and lock screen show who wrote and nothing more. Encrypted messages are then never unlocked to make a notification at all. This phone only.",

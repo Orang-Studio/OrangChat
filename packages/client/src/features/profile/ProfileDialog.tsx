@@ -6,6 +6,8 @@ import { Button } from "../../components/ui/Button";
 import { Dialog, DialogContent } from "../../components/ui/Dialog";
 import { useAuthStore } from "../../stores/auth";
 import { usePresenceStore } from "../../stores/presence";
+import { toast } from "../../stores/toasts";
+import { errorMessage } from "../../lib/errors";
 import { getUserConnections } from "../connections/api";
 import { createDm } from "../dms/api";
 import { upsertConversation } from "../dms/queries";
@@ -60,6 +62,8 @@ export function ProfileDialog({ user, open, onOpenChange }: ProfileDialogProps) 
       onOpenChange(false);
       navigate(`/dms/${conversation.id}`);
     },
+    onError: (error) =>
+      toast.error(errorMessage(error, "Couldn't start a conversation")),
   });
 
   const addMutation = useMutation({
@@ -73,11 +77,13 @@ export function ProfileDialog({ user, open, onOpenChange }: ProfileDialogProps) 
         void client.invalidateQueries({ queryKey: ["friends", "requests"] });
       }
     },
+    onError: (error) => toast.error(errorMessage(error, "Couldn't send the friend request")),
   });
 
   const removeMutation = useMutation({
     mutationFn: () => removeFriend(user.id),
     onSuccess: () => removeFriendFromCache(client, user.id),
+    onError: (error) => toast.error(errorMessage(error, "Couldn't remove friend")),
   });
 
   // If an inbound request exists, "Add" auto-accepts it server-side.
@@ -88,6 +94,7 @@ export function ProfileDialog({ user, open, onOpenChange }: ProfileDialogProps) 
       addFriend(client, friend);
       removeRequestByUser(client, user.id);
     },
+    onError: (error) => toast.error(errorMessage(error, "Couldn't accept the request")),
   });
 
   return (
