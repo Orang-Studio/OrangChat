@@ -1,0 +1,24 @@
+Hold it, and it's going
+
+New
+- Recording a voice message is now press-and-hold, with the gestures the
+  idiom comes with: let go to send, slide left to cancel, slide up to lock
+  the recording and get your finger back. The release is the send - there
+  is no second tap, and no live mic left running when the stop button was
+  forgotten.
+- The composer shows a live waveform of your voice, the running time, and
+  the mic swelling with your volume while it listens.
+- Every step has a haptic: starting, locking, cancelling, sending.
+- A voice message sends itself the moment its file finishes uploading, with
+  a "Sending voice message…" progress row in the composer while it does.
+- A recording cancels itself if the app goes to the background or the
+  screen locks, instead of keeping the microphone hot.
+
+Fixed
+- The swipe-to-delete no longer breaks mid-recording: the mic used to shift
+  sideways as the send button vanished under your finger, turning every
+  recording into an accidental lock and putting the delete threshold out of
+  reach. Nothing in the row moves anymore, and the drag tracks your finger
+  directly.
+- A too-short press no longer sends a fragment of room tone; it is
+  discarded with a brief hint about the gesture.
