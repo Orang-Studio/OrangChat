@@ -1,0 +1,23 @@
+This package contains work derived from:
+
+  voice-message
+  https://github.com/NadeemIqbal/voice-message
+  Version 0.3.1, commit 671085bf20b73acb389c9cfeb38eec917cfbfce2
+  Copyright 2026 Nadeem Iqbal
+  Licensed under the Apache License, Version 2.0
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+The sources were copied rather than consumed as the published Maven artifact
+(io.github.nadeemiqbal:voice-message:0.3.1) because upstream builds against
+Kotlin 2.3 and this app is on Kotlin 2.0.21, which cannot read Kotlin 2.3
+metadata. The code itself only uses plain AndroidX Compose APIs and compiles
+unchanged here.
+
+Modified by OrangChat: retheming onto OrangChat design tokens, Material icons in
+place of upstream's hand-drawn glyphs, drag-progress state so the UI tracks the
+finger, a "too short" release outcome, callbacks read through rememberUpdatedState
+so they survive a channel switch, and the playback bubble dropped.
+
+Files derived from the above: VoicePhase.kt, VoiceRecorderState.kt,
+VoiceRecorderUi.kt.

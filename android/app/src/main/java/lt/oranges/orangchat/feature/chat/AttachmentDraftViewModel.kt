@@ -75,18 +75,24 @@ class AttachmentDraftViewModel @Inject constructor(
 
     fun dismissError() { _error.value = null }
 
+    /**
+     * Queues [uris] for upload and returns the keys of the drafts created, in the
+     * order they were accepted. Callers that just want a chip on screen can ignore
+     * the result; the voice composer needs it to follow one specific upload and
+     * send it the moment it settles.
+     */
     fun add(
         uris: List<Uri>,
         channelId: String?,
         temporaryUris: Set<Uri> = emptySet(),
-    ) {
-        if (uris.isEmpty()) return
+    ): List<String> {
+        if (uris.isEmpty()) return emptyList()
         _error.value = null
 
         val room = AttachmentUploader.MAX_PER_MESSAGE - _uploads.value.size
         if (room <= 0) {
             _error.value = "A message can carry at most ${AttachmentUploader.MAX_PER_MESSAGE} attachments"
-            return
+            return emptyList()
         }
         val accepted = if (uris.size > room) {
             _error.value = "Only the first $room of those fit on one message"
@@ -95,6 +101,7 @@ class AttachmentDraftViewModel @Inject constructor(
             uris
         }
 
+        val created = mutableListOf<String>()
         for (uri in accepted) {
             val key = UUID.randomUUID().toString()
             // describe() touches the content resolver but only reads a metadata
@@ -116,6 +123,7 @@ class AttachmentDraftViewModel @Inject constructor(
                     deleteSourceOnCleanup = uri in temporaryUris,
                 )
             }
+            created += key
 
             jobs[key] = viewModelScope.launch {
                 runCatching {
@@ -158,6 +166,7 @@ class AttachmentDraftViewModel @Inject constructor(
                     }
             }
         }
+        return created
     }
 
     fun remove(key: String) {

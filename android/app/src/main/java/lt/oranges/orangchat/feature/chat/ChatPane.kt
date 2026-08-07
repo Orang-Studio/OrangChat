@@ -72,7 +72,6 @@ import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Shield
@@ -82,6 +81,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.minimumInteractiveComponentSize
 import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
@@ -90,6 +90,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -97,6 +98,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import androidx.compose.ui.Alignment
@@ -121,6 +124,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
@@ -152,6 +156,12 @@ import lt.oranges.orangchat.crypto.SealedAttachmentRef
 import lt.oranges.orangchat.feature.home.AppViewModel
 import lt.oranges.orangchat.feature.e2ee.ConversationEncryptionDialog
 import lt.oranges.orangchat.feature.transfer.ContactQrScanner
+import lt.oranges.orangchat.feature.chat.voicemessage.VoiceDeleteButton
+import lt.oranges.orangchat.feature.chat.voicemessage.VoiceMicButton
+import lt.oranges.orangchat.feature.chat.voicemessage.VoicePhase
+import lt.oranges.orangchat.feature.chat.voicemessage.VoiceRecordingStrip
+import lt.oranges.orangchat.feature.chat.voicemessage.orangVoiceRecorderColors
+import lt.oranges.orangchat.feature.chat.voicemessage.rememberVoiceRecorderState
 import lt.oranges.orangchat.data.model.UserActivity
 import lt.oranges.orangchat.ui.components.ActivityStatus
 import lt.oranges.orangchat.ui.components.Avatar
@@ -174,6 +184,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlin.time.Duration
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 
@@ -269,24 +280,8 @@ private const val MESSAGE_LENGTH_WARNING_THRESHOLD = MESSAGE_MAX_LENGTH - 400
 /** How long a jumped-to message stays lit before fading back. */
 private const val HIGHLIGHT_MS = 1_600L
 
-private fun formatRecordingTime(totalSeconds: Long): String {
-    val minutes = totalSeconds / 60
-    return "$minutes:${(totalSeconds % 60).toString().padStart(2, '0')}"
-}
-
-/**
- * How far the finger has to travel off the mic before a swipe counts. Far
- * enough that the wobble of holding a phone one-handed never trips it, close
- * enough to reach with the same thumb that is already pressing.
- */
-private val VOICE_SWIPE_THRESHOLD = 72.dp
-
-/**
- * A press shorter than this was a tap, not a hold. Anything this brief is
- * inaudible anyway, so it is discarded with a hint rather than sent as a
- * quarter-second of room tone.
- */
-private const val VOICE_MIN_HOLD_MS = 600L
+/** How long the neutral "that was a tap, not a hold" hint stays up. */
+private const val VOICE_HINT_MS = 2_500L
 
 /**
  * Older pages a jump is allowed to pull in before it gives up. 12 pages of 50
@@ -1813,15 +1808,14 @@ private fun Composer(
     var emojiOpen by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val voiceRecorder = remember(context) { VoiceMessageRecorder(context) }
-    var recording by remember(channelId) { mutableStateOf(false) }
-    // A locked recording keeps going with nothing held down, so it is driven by
-    // the stop and delete buttons instead of by the finger.
-    var recordingLocked by remember(channelId) { mutableStateOf(false) }
-    /** How far the holding finger has travelled, in px; drives the swipe hints. */
-    var recordingDrag by remember(channelId) { mutableStateOf(0f) }
-    var recordingStartedAt by remember(channelId) { mutableStateOf(0L) }
-    var recordingSeconds by remember(channelId) { mutableStateOf(0L) }
+    // A press too brief to be a hold gets a neutral hint - it is a
+    // misunderstanding, not a failure. recordingError stays reserved for
+    // permission denials and dead microphones.
+    var recordingHint by remember(channelId) { mutableStateOf<String?>(null) }
     var recordingError by remember(channelId) { mutableStateOf<String?>(null) }
+    /** Key of the voice upload that sends itself the moment its file settles. */
+    var autoSendVoiceKey by remember(channelId) { mutableStateOf<String?>(null) }
+    val voiceColors = orangVoiceRecorderColors()
     var attachmentMenuOpen by remember(channelId) { mutableStateOf(false) }
     var pendingCameraUri by remember(channelId) { mutableStateOf<Uri?>(null) }
     var tokenWarning by remember(channelId) { mutableStateOf<PastedTokenKind?>(null) }
@@ -1849,83 +1843,100 @@ private fun Composer(
             runCatching { context.contentResolver.delete(uri, null, null) }
         }
     }
+    /**
+     * Opens the microphone. Wired in as the state machine's onStart, which
+     * fires once a press has survived long enough to count as a hold; the cap
+     * is the state machine's own tick delivering the clip at [VoiceRecorderDefaults.MaxDuration].
+     */
+    fun openMic() {
+        recordingError = null
+        runCatching {
+            voiceRecorder.start()
+        }.onFailure {
+            recordingError = "Could not start voice recording"
+        }
+    }
+
+    /**
+     * The release was the send: stop the recorder and hand the file to the
+     * upload pipeline, which delivers the message itself the moment the file
+     * settles. The duration only matters for the cap; the message carries the
+     * file, not a timecode.
+     */
+    fun sendVoice(duration: Duration) {
+        val uri = voiceRecorder.stop() ?: run {
+            if (channelId != null) recordingError = "Could not record the voice message"
+            return
+        }
+        if (channelId == null) return
+        val keys = drafts.add(listOf(uri), channelId, temporaryUris = setOf(uri))
+        autoSendVoiceKey = keys.firstOrNull()
+        if (autoSendVoiceKey == null) {
+            // add() rejected the file (it couldn't be read); nothing would ever
+            // clean it up, and the 24h sweeper is no excuse to leave it lying around.
+            runCatching { context.contentResolver.delete(uri, null, null) }
+            recordingError = "Could not record the voice message"
+        }
+    }
+
+    // Keyed on the channel so switching away drops the in-flight gesture along
+    // with the channel's drafts; rememberUpdatedState inside keeps the callbacks
+    // pointing at the current channel within that lifetime.
+    val voiceState = key(channelId) {
+        rememberVoiceRecorderState(
+            onStart = { openMic() },
+            onCancel = { voiceRecorder.cancel() },
+            onSend = { duration -> sendVoice(duration) },
+            onTooShort = { recordingHint = "Hold the mic to record, then let go to send" },
+        )
+    }
+
     val recordPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         if (granted) {
-            runCatching {
-                voiceRecorder.start()
-            }.onSuccess {
-                recordingStartedAt = System.currentTimeMillis()
-                recordingSeconds = 0L
-                recordingDrag = 0f
-                recordingError = null
-                recording = true
-                // The finger that asked for this is long gone - it went to the
-                // permission dialog - so there is nothing left holding the mic
-                // down. Start locked rather than recording into a void.
-                recordingLocked = true
-            }.onFailure {
-                recordingError = "Could not start voice recording"
-            }
+            // The finger that asked for this is long gone - it went to the
+            // permission dialog - so there is nothing left holding the mic down.
+            // Start locked rather than recording into a void.
+            voiceState.start()
+            voiceState.lock()
         } else {
             recordingError = "Microphone access is needed to record a voice message"
         }
     }
 
     /**
-     * Begins a hold-to-record. Returns whether anything is actually recording,
-     * so the gesture can stop tracking a press that only opened the permission
-     * dialog.
+     * Whether a press may open the mic, consulted once the hold has lasted long
+     * enough. Returning false abandons the press silently: it only means a
+     * permission dialog just went up, and the launcher starts the recording
+     * itself (locked) when the user says yes.
      */
-    fun startVoiceRecording(): Boolean {
-        if (recording || channelId == null) return false
-        recordingError = null
-        recordingDrag = 0f
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-            runCatching {
-                voiceRecorder.start()
-            }.onSuccess {
-                recordingStartedAt = System.currentTimeMillis()
-                recordingSeconds = 0L
-                recording = true
-                recordingLocked = false
-            }.onFailure {
-                recordingError = "Could not start voice recording"
-            }
+    val canStartMic: () -> Boolean = {
+        if (channelId == null) {
+            false
+        } else if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            recordingError = null
+            true
         } else {
             recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-        }
-        return recording
-    }
-
-    fun finishVoiceRecording(cancel: Boolean) {
-        if (!recording) return
-        // Too brief to hear, and almost always a tap by somebody who expected the
-        // old press-to-start button. Say what the mic wants instead of sending it.
-        val tapped = !cancel && System.currentTimeMillis() - recordingStartedAt < VOICE_MIN_HOLD_MS
-        val uri = if (cancel || tapped) {
-            voiceRecorder.cancel()
-            null
-        } else {
-            voiceRecorder.stop()
-        }
-        recording = false
-        recordingLocked = false
-        recordingDrag = 0f
-        when {
-            tapped -> recordingError = "Hold the mic to record, then let go to send"
-            cancel -> Unit
-            uri != null && channelId != null ->
-                drafts.add(listOf(uri), channelId, temporaryUris = setOf(uri))
-            uri == null -> recordingError = "The recording was too short"
+            false
         }
     }
 
-    LaunchedEffect(recording) {
-        while (recording) {
-            recordingSeconds = ((System.currentTimeMillis() - recordingStartedAt) / 1000L).coerceAtLeast(0L)
-            delay(250L)
+    // Ticks the running time and pumps amplitude readings while the mic is open.
+    // The phase is the key so the loop wakes up the moment recording starts.
+    LaunchedEffect(voiceState.phase) {
+        while (voiceState.phase.isRecording) {
+            voiceState.tick()
+            voiceState.pushAmplitude(voiceRecorder.amplitude())
+            delay(100L)
+        }
+    }
+
+    LaunchedEffect(recordingHint) {
+        if (recordingHint != null) {
+            delay(VOICE_HINT_MS)
+            recordingHint = null
         }
     }
 
@@ -1982,6 +1993,32 @@ private fun Composer(
 
     val uploads by drafts.uploads.collectAsState()
     val draftError by drafts.error.collectAsState()
+    // The auto-sent voice message keeps its own slot outside the shared draft:
+    // it must neither block a text send nor ride along on one, and it renders
+    // as a "sending" row instead of a removable chip.
+    val visibleUploads = uploads.filter { it.key != autoSendVoiceKey }
+
+    // The release was already the send. Deliver the clip on its own the moment
+    // its file settles, before any other send can sweep it up.
+    LaunchedEffect(autoSendVoiceKey, uploads) {
+        val key = autoSendVoiceKey ?: return@LaunchedEffect
+        val upload = uploads.firstOrNull { it.key == key } ?: return@LaunchedEffect
+        if (upload.error != null) {
+            autoSendVoiceKey = null
+            drafts.remove(key)
+            recordingError = upload.error
+            return@LaunchedEffect
+        }
+        if (upload.settled) {
+            autoSendVoiceKey = null
+            drafts.remove(key)
+            onSend(
+                "",
+                listOfNotNull(upload.attachment?.id, upload.sealed?.thumb?.attachmentId),
+                listOfNotNull(upload.sealed),
+            )
+        }
+    }
 
     // The picker returns content uris; uploading starts immediately.
     val picker = rememberLauncherForActivityResult(
@@ -2051,6 +2088,18 @@ private fun Composer(
         }
     }
 
+    // A recording must not outlive the app's visibility: with the screen locked
+    // or the app backgrounded, the mic would stay hot and the file keep growing
+    // with nothing on screen saying so.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) voiceState.forceCancel()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     // A draft belongs to its channel. Switching away cancels anything still
     // uploading rather than carrying it to wherever we land next.
     if (channelId != null) {
@@ -2058,6 +2107,7 @@ private fun Composer(
             onDispose {
                 // Persist whatever is in the box for the channel we're leaving.
                 textDrafts.saveNow(channelId, textState.text.toString().trim())
+                voiceState.forceCancel()
                 voiceRecorder.cancel()
                 pendingCameraUri?.let { uri ->
                     runCatching { context.contentResolver.delete(uri, null, null) }
@@ -2072,7 +2122,27 @@ private fun Composer(
             MentionSuggestions(matches = matches, onPick = pickMention)
         }
         if (channelId != null) {
-            ComposerAttachments(uploads = uploads, onRemove = drafts::remove)
+            ComposerAttachments(uploads = visibleUploads, onRemove = drafts::remove)
+            autoSendVoiceKey?.let { key ->
+                val pending = uploads.firstOrNull { it.key == key }
+                if (pending != null && !pending.settled) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                    ) {
+                        LinearProgressIndicator(
+                            progress = { pending.progress },
+                            color = c.primary,
+                            trackColor = c.surface1,
+                            modifier = Modifier.width(64.dp).height(3.dp),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Sending voice message…", color = c.inkSecondary, fontSize = 12.sp)
+                    }
+                }
+            }
             draftError?.let {
                 Text(
                     it,
@@ -2093,6 +2163,18 @@ private fun Composer(
                         .clickable { recordingError = null },
                 )
             }
+            recordingHint?.let {
+                Text(
+                    it,
+                    color = c.inkSecondary,
+                    fontSize = 13.sp,
+                    modifier = Modifier
+                        .padding(vertical = 2.dp)
+                        .align(Alignment.CenterHorizontally)
+                        .background(c.surface4, RoundedCornerShape(OrangRadius.xl2))
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                )
+            }
         }
 
     // Attachments can carry a message on their own, so blank text is fine as
@@ -2100,12 +2182,12 @@ private fun Composer(
     // Both the sealed file and the sealed preview beside it: an attachment id
     // the message never claims is swept as an abandoned upload, which took the
     // thumbnail out from under every ref that pointed at it.
-    val ready = uploads.flatMap { upload ->
+    val ready = visibleUploads.flatMap { upload ->
         listOfNotNull(upload.attachment?.id, upload.sealed?.thumb?.attachmentId)
     }
     val enabled = (textState.text.isNotBlank() || ready.isNotEmpty() || allowEmpty) &&
-        uploads.none { !it.settled } &&
-        uploads.none { it.error != null }
+        visibleUploads.none { !it.settled } &&
+        visibleUploads.none { it.error != null }
     // A pasted login or bot token is a credential, not conversation text: ask
     // before sending it, since Android's paste goes straight into the field.
     // Schema match only; whether the token is live is never asked.
@@ -2118,10 +2200,14 @@ private fun Composer(
             onSend(
                 content,
                 ready,
-                uploads.mapNotNull { it.sealed },
+                visibleUploads.mapNotNull { it.sealed },
             )
             textState.setTextAndPlaceCursorAtEnd("")
-            drafts.clear()
+            drafts.dismissError()
+            // Only the files that went with this send; an in-flight voice
+            // message keeps its own key and delivers itself when its upload
+            // settles.
+            visibleUploads.forEach { drafts.remove(it.key) }
             channelId?.let { textDrafts.clear(it) }
             resetKeyboard()
         }
@@ -2204,39 +2290,8 @@ private fun Composer(
                 .border(1.dp, c.border, RoundedCornerShape(OrangRadius.xl))
                 .padding(horizontal = 14.dp, vertical = 12.dp),
         ) {
-            if (recording) {
-                val threshold = with(LocalDensity.current) { VOICE_SWIPE_THRESHOLD.toPx() }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Box(
-                        modifier = Modifier.size(8.dp).background(c.danger, CircleShape),
-                    )
-                    Text(
-                        formatRecordingTime(recordingSeconds),
-                        color = c.inkSecondary,
-                        fontSize = 14.sp,
-                    )
-                    // The hint has to say which way does what while the finger is
-                    // still down: a swipe with no label is a gesture nobody finds.
-                    // Each half lights up as its own threshold comes into reach.
-                    if (!recordingLocked) {
-                        Text(
-                            "‹ lock",
-                            color = if (recordingDrag <= -threshold / 2) c.primary else c.inkMuted,
-                            fontSize = 13.sp,
-                        )
-                        Text(
-                            "delete ›",
-                            color = if (recordingDrag >= threshold / 2) c.danger else c.inkMuted,
-                            fontSize = 13.sp,
-                        )
-                    } else {
-                        Text("Locked - tap send when you're done", color = c.inkMuted, fontSize = 13.sp)
-                    }
-                }
+            if (voiceState.phase.isRecording) {
+                VoiceRecordingStrip(state = voiceState, colors = voiceColors)
             } else {
                 if (textState.text.isEmpty()) {
                     Text("Message", color = c.inkMuted, fontSize = 15.sp)
@@ -2269,102 +2324,50 @@ private fun Composer(
             }
         }
         Spacer(Modifier.width(8.dp))
-        if (recording && recordingLocked) {
+        // The delete button stands in for the mic only once the recording is
+        // locked, when no finger is in flight; between idle, held and cancelling
+        // the mic keeps one stable slot, because a re-mount there would tear
+        // down the press gesture mid-flight.
+        if (channelId != null) {
+            if (voiceState.phase == VoicePhase.RecordingLocked) {
+                VoiceDeleteButton(
+                    onClick = voiceState::cancelFromLock,
+                    colors = voiceColors,
+                )
+            } else {
+                VoiceMicButton(
+                    state = voiceState,
+                    canStart = canStartMic,
+                    onTapTooShort = { recordingHint = "Hold the mic to record, then let go to send" },
+                    colors = voiceColors,
+                )
+            }
+        }
+        // Permanently mounted, and the last thing in the row: its presence is
+        // what keeps the mic's slot stable across the idle-to-recording
+        // transition - a send button that vanished mid-recording is exactly
+        // what broke the old swipe-to-delete, by shoving the mic sideways.
+        val sendingVoice = voiceState.phase == VoicePhase.RecordingLocked
+        val sendEnabled = when {
+            sendingVoice -> true
+            voiceState.phase.isRecording -> false
+            else -> enabled
+        }
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .background(if (sendEnabled) c.primary else c.surface4, CircleShape)
+                .clickable(enabled = sendEnabled) {
+                    if (sendingVoice) voiceState.sendFromLock() else sendDraft()
+                },
+            contentAlignment = Alignment.Center,
+        ) {
             Icon(
-                Icons.Default.Delete,
-                contentDescription = "Delete recording",
-                tint = c.danger,
-                modifier = Modifier
-                    .size(38.dp)
-                    .clickable { finishVoiceRecording(cancel = true) }
-                    .padding(7.dp),
+                Icons.AutoMirrored.Filled.Send,
+                contentDescription = submitLabel ?: "Send",
+                tint = if (sendEnabled) c.inkOnPrimary else c.inkMuted,
+                modifier = Modifier.size(20.dp),
             )
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .background(c.primary, CircleShape)
-                    .clickable { finishVoiceRecording(cancel = false) },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.Send,
-                    contentDescription = "Send voice message",
-                    tint = c.inkOnPrimary,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-        } else {
-            if (channelId != null) {
-                // One composable for both the idle mic and the held one: the
-                // gesture below lives on this node, and swapping it out mid-press
-                // would tear down the pointer loop with the finger still down.
-                Icon(
-                    Icons.Default.Mic,
-                    contentDescription = "Hold to record a voice message",
-                    tint = if (recording) c.danger else c.inkMuted,
-                    modifier = Modifier
-                        .size(if (recording) 44.dp else 38.dp)
-                        .pointerInput(channelId) {
-                            val threshold = VOICE_SWIPE_THRESHOLD.toPx()
-                            awaitEachGesture {
-                                val down = awaitFirstDown(requireUnconsumed = false)
-                                down.consume()
-                                if (!startVoiceRecording()) return@awaitEachGesture
-                                var settled = false
-                                while (!settled) {
-                                    val change = awaitPointerEvent().changes
-                                        .firstOrNull { it.id == down.id }
-                                        ?: break
-                                    recordingDrag = change.position.x - down.position.x
-                                    change.consume()
-                                    when {
-                                        // Left hands the recording over to the
-                                        // buttons; the finger is free after this,
-                                        // so the gesture stops watching it.
-                                        recordingDrag <= -threshold -> {
-                                            recordingLocked = true
-                                            recordingDrag = 0f
-                                            settled = true
-                                        }
-                                        recordingDrag >= threshold -> {
-                                            finishVoiceRecording(cancel = true)
-                                            settled = true
-                                        }
-                                        !change.pressed -> {
-                                            finishVoiceRecording(cancel = false)
-                                            settled = true
-                                        }
-                                    }
-                                }
-                                // A pointer that vanished - the gesture was stolen,
-                                // or the window went away - must not leave the mic
-                                // recording forever with nothing on screen saying so.
-                                if (!settled && recording && !recordingLocked) {
-                                    finishVoiceRecording(cancel = true)
-                                }
-                            }
-                        }
-                        .padding(7.dp),
-                )
-            }
-            // The return affordance floats over history; giving it a row of its own
-            // would shorten the conversation precisely when someone is reading it.
-            if (!recording) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .background(if (enabled) c.primary else c.surface4, CircleShape)
-                        .clickable(enabled = enabled) { sendDraft() },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Send,
-                        contentDescription = submitLabel ?: "Send",
-                        tint = if (enabled) c.inkOnPrimary else c.inkMuted,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-            }
         }
     }
 
