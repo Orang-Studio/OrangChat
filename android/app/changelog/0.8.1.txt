@@ -1,0 +1,16 @@
+Nothing sent silently disappears
+
+New
+- A message the server refuses now stays on screen marked "Not sent", with a
+  retry and a delete against it. It used to be deleted outright, taking text
+  you had written with it.
+- The notification permission is asked for in the app's own words first, so a
+  reflexive "Deny" on the one-shot system dialog no longer turns notifications
+  off for good. Settings shows a way back whenever they are off.
+- The composer shows a running character count as a draft nears the 4,000
+  character limit, and stops there instead of failing at send.
+
+Fixed
+- Avatars, the cancel-reply button, the add-reaction button and other small
+  controls now have full-size tap targets.
+- Long drafts no longer exceed what the server will take.
