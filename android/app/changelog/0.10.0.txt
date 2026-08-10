@@ -1,0 +1,51 @@
+A room can have a face
+
+New
+- A conversation can have a background picture, and the chat redraws itself
+  to fit: messages sit on rounded, translucent plates that let the picture
+  show through the gutters between groups, while system notices stay unplated
+  and centred over the scene. The unread divider lands between plates instead
+  of splitting one down the middle, and hides while you sit at the bottom of
+  the history so an arriving message does not flicker it in and out.
+- Group DMs can be given an icon, set by any participant: pick a picture and
+  it shows up in the conversation list, the chat header and next to the
+  message wherever that group is mentioned. A group that has none shows a
+  glyph with the group's first letters instead. The same picture is handed
+  to everyone - and to people who join later - so it is plaintext like an
+  avatar, never encrypted.
+- Messages can be reacted to with an emoji: hover a message and pick from
+  the quick set, or open the full picker. The strip under the message shows
+  who reacted with what, your own reaction stays on top and toggles, and
+  reactions are encrypted end to end with the rest of the message they sit
+  on. Reacting works everywhere the message is reachable, including from
+  inside the full-screen viewer.
+- The full-screen viewer for an image or video now knows what it is showing:
+  a bar along the bottom names who sent it, when, whatever caption it came
+  with, and carries the reactions so you do not have to close the viewer to
+  answer a post. The viewer also grows out of the thumbnail you tapped
+  instead of fading in over the whole screen, and pinches to zoom in and out
+  like a gallery app.
+- An inline video now holds its shape: the box it occupies is picked from
+  the clip's own aspect ratio, clamped like a photo, so a portrait phone
+  clip no longer towers over the row and a wide letterbox does not render
+  as a thin strip. Web and Android agree on the range, so a message looks
+  the same on both.
+
+Changed
+- Losing every device now has a second, faster way out: a device that still
+  holds your keys can erase them on the spot and start over with a fresh
+  identity - no waiting period, because signing with the key is the proof.
+  The unkeyed path (the email-and-wait erasure) is unchanged.
+- The app no longer flags your own account's encryption identity as changed
+  right after you erase and re-create it - a pin describing a generation of
+  keys that no longer exists was being held against the very person who
+  replaced it.
+
+Fixed
+- Cards, code blocks and quoted replies inside a group shift up the surface
+  ramp onto the plate, instead of disappearing into it when the theme's own
+  surfaces match the plate colour.
+- A video preview no longer measures itself from the decoder's first frame,
+  which could stretch the box while the poster was still loading.
+- The chat header and message list keep the same rounding across images and
+  video in one row, instead of rounding them differently.

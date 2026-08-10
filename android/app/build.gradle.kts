@@ -36,8 +36,8 @@ android {
         // bytes, so older releases cannot honestly implement that contract.
         minSdk = 31
         targetSdk = 35
-        versionCode = 65
-        versionName = "0.9.0"
+        versionCode = 67
+        versionName = "0.10.0"
         buildConfigField("String", "KLIPY_API_KEY", "\"$klipyApiKey\"")
         vectorDrawables { useSupportLibrary = true }
     }
