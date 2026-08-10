@@ -23,7 +23,7 @@ use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 
 use crate::config::Config;
-use crate::services::{badge, key_deletion, presence, spotify};
+use crate::services::{badge, key_deletion, presence, push, spotify};
 use crate::state::AppState;
 
 static START: OnceLock<Instant> = OnceLock::new();
@@ -159,6 +159,24 @@ async fn main() {
                         }
                     }
                     Err(e) => tracing::warn!("presence lease sweep failed: {}", e.message()),
+                }
+            }
+        });
+    }
+
+    // Notifications held back from someone's phone while they were at their
+    // computer. Thirty seconds is fine grain against a five-minute hold, and the
+    // sweep costs nothing when nothing is due.
+    {
+        let state = state.clone();
+        tokio::spawn(async move {
+            let mut ticker = tokio::time::interval(Duration::from_secs(30));
+            loop {
+                ticker.tick().await;
+                match push::flush_deferred(&state).await {
+                    Ok(n) if n > 0 => tracing::debug!("released {n} held mobile notification(s)"),
+                    Ok(_) => {}
+                    Err(e) => tracing::warn!("deferred push sweep failed: {}", e.message()),
                 }
             }
         });

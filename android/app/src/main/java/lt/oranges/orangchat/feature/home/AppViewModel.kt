@@ -1210,6 +1210,30 @@ class AppViewModel @Inject constructor(
         }
     }
 
+    /** Upload a picked image and make it the group DM's icon. */
+    fun setDmIcon(channelId: String, uri: android.net.Uri) = viewModelScope.launch {
+        runCatching {
+            val part = withContext(Dispatchers.IO) { buildImagePart(appContext, uri) }
+            val uploaded = authRepository.uploadImage(part, "group-icon")
+            socialRepository.setDmIcon(channelId, uploaded.url)
+        }
+            .onSuccess { applyDmIcon(channelId, it.iconUrl) }
+            .onFailure { _error.value = it.message ?: "Upload failed" }
+    }
+
+    /** Clear the group DM's icon. Explicit null, not a patch. */
+    fun clearDmIcon(channelId: String) = viewModelScope.launch {
+        runCatching { socialRepository.setDmIcon(channelId, null) }
+            .onSuccess { applyDmIcon(channelId, null) }
+            .onFailure { _error.value = it.message ?: "Failed to clear icon" }
+    }
+
+    private fun applyDmIcon(channelId: String, url: String?) {
+        _dms.update { conversations ->
+            conversations.map { if (it.id == channelId) it.copy(iconUrl = url) else it }
+        }
+    }
+
     fun updateServerSettings(serverId: String, patch: UpdateServerRequest) = viewModelScope.launch {
         runCatching { serverRepository.updateServerSettings(serverId, patch) }
             .onSuccess { refreshServers(); refreshServerDetail(serverId) }
@@ -1488,9 +1512,10 @@ class AppViewModel @Inject constructor(
             is SocketEvent.ChannelUpdated -> updateServerChannels { list ->
                 list.map { if (it.id == event.channel.id) event.channel else it }
             }.also {
-                // DM background changes arrive here too (no serverId).
+                // DM background and group-icon changes arrive here too (no serverId).
                 if (event.channel.serverId == null) {
                     applyDmBackground(event.channel.id, event.channel.backgroundUrl)
+                    applyDmIcon(event.channel.id, event.channel.iconUrl)
                 }
             }
             is SocketEvent.ChannelDeleted -> updateServerChannels { list ->

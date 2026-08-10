@@ -35,6 +35,8 @@ pub enum Notice {
     KeyReset,
     BackgroundChanged,
     BackgroundRemoved,
+    IconChanged,
+    IconRemoved,
 }
 
 impl Notice {
@@ -47,6 +49,8 @@ impl Notice {
             Notice::KeyReset => "keyReset",
             Notice::BackgroundChanged => "backgroundChanged",
             Notice::BackgroundRemoved => "backgroundRemoved",
+            Notice::IconChanged => "iconChanged",
+            Notice::IconRemoved => "iconRemoved",
         }
     }
 
@@ -61,6 +65,8 @@ impl Notice {
             Notice::KeyReset => format!("{name} started a new encryption key for this conversation."),
             Notice::BackgroundChanged => format!("{name} changed the chat background."),
             Notice::BackgroundRemoved => format!("{name} removed the chat background."),
+            Notice::IconChanged => format!("{name} changed the group icon."),
+            Notice::IconRemoved => format!("{name} removed the group icon."),
         }
     }
 }

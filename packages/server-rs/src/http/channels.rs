@@ -42,6 +42,7 @@ pub fn routes() -> Router<AppState> {
             axum::routing::put(pin_message).delete(unpin_message),
         )
         .route("/channels/:channelId/background", axum::routing::put(put_background))
+        .route("/channels/:channelId/icon", axum::routing::put(put_icon))
         .route(
             "/channels/:channelId/e2ee-strict",
             axum::routing::put(put_e2ee_strict),
@@ -537,22 +538,7 @@ async fn put_background(
         return Err(bad_request("Only DMs have a shared background"));
     }
 
-    let url = match body.url {
-        None => None,
-        Some(url) => {
-            let clean = url.trim().to_string();
-            // The upload endpoint returns only `/uploads/<id>.<ext>` and
-            // `https://res.cloudinary.com/...`; anything else is not something
-            // this app produced, so it is not an image we can vouch for.
-            if clean.is_empty()
-                || clean.len() > 2048
-                || !(clean.starts_with('/') || clean.starts_with("https://"))
-            {
-                return Err(bad_request("Invalid input"));
-            }
-            Some(clean)
-        }
-    };
+    let url = body.url.map(upload_url).transpose()?;
 
     let removed = url.is_none();
     let updated = channel::set_channel_background(&state, &channel_id, url).await?;
@@ -572,6 +558,63 @@ async fn put_background(
     .await;
     // DM participants live in the channel room (http::dms joins each socket on
     // open), so this reaches exactly the people who may see it.
+    let _ = state
+        .io()
+        .to(format!("channel:{channel_id}"))
+        .emit("channel:updated", &dto);
+    Ok(Json(json!(dto)))
+}
+
+/// An upload url we are willing to store. The upload endpoint returns only
+/// `/uploads/<id>.<ext>` and `https://res.cloudinary.com/...`; anything else is
+/// not something this app produced, so it is not an image we can vouch for.
+fn upload_url(url: String) -> AppResult<String> {
+    let clean = url.trim().to_string();
+    if clean.is_empty()
+        || clean.len() > 2048
+        || !(clean.starts_with('/') || clean.starts_with("https://"))
+    {
+        return Err(bad_request("Invalid input"));
+    }
+    Ok(clean)
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct IconBody {
+    url: Option<String>,
+}
+
+/// Set (or, with `null`, clear) a group DM's icon. Any participant may change
+/// it - a group DM has no owner - and like the background it is plaintext, so
+/// that everyone in the group, including people added later, is handed the same
+/// picture. One-on-one DMs are excluded: their icon is the other person.
+async fn put_icon(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Path(channel_id): Path<String>,
+    Json(body): Json<IconBody>,
+) -> AppResult<Json<Value>> {
+    let ch = channel::require_channel_access(&state, &channel_id, &user.user_id).await?;
+    if ch.channel_type != "group_dm" {
+        return Err(bad_request("Only group DMs have an icon"));
+    }
+
+    let url = body.url.map(upload_url).transpose()?;
+    let removed = url.is_none();
+    let updated = channel::set_channel_icon(&state, &channel_id, url).await?;
+    let dto = to_channel(&updated);
+    system_message::announce(
+        &state,
+        &channel_id,
+        &user.user_id,
+        if removed {
+            system_message::Notice::IconRemoved
+        } else {
+            system_message::Notice::IconChanged
+        },
+    )
+    .await;
     let _ = state
         .io()
         .to(format!("channel:{channel_id}"))

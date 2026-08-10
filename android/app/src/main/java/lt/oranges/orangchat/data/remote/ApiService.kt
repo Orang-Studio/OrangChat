@@ -13,6 +13,7 @@ import lt.oranges.orangchat.data.model.E2eeDevice
 import lt.oranges.orangchat.data.model.E2eeDeviceList
 import lt.oranges.orangchat.data.model.E2eeEpoch
 import lt.oranges.orangchat.data.model.E2eeEpochKeys
+import lt.oranges.orangchat.data.model.E2eeEraseKeysRequest
 import lt.oranges.orangchat.data.model.E2eeGenesisRequest
 import lt.oranges.orangchat.data.model.E2eeMintEpochRequest
 import lt.oranges.orangchat.data.model.E2eeRevokeRequest
@@ -238,6 +239,13 @@ interface ApiService {
     suspend fun putChannelBackground(
         @Path("channelId") channelId: String,
         @Body body: ChannelBackgroundRequest,
+    ): Channel
+
+    /** Set or clear a group DM's icon (plaintext, like avatars). */
+    @PUT("channels/{channelId}/icon")
+    suspend fun putChannelIcon(
+        @Path("channelId") channelId: String,
+        @Body body: ChannelIconRequest,
     ): Channel
 
     @DELETE("channels/{channelId}")
@@ -467,6 +475,10 @@ interface ApiService {
 
     @POST("e2ee/devices/revoke")
     suspend fun revokeE2eeDevice(@Body body: E2eeRevokeRequest): E2eeDevice
+
+    /** Erases every key on the account at once, on a keyed device's signature. */
+    @POST("e2ee/keys/deletion/now")
+    suspend fun eraseE2eeKeysNow(@Body body: E2eeEraseKeysRequest): Response<Unit>
 
     @POST("e2ee/devices/{deviceId}/seen")
     suspend fun markE2eeDeviceSeen(@Path("deviceId") deviceId: String): Response<Unit>

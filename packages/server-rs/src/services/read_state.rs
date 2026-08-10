@@ -200,6 +200,39 @@ pub async fn mark_read(state: &AppState, user_id: &str, channel_id: &str) -> App
     Ok(())
 }
 
+/// Whether one particular message is still sitting unread for a user.
+///
+/// The unread queries next to this one count a channel; a held-back notification
+/// needs to know about the message it was raised for, because by the time it
+/// comes due the channel may well have moved on. A message that no longer exists
+/// counts as read: there is nothing left to notify anybody about.
+pub async fn is_message_unread(
+    state: &AppState,
+    user_id: &str,
+    message_id: &str,
+) -> AppResult<bool> {
+    let unread: Option<bool> = sqlx::query_scalar(
+        r#"
+        SELECT (
+            rs."lastReadMessageId" IS NULL
+            OR m."createdAt" > COALESCE(
+                 (SELECT "createdAt" FROM "Message" WHERE id = rs."lastReadMessageId"),
+                 to_timestamp(0)
+               )
+        )
+        FROM "Message" m
+        LEFT JOIN "ReadState" rs ON rs."channelId" = m."channelId" AND rs."userId" = $1
+        WHERE m.id = $2
+        "#,
+    )
+    .bind(user_id)
+    .bind(message_id)
+    .fetch_optional(&state.pool)
+    .await?
+    .flatten();
+    Ok(unread.unwrap_or(false))
+}
+
 /// Rewind a user's read cursor so `message_id` and everything after it count as
 /// unread again. The cursor lands on the message immediately before it, or is
 /// cleared when there is nothing before it (the whole channel goes unread).

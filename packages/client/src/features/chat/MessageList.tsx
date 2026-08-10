@@ -376,15 +376,85 @@ export function MessageList({
     [rendered],
   );
 
+  // Where the unread divider lands, or -1 for nowhere. Suppressed while the
+  // list sits at the bottom, where a new message arriving would make it
+  // flicker.
+  const dividerIndex = atBottom ? -1 : firstUnreadInView;
+
+  const plated = !!backgroundUrl;
+
+  /**
+   * The rows banded into the runs that share a plate: a lead message plus the
+   * compact ones grouped under it. Anything that interrupts the conversation
+   * ends a run early - a system notice, which is drawn unplated and centred,
+   * and the unread divider, which has to sit between plates rather than
+   * splitting one down the middle.
+   *
+   * Bands are built even with no background picture, where they render flat and
+   * unwrapped, so the two paths agree on where a group begins and ends.
+   */
+  const bands = useMemo(() => {
+    const out: { key: string; start: number; notice: boolean; rows: typeof rows }[] = [];
+    rows.forEach((row, i) => {
+      const open = out[out.length - 1];
+      const breaks =
+        !open || row.notice || open.notice || !row.compact || i === dividerIndex;
+      if (breaks) {
+        out.push({
+          key: row.message.clientId ?? row.message.id,
+          start: i,
+          notice: row.notice,
+          rows: [row],
+        });
+      } else {
+        open.rows.push(row);
+      }
+    });
+    return out;
+  }, [rows, dividerIndex]);
+
+  const renderRow = ({ message, compact }: (typeof rows)[number], groupEnd: boolean) => (
+    <MessageItem
+      key={message.clientId ?? message.id}
+      message={message}
+      pending={pendingMessageIds.has(message.id) && !failedById.has(message.id)}
+      failed={failedById.has(message.id)}
+      failure={failedById.get(message.id)}
+      onRetry={() => onRetryMessage(message.id)}
+      onDiscard={() => onDiscardMessage(message.id)}
+      compact={compact}
+      groupEnd={groupEnd}
+      plated={plated}
+      replyTo={message.replyToId ? byId.get(message.replyToId) : undefined}
+      isOwn={message.author.id === selfId}
+      canManage={canManage}
+      onReply={onReply}
+      onJumpTo={(id) => void jumpTo(id)}
+      flash={flashId === message.id}
+      replying={replyToId === message.id}
+      mentionNames={mentionNames}
+      mentionUsers={mentionUsers}
+      selfId={selfId}
+      mentionProfiles={mentionProfiles}
+    />
+  );
+
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
-      {/* The conversation still has to be readable on top of whatever picture
-          someone picked, so the photo sits under a scrim in the surface colour
-          rather than directly behind the text. */}
+      {/* Readability is the message groups' job now (see `.oc-plate`), so the
+          picture keeps almost all of its strength here. What is left is a light
+          tint to pull a blown-out photo back towards the surface colour, and a
+          slight blur so fine detail stops fighting the unplated text - notices,
+          the unread divider, the intro - that does sit straight on it. The blur
+          bleeds transparent pixels in from the edges; the overscale hides it. */}
       {backgroundUrl && (
         <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-          <img src={backgroundUrl} alt="" className="h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-surface-2/80" />
+          <img
+            src={backgroundUrl}
+            alt=""
+            className="h-full w-full scale-110 object-cover blur-[2px]"
+          />
+          <div className="absolute inset-0 bg-surface-2/30" />
         </div>
       )}
       {missingJump && (
@@ -433,58 +503,42 @@ export function MessageList({
             </div>
           ))
         )}
-        {rows.map(({ message, compact, notice }, i) => {
-          // The divider belongs between the last read row and the first new
-          // one. Hidden while at the bottom, where a new message arriving
-          // would make it flicker.
-          const dividerHere = !atBottom && i === firstUnreadInView;
-          return (
-            <Fragment key={message.clientId ?? message.id}>
-              {dividerHere && (
-                <div
-                  role="separator"
-                  aria-label="New messages start here"
-                  className="flex items-center gap-3 px-4 py-2"
-                >
-                  <span aria-hidden className="h-px flex-1 bg-border" />
-                  <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                    New messages
-                  </span>
-                  <span aria-hidden className="h-px flex-1 bg-border" />
-                </div>
-              )}
-              {notice ? (
-                <SystemNotice
-                  message={message}
-                  channel={channel}
-                  selfId={selfId}
-                  profiles={mentionProfiles}
-                />
-              ) : (
-                <MessageItem
-                  message={message}
-                  pending={pendingMessageIds.has(message.id) && !failedById.has(message.id)}
-                  failed={failedById.has(message.id)}
-                  failure={failedById.get(message.id)}
-                  onRetry={() => onRetryMessage(message.id)}
-                  onDiscard={() => onDiscardMessage(message.id)}
-                  compact={compact}
-                  replyTo={message.replyToId ? byId.get(message.replyToId) : undefined}
-                  isOwn={message.author.id === selfId}
-                  canManage={canManage}
-                  onReply={onReply}
-                  onJumpTo={(id) => void jumpTo(id)}
-                  flash={flashId === message.id}
-                  replying={replyToId === message.id}
-                  mentionNames={mentionNames}
-                  mentionUsers={mentionUsers}
-                  selfId={selfId}
-                  mentionProfiles={mentionProfiles}
-                />
-              )}
-            </Fragment>
-          );
-        })}
+        {bands.map((band) => (
+          <Fragment key={band.key}>
+            {/* The divider belongs between the last read row and the first new
+                one, which is always a band edge - `dividerIndex` forces one. */}
+            {band.start === dividerIndex && (
+              <div
+                role="separator"
+                aria-label="New messages start here"
+                className="flex items-center gap-3 px-4 py-2"
+              >
+                <span aria-hidden className="h-px flex-1 bg-border" />
+                <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                  New messages
+                </span>
+                <span aria-hidden className="h-px flex-1 bg-border" />
+              </div>
+            )}
+            {band.notice ? (
+              <SystemNotice
+                message={band.rows[0]!.message}
+                channel={channel}
+                selfId={selfId}
+                profiles={mentionProfiles}
+              />
+            ) : plated ? (
+              // The horizontal inset is the gutter the picture shows through,
+              // and the plate owns the vertical rhythm a lead row's `mt-3`
+              // carries when there is no background (see `MessageItem`).
+              <div className="oc-plate mx-2 my-1.5 rounded-2xl py-1">
+                {band.rows.map((row, i) => renderRow(row, i === band.rows.length - 1))}
+              </div>
+            ) : (
+              band.rows.map((row, i) => renderRow(row, i === band.rows.length - 1))
+            )}
+          </Fragment>
+        ))}
       </div>
 
       {/* Scrolled up? The only way back to the newest message used to be

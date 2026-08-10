@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -205,6 +206,8 @@ private fun YoutubeEmbed(video: YoutubeVideo) {
 private fun LinkedImageEmbed(url: String) {
     val c = OrangTheme.colors
     val context = LocalContext.current
+    val view = LocalView.current
+    val origin = rememberMediaOrigin()
     val attachment = remember(url) { linkedAttachment(url, "image/${Uri.parse(url).path.orEmpty().substringAfterLast('.')}") }
     Spacer(Modifier.height(6.dp))
     AsyncImage(
@@ -216,9 +219,8 @@ private fun LinkedImageEmbed(url: String) {
             .height(240.dp)
             .clip(RoundedCornerShape(OrangRadius.md))
             .border(1.dp, c.border, RoundedCornerShape(OrangRadius.md))
-            .clickable {
-                context.startActivity(MediaPreviewActivity.intent(context, attachment))
-            },
+            .mediaOrigin(origin)
+            .clickable { openMediaPreview(context, view, origin, attachment) },
     )
 }
 

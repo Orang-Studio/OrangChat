@@ -60,6 +60,8 @@ class EncryptionViewModel @Inject constructor(
          */
         val revokedHere: Boolean = false,
         val resetting: Boolean = false,
+        /** An erasure is in flight; see [eraseKeysNow]. */
+        val erasing: Boolean = false,
     )
 
     private val _state = MutableStateFlow(State())
@@ -277,6 +279,44 @@ class EncryptionViewModel @Inject constructor(
                     _state.value = _state.value.copy(
                         revokingDeviceId = null,
                         error = it.message ?: "The device could not be revoked.",
+                    )
+                }
+        }
+    }
+
+    /**
+     * Throws the account's encryption identity away and starts this phone over.
+     *
+     * The wait on the server's scheduled erasure protects an account whose keys
+     * are gone from whoever only has the password. This phone has a key and
+     * signs for the erasure with it, so there is nothing left to wait for - and
+     * nothing to wait *with*, since a keyed device checking in cancels a pending
+     * erasure anyway.
+     *
+     * A new identity follows immediately: an account with no devices left is one
+     * this phone can enrol into directly, and leaving the person on an
+     * encryption screen with nothing on it would just be a second thing to do.
+     */
+    fun eraseKeysNow() {
+        _state.value = _state.value.copy(erasing = true, error = null, notice = null)
+        viewModelScope.launch {
+            runCatching { e2ee.eraseKeysNow() }
+                .onSuccess {
+                    val userId = auth.currentUser?.id
+                    if (userId != null) {
+                        runCatching { e2ee.enrol(userId) }
+                            .onFailure { _state.value = _state.value.copy(error = it.message) }
+                    }
+                    _state.value = _state.value.copy(
+                        erasing = false,
+                        notice = "Your old keys are gone. This phone has fresh ones.",
+                    )
+                    refresh()
+                }
+                .onFailure {
+                    _state.value = _state.value.copy(
+                        erasing = false,
+                        error = it.message ?: "The keys could not be erased.",
                     )
                 }
         }

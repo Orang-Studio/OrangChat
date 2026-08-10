@@ -16,6 +16,7 @@ import { callActions, useCallStore } from "../voice/callStore";
 import { useOtherDeviceIn, voiceActions } from "../voice/store";
 import { conversationToChannel, dmKeys, useConversations } from "./queries";
 import { DmIntro } from "./DmIntro";
+import { GroupIcon } from "./GroupIcon";
 import { NewDmDialog } from "./NewDmDialog";
 import { ActivityStatus } from "../../components/ActivityStatus";
 
@@ -64,6 +65,8 @@ export function DmView() {
   const [addOpen, setAddOpen] = useState(false);
   const [backgroundBusy, setBackgroundBusy] = useState(false);
   const backgroundInput = useRef<HTMLInputElement>(null);
+  const [iconBusy, setIconBusy] = useState(false);
+  const iconInput = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const currentCall = useCallStore((s) => s.current);
   const onCall = currentCall?.channelId === channelId;
@@ -75,6 +78,29 @@ export function DmView() {
     queryClient.setQueryData<Conversation[]>(dmKeys.list, (list) =>
       list?.map((c) => (c.id === channelId ? { ...c, backgroundUrl: url } : c)),
     );
+  };
+
+  const applyIcon = (url: string | null) => {
+    queryClient.setQueryData<Conversation[]>(dmKeys.list, (list) =>
+      list?.map((c) => (c.id === channelId ? { ...c, iconUrl: url } : c)),
+    );
+  };
+
+  /** `null` clears it. The server writes the notice about it either way. */
+  const saveIcon = async (file: File | null) => {
+    setIconBusy(true);
+    try {
+      const url = file ? await uploadImage(file, "group-icon") : null;
+      const channel = await api<Channel>(`/channels/${channelId}/icon`, {
+        method: "PUT",
+        json: { url },
+      });
+      applyIcon(channel.iconUrl);
+    } catch {
+      // Keep the old icon; an upload or save failure is not worth a dialog.
+    } finally {
+      setIconBusy(false);
+    }
   };
 
   const setBackground = async (file: File) => {
@@ -180,8 +206,12 @@ export function DmView() {
       </HeaderButton>
       {/* The background moved into the menu, which closes on pick - so the
           upload needs somewhere of its own to say it is still going. */}
-      {backgroundBusy && (
-        <span role="status" aria-label="Saving chat background" className="p-2 text-ink-muted">
+      {(backgroundBusy || iconBusy) && (
+        <span
+          role="status"
+          aria-label={iconBusy ? "Saving group icon" : "Saving chat background"}
+          className="p-2 text-ink-muted"
+        >
           <Loader2 aria-hidden className="size-4 animate-spin" />
         </span>
       )}
@@ -193,7 +223,26 @@ export function DmView() {
   // deliberate second tap because it changes the room for everyone in it.
   const headerMenu: HeaderMenuItem[] = [
     ...(conversation.type === "group_dm"
-      ? [{ label: "Add people", icon: UserPlus, onSelect: () => setAddOpen(true) }]
+      ? [
+          { label: "Add people", icon: UserPlus, onSelect: () => setAddOpen(true) },
+          {
+            label: conversation.iconUrl ? "Change group icon" : "Set group icon",
+            icon: ImagePlus,
+            disabled: iconBusy,
+            onSelect: () => iconInput.current?.click(),
+          },
+          ...(conversation.iconUrl
+            ? [
+                {
+                  label: "Remove group icon",
+                  icon: Trash2,
+                  danger: true,
+                  disabled: iconBusy,
+                  onSelect: () => void saveIcon(null),
+                },
+              ]
+            : []),
+        ]
       : []),
     {
       label: conversation.backgroundUrl ? "Change background" : "Set chat background",
@@ -217,6 +266,17 @@ export function DmView() {
   return (
     <>
       <input
+        ref={iconInput}
+        type="file"
+        accept="image/png,image/jpeg,image/gif,image/webp"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) void saveIcon(file);
+          event.target.value = "";
+        }}
+      />
+      <input
         ref={backgroundInput}
         type="file"
         accept="image/png,image/jpeg,image/gif,image/webp"
@@ -234,8 +294,14 @@ export function DmView() {
         headerActions={headerActions}
         headerMenu={headerMenu}
         headerIcon={
-          others[0] ? (
-            <Avatar user={others[0]} status={others.length === 1 ? others[0].status : undefined} className="size-7" />
+          conversation.type === "group_dm" ? (
+            <GroupIcon
+              iconUrl={conversation.iconUrl}
+              name={channel.name ?? undefined}
+              className="size-7"
+            />
+          ) : others[0] ? (
+            <Avatar user={others[0]} status={others[0].status} className="size-7" />
           ) : undefined
         }
         headerSubtitle={
@@ -260,6 +326,7 @@ export function DmView() {
           <DmIntro
             participants={others}
             groupName={conversation.type === "group_dm" ? channel.name : null}
+            groupIconUrl={conversation.type === "group_dm" ? conversation.iconUrl : null}
           />
         }
       />

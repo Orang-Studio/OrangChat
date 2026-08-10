@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import * as Popover from "@radix-ui/react-popover";
-import { Pencil, Pin, Reply, SmilePlus, Trash2, TriangleAlert } from "lucide-react";
+import { Pencil, Pin, Reply, Trash2, TriangleAlert } from "lucide-react";
 import type { Message, User } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
 import { ContextMenu, ContextMenuTrigger } from "../../components/ui/ContextMenu";
@@ -13,8 +12,8 @@ import { useEmojiMap, withMessageEmojis } from "../emojis/queries";
 import { ProfileDialog } from "../profile/ProfileDialog";
 import { isDirectMediaMessage, LinkEmbeds } from "./LinkEmbeds";
 import { MessageAttachments } from "./MessageAttachments";
-import { deleteMessage, editMessage, toggleReaction } from "./socket-actions";
-import { QUICK_EMOJIS } from "./emoji-data";
+import { ReactionPicker, ReactionStrip } from "./Reactions";
+import { deleteMessage, editMessage } from "./socket-actions";
 import { MessageContextMenu } from "./MessageContextMenu";
 import { ForwardDialog } from "./ForwardDialog";
 import { ReportMessageDialog } from "./ReportMessageDialog";
@@ -34,6 +33,11 @@ export interface MessageItemProps {
   onDiscard?: () => void;
   /** Render compact (no avatar/header) - same author, close in time. */
   compact: boolean;
+  /** Last row of its group, so the group's trailing padding lands here. */
+  groupEnd?: boolean;
+  /** The row sits on a group plate over a chat background picture, which owns
+   * the spacing between groups - so a lead row does not add its own. */
+  plated?: boolean;
   /** The message this one replies to, when loaded. */
   replyTo?: Message;
   isOwn: boolean;
@@ -54,50 +58,6 @@ export interface MessageItemProps {
   selfId?: string;
   /** Full users for resolved mentions, so a mention can open a profile. */
   mentionProfiles?: Record<string, User>;
-}
-
-function ReactionPicker({ message }: { message: Message }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <Popover.Root open={open} onOpenChange={setOpen}>
-      <Popover.Trigger
-        aria-label="Add reaction"
-        className="rounded p-1.5 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink md:p-1"
-      >
-        <SmilePlus aria-hidden className="size-4" />
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
-          side="top"
-          sideOffset={4}
-          className="z-50 flex gap-0.5 rounded-xl border border-border bg-surface-4 p-1.5 shadow-xl"
-        >
-          {QUICK_EMOJIS.map((emoji) => {
-            const mine = message.reactions.some((r) => r.emoji === emoji && r.me);
-            return (
-              <button
-                key={emoji}
-                type="button"
-                onClick={() => {
-                  toggleReaction(
-                    { channelId: message.channelId, messageId: message.id, emoji },
-                    mine,
-                  );
-                  setOpen(false);
-                }}
-                className={cn(
-                  "rounded-lg p-1.5 text-lg leading-none transition-colors hover:bg-surface-2",
-                  mine && "bg-primary-soft",
-                )}
-              >
-                {emoji}
-              </button>
-            );
-          })}
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
-  );
 }
 
 function EditForm({ message, onDone }: { message: Message; onDone: () => void }) {
@@ -192,6 +152,8 @@ export function MessageItem({
   onRetry,
   onDiscard,
   compact,
+  groupEnd = true,
+  plated = false,
   replyTo,
   isOwn,
   canManage,
@@ -236,8 +198,14 @@ export function MessageItem({
               pending ? "Sending message" : failed ? "Message failed to send" : undefined
             }
             className={cn(
-              "oc-message group relative px-4 py-0.5 hover:bg-surface-3/40",
-              !compact && "oc-message-lead mt-3",
+              // Vertical padding belongs to the group, not to each row in it:
+              // a run of grouped messages is meant to read as one block, and
+              // padding on both sides of every internal seam opened a visible
+              // step between the lead and the first message under it.
+              "oc-message group relative px-4 hover:bg-surface-3/40",
+              compact ? "pt-0" : "pt-0.5",
+              groupEnd ? "pb-0.5" : "pb-0",
+              !compact && !plated && "oc-message-lead mt-3",
               touchActions && "bg-surface-3/40",
               pending && "pointer-events-none opacity-50",
               failed && "bg-danger/5",
@@ -316,7 +284,15 @@ export function MessageItem({
                 {editing ? (
                   <EditForm message={message} onDone={() => setEditing(false)} />
                 ) : (
-                  <div className="break-words text-sm leading-relaxed">
+                  // A refused row keeps its words, and the words say so: the
+                  // label underneath is easy to miss when the text above it
+                  // still reads exactly like a message that went through.
+                  <div
+                    className={cn(
+                      "break-words text-sm leading-relaxed",
+                      failed && "text-danger",
+                    )}
+                  >
                     {!isDirectMediaMessage(message.content) && (
                       <RichText
                         content={message.content}
@@ -341,7 +317,17 @@ export function MessageItem({
                   </div>
                 )}
 
-                {!editing && <MessageAttachments attachments={message.attachments} />}
+                {!editing && (
+                  <MessageAttachments
+                    attachments={message.attachments}
+                    context={{
+                      message,
+                      mentions: mentionNames,
+                      mentionUsers,
+                      selfId,
+                    }}
+                  />
+                )}
 
                 {!editing && <LinkEmbeds content={message.content} />}
 
@@ -372,37 +358,7 @@ export function MessageItem({
                   </div>
                 )}
 
-                {/* Reactions */}
-                {message.reactions.length > 0 && (
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {message.reactions.map((r) => (
-                      <button
-                        key={r.emoji}
-                        type="button"
-                        aria-pressed={r.me}
-                        onClick={() =>
-                          toggleReaction(
-                            {
-                              channelId: message.channelId,
-                              messageId: message.id,
-                              emoji: r.emoji,
-                            },
-                            r.me,
-                          )
-                        }
-                        className={cn(
-                          "flex items-center gap-1 rounded-md border px-2 py-0.5 text-sm transition-colors",
-                          r.me
-                            ? "border-primary bg-primary-soft"
-                            : "border-border bg-surface-2 hover:border-border-strong",
-                        )}
-                      >
-                        <span>{r.emoji}</span>
-                        <span className="text-xs font-semibold text-ink-secondary">{r.count}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <ReactionStrip message={message} className="mt-1" />
               </div>
             </div>
 

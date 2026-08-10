@@ -13,6 +13,7 @@ import {
   PAYLOAD_VERSION,
   QR_KIND,
   addDeviceStatementBytes,
+  eraseKeysStatementBytes,
   bytesEqual,
   checkGossipedHead,
   decodeContactVerifyQr,
@@ -137,6 +138,7 @@ describe('domain separation', () => {
       genesis: 'orangchat/genesis/v1',
       addDevice: 'orangchat/add-device/v1',
       revoke: 'orangchat/revoke/v1',
+      eraseKeys: 'orangchat/erase-keys/v1',
       logEntry: 'orangchat/device-log/v1',
       safetyNumber: 'orangchat/safety-number/v1',
       groupSafetyNumber: 'orangchat/group-safety-number/v1',
@@ -170,6 +172,20 @@ describe('domain separation', () => {
     expect(toHex(revokeStatementBytes('u', 'd', '2026-01-01T00:00:00.000Z'))).toBe(
       '000000136f72616e67636861742f7265766f6b652f7631000000017500000001640000001' +
         '8323032362d30312d30315430303a30303a30302e3030305a',
+    );
+    expect(toHex(eraseKeysStatementBytes('u', 'd', '2026-01-01T00:00:00.000Z'))).toBe(
+      '000000176f72616e67636861742f65726173652d6b6579732f76310000000175000000016' +
+        '400000018323032362d30312d30315430303a30303a30302e3030305a',
+    );
+  });
+
+  // The server takes this signature as proof that the caller holds a key and
+  // erases the account's identity with no waiting period, so the one thing that
+  // must never happen is an erasure signature being obtainable from something
+  // else the same key already signs.
+  it('cannot spend a revocation as an erasure', () => {
+    expect(toHex(eraseKeysStatementBytes('u', 'd', 'now'))).not.toBe(
+      toHex(revokeStatementBytes('u', 'd', 'now')),
     );
   });
 });
@@ -767,6 +783,8 @@ describe('system notices', () => {
       'keyReset',
       'backgroundChanged',
       'backgroundRemoved',
+      'iconChanged',
+      'iconRemoved',
       'call',
     ]);
   });

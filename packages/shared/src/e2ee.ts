@@ -10,6 +10,7 @@ export const DOMAIN = {
   genesis: 'orangchat/genesis/v1',
   addDevice: 'orangchat/add-device/v1',
   revoke: 'orangchat/revoke/v1',
+  eraseKeys: 'orangchat/erase-keys/v1',
   logEntry: 'orangchat/device-log/v1',
   safetyNumber: 'orangchat/safety-number/v1',
   groupSafetyNumber: 'orangchat/group-safety-number/v1',
@@ -659,6 +660,25 @@ export function revokeStatementBytes(
   return encodeFields(DOMAIN.revoke, userId, deviceId, revokedAt);
 }
 
+/**
+ * Proof that whoever is asking for the account's keys to be erased is holding
+ * one of them.
+ *
+ * The scheduled erasure exists for the account nobody can sign for any more, and
+ * its whole protection is the wait - the request itself is only a password away.
+ * A signature under a live device key is a different claim entirely: the person
+ * asking already has what the wait was protecting, so there is nothing left for
+ * them to wait out. `issuedAt` is the freshness bound, so a signature captured
+ * once cannot be replayed as an erasure months later.
+ */
+export function eraseKeysStatementBytes(
+  userId: string,
+  deviceId: string,
+  issuedAt: string,
+): Uint8Array {
+  return encodeFields(DOMAIN.eraseKeys, userId, deviceId, issuedAt);
+}
+
 export async function logEntryHash(
   prevHash: Uint8Array | null,
   payload: Uint8Array,
@@ -1132,6 +1152,8 @@ export const SYSTEM_NOTICE_KINDS = [
   'keyReset',
   'backgroundChanged',
   'backgroundRemoved',
+  'iconChanged',
+  'iconRemoved',
   'call',
 ] as const;
 
@@ -1168,6 +1190,10 @@ export function describeSystemNotice(kind: SystemNoticeKind, name: string): stri
       return `${name} changed the chat background.`;
     case 'backgroundRemoved':
       return `${name} removed the chat background.`;
+    case 'iconChanged':
+      return `${name} changed the group icon.`;
+    case 'iconRemoved':
+      return `${name} removed the group icon.`;
     case 'call':
       return null;
   }

@@ -245,7 +245,7 @@ export function EncryptionTab() {
         )}
       </section>
 
-      <KeyErasureSection stuck={hasOtherDevices && !identity} />
+      <KeyErasureSection stuck={hasOtherDevices && !identity} keyed={identity !== null} />
 
       <section>
         <SectionTitle>The logbook</SectionTitle>

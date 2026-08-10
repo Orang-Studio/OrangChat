@@ -1,16 +1,9 @@
 package lt.oranges.orangchat.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Computer
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Smartphone
-import androidx.compose.material3.Icon
 import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -40,6 +33,14 @@ fun statusColor(status: PresenceStatus): Color {
         PresenceStatus.DND -> c.danger
         PresenceStatus.OFFLINE -> c.inkMuted
     }
+}
+
+/** Presence labels, mirroring Avatar.tsx STATUS_LABEL. */
+fun statusLabel(status: PresenceStatus): String = when (status) {
+    PresenceStatus.ONLINE -> "Online"
+    PresenceStatus.IDLE -> "Idle"
+    PresenceStatus.DND -> "Do not disturb"
+    PresenceStatus.OFFLINE -> "Offline"
 }
 
 /** Port of components/Avatar.tsx: image with initial fallback + optional dot. */
@@ -94,38 +95,28 @@ fun Avatar(
                 )
             }
         }
-        if (status != null && devices.isNotEmpty()) {
+        if (status != null) {
+            // The badge scales with the avatar - a 16dp dot pinned to an 80dp
+            // profile avatar reads as a rendering mistake - and the surface-2
+            // disc behind it is what shows through the shape's cut-outs.
+            val badge = (size.value * 0.38f).coerceAtLeast(16f).dp
             val device = when {
-                PresenceDevice.DESKTOP in devices -> PresenceDevice.DESKTOP
-                PresenceDevice.BROWSER in devices -> PresenceDevice.BROWSER
-                PresenceDevice.MOBILE in devices -> PresenceDevice.MOBILE
-                else -> PresenceDevice.BROWSER
+                PresenceDevice.DESKTOP in devices -> "Desktop app"
+                PresenceDevice.BROWSER in devices -> "Browser"
+                PresenceDevice.MOBILE in devices -> "Mobile"
+                else -> null
             }
-            Icon(
-                imageVector = when (device) {
-                    PresenceDevice.MOBILE -> Icons.Default.Smartphone
-                    PresenceDevice.DESKTOP -> Icons.Default.Computer
-                    PresenceDevice.BROWSER -> Icons.Default.Language
-                },
-                contentDescription = device.name.lowercase(),
-                tint = statusColor(status),
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size((size.value * 0.4f).coerceAtLeast(12f).dp)
-                    .clip(CircleShape)
-                    .background(c.surface2)
-                    .padding(2.dp),
-            )
-        } else if (status != null) {
-            val dot = (size.value * 0.33f).coerceAtLeast(10f).dp
+            val label = statusLabel(status).let { if (device == null) it else "$it · $device" }
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .size(dot)
+                    .size(badge)
                     .clip(CircleShape)
-                    .background(statusColor(status))
-                    .border(2.dp, c.surface2, CircleShape),
-            )
+                    .background(c.surface2),
+                contentAlignment = Alignment.Center,
+            ) {
+                StatusIcon(status = status, size = badge * 0.75f, contentDescription = label)
+            }
         }
     }
 }

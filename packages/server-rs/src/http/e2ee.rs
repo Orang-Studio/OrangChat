@@ -36,6 +36,9 @@ pub fn routes() -> Router<AppState> {
                 .delete(cancel_deletion),
         )
         .route("/e2ee/keys/deletion/cancel", get(cancel_deletion_link))
+        // The same erasure with no wait in front of it, for a caller who can
+        // sign as a device that is still in the log.
+        .route("/e2ee/keys/deletion/now", post(erase_keys_now))
         .route("/e2ee/channels/:channelId/state", get(channel_state))
         .route("/e2ee/channels/:channelId/epochs", post(mint_epoch))
         .route("/e2ee/channels/:channelId/keys", get(epoch_keys))
@@ -311,6 +314,76 @@ async fn request_deletion(
         "requestedAt": pending.requested_at,
         "executeAfter": pending.execute_after,
     })))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EraseNowBody {
+    device_id: String,
+    /// RFC 3339, and recent - see key_deletion::PROOF_MAX_AGE_SECONDS.
+    issued_at: String,
+    /// Over erase_keys_statement_bytes, by the device's identity signing key.
+    signature: String,
+}
+
+/// Erases straight away for a caller holding a device key.
+///
+/// No second factor and no waiting period, and neither is an oversight. The
+/// delay on the scheduled path buys time for the real owner to hear about a
+/// request an attacker filed with nothing but a password; a signature under a
+/// device that is still in the log is made by something an attacker with the
+/// password does not have. Asking that person to also produce a TOTP code, and
+/// then to wait, would gate the strong proof behind the weak one.
+async fn erase_keys_now(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Json(body): Json<EraseNowBody>,
+) -> AppResult<Json<Value>> {
+    rate_limit::check(
+        &state,
+        "e2ee:key-deletion",
+        &user.user_id,
+        rate_limit::E2EE_ENROL_PER_USER,
+    )
+    .await?;
+
+    let row: UserRow = sqlx::query_as(r#"SELECT * FROM "User" WHERE id = $1"#)
+        .bind(&user.user_id)
+        .fetch_one(&state.pool)
+        .await?;
+
+    if row.lockdown_at.is_some() {
+        return Err(AppError::Permission(
+            "This account is locked down, so its keys cannot be erased".into(),
+        ));
+    }
+
+    // Owned, and not revoked: a device that was thrown out of the account must
+    // not be able to destroy the identity that threw it out.
+    let device = e2ee::owned_active_device(&state, &user.user_id, &body.device_id).await?;
+
+    let issued_at = chrono::DateTime::parse_from_rfc3339(&body.issued_at)
+        .map_err(|_| bad_request("issuedAt is not an RFC 3339 timestamp"))?
+        .naive_utc();
+    let age = (chrono::Utc::now().naive_utc() - issued_at).num_seconds().abs();
+    if age > key_deletion::PROOF_MAX_AGE_SECONDS {
+        return Err(bad_request(
+            "This confirmation is too old. Try again - your device clock may also be wrong.",
+        ));
+    }
+
+    let signature = base64_bytes("signature", &body.signature)?;
+    let statement = e2ee::erase_keys_statement_bytes(&user.user_id, &device.id, &body.issued_at);
+    if !e2ee::verify_p256(&device.ik_sig_pub, &statement, &signature) {
+        return Err(AppError::Permission(
+            "This erasure is not signed by a device holding your keys".into(),
+        ));
+    }
+
+    tracing::info!(user_id = %user.user_id, device_id = %device.id, "e2ee keys erased on device authority");
+    key_deletion::erase_now(&state, &user.user_id, &row.email).await?;
+
+    Ok(Json(json!({ "pending": false, "erased": true })))
 }
 
 async fn cancel_deletion(State(state): State<AppState>, user: AuthUser) -> AppResult<Json<Value>> {

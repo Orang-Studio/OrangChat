@@ -55,6 +55,7 @@ object E2ee {
         const val GENESIS = "orangchat/genesis/v1"
         const val ADD_DEVICE = "orangchat/add-device/v1"
         const val REVOKE = "orangchat/revoke/v1"
+        const val ERASE_KEYS = "orangchat/erase-keys/v1"
         const val LOG_ENTRY = "orangchat/device-log/v1"
         const val SAFETY_NUMBER = "orangchat/safety-number/v1"
         const val GROUP_SAFETY_NUMBER = "orangchat/group-safety-number/v1"
@@ -520,6 +521,16 @@ object E2ee {
 
     fun revokeStatementBytes(userId: String, deviceId: String, revokedAt: String): ByteArray =
         encodeFields(Domain.REVOKE, userId, deviceId, revokedAt)
+
+    /**
+     * What a device signs to erase the account's identity without waiting.
+     *
+     * Not a log entry, unlike a revocation - there is no log left afterwards to
+     * put one in - so [issuedAt] is what stops a captured signature being
+     * replayed as a wipe later. The server rejects anything stale.
+     */
+    fun eraseKeysStatementBytes(userId: String, deviceId: String, issuedAt: String): ByteArray =
+        encodeFields(Domain.ERASE_KEYS, userId, deviceId, issuedAt)
 
     fun logEntryHash(prevHash: ByteArray?, payload: ByteArray): ByteArray =
         sha256(encodeFields(Domain.LOG_ENTRY, prevHash ?: ByteArray(0), payload))

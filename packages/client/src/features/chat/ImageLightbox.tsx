@@ -2,9 +2,12 @@ import * as RadixDialog from "@radix-ui/react-dialog";
 import { useState } from "react";
 import { Bookmark, Download, RotateCcw, X, ZoomIn, ZoomOut } from "lucide-react";
 import type { Attachment } from "@orangchat/shared";
+import { cn } from "../../lib/cn";
 import { formatBytes } from "./attachments";
 import { isGif, isGifFavorite, useFavoriteGifs } from "./favoriteGifs";
 import { ImageContextMenu } from "./ImageContextMenu";
+import { MediaSenderBar, type MediaContext } from "./MediaSenderBar";
+import { useMediaZoom, type MediaOrigin } from "./useMediaZoom";
 
 /**
  * Full-bleed viewer for an image attachment.
@@ -20,10 +23,17 @@ import { ImageContextMenu } from "./ImageContextMenu";
  */
 export function ImageLightbox({
   attachment,
+  context,
+  origin,
   open,
   onOpenChange,
 }: {
   attachment: Attachment;
+  /** The message this file came on. Absent where a viewer has no message
+   *  behind it, and then the bar along the bottom is simply not drawn. */
+  context?: MediaContext;
+  /** The thumbnail's box, so the viewer grows out of where it was clicked. */
+  origin?: MediaOrigin | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -40,11 +50,12 @@ export function ImageLightbox({
   const gifUrl = new URL(attachment.url, window.location.origin).toString();
   const saved = gif && isGifFavorite(favoriteGifs, gifUrl);
   const [scale, setScale] = useState(1);
+  const zoom = useMediaZoom(origin);
 
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
-        <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/80" />
+        <RadixDialog.Overlay className="oc-backdrop fixed inset-0 z-40 bg-black/80" />
         <RadixDialog.Content
           aria-describedby={undefined}
           className="fixed inset-0 z-50 flex flex-col focus:outline-none"
@@ -54,7 +65,7 @@ export function ImageLightbox({
         >
           <RadixDialog.Title className="sr-only">{attachment.filename}</RadixDialog.Title>
 
-           <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-3 bg-black/40 px-4 py-2.5 text-white">
+           <div className="oc-chrome-top absolute inset-x-0 top-0 z-10 flex items-center gap-3 bg-black/40 px-4 py-2.5 text-white">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{attachment.filename}</p>
               {attachment.size > 0 && (
@@ -126,20 +137,37 @@ export function ImageLightbox({
           {/* Clicking the empty space around the image closes, as every other
               viewer does; the image itself must not, or a mis-drag ends it. */}
            <div
-             className="absolute inset-0 flex items-center justify-center p-4"
+             // The chrome floats over the image, so the space it takes has to
+             // come out of the image's box or it sits behind the sender bar.
+             className={cn(
+               "absolute inset-0 flex items-center justify-center p-4 pt-16",
+               context && "pb-32",
+             )}
             onClick={() => onOpenChange(false)}
           >
-            <ImageContextMenu attachment={attachment}>
-              <img
-                src={attachment.url}
-                alt={attachment.filename}
-                onClick={(e) => e.stopPropagation()}
-                onContextMenu={(e) => e.stopPropagation()}
-                className="max-h-full max-w-full object-contain transition-transform"
-                style={{ transform: `scale(${scale})` }}
-              />
-            </ImageContextMenu>
+            {/* The zoom wrapper carries the opening move; the image keeps its
+                own transform for the zoom buttons, so the two never fight. */}
+            <div ref={zoom.ref} className="flex max-h-full max-w-full">
+              <ImageContextMenu attachment={attachment}>
+                <img
+                  src={attachment.url}
+                  alt={attachment.filename}
+                  onLoad={zoom.onReady}
+                  onClick={(e) => e.stopPropagation()}
+                  onContextMenu={(e) => e.stopPropagation()}
+                  className="max-h-full max-w-full object-contain transition-transform"
+                  style={{ transform: `scale(${scale})` }}
+                />
+              </ImageContextMenu>
+            </div>
           </div>
+
+          {context && (
+            <MediaSenderBar
+              context={context}
+              className="oc-chrome-bottom absolute inset-x-0 bottom-0 z-10"
+            />
+          )}
         </RadixDialog.Content>
       </RadixDialog.Portal>
     </RadixDialog.Root>

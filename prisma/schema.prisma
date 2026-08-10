@@ -406,6 +406,10 @@ model Channel {
   /// able to hand the same image to every participant and to new ones joining
   /// later, which encrypted per-recipient payloads could not do.
   backgroundUrl    String?
+  /// Group DM icon, set by any participant. Plaintext like an avatar, for the
+  /// same reason as backgroundUrl: everyone in the group, including people who
+  /// join later, has to be handed the same picture.
+  iconUrl          String?
   position         Int      @default(0)
   parentCategoryId String?
   nsfw             Boolean  @default(false)

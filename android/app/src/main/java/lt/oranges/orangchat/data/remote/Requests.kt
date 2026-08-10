@@ -306,6 +306,10 @@ data class PatchChannelRequest(
 @Serializable
 data class ChannelBackgroundRequest(val url: String? = null)
 
+/** `PUT /channels/{channelId}/icon`; null clears the group DM's icon. */
+@Serializable
+data class ChannelIconRequest(val url: String? = null)
+
 @Serializable
 data class CreateInviteRequest(val expiresInSeconds: Long? = null, val maxUses: Int? = null)
 

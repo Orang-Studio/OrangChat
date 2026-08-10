@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import lt.oranges.orangchat.data.model.ChannelType
@@ -59,6 +60,7 @@ import lt.oranges.orangchat.data.model.UserActivity
 import lt.oranges.orangchat.feature.unread.UnreadCountBadge
 import lt.oranges.orangchat.ui.components.ActivityStatus
 import lt.oranges.orangchat.ui.components.Avatar
+import lt.oranges.orangchat.ui.components.GroupIcon
 import lt.oranges.orangchat.ui.components.MenuItem
 import lt.oranges.orangchat.ui.components.OrangDropdownMenu
 import lt.oranges.orangchat.ui.components.UserFooter
@@ -85,6 +87,8 @@ fun HomePane(
     onLeaveConversation: (Conversation) -> Unit,
     modifier: Modifier = Modifier,
     unreads: Map<String, UnreadState> = emptyMap(),
+    /** channelId → user ids seen typing there, self already filtered out. */
+    typing: Map<String, Set<String>> = emptyMap(),
 ) {
     val c = OrangTheme.colors
     Column(modifier = modifier.fillMaxSize().background(c.surface1)) {
@@ -140,6 +144,7 @@ fun HomePane(
                     presenceActivities = presenceActivities,
                     unread = unreads[convo.id]?.unread == true,
                     unreadCount = unreads[convo.id]?.unreadCount ?: 0,
+                    typingUserIds = typing[convo.id].orEmpty() - self.id,
                     friendIds = friendIds,
                     onClick = onOpenConversation,
                     onMarkRead = onMarkRead,
@@ -157,12 +162,35 @@ fun HomePane(
 
 private fun latestMessagePreview(message: Message?, selfId: String): String? {
     if (message == null) return null
-    val author = if (message.author.id == selfId) "you" else message.author.displayName
+    val author = if (message.author.id == selfId) "You" else message.author.displayName
     val content = message.content
         .replace(Regex("\\s+"), " ")
         .trim()
         .ifBlank { if (message.attachments.isNotEmpty()) "Sent an attachment" else "Message" }
     return "$author: $content"
+}
+
+/**
+ * Who to name in the row's typing line. A one-on-one has a single candidate, so
+ * the name adds nothing the row title does not already say; a group needs it to
+ * be useful, and past two people the list is longer than the row is wide.
+ */
+private fun typingPreview(
+    typingIds: Set<String>,
+    convo: Conversation,
+    isGroup: Boolean,
+): String? {
+    if (typingIds.isEmpty()) return null
+    if (!isGroup) return "typing…"
+    val names = typingIds.mapNotNull { id ->
+        convo.participants.firstOrNull { it.id == id }?.displayName
+    }
+    return when (names.size) {
+        0 -> "typing…"
+        1 -> "${names[0]} is typing…"
+        2 -> "${names[0]} and ${names[1]} are typing…"
+        else -> "Several people are typing…"
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -174,6 +202,7 @@ private fun ConversationRow(
     presenceActivities: Map<String, List<UserActivity>>,
     unread: Boolean,
     unreadCount: Int,
+    typingUserIds: Set<String>,
     friendIds: Set<String>,
     onClick: (Conversation) -> Unit,
     onMarkRead: (String) -> Unit,
@@ -190,6 +219,7 @@ private fun ConversationRow(
     // A group DM has no single counterpart, so the person-shaped actions
     // (profile, remove friend, copy user ID) only apply to a one-on-one.
     val other = if (convo.type == ChannelType.GROUP_DM) null else lead
+    val typingLine = typingPreview(typingUserIds, convo, convo.type == ChannelType.GROUP_DM)
     val haptics = LocalHapticFeedback.current
     val clipboard = LocalClipboardManager.current
     var menuOpen by remember { mutableStateOf(false) }
@@ -213,9 +243,12 @@ private fun ConversationRow(
     ) {
         // Leading pip, as on the web: the row reads as unread even before the
         // eye reaches the count on the far side. The Box reserves the slot
-        // either way so titles stay aligned down the list.
+        // either way so titles stay aligned down the list. The row is
+        // top-aligned for the avatar's sake, so the pip has to opt back into
+        // centring itself or it rides up against the first text line.
         Box(
             modifier = Modifier
+                .align(Alignment.CenterVertically)
                 .size(width = 4.dp, height = 8.dp)
                 .then(
                     if (unread) {
@@ -227,20 +260,7 @@ private fun ConversationRow(
         )
         Spacer(Modifier.width(6.dp))
         if (others.size > 1 || lead == null) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(c.primarySoft),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Default.Group,
-                    contentDescription = null,
-                    tint = c.primary,
-                    modifier = Modifier.size(21.dp),
-                )
-            }
+            GroupIcon(iconUrl = convo.iconUrl, size = 38.dp)
         } else {
             // Conversation DTOs carry the user's saved preference, not proof
             // of a live socket. Only the realtime presence map may show them
@@ -260,13 +280,27 @@ private fun ConversationRow(
                 fontWeight = if (unread) FontWeight.Bold else FontWeight.Medium,
                 fontSize = 15.sp,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            if (latestPreview != null) {
+            // Someone mid-sentence is newer news than the message before it, so
+            // the typing line takes the preview's slot rather than adding a
+            // third row and reflowing every neighbour in the list.
+            if (typingLine != null) {
+                Text(
+                    text = typingLine,
+                    color = c.inkSecondary,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            } else if (latestPreview != null) {
                 Text(
                     text = latestPreview,
                     color = c.inkMuted,
                     fontSize = 12.sp,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             } else if (others.size == 1 && lead != null) {
                 ActivityStatus(

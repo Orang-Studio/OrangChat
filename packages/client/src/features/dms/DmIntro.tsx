@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Lock } from "lucide-react";
 import type { User } from "@orangchat/shared";
-import { Avatar, STATUS_COLOR, STATUS_LABEL } from "../../components/Avatar";
-import { cn } from "../../lib/cn";
+import { Avatar, STATUS_LABEL } from "../../components/Avatar";
+import { StatusIcon } from "../../components/StatusIcon";
 import { HowEncryptionWorksLink } from "../e2ee/HowEncryptionWorks";
+import { GroupIcon } from "./GroupIcon";
 import { ProfileDialog } from "../profile/ProfileDialog";
 
 /**
@@ -34,11 +35,14 @@ function EncryptionLine() {
 export function DmIntro({
   participants,
   groupName,
+  groupIconUrl,
 }: {
   /** Everyone but the viewer. Empty only in a note-to-self DM. */
   participants: User[];
   /** Set for group DMs; 1:1 DMs take their heading from the other person. */
   groupName?: string | null;
+  /** The group's own picture, when it has been given one. */
+  groupIconUrl?: string | null;
 }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const other = participants[0];
@@ -58,16 +62,22 @@ export function DmIntro({
   if (isGroup) {
     return (
       <div className="px-4 pb-2 pt-6">
-        <div className="mb-3 flex -space-x-2">
-          {participants.slice(0, 8).map((user) => (
-            <Avatar
-              key={user.id}
-              user={user}
-              status={user.status}
-              className="size-12 ring-2 ring-surface-2"
-            />
-          ))}
-        </div>
+        {/* Once a group has a picture, that is the group - the stack of member
+            avatars is the stand-in for not having one. */}
+        {groupIconUrl ? (
+          <GroupIcon iconUrl={groupIconUrl} name={groupName ?? undefined} className="mb-3 size-20" />
+        ) : (
+          <div className="mb-3 flex -space-x-2">
+            {participants.slice(0, 8).map((user) => (
+              <Avatar
+                key={user.id}
+                user={user}
+                status={user.status}
+                className="size-12 ring-2 ring-surface-2"
+              />
+            ))}
+          </div>
+        )}
         <h2 className="text-2xl font-bold">{groupName || "Group conversation"}</h2>
         <p className="text-sm text-ink-secondary">
           This is the beginning of this group, with {participants.length} other{" "}
@@ -91,7 +101,7 @@ export function DmIntro({
       <h2 className="text-2xl font-bold">{other.displayName}</h2>
       <p className="text-sm text-ink-secondary">@{other.username}</p>
       <p className="mt-1 flex items-center gap-1.5 text-sm text-ink-muted">
-        <span aria-hidden className={cn("size-2 rounded-full", STATUS_COLOR[other.status])} />
+        <StatusIcon status={other.status} label={null} className="size-3.5" />
         {STATUS_LABEL[other.status]}
       </p>
       <p className="mt-2 text-sm text-ink-secondary">

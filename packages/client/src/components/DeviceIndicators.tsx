@@ -2,7 +2,7 @@ import { Globe, Monitor, Smartphone } from "lucide-react";
 import type { PresenceDevice, PresenceStatus } from "@orangchat/shared";
 import { cn } from "../lib/cn";
 
-const DEVICE_META = {
+export const DEVICE_META = {
   mobile: { label: "Mobile", Icon: Smartphone },
   browser: { label: "Browser", Icon: Globe },
   desktop: { label: "Desktop app", Icon: Monitor },

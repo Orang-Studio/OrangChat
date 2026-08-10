@@ -20,6 +20,11 @@ data class OrangColors(
     val surface4: Color,
     val border: Color,
     val borderStrong: Color,
+    /** Plate under a message group when the conversation has a background
+     *  picture (--oc-plate). Opaque enough that even muted text keeps roughly
+     *  the contrast it has on a plain surface; the picture reads in the gutters
+     *  and in the gaps between groups instead. */
+    val plate: Color,
     // Text
     val ink: Color,
     val inkSecondary: Color,
@@ -47,6 +52,7 @@ val DarkOrangColors = OrangColors(
     surface4 = Color(0xFF24262F),
     border = Color(0xFF21232C),
     borderStrong = Color(0xFF353845),
+    plate = Color(0xFF0E0F13).copy(alpha = 0.88f),
     ink = Color(0xFFF3F4F7),
     inkSecondary = Color(0xFFB0B3BF),
     inkMuted = Color(0xFF71747F),
@@ -70,6 +76,7 @@ val LightOrangColors = OrangColors(
     surface4 = Color(0xFFFFFFFF),
     border = Color(0xFFE2E4EA),
     borderStrong = Color(0xFFC7CAD4),
+    plate = Color(0xFFEEF0F4).copy(alpha = 0.88f),
     ink = Color(0xFF14161C),
     inkSecondary = Color(0xFF51535F),
     inkMuted = Color(0xFF82848F),

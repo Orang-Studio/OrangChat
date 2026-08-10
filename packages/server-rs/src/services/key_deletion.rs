@@ -38,6 +38,15 @@ use crate::state::AppState;
 pub const DELAY_WITH_2FA: i64 = 3;
 pub const DELAY_WITHOUT_2FA: i64 = 24;
 
+/// How stale a device's erasure signature may be, in seconds.
+///
+/// The signature is the authorization, so it has to be spent close to when it
+/// was made: otherwise one captured off a device today is a wipe that can be
+/// fired at any point in the future. Five minutes is wide enough for a clock
+/// that is not quite set and narrow enough that the window has to be exploited
+/// on the spot.
+pub const PROOF_MAX_AGE_SECONDS: i64 = 300;
+
 pub struct PendingRequest {
     pub requested_at: NaiveDateTime,
     pub execute_after: NaiveDateTime,
@@ -243,6 +252,12 @@ pub async fn abort_on_device_seen(state: &AppState, user_id: &str) -> AppResult<
 /// with no previous hash, so the account would still be unable to start over.
 /// `KeyEnvelope` follows the devices by cascade.
 async fn erase(state: &AppState, user_id: &str) -> AppResult<()> {
+    // Read before the delete, because afterwards there is nobody left to ask
+    // who was wrapping keys to this account.
+    let rooms = crate::services::e2ee::peer_rooms(state, user_id)
+        .await
+        .unwrap_or_default();
+
     let mut tx = state.pool.begin().await?;
     sqlx::query(r#"DELETE FROM "DeviceLogEntry" WHERE "userId" = $1"#)
         .bind(user_id)
@@ -253,6 +268,60 @@ async fn erase(state: &AppState, user_id: &str) -> AppResult<()> {
         .execute(&mut *tx)
         .await?;
     tx.commit().await?;
+
+    // Every device the account had is gone at once, which to a peer is the same
+    // news a revocation carries: stop wrapping conversation keys to them and
+    // re-read the list. Without this a peer keeps sealing to devices that no
+    // longer exist until something else makes it look.
+    let payload = serde_json::json!({ "userId": user_id, "deviceId": null });
+    for room in rooms {
+        let _ = state.io().to(room).emit("e2ee:device:revoked", &payload);
+    }
+    Ok(())
+}
+
+/// The wipe with no wait in front of it, for a caller who signed for it with a
+/// device key.
+///
+/// Everything in the scheduled path - the delay, the mail with the cancel link,
+/// the abort when a keyed device checks in - is there because the request itself
+/// proves nothing: a stolen password can file it. A signature under a device
+/// that is still in the log is the opposite case. Whoever produced it already
+/// holds the key the wait was protecting, so waiting three hours protects
+/// nobody; it only leaves someone who has decided to start over staring at a
+/// countdown, on a device that would abort its own request the next time it
+/// checked in.
+///
+/// Any request already pending is closed out as executed rather than left
+/// dangling, since what it was waiting to do has now happened.
+pub async fn erase_now(state: &AppState, user_id: &str, email_address: &str) -> AppResult<()> {
+    erase(state, user_id).await?;
+
+    sqlx::query(
+        r#"UPDATE "KeyDeletionRequest" SET "executedAt" = now()
+           WHERE "userId" = $1 AND "cancelledAt" IS NULL
+             AND "abortedAt" IS NULL AND "executedAt" IS NULL"#,
+    )
+    .bind(user_id)
+    .execute(&state.pool)
+    .await?;
+
+    // Still announced on every channel. The person who pressed the button knows
+    // what they did; the mail and the push are for the case where they did not,
+    // and a wipe that happened instantly is exactly the one worth hearing about.
+    if let Err(e) = email::send_key_deletion_done(&state.config, email_address).await {
+        tracing::warn!(user = %user_id, error = %e, "could not send key erasure notice");
+    }
+    push::notify_security(
+        state,
+        user_id,
+        "key-deletion-done",
+        "Your encryption keys were erased",
+        "A device holding your keys asked for this. Sign in again to set up a new encryption identity.",
+        "/?keyErasure=1",
+    )
+    .await;
+
     Ok(())
 }
 

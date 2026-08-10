@@ -21,6 +21,7 @@ pub const DOMAIN_DEVICE_BUNDLE: &str = "orangchat/device-bundle/v1";
 pub const DOMAIN_GENESIS: &str = "orangchat/genesis/v1";
 pub const DOMAIN_ADD_DEVICE: &str = "orangchat/add-device/v1";
 pub const DOMAIN_REVOKE: &str = "orangchat/revoke/v1";
+pub const DOMAIN_ERASE_KEYS: &str = "orangchat/erase-keys/v1";
 pub const DOMAIN_LOG_ENTRY: &str = "orangchat/device-log/v1";
 
 const GRANT_TTL_SECONDS: u64 = 60;
@@ -96,6 +97,20 @@ pub fn revoke_statement_bytes(user_id: &str, device_id: &str, revoked_at: &str) 
         user_id.as_bytes(),
         device_id.as_bytes(),
         revoked_at.as_bytes(),
+    ])
+}
+
+/// What a device signs to erase the account's identity without waiting.
+///
+/// Mirrors `eraseKeysStatementBytes` in `@orangchat/shared`. Unlike a revocation
+/// this is not a log entry - there is no log left afterwards to put it in - so
+/// `issued_at` is what stops a captured signature being replayed later.
+pub fn erase_keys_statement_bytes(user_id: &str, device_id: &str, issued_at: &str) -> Vec<u8> {
+    encode_fields(&[
+        DOMAIN_ERASE_KEYS.as_bytes(),
+        user_id.as_bytes(),
+        device_id.as_bytes(),
+        issued_at.as_bytes(),
     ])
 }
 
@@ -1202,6 +1217,24 @@ mod tests {
         assert_eq!(id.len(), 32);
         assert!(!valid_transfer_id("short"));
         assert!(!valid_transfer_id(&"z".repeat(32)));
+    }
+
+    /// An erasure signature is checked with the same primitive as a revocation,
+    /// so what keeps one from being spent as the other is the domain prefix.
+    /// Both statements otherwise carry a user, a device and a timestamp.
+    #[test]
+    fn an_erasure_statement_is_not_a_revocation_statement() {
+        let erase = erase_keys_statement_bytes("u1", "d1", "2026-08-10T12:00:00Z");
+        let revoke = revoke_statement_bytes("u1", "d1", "2026-08-10T12:00:00Z");
+        assert_ne!(erase, revoke);
+    }
+
+    #[test]
+    fn an_erasure_statement_is_bound_to_its_device_and_moment() {
+        let base = erase_keys_statement_bytes("u1", "d1", "2026-08-10T12:00:00Z");
+        assert_ne!(base, erase_keys_statement_bytes("u1", "d2", "2026-08-10T12:00:00Z"));
+        assert_ne!(base, erase_keys_statement_bytes("u1", "d1", "2026-08-10T12:00:01Z"));
+        assert_ne!(base, erase_keys_statement_bytes("u2", "d1", "2026-08-10T12:00:00Z"));
     }
 
     #[test]

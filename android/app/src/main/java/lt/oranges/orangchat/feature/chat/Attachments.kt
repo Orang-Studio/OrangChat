@@ -39,8 +39,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -148,7 +150,12 @@ private fun UploadChip(
                     model = upload.previewUri,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(36.dp).background(c.surface2, RoundedCornerShape(OrangRadius.md)),
+                    // Clipped, not merely backed: the rounded background sits
+                    // behind the bitmap, which would otherwise cover it square.
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(OrangRadius.md))
+                        .background(c.surface2),
                 )
             } else {
                 Box(
@@ -350,6 +357,10 @@ internal fun FileCard(attachment: Attachment, expiresAt: Instant?, now: Instant)
 private fun ImagePreview(attachment: Attachment, expiresAt: Instant?, now: Instant) {
     val c = OrangTheme.colors
     val context = LocalContext.current
+    val view = LocalView.current
+    // The viewer opens by growing out of this thumbnail, so its box has to be
+    // known by the time the tap happens.
+    val origin = rememberMediaOrigin()
     var broken by remember(attachment.id) { mutableStateOf(false) }
     val source = rememberAttachmentSource(attachment)
     // A sealed image has no url until it has been decrypted. Only a real failure
@@ -360,6 +371,12 @@ private fun ImagePreview(attachment: Attachment, expiresAt: Instant?, now: Insta
         return
     }
     val href = source.url
+    // `background(shape)` only rounds what is painted behind the bitmap - the
+    // image itself was still drawn square over the top of it, so the corners
+    // have to be clipped rather than merely tinted. Media takes the dialog
+    // radius rather than the control one: 5dp is invisible across 280dp of
+    // photo, and a picture is the one thing in a row big enough to show it.
+    val shape = RoundedCornerShape(OrangRadius.xl2)
 
     Column {
         if (href == null) {
@@ -368,7 +385,8 @@ private fun ImagePreview(attachment: Attachment, expiresAt: Instant?, now: Insta
                     .widthIn(max = 280.dp)
                     .fillMaxWidth()
                     .height(200.dp)
-                    .background(c.surface1, RoundedCornerShape(OrangRadius.lg)),
+                    .clip(shape)
+                    .background(c.surface1),
                 contentAlignment = Alignment.Center,
             ) {
                 // Determinate once bytes are moving: a large encrypted image
@@ -396,12 +414,14 @@ private fun ImagePreview(attachment: Attachment, expiresAt: Instant?, now: Insta
                 modifier = Modifier
                     .widthIn(max = 280.dp)
                     .height(200.dp)
-                    .background(c.surface1, RoundedCornerShape(OrangRadius.lg))
+                    .clip(shape)
+                    .background(c.surface1)
+                    .mediaOrigin(origin)
                     // Expands in place: the file's own URL is served as a
                     // download, so handing it to the browser is the one thing a
                     // tap must not do.
                     .clickable {
-                        context.startActivity(MediaPreviewActivity.intent(context, attachment))
+                        openMediaPreview(context, view, origin, attachment)
                     },
             )
         }

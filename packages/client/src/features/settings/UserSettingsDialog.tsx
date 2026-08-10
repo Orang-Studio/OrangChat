@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { type PresenceStatus } from "@orangchat/shared";
 import { STATUS_LABEL } from "../../components/Avatar";
+import { StatusIcon } from "../../components/StatusIcon";
 import { Button } from "../../components/ui/Button";
 import { ImageField } from "../../components/ImageField";
 import { Dialog, DialogClose, DialogFullScreenContent } from "../../components/ui/Dialog";
@@ -63,12 +64,6 @@ interface UserSettingsDialogProps {
 }
 
 const STATUS_OPTIONS: PresenceStatus[] = ["online", "idle", "dnd"];
-const STATUS_DOT: Record<PresenceStatus, string> = {
-  online: "bg-success",
-  idle: "bg-warning",
-  dnd: "bg-danger",
-  offline: "bg-ink-muted",
-};
 
 const intToHex = (n: number | null) =>
   n != null ? `#${n.toString(16).padStart(6, "0")}` : "#ff6a1a";
@@ -312,7 +307,7 @@ function ProfileTab() {
                   : "border-border hover:border-border-strong",
               )}
             >
-              <span className={cn("size-2.5 rounded-full", STATUS_DOT[option])} />
+              <StatusIcon status={option} label={null} className="size-3.5" />
               {STATUS_LABEL[option]}
             </button>
           ))}

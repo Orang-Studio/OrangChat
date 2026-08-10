@@ -1,13 +1,7 @@
 import type { PresenceStatus, User } from "@orangchat/shared";
-import { Globe, Monitor, Smartphone } from "lucide-react";
 import { cn } from "../lib/cn";
-
-export const STATUS_COLOR: Record<PresenceStatus, string> = {
-  online: "bg-success",
-  idle: "bg-warning",
-  dnd: "bg-danger",
-  offline: "bg-ink-muted",
-};
+import { DEVICE_META } from "./DeviceIndicators";
+import { StatusIcon } from "./StatusIcon";
 
 export const STATUS_LABEL: Record<PresenceStatus, string> = {
   online: "Online",
@@ -32,7 +26,6 @@ export function Avatar({ user, status, className, imgClassName, fallbackClassNam
   const device = user.devices?.find((kind) => kind === "desktop")
     ?? user.devices?.find((kind) => kind === "browser")
     ?? user.devices?.find((kind) => kind === "mobile");
-  const DeviceIcon = device === "mobile" ? Smartphone : device === "desktop" ? Monitor : Globe;
   return (
     // rounded-full on the wrapper too: it has no fill of its own, but a ring or
     // outline from a caller follows the wrapper's radius rather than the image's,
@@ -55,21 +48,16 @@ export function Avatar({ user, status, className, imgClassName, fallbackClassNam
           {user.displayName.charAt(0).toUpperCase()}
         </span>
       )}
-      {status && device ? (
+      {status ? (
+        // The badge scales with the avatar - a 16px dot pinned to an 80px
+        // profile avatar reads as a rendering mistake - and the surface-2 disc
+        // behind it is what shows through the shape's cut-outs.
         <span
-          title={`${device} · ${STATUS_LABEL[status]}`}
-          className="absolute -bottom-1 -right-1 flex size-4 items-center justify-center rounded-full bg-surface-2"
+          title={device ? `${STATUS_LABEL[status]} · ${DEVICE_META[device].label}` : STATUS_LABEL[status]}
+          className="absolute -bottom-0.5 -right-0.5 flex size-[38%] min-h-4 min-w-4 items-center justify-center rounded-full bg-surface-2"
         >
-          <DeviceIcon aria-hidden className={cn("size-3", STATUS_COLOR[status].replace("bg-", "text-"))} />
+          <StatusIcon status={status} className="size-[75%]" label={STATUS_LABEL[status]} />
         </span>
-      ) : status ? (
-        <span
-          title={STATUS_LABEL[status]}
-          className={cn(
-            "absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-surface-2",
-            STATUS_COLOR[status],
-          )}
-        />
       ) : null}
     </span>
   );

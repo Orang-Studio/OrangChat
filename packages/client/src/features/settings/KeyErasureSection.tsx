@@ -4,6 +4,7 @@ import { Trash2, TriangleAlert } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { formatFullTime } from '../../lib/time';
 import { cancelKeyDeletion, getKeyDeletion, requestKeyDeletion } from '../e2ee/api';
+import { eraseKeysNow } from '../e2ee/identity';
 import { SectionTitle } from './controls';
 
 /**
@@ -17,8 +18,15 @@ import { SectionTitle } from './controls';
  * being hidden - it is the wait, the mail that goes out the moment it is asked
  * for, and the fact that any surviving keyed device cancels it just by opening
  * the app.
+ *
+ * `keyed` is the other case entirely: this device still holds a key, so it can
+ * sign for the erasure, and none of that machinery applies. Somebody who can
+ * produce the signature already has what the wait was protecting - and would
+ * abort their own request the next time this tab checked in - so they get the
+ * same erasure without one. It is still two clicks and still says what it
+ * destroys.
  */
-export function KeyErasureSection({ stuck }: { stuck: boolean }) {
+export function KeyErasureSection({ stuck, keyed }: { stuck: boolean; keyed: boolean }) {
   const queryClient = useQueryClient();
   const [confirming, setConfirming] = useState(false);
   const [code, setCode] = useState('');
@@ -38,11 +46,19 @@ export function KeyErasureSection({ stuck }: { stuck: boolean }) {
     setError(null);
     setConfirming(false);
     setCode('');
-    void queryClient.invalidateQueries({ queryKey: ['e2ee', 'key-deletion'] });
+    // The whole tab: an erasure takes the device list and this browser's own
+    // identity with it, and both are read from other queries on this screen.
+    void queryClient.invalidateQueries({ queryKey: ['e2ee'] });
   };
 
   const request = useMutation({
     mutationFn: () => requestKeyDeletion(code.trim() || undefined),
+    onSuccess: done,
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const eraseNow = useMutation({
+    mutationFn: eraseKeysNow,
     onSuccess: done,
     onError: (e: Error) => setError(e.message),
   });
@@ -65,11 +81,11 @@ export function KeyErasureSection({ stuck }: { stuck: boolean }) {
   // business here, and a destructive control that is always on screen gets
   // clicked eventually. A request already in flight always shows, on every
   // device, because being told is the entire point of the waiting period.
-  if (!pending && !stuck && !justCancelled) return null;
+  if (!pending && !stuck && !keyed && !justCancelled) return null;
 
   return (
     <section className="rounded-lg border border-danger/50 px-3 py-3">
-      <SectionTitle>Lost every device</SectionTitle>
+      <SectionTitle>{keyed && !pending ? 'Start over with new keys' : 'Lost every device'}</SectionTitle>
 
       {justCancelled && (
         <p className="mt-1 rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-sm leading-relaxed">
@@ -105,9 +121,9 @@ export function KeyErasureSection({ stuck }: { stuck: boolean }) {
       ) : (
         <>
           <p className="mt-1 text-sm leading-relaxed text-ink-secondary">
-            If every device you were signed in on is gone, nothing left can authorize a new one and
-            this account is stuck. Erasing the keys clears that, and the next device you sign in on
-            starts fresh.
+            {keyed
+              ? 'This device still holds your keys, so it can throw the whole encryption identity away and start again - every device on the account is removed and the next one you sign in on sets up fresh keys.'
+              : 'If every device you were signed in on is gone, nothing left can authorize a new one and this account is stuck. Erasing the keys clears that, and the next device you sign in on starts fresh.'}
           </p>
           <p className="mt-2 text-sm leading-relaxed text-danger">
             Every message already in your encrypted conversations becomes permanently unreadable -
@@ -129,33 +145,49 @@ export function KeyErasureSection({ stuck }: { stuck: boolean }) {
               className="mt-3 space-y-2"
               onSubmit={(e) => {
                 e.preventDefault();
-                request.mutate();
+                if (keyed) eraseNow.mutate();
+                else request.mutate();
               }}
             >
               <p className="text-xs leading-relaxed text-ink-muted">
-                Nothing is erased today. We email you straight away with a link to stop it, and if
-                any device holding your keys opens OrangChat while it waits, it is cancelled on its
-                own.
+                {keyed
+                  ? 'This happens the moment you press the button - there is no waiting period and nothing to cancel, because this device signs for it with the key itself.'
+                  : 'Nothing is erased today. We email you straight away with a link to stop it, and if any device holding your keys opens OrangChat while it waits, it is cancelled on its own.'}
               </p>
-              <label htmlFor="key-erasure-code" className="block text-sm font-medium">
-                Two-factor code
-              </label>
-              <p className="text-xs leading-relaxed text-ink-muted">
-                Leave this empty if you do not have two-factor turned on. It just makes the wait
-                shorter - three hours instead of a day.
-              </p>
-              <input
-                id="key-erasure-code"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                placeholder="000000"
-                className="h-11 w-full rounded-lg border border-border bg-surface-1 px-3 font-mono text-base tracking-widest text-ink placeholder:text-ink-muted hover:border-border-strong md:h-10 md:text-sm"
-              />
+              {!keyed && (
+                <>
+                  <label htmlFor="key-erasure-code" className="block text-sm font-medium">
+                    Two-factor code
+                  </label>
+                  <p className="text-xs leading-relaxed text-ink-muted">
+                    Leave this empty if you do not have two-factor turned on. It just makes the wait
+                    shorter - three hours instead of a day.
+                  </p>
+                  <input
+                    id="key-erasure-code"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="000000"
+                    className="h-11 w-full rounded-lg border border-border bg-surface-1 px-3 font-mono text-base tracking-widest text-ink placeholder:text-ink-muted hover:border-border-strong md:h-10 md:text-sm"
+                  />
+                </>
+              )}
               <div className="flex flex-wrap gap-2">
-                <Button type="submit" size="sm" variant="danger" disabled={request.isPending}>
-                  {request.isPending ? 'Scheduling…' : 'Schedule the erasure'}
+                <Button
+                  type="submit"
+                  size="sm"
+                  variant="danger"
+                  disabled={keyed ? eraseNow.isPending : request.isPending}
+                >
+                  {keyed
+                    ? eraseNow.isPending
+                      ? 'Erasing…'
+                      : 'Erase them now'
+                    : request.isPending
+                      ? 'Scheduling…'
+                      : 'Schedule the erasure'}
                 </Button>
                 <Button
                   type="button"

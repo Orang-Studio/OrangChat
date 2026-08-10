@@ -23,6 +23,7 @@ import lt.oranges.orangchat.data.model.E2eeChannelState
 import lt.oranges.orangchat.data.model.E2eeDevice
 import lt.oranges.orangchat.data.model.E2eeDeviceList
 import lt.oranges.orangchat.data.model.E2eeEnvelopeInput
+import lt.oranges.orangchat.data.model.E2eeEraseKeysRequest
 import lt.oranges.orangchat.data.model.E2eeGenesisRequest
 import lt.oranges.orangchat.data.model.E2eeAddDeviceRequest
 import lt.oranges.orangchat.data.model.E2eeBlobRequest
@@ -132,8 +133,37 @@ class E2eeRepository @Inject constructor(
         )
 
         keystore.rememberIdentity(userId, device.id, identityGeneration)
+        forgetOwnPin(userId)
         selfMonitor(userId)
         keystore.identity()!!
+    }
+
+    /**
+     * Drops this phone's commitment to its *own* account's identity, and only
+     * ever at the moment this phone is the one establishing that identity.
+     *
+     * A pin is a memory of what an account looked like, kept so the server
+     * cannot quietly swap it for another. That argument does not apply to this
+     * phone's own hands. An account whose keys were erased - the documented way
+     * back from losing every device - or a phone that was revoked and set up
+     * again leaves a pin behind describing a generation that no longer exists,
+     * and the genesis this phone then mints with a key it generated itself does
+     * not match it. [pin] reads that as "this account's encryption identity
+     * changed" and throws, which is a warning about a change the person holding
+     * the phone just made, on their own account, and one [acceptIdentityChange]
+     * will not clear because an account is never its own contact.
+     *
+     * The same holds for a phone joining an identity through a transfer (§4):
+     * it did not mint that genesis, but a person compared six digits against
+     * the device that holds it, which says more about the account's current
+     * identity than a pin written by a generation that is gone.
+     *
+     * No part of the log replay is skipped - [selfMonitor] runs in full straight
+     * afterwards and writes the pin back. What is given up is the comparison
+     * against a generation this phone has already replaced on purpose.
+     */
+    private fun forgetOwnPin(userId: String) {
+        runCatching { keystore.deletePin(userId) }
     }
 
     private fun logEntry(payload: ByteArray, prevHash: ByteArray?): E2eeLogEntryInput {
@@ -169,6 +199,24 @@ class E2eeRepository @Inject constructor(
                 throw E2eeException(
                     "This phone is no longer an authorized encryption device. Open Settings → Encryption to add it again.",
                 )
+            }
+        } else {
+            // Signed in, but holding no key in this account - a phone that has
+            // not been added yet, or one whose account started over from
+            // another device. Its pin describes a generation that has since
+            // been erased, and a new genesis restarts the log at seq 0, so
+            // every check in [pin] fires at once: "the identity changed", "the
+            // log went backwards", "the log has forked". All three are about a
+            // chain that no longer exists, and none of them is something this
+            // phone can act on - it created nothing under either generation and
+            // holds no key under this one. Settings → Encryption already says
+            // what is actually true here, which is that this phone is not a
+            // device on the account yet.
+            val stale = keystore.pin(userId)
+            if (stale != null &&
+                stale.genesisCommitment != E2ee.toBase64(verified.genesisCommitment)
+            ) {
+                forgetOwnPin(userId)
             }
         }
 
@@ -427,6 +475,37 @@ class E2eeRepository @Inject constructor(
     }
 
     /**
+     * Throws the account's whole encryption identity away, right now.
+     *
+     * There is a slow version of this on the server for an account nobody can
+     * sign for any more, and it waits hours precisely because the request proves
+     * nothing - a stolen password can file it. This phone can sign for it with
+     * the key itself, which is the thing that wait was there to give the real
+     * owner time to produce, so it does not wait. It also could not use the slow
+     * path if it wanted to: a keyed device checking in aborts a pending erasure,
+     * so this phone would cancel its own request the next time it started.
+     *
+     * Every message in every encrypted conversation on the account becomes
+     * unreadable, on all devices, permanently. The local identity goes too - its
+     * public half no longer exists, and keeping the private half would only
+     * convince this phone it is still enrolled.
+     */
+    suspend fun eraseKeysNow(): Unit = withContext(Dispatchers.IO) {
+        val local = keystore.identity() ?: throw E2eeException("This device has no encryption identity.")
+        val issuedAt = java.time.Instant.now().toString()
+        api.eraseE2eeKeysNow(
+            E2eeEraseKeysRequest(
+                deviceId = local.deviceId,
+                issuedAt = issuedAt,
+                signature = E2ee.toBase64(
+                    keystore.sign(E2ee.eraseKeysStatementBytes(local.userId, local.deviceId, issuedAt)),
+                ),
+            ),
+        )
+        keystore.clearIdentity()
+    }
+
+    /**
      * Lets this phone enrol again after another device revoked it.
      *
      * Revocation is one-way for the keys involved: the identity in the Keystore
@@ -576,6 +655,7 @@ class E2eeRepository @Inject constructor(
                 "The other device did not finish adding this phone. Start again.",
             )
             keystore.rememberIdentity(userId, device.id, "")
+            forgetOwnPin(userId)
             selfMonitor(userId)
             runCatching { api.markE2eeDeviceSeen(device.id) }
         }

@@ -4,6 +4,7 @@ import {
   decodeContactVerifyQr,
   deviceBundleBytes,
   encodeContactVerifyQr,
+  eraseKeysStatementBytes,
   fromBase64,
   genesisStatementBytes,
   groupSafetyNumber,
@@ -27,6 +28,7 @@ import { raiseSecurityAlert } from './alerts';
 import {
   enrolAuthorizedDevice,
   enrolGenesisDevice,
+  eraseKeysNow as eraseKeysNowRequest,
   getMyDevices,
   getPeerDevices,
   markDeviceSeen,
@@ -34,6 +36,7 @@ import {
   type LogEntryPayload,
 } from './api';
 import {
+  deleteIdentity,
   deletePin,
   getPin,
   loadIdentity,
@@ -307,8 +310,37 @@ export async function enrol(userId: string): Promise<LocalIdentity> {
     ikDhPub,
   };
   await saveIdentity(identity);
+  await forgetOwnPin(userId);
   await selfMonitor(userId);
   return identity;
+}
+
+/**
+ * Drops this device's commitment to its *own* account's identity, and only ever
+ * at the moment this device is the one establishing that identity.
+ *
+ * A pin is a memory of what an account looked like, kept so that a server
+ * cannot quietly swap it for another. That argument does not apply to this
+ * device's own hands. An account whose keys were erased - the documented way
+ * back from losing every device - or a phone that was revoked and set up again
+ * leaves a pin behind describing a generation that no longer exists, and the
+ * genesis this device then mints with a key it generated itself does not match
+ * it. The next audit reads that as "this account's encryption identity changed"
+ * and refuses to go on: a warning about a change the person standing there just
+ * made, on their own account, which `acceptIdentityChange` will not clear
+ * because an account is never its own contact.
+ *
+ * The same holds for a device that joins an identity through a transfer (§4):
+ * it did not mint that genesis, but a person compared six digits against the
+ * device that holds it, which is a stronger statement about the account's
+ * current identity than a pin written by a generation that is gone.
+ *
+ * Nothing about the log replay is skipped - `selfMonitor` runs in full straight
+ * afterwards and writes the pin back. What is given up is the comparison
+ * against a generation this device has already replaced on purpose.
+ */
+export async function forgetOwnPin(userId: string): Promise<void> {
+  await deletePin(userId).catch(() => {});
 }
 
 /**
@@ -330,6 +362,21 @@ export async function selfMonitor(userId: string): Promise<VerifiedIdentity> {
     }
     if (!verified.authorizedDeviceIds.includes(identity.deviceId)) {
       throw new IdentityError('This device is no longer authorized on your account.');
+    }
+  } else {
+    // Signed in, but holding no key in this account - a browser that has not
+    // been added yet, or one whose account started over from another device.
+    // Its pin describes a generation that has since been erased, and a new
+    // genesis restarts the log at seq 0, so every check below fires at once:
+    // "the identity changed", "the log went backwards", "an entry is missing".
+    // All three are about a chain that no longer exists, and none of them is
+    // something this device can act on - it created nothing under either
+    // generation and holds no key under this one. Settings → Encryption
+    // already says what is actually true here, which is that this browser is
+    // not a device on the account yet.
+    const stale = await getPin(userId);
+    if (stale && stale.genesisCommitment !== toBase64(verified.genesisCommitment)) {
+      await forgetOwnPin(userId);
     }
   }
 
@@ -585,6 +632,36 @@ export async function revoke(deviceId: string): Promise<E2eeDevice> {
     revokedAt,
     log,
   });
+}
+
+/**
+ * Erases the account's encryption identity now, on this device's authority.
+ *
+ * The scheduled erasure is for an account nobody can sign for any more, and it
+ * waits because the request on its own proves nothing. This one is signed by a
+ * key the server can check against the device log, which is the thing the wait
+ * was there to give the real owner time to produce. So there is no wait, no
+ * cancel link, and no undo - every encrypted message on the account becomes
+ * unreadable the moment this returns.
+ *
+ * The local identity goes with it. Its public half no longer exists anywhere,
+ * so keeping the private half would only convince this browser it is still an
+ * enrolled device and stop it setting up a new one.
+ */
+export async function eraseKeysNow(): Promise<void> {
+  const identity = await loadIdentity();
+  if (!identity) throw new IdentityError('This device has no encryption identity.');
+
+  const issuedAt = new Date().toISOString();
+  const statement = eraseKeysStatementBytes(identity.userId, identity.deviceId, issuedAt);
+  const signature = await sign(identity.ikSig.privateKey, statement);
+
+  await eraseKeysNowRequest({
+    deviceId: identity.deviceId,
+    issuedAt,
+    signature: toBase64(signature),
+  });
+  await deleteIdentity();
 }
 
 /**

@@ -100,6 +100,25 @@ class E2eeTest {
                 "323032362d30312d30315430303a30303a30302e3030305a",
             E2ee.toHex(E2ee.revokeStatementBytes("u", "d", "2026-01-01T00:00:00.000Z")),
         )
+        assertEquals(
+            "000000176f72616e67636861742f65726173652d6b6579732f763100000001750000000164" +
+                "00000018323032362d30312d30315430303a30303a30302e3030305a",
+            E2ee.toHex(E2ee.eraseKeysStatementBytes("u", "d", "2026-01-01T00:00:00.000Z")),
+        )
+    }
+
+    /**
+     * The server erases the account's whole identity on this signature with no
+     * waiting period, so an erasure must never be obtainable from something else
+     * the same key already signs - a revocation above all, which carries the same
+     * three fields and differs only in its domain.
+     */
+    @Test
+    fun `cannot spend a revocation as an erasure`() {
+        assertNotEquals(
+            E2ee.toHex(E2ee.revokeStatementBytes("u", "d", "now")),
+            E2ee.toHex(E2ee.eraseKeysStatementBytes("u", "d", "now")),
+        )
     }
 
     @Test

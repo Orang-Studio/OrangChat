@@ -56,9 +56,17 @@ fun MessageText(
     selfId: String? = null,
     emojis: Map<String, EmojiRef> = emptyMap(),
     fontSize: androidx.compose.ui.unit.TextUnit = 14.sp,
+    /**
+     * Overrides the theme's body colour. For rows that are not ordinary
+     * messages - one the server refused reads in [OrangColors.danger], so the
+     * words themselves carry the failure rather than only the label under them.
+     */
+    color: androidx.compose.ui.graphics.Color? = null,
     onMentionClick: (String) -> Unit = {},
 ) {
     val c = OrangTheme.colors
+    val bodyColor = color ?: c.ink
+    val quoteColor = color ?: c.inkSecondary
     val blocks = if (isDirectMediaMessage(content)) emptyList()
     else parseMarkdown(content, MentionContext(mentionNames, mentionUsers, selfId, emojis))
 
@@ -76,7 +84,7 @@ fun MessageText(
                     // Long lines scroll rather than wrap, as in the web <pre>.
                     Text(
                         text = block.body,
-                        color = c.ink,
+                        color = bodyColor,
                         fontFamily = FontFamily.Monospace,
                         fontSize = fontSize * 0.85f,
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -91,7 +99,7 @@ fun MessageText(
                     ) { Text("") }
                     Text(
                         text = block.children.toAnnotated(c, fontSize, onMentionClick),
-                        color = c.inkSecondary,
+                        color = quoteColor,
                         fontSize = fontSize,
                         inlineContent = inlineContent,
                         modifier = Modifier.padding(start = 8.dp),
@@ -100,7 +108,7 @@ fun MessageText(
 
                 is MdBlock.Paragraph -> Text(
                     text = block.children.toAnnotated(c, fontSize, onMentionClick),
-                    color = c.ink,
+                    color = bodyColor,
                     fontSize = fontSize,
                     inlineContent = inlineContent,
                 )

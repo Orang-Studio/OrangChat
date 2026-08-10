@@ -12,6 +12,14 @@
 //! offer subscribing. Sends also fail open - a push outage must never take the
 //! message path down with it, since the message itself already committed.
 //!
+//! ## A phone is notified last
+//!
+//! Which devices a conversation notification reaches depends on where the person
+//! already is, because a buzz in the pocket is only useful to somebody who is not
+//! already reading the message. `notify_message` skips the phone outright when
+//! the app is open in front of them, and holds it back for a few minutes when
+//! they are at their computer - see the deferral section below.
+//!
 //! ## Payloads are data-only on purpose
 //!
 //! FCM will happily render a `notification` block itself, but only the app can
@@ -33,6 +41,7 @@ use web_push::{
 
 use crate::config::Config;
 use crate::error::AppResult;
+use crate::services::presence;
 use crate::state::AppState;
 
 /// How long a push service should hold a message for a device that is offline.
@@ -67,7 +76,11 @@ pub struct NewSubscription {
 
 /// The notification itself, as both clients receive it. Mirrored by the
 /// `PushPayload` interface in the service worker and `PushPayload` in Kotlin.
-#[derive(Debug, Clone, Serialize)]
+///
+/// Deserializable because a payload can outlive the request that built it: one
+/// held back for a phone (see the deferral section) is parked in Redis and read
+/// back minutes later.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PushPayload {
     pub title: String,
     pub body: String,
@@ -91,9 +104,9 @@ pub struct PushPayload {
     /// or when the ciphertext would not fit inside the transport's payload
     /// ceiling - in which case the client shows a placeholder rather than
     /// nothing, because a truncated GCM ciphertext cannot be opened at all.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ciphertext: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enc_epoch: Option<i32>,
 }
 
@@ -102,7 +115,7 @@ pub struct PushPayload {
 /// ciphertext.
 const MAX_PUSH_CIPHERTEXT_CHARS: usize = 2600;
 
-#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum PushKind {
     Message,
@@ -319,6 +332,35 @@ async fn forget(state: &AppState, id: &str) {
 /// time we get here. A device the transport reports as permanently gone is
 /// pruned, which is the only way these rows ever get cleaned up.
 pub async fn send_to_user(state: &AppState, user_id: &str, payload: &PushPayload) {
+    send_to(state, user_id, payload, Audience::Every).await;
+}
+
+/// Which of a user's registered devices a send is meant for.
+///
+/// Only conversation notifications ever narrow this: an account-level notice or
+/// a dismissal is for every device the person has, by definition.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Audience {
+    Every,
+    /// Phones only - a notification that was held back and has now come due.
+    Phones,
+    /// Everything but the phones, which are being handled separately.
+    NotPhones,
+}
+
+impl Audience {
+    /// `fcm` is the Android app and nothing else; browsers and the desktop build
+    /// both register as `webpush`.
+    fn admits(self, kind: &str) -> bool {
+        match self {
+            Audience::Every => true,
+            Audience::Phones => kind == "fcm",
+            Audience::NotPhones => kind != "fcm",
+        }
+    }
+}
+
+async fn send_to(state: &AppState, user_id: &str, payload: &PushPayload, audience: Audience) {
     let Some(push) = state.push.clone() else {
         return;
     };
@@ -342,6 +384,9 @@ pub async fn send_to_user(state: &AppState, user_id: &str, payload: &PushPayload
     };
 
     for sub in subs {
+        if !audience.admits(&sub.kind) {
+            continue;
+        }
         let outcome = match sub.kind.as_str() {
             "webpush" => send_web(&push, &sub, &encoded).await,
             "fcm" => send_fcm(&push, &sub, payload).await,
@@ -608,6 +653,101 @@ async fn clear_pending(state: &AppState, user_id: &str, channel_id: &str) -> boo
     removed > 0
 }
 
+// ── Holding a notification back for the phone ────────────
+//
+// A phone is the device of last resort. Someone typing at their desk has already
+// been told about the message by the client in front of them, and buzzing their
+// pocket at the same time is the notification people cite when they turn
+// notifications off. But "they are at their desk" is not the same as "they read
+// it": step away mid-conversation and the message is now exactly the one the
+// phone should have carried. So the phone's copy is not dropped, only held - and
+// released a few minutes later if the message is still sitting unread.
+
+/// Sorted by when each held notification comes due.
+const DEFERRED_KEY: &str = "push:deferred:mobile";
+
+/// How long a message stays with the computer before the phone is told too.
+pub const DEFER_TO_MOBILE_SECONDS: i64 = 300;
+
+/// A phone's copy of a notification, parked until [`DEFER_TO_MOBILE_SECONDS`]
+/// have passed. The whole payload rides along: rebuilding it later would mean
+/// re-deriving a preview from a message that may since have been edited.
+#[derive(Serialize, Deserialize)]
+struct Deferred {
+    user_id: String,
+    payload: PushPayload,
+}
+
+async fn defer_to_mobile(state: &AppState, user_id: &str, payload: &PushPayload) {
+    let entry = Deferred {
+        user_id: user_id.to_string(),
+        payload: payload.clone(),
+    };
+    let Ok(raw) = serde_json::to_string(&entry) else {
+        return;
+    };
+    let due = (now_secs() as i64 + DEFER_TO_MOBILE_SECONDS) as f64;
+    let mut con = state.rd();
+    let _: Result<(), _> = con.zadd(DEFERRED_KEY, raw, due).await;
+    // The set is only ever a few minutes deep; the expiry is a backstop against
+    // a Redis that outlives a server which crashed mid-hold.
+    let _: Result<(), _> = con.expire(DEFERRED_KEY, TTL_SECONDS as i64).await;
+}
+
+/// Release every held notification that has come due and is still worth sending.
+///
+/// Returns how many phones were actually woken. Called on a timer; a hold whose
+/// message has since been read is dropped silently, which is the common case and
+/// the entire point of holding it.
+pub async fn flush_deferred(state: &AppState) -> AppResult<usize> {
+    if state.push.is_none() {
+        return Ok(0);
+    }
+    let due: Vec<String> = {
+        let mut con = state.rd();
+        con.zrangebyscore_limit(DEFERRED_KEY, 0f64, now_secs() as f64, 0, 200)
+            .await?
+    };
+
+    let mut sent = 0;
+    for raw in due {
+        // Claim it first: whoever removes the member is the one that sends it,
+        // so a second sweep overlapping this one cannot notify twice.
+        let claimed: i64 = {
+            let mut con = state.rd();
+            con.zrem(DEFERRED_KEY, &raw).await.unwrap_or(0)
+        };
+        if claimed == 0 {
+            continue;
+        }
+        let Ok(entry) = serde_json::from_str::<Deferred>(&raw) else {
+            continue;
+        };
+        let Some(message_id) = entry.payload.message_id.clone() else {
+            continue;
+        };
+        if !crate::services::read_state::is_message_unread(state, &entry.user_id, &message_id)
+            .await?
+        {
+            continue;
+        }
+        // They may have picked the phone up in the meantime, in which case the
+        // app itself is showing them the conversation and a push would be the
+        // duplicate this whole path exists to avoid.
+        let active = presence::active_devices(state, &entry.user_id)
+            .await
+            .unwrap_or_default();
+        if active.iter().any(|kind| kind == "mobile") {
+            continue;
+        }
+
+        send_to(state, &entry.user_id, &entry.payload, Audience::Phones).await;
+        mark_pending(state, &entry.user_id, &entry.payload.channel_id).await;
+        sent += 1;
+    }
+    Ok(sent)
+}
+
 // ── Fan-out helpers ──────────────────────────────────────
 
 /// Push a new message to everyone it should reach, skipping the author.
@@ -682,7 +822,27 @@ pub async fn notify_message(
         if target == author_id {
             continue;
         }
-        send_to_user(state, &target, &payload).await;
+        let active = presence::active_devices(state, &target)
+            .await
+            .unwrap_or_default();
+        let on_phone = active.iter().any(|kind| kind == "mobile");
+        let at_computer = active
+            .iter()
+            .any(|kind| kind == "browser" || kind == "desktop");
+
+        if on_phone {
+            // The app is open in their hand, and the socket that told us so is
+            // the same one that just delivered this message. A push on top of it
+            // is a second copy of something already on screen. A phone that dies
+            // without saying goodbye stops counting as soon as Socket.IO's own
+            // ping timeout drops the lease, so this cannot silence it for long.
+            send_to(state, &target, &payload, Audience::NotPhones).await;
+        } else if at_computer {
+            send_to(state, &target, &payload, Audience::NotPhones).await;
+            defer_to_mobile(state, &target, &payload).await;
+        } else {
+            send_to_user(state, &target, &payload).await;
+        }
         // Record the outstanding notification so a later read on any of this
         // user's devices can reach out and dismiss it (see `notify_read`).
         mark_pending(state, &target, channel_id).await;
@@ -786,4 +946,70 @@ pub async fn notify_call(
 pub fn web_public_key(state: &AppState) -> Option<String> {
     state.push.as_ref()?.web.as_ref()?;
     state.config.vapid_public_key.clone()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The whole routing rests on `fcm` meaning "phone" and nothing else meaning
+    /// it, so a transport added later must be classified deliberately rather than
+    /// inheriting whichever side of this split it happens to fall on.
+    #[test]
+    fn only_fcm_counts_as_a_phone() {
+        assert!(Audience::Phones.admits("fcm"));
+        assert!(!Audience::Phones.admits("webpush"));
+        assert!(!Audience::NotPhones.admits("fcm"));
+        assert!(Audience::NotPhones.admits("webpush"));
+        for kind in ["fcm", "webpush"] {
+            assert!(Audience::Every.admits(kind));
+        }
+    }
+
+    /// A held notification is written now and read back by a different process
+    /// minutes later, so the payload has to survive the round trip intact -
+    /// including the encrypted-conversation fields, which are omitted from the
+    /// wire form when absent.
+    #[test]
+    fn a_held_payload_survives_being_parked() {
+        let payload = PushPayload {
+            title: "Kim".into(),
+            body: String::new(),
+            href: "/dms/c1".into(),
+            tag: "c1".into(),
+            icon: None,
+            channel_id: "c1".into(),
+            message_id: Some("m1".into()),
+            sender_id: "u1".into(),
+            sender_name: "Kim".into(),
+            is_group: false,
+            kind: PushKind::Message,
+            ciphertext: Some("sealed".into()),
+            enc_epoch: Some(3),
+        };
+        let raw = serde_json::to_string(&Deferred {
+            user_id: "u2".into(),
+            payload,
+        })
+        .unwrap();
+        let back: Deferred = serde_json::from_str(&raw).unwrap();
+
+        assert_eq!(back.user_id, "u2");
+        assert_eq!(back.payload.message_id.as_deref(), Some("m1"));
+        assert_eq!(back.payload.ciphertext.as_deref(), Some("sealed"));
+        assert_eq!(back.payload.enc_epoch, Some(3));
+        assert_eq!(back.payload.kind, PushKind::Message);
+    }
+
+    /// The plaintext case sends no ciphertext at all, and `skip_serializing_if`
+    /// means those keys are simply missing from what comes back out of Redis.
+    #[test]
+    fn a_plaintext_payload_parks_without_its_absent_fields() {
+        let raw = r#"{"user_id":"u2","payload":{"title":"Kim","body":"hi","href":"/dms/c1",
+            "tag":"c1","icon":null,"channel_id":"c1","message_id":"m1","sender_id":"u1",
+            "sender_name":"Kim","is_group":false,"kind":"message"}}"#;
+        let back: Deferred = serde_json::from_str(raw).unwrap();
+        assert!(back.payload.ciphertext.is_none());
+        assert!(back.payload.enc_epoch.is_none());
+    }
 }

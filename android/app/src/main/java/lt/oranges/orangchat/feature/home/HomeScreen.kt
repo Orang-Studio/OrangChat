@@ -363,6 +363,7 @@ fun HomeScreen(
                 presenceActivities = presenceActivities,
                 friendIds = friendIds,
                 unreads = unreads,
+                typing = typing,
                 onOpenFriends = { overlay = Overlay.FRIENDS; closeDrawer() },
                 onOpenConversation = { convo ->
                     appViewModel.selectChannel(convo.id)
@@ -831,6 +832,19 @@ fun HomeScreen(
                                     },
                                     onRemoveBackground = if (convo != null) {
                                         { appViewModel.clearDmBackground(channelId) }
+                                    } else {
+                                        null
+                                    },
+                                    iconUrl = convo?.iconUrl,
+                                    // A 1:1 DM shows the other person; only a
+                                    // group has a picture of its own to set.
+                                    onSetIcon = if (convo?.type == ChannelType.GROUP_DM) {
+                                        { uri -> appViewModel.setDmIcon(channelId, uri) }
+                                    } else {
+                                        null
+                                    },
+                                    onRemoveIcon = if (convo?.type == ChannelType.GROUP_DM) {
+                                        { appViewModel.clearDmIcon(channelId) }
                                     } else {
                                         null
                                     },

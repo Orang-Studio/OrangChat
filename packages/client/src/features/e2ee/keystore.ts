@@ -146,6 +146,19 @@ export async function saveIdentity(identity: LocalIdentity): Promise<void> {
   await run(IDENTITY, 'readwrite', (s) => s.put(record));
 }
 
+/**
+ * Throws away this device's own identity, leaving the browser able to enrol
+ * again from scratch.
+ *
+ * Only ever right when the key it points at is already dead on the server -
+ * after an erasure, or after this device was revoked. Holding on to a private
+ * key whose public half is gone from the log is what makes the settings screen
+ * insist this is still an enrolled device and refuse to set one up.
+ */
+export async function deleteIdentity(): Promise<void> {
+  await run(IDENTITY, 'readwrite', (s) => s.delete('self'));
+}
+
 export async function pinPeer(pin: PinnedPeer): Promise<void> {
   await run(PINS, 'readwrite', (s) => s.put(pin));
 }

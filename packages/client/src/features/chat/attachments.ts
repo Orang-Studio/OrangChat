@@ -213,6 +213,12 @@ async function captureFrame(video: HTMLVideoElement): Promise<{
  */
 export async function makeVideoPreview(file: File): Promise<{
   duration?: number;
+  /**
+   * The clip's own dimensions. Separate from [preview] because receivers lay
+   * the player out from these, and a frame grab is allowed to fail - when it
+   * does, the shape is still known and the box is still right.
+   */
+  size?: { width: number; height: number };
   preview: LocalPreview | null;
 }> {
   const url = URL.createObjectURL(file);
@@ -223,6 +229,10 @@ export async function makeVideoPreview(file: File): Promise<{
     if (!(await awaitMetadata(video))) return { preview: null };
     const duration =
       Number.isFinite(video.duration) && video.duration > 0 ? video.duration : undefined;
+    const size =
+      video.videoWidth > 0 && video.videoHeight > 0
+        ? { width: video.videoWidth, height: video.videoHeight }
+        : undefined;
 
     let preview: LocalPreview | null = null;
     try {
@@ -241,7 +251,11 @@ export async function makeVideoPreview(file: File): Promise<{
     } catch {
       // A frame is a courtesy; the duration still rides along.
     }
-    return { ...(duration !== undefined ? { duration } : {}), preview };
+    return {
+      ...(duration !== undefined ? { duration } : {}),
+      ...(size ? { size } : {}),
+      preview,
+    };
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -442,7 +456,9 @@ export async function uploadSealedAttachment(
   const contentType = mediaContentType(file, isVideo, isAudio);
   const video = isVideo ? await makeVideoPreview(file) : undefined;
   const audio = !isVideo && isAudio ? await probeAudio(file) : undefined;
-  const dims = preview ?? video?.preview ?? (await imageSize(file));
+  // A video's own dimensions before its poster's: the poster is only a frame of
+  // it, and it is absent whenever the grab failed.
+  const dims = preview ?? video?.size ?? video?.preview ?? (await imageSize(file));
 
   const main = await uploadSealedBlob(new Uint8Array(await file.arrayBuffer()), handle);
 

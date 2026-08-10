@@ -217,6 +217,8 @@ data class Channel(
      *  like avatars, not E2EE like attachments: the server serves one image to
      *  every participant, including late joiners. */
     val backgroundUrl: String? = null,
+    /** Group-DM-only: the group's own picture, plaintext like an avatar. */
+    val iconUrl: String? = null,
 )
 
 @Serializable
@@ -384,6 +386,8 @@ data class Conversation(
     val latestMessage: Message? = null,
     /** DM-only: shared chat background, plaintext like avatars. */
     val backgroundUrl: String? = null,
+    /** Group-DM-only: the group's own picture, plaintext like avatars. */
+    val iconUrl: String? = null,
 )
 
 @Serializable

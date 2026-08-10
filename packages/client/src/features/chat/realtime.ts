@@ -256,11 +256,14 @@ export function registerRealtime(client: QueryClient): void {
   // ── Channels ──────────────────────────────────────────
   const upsertChannel = (channel: Channel) => {
     if (!channel.serverId) {
-      // DM background changes (http::channels PUT /background) arrive here;
-      // conversations have no other editable field, so this is the whole update.
+      // DM background and group-icon changes (http::channels PUT /background,
+      // PUT /icon) arrive here; those are the conversation's only editable
+      // fields, so this is the whole update.
       client.setQueryData<Conversation[]>(dmKeys.list, (list) =>
         list?.map((c) =>
-          c.id === channel.id ? { ...c, backgroundUrl: channel.backgroundUrl } : c,
+          c.id === channel.id
+            ? { ...c, backgroundUrl: channel.backgroundUrl, iconUrl: channel.iconUrl }
+            : c,
         ),
       );
       return;

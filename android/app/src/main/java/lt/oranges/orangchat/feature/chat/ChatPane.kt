@@ -41,6 +41,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -66,6 +67,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Tag
@@ -85,6 +87,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.minimumInteractiveComponentSize
 import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -107,7 +110,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -134,6 +140,7 @@ import lt.oranges.orangchat.util.absoluteUrl
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
@@ -165,6 +172,7 @@ import lt.oranges.orangchat.feature.chat.voicemessage.rememberVoiceRecorderState
 import lt.oranges.orangchat.data.model.UserActivity
 import lt.oranges.orangchat.ui.components.ActivityStatus
 import lt.oranges.orangchat.ui.components.Avatar
+import lt.oranges.orangchat.ui.components.GroupIcon
 import lt.oranges.orangchat.ui.components.BotTag
 import lt.oranges.orangchat.ui.components.MenuItem
 import lt.oranges.orangchat.ui.components.OrangDropdownMenu
@@ -173,6 +181,7 @@ import lt.oranges.orangchat.ui.components.OrangButton
 import lt.oranges.orangchat.ui.components.OrangDialog
 import lt.oranges.orangchat.ui.components.ButtonSize
 import lt.oranges.orangchat.ui.components.ButtonVariant
+import lt.oranges.orangchat.ui.theme.LocalOrangColors
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.EmojiRef
@@ -306,6 +315,11 @@ private data class MessageRowData(
     val grouped: Boolean,
     val isNotice: Boolean = false,
     val notice: SystemNotice? = null,
+    /** Last row of its run - the next message chronologically starts one of its
+     *  own, or there is no next message. Only the two ends of a run are needed
+     *  to round the group plate, and [grouped] already marks the first: a row
+     *  that continues nothing is where a run begins. */
+    val groupEnd: Boolean = true,
 )
 
 /** Namespaced so a local client id can never collide with a server message id. */
@@ -405,9 +419,24 @@ fun ChatPane(
     onSetBackground: ((Uri) -> Unit)? = null,
     /** Clear the shared background. Shown only while one is set. */
     onRemoveBackground: (() -> Unit)? = null,
+    /** Group DMs only: the group's own picture, shown in place of the glyph. */
+    iconUrl: String? = null,
+    /** Non-null only for group DMs: pick an image for the group icon. */
+    onSetIcon: ((Uri) -> Unit)? = null,
+    /** Clear the group icon. Shown only while one is set. */
+    onRemoveIcon: (() -> Unit)? = null,
 ) {
     val customEmojis = remember(emojis) { emojis.values.sortedBy { it.name.lowercase() } }
     val c = OrangTheme.colors
+    // Inside a group plate the surface ramp shifts up a step, so the cards, code
+    // blocks and chips drawn on surface1/surface2 stay visibly raised instead of
+    // dissolving into it - the same remap the web client makes with CSS custom
+    // properties on `.oc-plate`. Remembered because LocalOrangColors is a static
+    // local: handing it a fresh instance per recomposition would invalidate
+    // every row's subtree.
+    val rowColors = remember(c, backgroundUrl != null) {
+        if (backgroundUrl == null) c else c.copy(surface1 = c.surface3, surface2 = c.surface4)
+    }
     val listState = rememberLazyListState()
     var reportTarget by remember { mutableStateOf<Message?>(null) }
     var reportReason by remember { mutableStateOf("") }
@@ -423,6 +452,14 @@ fun ChatPane(
     val backgroundPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
     ) { uri -> if (uri != null) onSetBackground?.invoke(uri) }
+    val iconPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri -> if (uri != null) onSetIcon?.invoke(uri) }
+
+    // A full-screen file is shown by another activity, which only receives the
+    // attachment; this is how it finds the message that file came on.
+    DisposableEffect(Unit) { onDispose { MediaPreviewHost.unbind() } }
+    LaunchedEffect(messages, onReact) { MediaPreviewHost.bind(messages, onReact) }
 
     // Rendered newest-first into a reverseLayout list, so index 0 is the visual
     // bottom. This is what pins the view to the newest message and keeps the
@@ -435,13 +472,17 @@ fun ChatPane(
         val deduped = messages
             .distinctBy { it.id }
             .distinctBy(::messageRowKey)
+        // Resolved for the whole list first so a row can also see whether the
+        // message after it continues its run, which is what closes the plate.
+        val grouped = deduped.mapIndexed { i, m -> isGrouped(deduped.getOrNull(i - 1), m) }
         deduped
             .mapIndexed { i, m ->
                 MessageRowData(
                     m,
-                    isGrouped(deduped.getOrNull(i - 1), m),
+                    grouped[i],
                     m.isSystemNotice(),
                     SystemNotice.of(m),
+                    groupEnd = grouped.getOrNull(i + 1) != true,
                 )
             }
             .asReversed()
@@ -620,7 +661,16 @@ fun ChatPane(
                 tint = c.inkSecondary,
                 modifier = Modifier.clickable(onClick = onBack).padding(4.dp),
             )
-            if (headerUser != null) {
+            // Only a group DM is handed the icon actions, so that is also what
+            // says to draw the group's own picture here instead of whichever
+            // member happens to come first.
+            if (onSetIcon != null) {
+                GroupIcon(
+                    iconUrl = iconUrl,
+                    size = 28.dp,
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                )
+            } else if (headerUser != null) {
                 Avatar(
                     user = headerUser,
                     size = 28.dp,
@@ -710,6 +760,30 @@ fun ChatPane(
                         )
                     }
                 }
+                if (onSetIcon != null) {
+                    add(
+                        MenuItem(
+                            if (iconUrl != null) "Change group icon" else "Set group icon",
+                            Icons.Default.Group,
+                        ) {
+                            iconPicker.launch(
+                                PickVisualMediaRequest(
+                                    ActivityResultContracts.PickVisualMedia.ImageOnly,
+                                ),
+                            )
+                        },
+                    )
+                    if (iconUrl != null && onRemoveIcon != null) {
+                        add(
+                            MenuItem(
+                                "Remove group icon",
+                                Icons.Default.Delete,
+                                destructive = true,
+                                onClick = onRemoveIcon,
+                            ),
+                        )
+                    }
+                }
             }
             // A channel header carries search alone rather than hiding the one
             // thing in it behind a second tap.
@@ -762,19 +836,25 @@ fun ChatPane(
 
         // The return affordance floats over history; giving it a row of its own
         // would shorten the conversation precisely when someone is reading it.
-        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+        Box(modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
             // Shared DM background, under everything else. Plaintext, like
-            // avatars: everyone in the conversation sees the same image. The
-            // scrim on top is what keeps the messages readable over whatever
-            // picture somebody picked.
+            // avatars: everyone in the conversation sees the same image.
+            //
+            // Readability is the group plates' job now (see MessageRow), so the
+            // picture keeps almost all of its strength here. What is left is a
+            // light tint to pull a blown-out photo back towards the surface
+            // colour, and a slight blur so fine detail stops fighting the
+            // unplated text - the system notices - that does sit straight on it.
+            // The blur bleeds transparent pixels in from the edges; the
+            // overscale pushes them past the clip.
             if (backgroundUrl != null) {
                 AsyncImage(
                     model = absoluteUrl(backgroundUrl),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().scale(1.1f).blur(2.dp),
                 )
-                Box(Modifier.fillMaxSize().background(c.surface2.copy(alpha = 0.8f)))
+                Box(Modifier.fillMaxSize().background(c.surface2.copy(alpha = 0.3f)))
             }
             // Messages. reverseLayout: first item = visual bottom = newest.
             LazyColumn(
@@ -804,32 +884,36 @@ fun ChatPane(
                         }
                         return@items
                     }
-                    MessageRow(
-                        message = message,
-                        pending = message.id in pendingMessageIds,
-                        failed = message.id in failedMessageIds,
-                        onRetry = { onRetryMessage(message.id) },
-                        onDiscard = { onDiscardMessage(message.id) },
-                        selfId = selfId,
-                        presence = presence[message.author.id],
-                        grouped = row.grouped,
-                        compact = compact,
-                        nameOf = nameOf,
-                        mentionNames = mentionNames,
-                        mentionUsers = mentionUsers,
-                        members = members,
-                        repliedTo = message.replyToId?.let { id -> messages.firstOrNull { it.id == id } },
-                        highlighted = message.id == highlightedId,
-                        replyingTo = replyTo?.id == message.id,
-                        onJumpToMessage = jumpToMessage,
-                        onReply = { replyTo = it },
-                        onEdit = onEdit,
-                        onDelete = onDelete,
-                        onReport = { reportTarget = it },
-                        onReact = onReact,
-                        onOpenProfile = onOpenProfile,
-                        emojis = emojis,
-                    )
+                    CompositionLocalProvider(LocalOrangColors provides rowColors) {
+                        MessageRow(
+                            message = message,
+                            pending = message.id in pendingMessageIds,
+                            failed = message.id in failedMessageIds,
+                            onRetry = { onRetryMessage(message.id) },
+                            onDiscard = { onDiscardMessage(message.id) },
+                            selfId = selfId,
+                            presence = presence[message.author.id],
+                            grouped = row.grouped,
+                            plated = backgroundUrl != null,
+                            groupEnd = row.groupEnd,
+                            compact = compact,
+                            nameOf = nameOf,
+                            mentionNames = mentionNames,
+                            mentionUsers = mentionUsers,
+                            members = members,
+                            repliedTo = message.replyToId?.let { id -> messages.firstOrNull { it.id == id } },
+                            highlighted = message.id == highlightedId,
+                            replyingTo = replyTo?.id == message.id,
+                            onJumpToMessage = jumpToMessage,
+                            onReply = { replyTo = it },
+                            onEdit = onEdit,
+                            onDelete = onDelete,
+                            onReport = { reportTarget = it },
+                            onReact = onReact,
+                            onOpenProfile = onOpenProfile,
+                            emojis = emojis,
+                        )
+                    }
                 }
                 // Last in a reversed list = the visual top, where older history loads.
                 if (loadingOlder) {
@@ -1262,6 +1346,11 @@ private fun MessageRow(
     selfId: String,
     presence: PresenceStatus?,
     grouped: Boolean,
+    /** The conversation has a background picture, so the row draws itself as
+     *  part of an inset, rounded group plate instead of a full-width band. */
+    plated: Boolean,
+    /** Last row of its run, so the plate closes and rounds off underneath it. */
+    groupEnd: Boolean,
     compact: Boolean,
     nameOf: (String) -> String?,
     mentionNames: Map<String, String>,
@@ -1322,15 +1411,34 @@ private fun MessageRow(
     // before the finger commits to it. Gated on the finger still being down:
     // the spring back to rest re-crosses every threshold on its way, and those
     // are not crossings the user made.
-    // Fades back to the normal row color once the highlight lapses, so the jump
-    // draws the eye without leaving the message looking permanently marked.
-    val restColor = when {
+
+    // The row used to paint one opaque colour, which is why a chat background
+    // was invisible behind the conversation however light its scrim was: every
+    // message covered it. The surface and the state tint are separate layers
+    // now, so the plate underneath can be translucent and still carry the
+    // reply/ping/jump cues on top of it at full strength.
+    val plateShape = if (!plated) {
+        RectangleShape
+    } else {
+        RoundedCornerShape(
+            topStart = if (!grouped) OrangRadius.xl2 else 0.dp,
+            topEnd = if (!grouped) OrangRadius.xl2 else 0.dp,
+            bottomStart = if (groupEnd) OrangRadius.xl2 else 0.dp,
+            bottomEnd = if (groupEnd) OrangRadius.xl2 else 0.dp,
+        )
+    }
+    val rowSurface = if (plated) c.plate else c.surface2
+    // Fades back to no tint at all once the highlight lapses, so the jump draws
+    // the eye without leaving the message looking permanently marked. The rest
+    // state keeps the primary hue at zero alpha rather than using
+    // Color.Transparent, whose black would darken the row mid-animation.
+    val restTint = when {
         replyingTo -> c.primary.copy(alpha = 0.11f)
         pinged -> c.primary.copy(alpha = 0.08f)
-        else -> c.surface2
+        else -> c.primary.copy(alpha = 0f)
     }
-    val rowBackground by animateColorAsState(
-        targetValue = if (highlighted) c.primarySoft else restColor,
+    val rowTint by animateColorAsState(
+        targetValue = if (highlighted) c.primarySoft else restTint,
         animationSpec = tween(durationMillis = if (highlighted) 0 else 600),
         label = "message-highlight",
     )
@@ -1359,11 +1467,25 @@ private fun MessageRow(
             .fillMaxWidth()
             .alpha(if (pending) 0.5f else 1f)
             .offset { IntOffset(dragX.value.roundToInt(), 0) }
+            // Outside the plate: the gutter the picture shows through at the
+            // sides, and the gap that separates one group from the next.
+            .then(
+                if (plated) {
+                    Modifier.padding(
+                        start = 8.dp,
+                        end = 8.dp,
+                        top = if (!grouped) 4.dp else 0.dp,
+                        bottom = if (groupEnd) 4.dp else 0.dp,
+                    )
+                } else {
+                    Modifier
+                },
+            )
             .then(
                 if (replyingTo || pinged) {
                     Modifier.shadow(
                         elevation = 8.dp,
-                        shape = RoundedCornerShape(OrangRadius.md),
+                        shape = if (plated) plateShape else RoundedCornerShape(OrangRadius.md),
                         ambientColor = c.primary.copy(alpha = 0.18f),
                         spotColor = c.primary.copy(alpha = 0.18f),
                     )
@@ -1371,6 +1493,8 @@ private fun MessageRow(
                     Modifier
                 },
             )
+            // Keeps the long-press ripple inside the plate's rounded corners.
+            .then(if (plated) Modifier.clip(plateShape) else Modifier)
             .pointerInput(message.id, isMine, pending, failed) {
                 // Replying to or editing a message that never reached the
                 // server is meaningless - the actions a failed row offers are
@@ -1407,7 +1531,8 @@ private fun MessageRow(
                     },
                 )
             }
-            .background(rowBackground)
+            .background(rowSurface, plateShape)
+            .background(rowTint, plateShape)
             // Long-press, not tap: a tap lands on a message constantly while
             // reading, and every one of them used to open this menu.
             .combinedClickable(
@@ -1419,10 +1544,17 @@ private fun MessageRow(
                 },
             )
             .padding(
-                start = 16.dp,
-                end = 16.dp,
-                top = if (grouped) 1.dp else if (compact) 2.dp else 4.dp,
-                bottom = if (compact) 1.dp else 2.dp,
+                // Gives back most of what the plate's own gutter takes, so the
+                // text column barely moves when a background is set - a phone
+                // has no width to spare for both insets.
+                start = if (plated) 12.dp else 16.dp,
+                end = if (plated) 12.dp else 16.dp,
+                // Vertical padding belongs to the group, not to each row in it:
+                // a run of grouped messages is meant to read as one block, and
+                // padding on both sides of every internal seam opened a visible
+                // step between the lead and the first message under it.
+                top = if (grouped) 0.dp else if (compact) 2.dp else 4.dp,
+                bottom = if (!groupEnd) 0.dp else if (compact) 1.dp else 2.dp,
             ),
         verticalAlignment = Alignment.Top,
     ) {
@@ -1538,6 +1670,7 @@ private fun MessageRow(
                         selfId = selfId,
                         emojis = renderEmojis,
                         fontSize = 15.sp,
+                        color = if (failed) c.danger else null,
                         onMentionClick = { userId ->
                             members.firstOrNull { it.userId == userId }?.user?.let(onOpenProfile)
                         },
@@ -1547,21 +1680,26 @@ private fun MessageRow(
             }
             if (message.reactions.isNotEmpty()) {
                 Spacer(Modifier.height(4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                // The chips and the add button are one control strip, so they
+                // share a height and a shape. The add button used to claim a
+                // 48dp touch target beside ~26dp chips, which stretched the
+                // strip, floated the icon out of line with the counts, and left
+                // the chips looking undersized next to it.
+                val chipShape = RoundedCornerShape(OrangRadius.xl)
+                val chipHeight = 28.dp
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     message.reactions.forEach { r ->
                         Row(
                             modifier = Modifier
-                                .background(
-                                    if (r.me) c.primarySoft else c.surface3,
-                                    RoundedCornerShape(OrangRadius.xl),
-                                )
-                                .border(
-                                    1.dp,
-                                    if (r.me) c.primary else c.border,
-                                    RoundedCornerShape(OrangRadius.xl),
-                                )
+                                .height(chipHeight)
+                                .clip(chipShape)
+                                .background(if (r.me) c.primarySoft else c.surface3)
+                                .border(1.dp, if (r.me) c.primary else c.border, chipShape)
                                 .clickable { onReact(message, r.emoji) }
-                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                                .padding(horizontal = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(r.emoji, fontSize = 13.sp)
@@ -1569,15 +1707,22 @@ private fun MessageRow(
                             Text("${r.count}", color = if (r.me) c.primary else c.inkSecondary, fontSize = 12.sp)
                         }
                     }
-                    Box {
+                    Box(
+                        modifier = Modifier
+                            .height(chipHeight)
+                            .widthIn(min = 36.dp)
+                            .clip(chipShape)
+                            .background(c.surface3)
+                            .border(1.dp, c.border, chipShape)
+                            .clickable { emojiOpen = true }
+                            .semantics { contentDescription = "Add reaction" },
+                        contentAlignment = Alignment.Center,
+                    ) {
                         Icon(
                             Icons.Default.AddReaction,
-                            contentDescription = "Add reaction",
+                            contentDescription = null,
                             tint = c.inkMuted,
-                            modifier = Modifier
-                                .minimumInteractiveComponentSize()
-                                .size(20.dp)
-                                .clickable { emojiOpen = true },
+                            modifier = Modifier.size(16.dp),
                         )
                     }
                 }

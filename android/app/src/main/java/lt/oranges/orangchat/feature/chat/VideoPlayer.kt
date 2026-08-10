@@ -41,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -214,6 +215,9 @@ fun VideoAttachment(
 ) {
     val c = OrangTheme.colors
     val context = LocalContext.current
+    val view = LocalView.current
+    // The viewer grows out of this box rather than sliding in over it.
+    val origin = rememberMediaOrigin()
     // A sealed clip is not fetched until it is asked for: decrypting one means
     // downloading all of it, and a channel of videos doing that on sight is
     // what made previews take longer the bigger the file was.
@@ -259,7 +263,9 @@ fun VideoAttachment(
     val decoderAspect = if (active && MediaPlayback.videoAspect > 0f) MediaPlayback.videoAspect else null
     val trueAspect = decoderAspect ?: knownAspect ?: DEFAULT_ASPECT
     val boxAspect = (knownAspect ?: trueAspect).coerceIn(MIN_INLINE_ASPECT, MAX_INLINE_ASPECT)
-    val shape = RoundedCornerShape(OrangRadius.lg)
+    // Matches the inline image radius - a clip and a photo sitting under one
+    // another in a row should not round by different amounts.
+    val shape = RoundedCornerShape(OrangRadius.xl2)
 
     Column {
         Box(
@@ -268,7 +274,8 @@ fun VideoAttachment(
                 .widthIn(max = INLINE_VIDEO_WIDTH)
                 .aspectRatio(boxAspect)
                 .clip(shape)
-                .background(Color.Black),
+                .background(Color.Black)
+                .mediaOrigin(origin),
         ) {
             if (player != null) {
                 // While the lightbox is up it owns the output; this must not
@@ -318,7 +325,7 @@ fun VideoAttachment(
                     // the shared player surface while fullscreen owns it.
                     requested = true
                     previewOpen = true
-                    previewLauncher.launch(MediaPreviewActivity.intent(context, attachment))
+                    openMediaPreview(previewLauncher, context, view, origin, attachment)
                 },
             )
         }

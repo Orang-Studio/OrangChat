@@ -143,3 +143,7 @@ export const requestKeyDeletion = (code?: string) =>
 
 export const cancelKeyDeletion = () =>
   api<KeyDeletionStatus>('/e2ee/keys/deletion', { method: 'DELETE' });
+
+/** No waiting period: the signature is the authorization. See identity.eraseKeysNow. */
+export const eraseKeysNow = (body: { deviceId: string; issuedAt: string; signature: string }) =>
+  api<KeyDeletionStatus>('/e2ee/keys/deletion/now', { method: 'POST', json: body });

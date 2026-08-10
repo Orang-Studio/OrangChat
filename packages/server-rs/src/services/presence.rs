@@ -400,6 +400,46 @@ pub async fn get_devices(state: &AppState, user_id: &str) -> AppResult<Vec<Strin
         .collect())
 }
 
+/// The kinds in [`get_devices`] order, keeping only sockets that last reported
+/// themselves foreground.
+fn foreground_kinds(
+    devices: HashMap<String, String>,
+    lifecycle: &HashMap<String, String>,
+) -> Vec<String> {
+    let active: HashSet<String> = devices
+        .into_iter()
+        // A socket with no lifecycle entry is treated as foreground: the upsert
+        // seeds 'online' and only a client that has since backgrounded itself
+        // ever writes 'idle'.
+        .filter(|(socket_id, _)| lifecycle.get(socket_id).map(String::as_str) != Some("idle"))
+        .map(|(_, kind)| kind)
+        .collect();
+    ["desktop", "browser", "mobile"]
+        .into_iter()
+        .filter(|kind| active.contains(*kind))
+        .map(str::to_string)
+        .collect()
+}
+
+/// Which kinds of client the user is actually sitting in front of.
+///
+/// [`get_devices`] answers "where is this account signed in", which is the wrong
+/// question for a notification: a phone holding a socket open in the background
+/// is precisely the phone that still needs waking. This keeps only the sockets
+/// whose client reported itself foreground, so "mobile" here means the app is
+/// open in front of the user and "browser"/"desktop" mean they are at their
+/// computer rather than merely logged in on it.
+pub async fn active_devices(state: &AppState, user_id: &str) -> AppResult<Vec<String>> {
+    let (online, _) = prune_user(state, user_id).await?;
+    if !online {
+        return Ok(Vec::new());
+    }
+    let mut con = state.rd();
+    let devices: HashMap<String, String> = con.hgetall(devices_key(user_id)).await?;
+    let lifecycle: HashMap<String, String> = con.hgetall(lifecycle_key(user_id)).await?;
+    Ok(foreground_kinds(devices, &lifecycle))
+}
+
 pub async fn get_device_sets(
     state: &AppState,
     user_ids: &[String],
@@ -427,6 +467,39 @@ mod tests {
         }
         assert!(!valid_status(""));
         assert!(!valid_status("invisible-but-online"));
+    }
+
+    fn map(pairs: &[(&str, &str)]) -> HashMap<String, String> {
+        pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect()
+    }
+
+    #[test]
+    fn a_backgrounded_phone_is_not_a_phone_you_are_looking_at() {
+        let devices = map(&[("s1", "mobile"), ("s2", "browser")]);
+        let lifecycle = map(&[("s1", "idle"), ("s2", "online")]);
+        assert_eq!(foreground_kinds(devices, &lifecycle), vec!["browser"]);
+    }
+
+    #[test]
+    fn a_socket_that_never_reported_itself_counts_as_foreground() {
+        let devices = map(&[("s1", "mobile")]);
+        assert_eq!(
+            foreground_kinds(devices, &HashMap::new()),
+            vec!["mobile".to_string()]
+        );
+    }
+
+    #[test]
+    fn one_live_tab_keeps_the_kind_active_however_many_are_idle() {
+        let devices = map(&[("s1", "browser"), ("s2", "browser")]);
+        let lifecycle = map(&[("s1", "idle"), ("s2", "online")]);
+        assert_eq!(
+            foreground_kinds(devices, &lifecycle),
+            vec!["browser".to_string()]
+        );
     }
 
     #[test]

@@ -2,16 +2,25 @@ import * as RadixDialog from "@radix-ui/react-dialog";
 import { useRef, useState } from "react";
 import { Download, Pause, Play, Volume2, VolumeX, X } from "lucide-react";
 import type { Attachment } from "@orangchat/shared";
+import { cn } from "../../lib/cn";
 import { formatBytes } from "./attachments";
+import { MediaSenderBar, type MediaContext } from "./MediaSenderBar";
+import { useMediaZoom, type MediaOrigin } from "./useMediaZoom";
 
 /** Full-screen player for a video attachment, with downloading kept explicit. */
 export function VideoLightbox({
   attachment,
+  context,
+  origin,
   open,
   startTime,
   onOpenChange,
 }: {
   attachment: Attachment;
+  /** The message this clip came on, for the bar under the controls. */
+  context?: MediaContext;
+  /** The inline player's box, so the viewer grows out of it. */
+  origin?: MediaOrigin | null;
   open: boolean;
   startTime: number;
   onOpenChange: (open: boolean) => void;
@@ -21,6 +30,7 @@ export function VideoLightbox({
   const [muted, setMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(startTime);
   const [duration, setDuration] = useState(0);
+  const zoom = useMediaZoom(origin);
 
   const togglePlaying = () => {
     const video = videoRef.current;
@@ -39,7 +49,7 @@ export function VideoLightbox({
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
-        <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/80" />
+        <RadixDialog.Overlay className="oc-backdrop fixed inset-0 z-40 bg-black/80" />
         <RadixDialog.Content
           aria-describedby={undefined}
           className="fixed inset-0 z-50 flex flex-col focus:outline-none"
@@ -47,7 +57,7 @@ export function VideoLightbox({
         >
           <RadixDialog.Title className="sr-only">{attachment.filename}</RadixDialog.Title>
 
-           <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-3 bg-black/40 px-4 py-2.5 text-white">
+           <div className="oc-chrome-top absolute inset-x-0 top-0 z-10 flex items-center gap-3 bg-black/40 px-4 py-2.5 text-white">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{attachment.filename}</p>
               {attachment.size > 0 && (
@@ -72,9 +82,13 @@ export function VideoLightbox({
           </div>
 
            <div
-             className="absolute inset-0 flex items-center justify-center p-4"
+             className={cn(
+               "absolute inset-0 flex items-center justify-center p-4 pt-16",
+               context ? "pb-40" : "pb-16",
+             )}
             onClick={() => onOpenChange(false)}
           >
+             <div ref={zoom.ref} className="flex max-h-full max-w-full">
              <video
                ref={videoRef}
                src={attachment.url}
@@ -87,6 +101,7 @@ export function VideoLightbox({
                onLoadedMetadata={(event) => {
                  setDuration(event.currentTarget.duration);
                  if (startTime > 0) event.currentTarget.currentTime = startTime;
+                 zoom.onReady();
                }}
                onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
                onPlay={() => setPlaying(true)}
@@ -95,9 +110,11 @@ export function VideoLightbox({
                onClick={(event) => event.stopPropagation()}
                className="max-h-full max-w-full bg-black object-contain"
              />
+             </div>
            </div>
+           <div className="oc-chrome-bottom absolute inset-x-0 bottom-0 z-10">
            <div
-             className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 bg-black/60 px-4 py-2.5 text-white"
+             className="flex items-center gap-2 bg-black/60 px-4 py-2.5 text-white"
              onClick={(event) => event.stopPropagation()}
            >
              <button
@@ -134,6 +151,10 @@ export function VideoLightbox({
              >
                {muted ? <VolumeX aria-hidden className="size-4" /> : <Volume2 aria-hidden className="size-4" />}
              </button>
+           </div>
+           {/* Under the transport, not beside it: the controls are about the
+               clip, this is about the message it arrived on. */}
+           {context && <MediaSenderBar context={context} />}
            </div>
          </RadixDialog.Content>
       </RadixDialog.Portal>

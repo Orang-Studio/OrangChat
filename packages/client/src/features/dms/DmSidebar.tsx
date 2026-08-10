@@ -41,6 +41,8 @@ import {
   dmKeys,
   useConversations,
 } from './queries';
+import { useTypingUserIds } from '../chat/typing';
+import { GroupIcon } from './GroupIcon';
 import { NewDmDialog } from './NewDmDialog';
 import { leaveDm } from './api';
 import { ActivityStatus } from '../../components/ActivityStatus';
@@ -49,10 +51,27 @@ const copyText = (text: string) => void navigator.clipboard?.writeText(text);
 
 function latestMessagePreview(message: Message | null | undefined, selfId: string | undefined) {
   if (!message) return null;
-  const author = message.author.id === selfId ? 'you' : message.author.displayName;
+  const author = message.author.id === selfId ? 'You' : message.author.displayName;
   const content =
     message.content.trim() || (message.attachments.length > 0 ? 'Sent an attachment' : 'Message');
   return `${author}: ${content.replace(/\s+/g, ' ')}`;
+}
+
+/**
+ * Who to name in the row's typing line. A one-on-one has a single candidate, so
+ * the name adds nothing the row title does not already say; a group needs it to
+ * be useful, and past two people the list is longer than the row is wide.
+ */
+function typingPreview(typingIds: string[], conversation: Conversation, isGroup: boolean) {
+  if (typingIds.length === 0) return null;
+  if (!isGroup) return 'typing…';
+  const names = typingIds
+    .map((id) => conversation.participants.find((p) => p.id === id)?.displayName)
+    .filter((name): name is string => !!name);
+  if (names.length === 0) return 'typing…';
+  if (names.length === 1) return `${names[0]} is typing…`;
+  if (names.length === 2) return `${names[0]} and ${names[1]} are typing…`;
+  return 'Several people are typing…';
 }
 
 function ConversationRow({
@@ -69,6 +88,13 @@ function ConversationRow({
   const others = otherParticipants(conversation, selfId);
   const isGroup = conversation.type === 'group_dm';
   const latestPreview = latestMessagePreview(conversation.latestMessage, selfId);
+  // Someone mid-sentence is newer news than the message before it, so the
+  // typing line takes the preview's slot rather than adding a third row.
+  const typingLine = typingPreview(
+    useTypingUserIds(conversation.id, selfId),
+    conversation,
+    isGroup,
+  );
   // A one-on-one DM has exactly one counterpart; menu actions that target a
   // person (profile, remove friend, copy user ID) only make sense then.
   const other = !isGroup ? others[0] : undefined;
@@ -134,9 +160,7 @@ function ConversationRow({
               />
             )}
             {isGroup ? (
-              <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink-secondary">
-                <Users aria-hidden className="size-4" />
-              </span>
+              <GroupIcon iconUrl={conversation.iconUrl} name={name} className="mt-0.5" />
             ) : (
               <Avatar
                 user={other ?? { displayName: name, avatarUrl: null }}
@@ -154,7 +178,11 @@ function ConversationRow({
               >
                 {name}
               </span>
-              {latestPreview ? (
+              {typingLine ? (
+                <span className="block truncate text-xs font-semibold leading-4 text-ink-secondary">
+                  {typingLine}
+                </span>
+              ) : latestPreview ? (
                 <span className="block truncate text-xs leading-4 text-ink-muted">
                   {latestPreview}
                 </span>

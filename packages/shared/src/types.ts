@@ -333,6 +333,8 @@ export interface Channel {
   topic: string | null;
   /** Shared DM chat background (Messenger-style). Plaintext like avatars. */
   backgroundUrl: string | null;
+  /** Group DM icon. Plaintext like avatars; null on every other channel kind. */
+  iconUrl: string | null;
   position: number;
   parentCategoryId: string | null;
   nsfw: boolean;
@@ -473,6 +475,8 @@ export interface Conversation {
   participants: User[];
   /** Shared DM chat background. Plaintext like avatars, never E2EE. */
   backgroundUrl: string | null;
+  /** Group DM icon, set by any participant. Null falls back to the group glyph. */
+  iconUrl: string | null;
   lastMessageAt: string | null;
   latestMessage: Message | null;
 }

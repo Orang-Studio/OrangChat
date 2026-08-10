@@ -34,6 +34,7 @@ export function conversationToChannel(
     type: conversation.type,
     topic: null,
     backgroundUrl: conversation.backgroundUrl,
+    iconUrl: conversation.iconUrl,
     position: 0,
     parentCategoryId: null,
     nsfw: false,

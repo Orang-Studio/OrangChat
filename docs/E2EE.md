@@ -860,6 +860,25 @@ the account has both. It is authorized by *time and noise*:
 - Refused outright while the account is in lockdown, which exists precisely to
   freeze an account somebody else got into.
 
+**A device holding a key does not wait for any of that.** `POST
+/e2ee/keys/deletion/now` performs the same wipe immediately, authorized by a
+signature over
+
+```
+encodeFields("orangchat/erase-keys/v1", userId, deviceId, issuedAt)
+```
+
+made with the identity signing key of a device that is still unrevoked in the
+log. Nothing above applies to it, and that is the point: every one of those
+controls is compensating for a request that proves nothing beyond a password,
+while this one is made by the very key the waiting period was protecting. A TOTP
+code on top would be gating the strong proof behind the weak one. `issuedAt` is
+RFC 3339 and must be within `PROOF_MAX_AGE_SECONDS` (300) of the server's clock,
+so a signature captured off a device cannot be replayed as a wipe later; lockdown
+still refuses. The scheduled path is not merely slower for such a device, it is
+unusable - the abort-on-check-in rule means the phone would cancel its own
+request the next time it started.
+
 **Their contacts need a way back too.** An account that starts over trips
 `identity-changed` on every device that had pinned it (§6.6), and that check
 throws *before* the new commitment can be written. Without a way to accept the

@@ -57,6 +57,7 @@ fun EncryptionScreen(onBack: () -> Unit, vm: EncryptionViewModel = hiltViewModel
     val state by vm.state.collectAsStateWithLifecycle()
     var revokeTarget by remember { mutableStateOf<Pair<String, String>?>(null) }
     var explainerOpen by remember { mutableStateOf(false) }
+    var eraseConfirm by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().background(c.surface1)) {
         SettingsTopBar("Encryption", onBack)
@@ -179,6 +180,32 @@ fun EncryptionScreen(onBack: () -> Unit, vm: EncryptionViewModel = hiltViewModel
                 }
             }
 
+            // Only offered to a phone that holds a key, because holding one is
+            // what makes this instant: the erasure is signed here, and the
+            // server's waiting period exists for requests that carry no such
+            // proof. A phone without a key uses the slow path on the web.
+            if (state.deviceId != null && !state.revokedHere) {
+                SettingSection("Start over with new keys") {
+                    Text(
+                        "Throw away the encryption identity on this account and make a fresh one here. Every other device is removed and has to be added again.",
+                        color = c.inkSecondary,
+                        fontSize = 13.sp,
+                    )
+                    Text(
+                        "Every message already in your encrypted conversations becomes permanently unreadable - by you, by us, by anyone. Nothing brings them back.",
+                        color = c.danger,
+                        fontSize = 13.sp,
+                    )
+                    OrangButton(
+                        text = if (state.erasing) "Erasing…" else "Erase my encryption keys",
+                        onClick = { eraseConfirm = true },
+                        enabled = !state.erasing,
+                        variant = ButtonVariant.Secondary,
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    )
+                }
+            }
+
             SettingSection("The logbook") {
                 Text(
                     "Every device added or removed is written into a logbook that can only be added to, never edited or erased. Your devices read it on every start, so a device you did not add cannot appear here quietly - you get told, and the entry stays in the book.",
@@ -230,6 +257,33 @@ fun EncryptionScreen(onBack: () -> Unit, vm: EncryptionViewModel = hiltViewModel
             onConfirmSas = vm::confirmSas,
             onSubmitTotp = vm::submitTotp,
             onRequestEmailCode = vm::requestTransferEmailCode,
+        )
+    }
+
+    if (eraseConfirm) {
+        AlertDialog(
+            onDismissRequest = { eraseConfirm = false },
+            title = { Text("Erase your encryption keys?", color = c.ink) },
+            text = {
+                Text(
+                    "This happens the moment you confirm - there is no waiting period and nothing to cancel, because this phone signs for it with the key itself. Every encrypted message on this account becomes unreadable to everyone, forever.",
+                    color = c.inkSecondary,
+                    fontSize = 14.sp,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        eraseConfirm = false
+                        vm.eraseKeysNow()
+                    },
+                ) { Text("Erase them now", color = c.danger) }
+            },
+            dismissButton = {
+                TextButton(onClick = { eraseConfirm = false }) {
+                    Text("Cancel", color = c.inkSecondary)
+                }
+            },
         )
     }
 
@@ -321,7 +375,9 @@ private fun DeviceTransferDialog(
     val progressStep = when (state.transferStep) {
         EncryptionViewModel.TransferStep.SAS -> 2
         EncryptionViewModel.TransferStep.TOTP -> 3
-        EncryptionViewModel.TransferStep.FINISHING,
+        // A new device sitting in FINISHING is still on "Verify" - the step it
+        // is waiting on belongs to the other device, not to this one.
+        EncryptionViewModel.TransferStep.FINISHING -> if (isNew) 3 else 4
         EncryptionViewModel.TransferStep.DONE -> 4
         else -> 1
     }
@@ -468,12 +524,39 @@ private fun DeviceTransferDialog(
                     }
                 }
                 EncryptionViewModel.TransferStep.FINISHING -> {
-                    Text(
-                        if (isNew) "Receiving and securing your encrypted history…"
-                        else "Sending encrypted history and authorizing the new device…",
-                        color = c.inkSecondary,
-                        fontSize = 14.sp,
-                    )
+                    // Nothing arrives here until a person finishes the second
+                    // factor on the other device, and that can be a minute of
+                    // looking for an email. Saying whose turn it is stops this
+                    // from reading as a phone that has quietly stalled.
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = c.primary,
+                        )
+                        Column {
+                            Text(
+                                if (isNew) "Digits confirmed" else "Authorizing the new device",
+                                color = c.ink,
+                                fontSize = 14.sp,
+                            )
+                            Text(
+                                if (isNew) {
+                                    "Confirm the digits and enter the security code on the " +
+                                        "authorized device. This phone is waiting for the " +
+                                        "encrypted history and its signed authorization…"
+                                } else {
+                                    "Sending encrypted history and signing the new device " +
+                                        "into your device log…"
+                                },
+                                color = c.inkMuted,
+                                fontSize = 13.sp,
+                            )
+                        }
+                    }
                 }
                 EncryptionViewModel.TransferStep.DONE -> {
                     Text(

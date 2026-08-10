@@ -3,11 +3,20 @@ package lt.oranges.orangchat.feature.chat
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color as AndroidColor
+import android.os.Build
 import android.os.Bundle
+import android.view.View
 import androidx.activity.ComponentActivity
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
@@ -16,12 +25,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddReaction
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
@@ -31,6 +46,7 @@ import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -43,16 +59,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityOptionsCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -64,9 +85,12 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import lt.oranges.orangchat.data.model.Attachment
+import lt.oranges.orangchat.data.model.Message
+import lt.oranges.orangchat.ui.components.Avatar
 import lt.oranges.orangchat.ui.components.Text
 import lt.oranges.orangchat.ui.theme.OrangChatTheme
 import lt.oranges.orangchat.util.absoluteUrl
+import lt.oranges.orangchat.util.formatFullTime
 import lt.oranges.orangchat.util.inlineUrl
 
 private const val DEFAULT_PREVIEW_ASPECT = 16f / 9f
@@ -98,6 +122,13 @@ class MediaPreviewActivity : ComponentActivity() {
         window.statusBarColor = AndroidColor.BLACK
         window.navigationBarColor = AndroidColor.BLACK
 
+        // The viewer grew out of the thumbnail (see scaleUpFrom); sliding it off
+        // the side on the way back would undo a move the eye already followed.
+        // A fade leaves the chat where it was, with the picture simply gone.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, android.R.anim.fade_out)
+        }
+
         val raw = intent.getStringExtra(EXTRA_ATTACHMENT)
         val attachment = raw?.let { runCatching { MediaPreviewTransport.decode(it) }.getOrNull() }
         if (attachment == null || (!attachment.isImage && !attachment.isVideo)) {
@@ -112,6 +143,14 @@ class MediaPreviewActivity : ComponentActivity() {
         }
     }
 
+    @Suppress("DEPRECATION")
+    override fun finish() {
+        super.finish()
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            overridePendingTransition(0, android.R.anim.fade_out)
+        }
+    }
+
     companion object {
         private const val EXTRA_ATTACHMENT = "attachment"
 
@@ -121,8 +160,70 @@ class MediaPreviewActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Remembers where a thumbnail is on screen, so the viewer it opens can grow out
+ * of it. Attach [Modifier.mediaOrigin] to whatever was tapped.
+ */
+class MediaOrigin {
+    internal var bounds: Rect? = null
+}
+
+@Composable
+fun rememberMediaOrigin(): MediaOrigin = remember { MediaOrigin() }
+
+/** Track this element's box for [openMediaPreview]. */
+fun Modifier.mediaOrigin(origin: MediaOrigin): Modifier =
+    onGloballyPositioned { origin.bounds = it.boundsInWindow() }
+
+/**
+ * The scale-up the viewer opens with, or null when the thumbnail's box is not
+ * known and the platform default has to do.
+ *
+ * A window sliding in from the side says "a screen arrived"; what actually
+ * happened is that one picture got bigger, and the eye should be able to follow
+ * it there. The web client does the same thing with a FLIP (`useMediaZoom`).
+ */
+private fun scaleUpFrom(view: View, origin: MediaOrigin?): ActivityOptionsCompat? {
+    val bounds = origin?.bounds ?: return null
+    if (bounds.width <= 0f || bounds.height <= 0f) return null
+    val offset = IntArray(2)
+    view.getLocationInWindow(offset)
+    return ActivityOptionsCompat.makeScaleUpAnimation(
+        view,
+        (bounds.left - offset[0]).toInt(),
+        (bounds.top - offset[1]).toInt(),
+        bounds.width.toInt(),
+        bounds.height.toInt(),
+    )
+}
+
+/** Open the full-screen viewer, growing out of [origin] when it is known. */
+fun openMediaPreview(context: Context, view: View, origin: MediaOrigin?, attachment: Attachment) {
+    context.startActivity(
+        MediaPreviewActivity.intent(context, attachment),
+        scaleUpFrom(view, origin)?.toBundle(),
+    )
+}
+
+/** As [openMediaPreview], for the callers that need the activity's result. */
+fun openMediaPreview(
+    launcher: ActivityResultLauncher<Intent>,
+    context: Context,
+    view: View,
+    origin: MediaOrigin?,
+    attachment: Attachment,
+) {
+    launcher.launch(MediaPreviewActivity.intent(context, attachment), scaleUpFrom(view, origin))
+}
+
 @Composable
 private fun FullscreenMediaPreview(attachment: Attachment, onClose: () -> Unit) {
+    val messages by MediaPreviewHost.messages.collectAsState()
+    // Looked up rather than carried in the intent, so a reaction made here shows
+    // up here - see MediaPreviewHost.
+    val message = remember(messages, attachment.id) {
+        MediaPreviewHost.messageFor(messages, attachment.id)
+    }
     var chromeVisible by remember(attachment.id) { mutableStateOf(true) }
     val source = rememberAttachmentSource(attachment, wanted = true)
     val download = rememberAttachmentDownloader()
@@ -158,6 +259,9 @@ private fun FullscreenMediaPreview(attachment: Attachment, onClose: () -> Unit) 
                 url = source.url,
                 chromeVisible = chromeVisible,
                 onToggleChrome = { chromeVisible = !chromeVisible },
+                // Stacked under the transport rather than over it: the controls
+                // are about the clip, this is about the message it came on.
+                senderBar = message?.let { { PreviewSenderBar(message = it) } },
             )
             else -> FullscreenImage(
                 attachment = attachment,
@@ -166,13 +270,167 @@ private fun FullscreenMediaPreview(attachment: Attachment, onClose: () -> Unit) 
             )
         }
 
-        if (chromeVisible) {
+        // The bars belong to the edges they sit on, so that is where they come
+        // from - fading them in over the middle of the picture reads as a
+        // second thing appearing rather than the frame around the first.
+        AnimatedVisibility(
+            visible = chromeVisible,
+            enter = slideInVertically { -it } + fadeIn(),
+            exit = slideOutVertically { -it } + fadeOut(),
+            modifier = Modifier.align(Alignment.TopCenter),
+        ) {
             PreviewTopBar(
                 attachment = attachment,
                 resolvedUrl = source.url,
                 onDownload = { download(attachment) },
                 onClose = onClose,
             )
+        }
+        if (message != null && !attachment.isVideo) {
+            AnimatedVisibility(
+                visible = chromeVisible,
+                enter = slideInVertically { it } + fadeIn(),
+                exit = slideOutVertically { it } + fadeOut(),
+                modifier = Modifier.align(Alignment.BottomCenter),
+            ) {
+                PreviewSenderBar(message = message)
+            }
+        }
+    }
+}
+
+/**
+ * Who sent this file, when, whatever they said with it, and the reactions.
+ *
+ * Opening a file used to lose all of that: the viewer showed the bytes and a
+ * filename, and the only way back to the message was to close it. Reacting from
+ * here matters for the same reason - there is no message row on screen to long
+ * press.
+ */
+@Composable
+private fun PreviewSenderBar(message: Message, modifier: Modifier = Modifier) {
+    var pickerOpen by remember(message.id) { mutableStateOf(false) }
+    val chipShape = RoundedCornerShape(50)
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(Color.Black.copy(alpha = 0.72f))
+            .tapToToggle { }
+            .navigationBarsPadding()
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        if (pickerOpen) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier
+                    .horizontalScroll(rememberScrollState())
+                    .padding(bottom = 8.dp),
+            ) {
+                QUICK_EMOJIS.forEach { emoji ->
+                    val mine = message.reactions.any { it.emoji == emoji && it.me }
+                    Box(
+                        modifier = Modifier
+                            .clip(chipShape)
+                            .background(
+                                if (mine) Color.White.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.1f),
+                            )
+                            .clickable {
+                                MediaPreviewHost.react(message, emoji)
+                                pickerOpen = false
+                            }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                    ) {
+                        Text(emoji, fontSize = 18.sp)
+                    }
+                }
+            }
+        }
+
+        Row(verticalAlignment = Alignment.Top) {
+            Avatar(user = message.author, size = 34.dp)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        message.author.displayName,
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        formatFullTime(message.createdAt),
+                        color = Color.White.copy(alpha = 0.6f),
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                    )
+                }
+                if (message.content.isNotBlank()) {
+                    Text(
+                        message.content,
+                        color = Color.White.copy(alpha = 0.85f),
+                        fontSize = 13.sp,
+                        // A caption can be an essay; three lines is enough to
+                        // recognise it, and the message is still in the chat.
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                ) {
+                    message.reactions.forEach { reaction ->
+                        Row(
+                            modifier = Modifier
+                                .height(28.dp)
+                                .clip(chipShape)
+                                .background(
+                                    if (reaction.me) {
+                                        Color.White.copy(alpha = 0.25f)
+                                    } else {
+                                        Color.White.copy(alpha = 0.1f)
+                                    },
+                                )
+                                .clickable { MediaPreviewHost.react(message, reaction.emoji) }
+                                .padding(horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(reaction.emoji, fontSize = 13.sp)
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                "${reaction.count}",
+                                color = Color.White.copy(alpha = 0.8f),
+                                fontSize = 12.sp,
+                            )
+                        }
+                    }
+                    Row(
+                        modifier = Modifier
+                            .height(28.dp)
+                            .clip(chipShape)
+                            .background(Color.White.copy(alpha = 0.1f))
+                            .clickable { pickerOpen = !pickerOpen }
+                            .padding(horizontal = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Default.AddReaction,
+                            contentDescription = "Add reaction",
+                            tint = Color.White.copy(alpha = 0.85f),
+                            modifier = Modifier.size(15.dp),
+                        )
+                        Spacer(Modifier.width(5.dp))
+                        Text("React", color = Color.White, fontSize = 12.sp)
+                    }
+                }
+            }
         }
     }
 }
@@ -268,6 +526,7 @@ private fun FullscreenVideo(
     url: String,
     chromeVisible: Boolean,
     onToggleChrome: () -> Unit,
+    senderBar: (@Composable () -> Unit)? = null,
 ) {
     val context = LocalContext.current
     var broken by remember(attachment.id) { mutableStateOf(false) }
@@ -336,16 +595,26 @@ private fun FullscreenVideo(
         // this layer, so their gestures do not leak through and hide the UI.
         Box(Modifier.fillMaxSize().tapToToggle(onToggleChrome))
 
-        if (chromeVisible) {
-            VideoControlBar(
-                attachment = attachment,
-                url = url,
-                active = active,
-                isPlaying = isPlaying,
-                durationMs = durationMs,
-                onBroken = { broken = true },
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
+        AnimatedVisibility(
+            visible = chromeVisible,
+            enter = slideInVertically { it } + fadeIn(),
+            exit = slideOutVertically { it } + fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter),
+        ) {
+            Column {
+                VideoControlBar(
+                    attachment = attachment,
+                    url = url,
+                    active = active,
+                    isPlaying = isPlaying,
+                    durationMs = durationMs,
+                    onBroken = { broken = true },
+                    // Whatever is last owns the gesture inset; with a sender bar
+                    // below, padding here would open a gap through the middle.
+                    bottomInset = senderBar == null,
+                )
+                senderBar?.invoke()
+            }
         }
     }
 }
@@ -358,6 +627,7 @@ private fun VideoControlBar(
     isPlaying: Boolean,
     durationMs: Long,
     onBroken: () -> Unit,
+    bottomInset: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -366,7 +636,7 @@ private fun VideoControlBar(
             .fillMaxWidth()
             .background(Color.Black.copy(alpha = 0.72f))
             .tapToToggle { }
-            .navigationBarsPadding()
+            .then(if (bottomInset) Modifier.navigationBarsPadding() else Modifier)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

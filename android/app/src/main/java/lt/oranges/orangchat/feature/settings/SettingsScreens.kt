@@ -1,5 +1,6 @@
 package lt.oranges.orangchat.feature.settings
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -33,8 +34,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -43,7 +46,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import lt.oranges.orangchat.BuildConfig
+import lt.oranges.orangchat.R
 import lt.oranges.orangchat.data.model.DmPrivacy
 import lt.oranges.orangchat.data.model.FriendRequestPrivacy
 import lt.oranges.orangchat.data.model.SelfUser
@@ -59,6 +64,7 @@ import lt.oranges.orangchat.ui.components.ButtonVariant
 import lt.oranges.orangchat.ui.components.OrangButton
 import lt.oranges.orangchat.ui.components.OrangTextField
 import lt.oranges.orangchat.ui.theme.OrangRadius
+import lt.oranges.orangchat.util.absoluteUrl
 import lt.oranges.orangchat.util.formatFullTime
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
@@ -1468,7 +1474,7 @@ fun SystemScreen(
 // ── About ───────────────────────────────────────────────
 
 @Composable
-fun AboutScreen(onBack: () -> Unit) {
+fun AboutScreen(appIconUrl: String?, onBack: () -> Unit) {
     val c = OrangTheme.colors
     Column(modifier = screenModifier(c)) {
         SettingsTopBar("About", onBack)
@@ -1481,6 +1487,7 @@ fun AboutScreen(onBack: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                AppMark(appIconUrl)
                 Text("OrangChat", color = c.ink, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Text("Version ${BuildConfig.VERSION_NAME}", color = c.inkMuted, fontSize = 13.sp)
                 Text(
@@ -1510,6 +1517,31 @@ fun AboutScreen(onBack: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+    }
+}
+
+/**
+ * The brand mark over the app's name, or whatever the user replaced it with -
+ * the same substitution the web and desktop clients make. Android cannot
+ * repoint its own launcher icon, so this screen is where a custom mark actually
+ * shows up on this device.
+ */
+@Composable
+private fun AppMark(appIconUrl: String?) {
+    val markModifier = Modifier.size(64.dp).clip(RoundedCornerShape(OrangRadius.lg))
+    if (!appIconUrl.isNullOrBlank()) {
+        AsyncImage(
+            model = absoluteUrl(appIconUrl),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = markModifier,
+        )
+    } else {
+        Image(
+            painter = painterResource(R.mipmap.ic_launcher),
+            contentDescription = null,
+            modifier = markModifier,
+        )
     }
 }
 

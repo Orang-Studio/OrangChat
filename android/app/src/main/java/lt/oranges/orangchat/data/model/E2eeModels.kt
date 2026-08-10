@@ -125,6 +125,18 @@ data class E2eeRevokeRequest(
     val log: E2eeLogEntryInput,
 )
 
+/**
+ * Erasing the account's whole encryption identity, signed by a device that still
+ * holds a key. The signature is the authorization, which is why there is no
+ * waiting period behind this one - see E2ee.eraseKeysStatementBytes.
+ */
+@Serializable
+data class E2eeEraseKeysRequest(
+    val deviceId: String,
+    val issuedAt: String,
+    val signature: String,
+)
+
 @Serializable
 data class E2eeEnvelopeInput(
     val deviceId: String,

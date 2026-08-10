@@ -30,6 +30,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,6 +41,7 @@ import lt.oranges.orangchat.feature.profile.ProfileCard
 import lt.oranges.orangchat.ui.components.ButtonVariant
 import lt.oranges.orangchat.ui.components.OrangButton
 import lt.oranges.orangchat.ui.components.ImageField
+import lt.oranges.orangchat.ui.components.StatusIcon
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.ui.theme.ThemePreference
@@ -90,7 +92,7 @@ fun SettingsScreen(
         SettingsPage.ENCRYPTION -> EncryptionScreen(onBack = toRoot)
         SettingsPage.ACCESSIBILITY -> AccessibilityScreen(toRoot)
         SettingsPage.SYSTEM -> SystemScreen(connected = connected, onBack = toRoot)
-        SettingsPage.ABOUT -> AboutScreen(toRoot)
+        SettingsPage.ABOUT -> AboutScreen(appIconUrl = self.appIconUrl, onBack = toRoot)
     }
 }
 
@@ -125,16 +127,23 @@ private fun SettingsRoot(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     PresenceStatus.entries.filter { it != PresenceStatus.OFFLINE }.forEach { status ->
                         val selected = self.status == status
-                        Text(
-                            text = status.label(),
-                            color = if (selected) c.inkOnPrimary else c.inkSecondary,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
-                                .background(if (selected) c.primary else c.surface3, RoundedCornerShape(OrangRadius.lg))
+                                .clip(RoundedCornerShape(OrangRadius.lg))
+                                .background(if (selected) c.primary else c.surface3)
                                 .clickable { onStatusChange(status) }
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
-                        )
+                        ) {
+                            StatusIcon(status = status, size = 14.dp)
+                            Text(
+                                text = status.label(),
+                                color = if (selected) c.inkOnPrimary else c.inkSecondary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
                     }
                 }
             }

@@ -95,7 +95,7 @@ function domainLabel(url: URL) {
 function YoutubeEmbed({ url, video }: { url: URL; video: { id: string; start?: number } }) {
   const query = video.start ? `?start=${video.start}` : '';
   return (
-    <div className="mt-2 w-full max-w-xl overflow-hidden rounded-lg border border-border bg-black shadow-sm">
+    <div className="mt-2 w-full max-w-xl overflow-hidden rounded-xl border border-border bg-black shadow-sm">
       <iframe
         src={`https://www.youtube-nocookie.com/embed/${video.id}${query}`}
         title={`YouTube video from ${domainLabel(url)}`}

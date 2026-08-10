@@ -16,6 +16,7 @@ import { getMyDevices, requestTransferGrant, startTransfer } from './api';
 import {
   authorizeNewDevice,
   deviceName,
+  forgetOwnPin,
   generateKeys,
   markDeviceSeenSafely,
   platform,
@@ -212,6 +213,10 @@ export async function awaitAdoption(
         ikSigPub: pending.ikSigPub,
         ikDhPub: pending.ikDhPub,
       });
+      // Anything this device remembered about the account belongs to whatever
+      // it was before this transfer, and the digits just compared say more
+      // about the identity it is joining than that memory does.
+      await forgetOwnPin(userId);
       await selfMonitor(userId);
       await markDeviceSeenSafely(deviceId);
     },

@@ -147,6 +147,7 @@ pub struct ChannelDto {
     pub channel_type: String,
     pub topic: Option<String>,
     pub background_url: Option<String>,
+    pub icon_url: Option<String>,
     pub position: i32,
     pub parent_category_id: Option<String>,
     pub nsfw: bool,
@@ -396,6 +397,7 @@ pub struct ConversationDto {
     pub name: Option<String>,
     pub participants: Vec<UserDto>,
     pub background_url: Option<String>,
+    pub icon_url: Option<String>,
     pub last_message_at: Option<String>,
     pub latest_message: Option<MessageDto>,
 }
@@ -542,6 +544,7 @@ pub fn to_channel(c: &ChannelRow) -> ChannelDto {
         channel_type: c.channel_type.clone(),
         topic: c.topic.clone(),
         background_url: c.background_url.clone(),
+        icon_url: c.icon_url.clone(),
         position: c.position,
         parent_category_id: c.parent_category_id.clone(),
         nsfw: c.nsfw,
@@ -650,6 +653,7 @@ pub fn to_conversation(
         name: c.name.clone(),
         participants: participants.iter().map(to_user).collect(),
         background_url: c.background_url.clone(),
+        icon_url: c.icon_url.clone(),
         last_message_at: Some(iso(c.updated_at)),
         latest_message,
     }

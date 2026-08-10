@@ -148,6 +148,24 @@ pub async fn set_channel_background(
     .await?)
 }
 
+/// Set or clear a group DM's icon. Callers enforce that the channel is a group
+/// DM and the user a participant; the url is an upload result the endpoint has
+/// already validated, exactly as for the background above.
+pub async fn set_channel_icon(
+    state: &AppState,
+    channel_id: &str,
+    url: Option<String>,
+) -> AppResult<ChannelRow> {
+    Ok(sqlx::query_as(
+        r#"UPDATE "Channel" SET "iconUrl" = $2, "updatedAt" = now()
+           WHERE id = $1 RETURNING *"#,
+    )
+    .bind(channel_id)
+    .bind(url)
+    .fetch_one(&state.pool)
+    .await?)
+}
+
 /// Bulk reorder / re-parent, for drag-and-drop channel lists. One transaction, so
 /// a rejected entry cannot leave the sidebar half-rewritten. Ids are checked
 /// against `serverId` first: otherwise a caller could drag a channel out of a

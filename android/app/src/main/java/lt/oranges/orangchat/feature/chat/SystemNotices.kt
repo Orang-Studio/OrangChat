@@ -26,6 +26,8 @@ enum class SystemNotice(val kind: String) {
     KeyReset("keyReset"),
     BackgroundChanged("backgroundChanged"),
     BackgroundRemoved("backgroundRemoved"),
+    IconChanged("iconChanged"),
+    IconRemoved("iconRemoved"),
 
     /** A call: one card, rewritten as the call runs, rather than a sentence. */
     Call("call"),
@@ -44,6 +46,8 @@ enum class SystemNotice(val kind: String) {
         KeyReset -> "$name started a new encryption key for this conversation."
         BackgroundChanged -> "$name changed the chat background."
         BackgroundRemoved -> "$name removed the chat background."
+        IconChanged -> "$name changed the group icon."
+        IconRemoved -> "$name removed the group icon."
         Call -> null
     }
 

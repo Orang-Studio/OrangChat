@@ -6,6 +6,7 @@ import lt.oranges.orangchat.data.model.Friend
 import lt.oranges.orangchat.data.model.FriendRequestsEnvelope
 import lt.oranges.orangchat.data.remote.ApiService
 import lt.oranges.orangchat.data.remote.ChannelBackgroundRequest
+import lt.oranges.orangchat.data.remote.ChannelIconRequest
 import lt.oranges.orangchat.data.remote.CreateDmRequest
 import lt.oranges.orangchat.data.remote.SendFriendRequest
 import lt.oranges.orangchat.data.remote.SendFriendResult
@@ -31,6 +32,10 @@ class SocialRepository @Inject constructor(
     /** Set a DM's shared background; [url] null clears it. Plaintext like avatars. */
     suspend fun setDmBackground(channelId: String, url: String?): Channel =
         api.putChannelBackground(channelId, ChannelBackgroundRequest(url))
+
+    /** Set a group DM's icon; [url] null clears it. Plaintext like avatars. */
+    suspend fun setDmIcon(channelId: String, url: String?): Channel =
+        api.putChannelIcon(channelId, ChannelIconRequest(url))
 
     // Friends
     suspend fun listFriends(): List<Friend> = api.listFriends()
