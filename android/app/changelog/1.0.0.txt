@@ -1,0 +1,16 @@
+OrangChat 1.0
+
+New
+- Stable 1.0.0 release for the Android client and OrangChat backend.
+- End-to-end encrypted direct and group messages with device verification,
+  QR device transfer, encrypted offline access and client-side search.
+- Voice messages, calls, media sharing, reactions, replies and message search.
+- Passkeys, TOTP two-factor authentication, QR sign-in and account security
+  controls.
+- Android language support with server-delivered translation updates and
+  community translations.
+
+Changed
+- The Android client and Rust backend now report version 1.0.0.
+- Translation catalogues and release infrastructure are ready for the public
+  main branch and the community Weblate project.
