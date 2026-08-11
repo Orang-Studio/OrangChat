@@ -1,0 +1,494 @@
+<resources>
+    <string name="app_name">OrangChat</string>
+    <string name="language_title">Язык</string>
+    <string name="language_subtitle">Выберите язык приложения</string>
+    <string name="language_system">Как в системе</string>
+    <string name="language_english">Английский</string>
+    <string name="language_lithuanian">Литовский</string>
+    <string name="language_chinese">Китайский</string>
+    <string name="language_hindi">Хинди</string>
+    <string name="language_spanish">Испанский</string>
+    <string name="language_arabic">Арабский</string>
+    <string name="language_french">Французский</string>
+    <string name="language_bengali">Бенгальский</string>
+    <string name="language_portuguese">Португальский</string>
+    <string name="language_russian">Русский</string>
+    <string name="language_urdu">Урду</string>
+    <string name="language_hint">После перезапуска язык будет применён во всём приложении.</string>
+    <string name="catalog_1_add_this_key_to_your_app_c5c6bb28" formatted="false">1. Добавьте этот ключ в приложение</string>
+    <string name="catalog_1_attachment_82c9f82a" formatted="false">1 вложение</string>
+    <string name="catalog_2026_oranges_lt_made_with_c3b7fea5" formatted="false">© 2026 Oranges.LT · Сделано с 🍊</string>
+    <string name="catalog_2_enter_the_6_digit_code_183ee7cb" formatted="false">2. Введите 6-значный код</string>
+    <string name="catalog_a_deleted_account_b1c40a9e" formatted="false">Удалённый аккаунт</string>
+    <string name="catalog_a_fast_self_hosted_chat_for_servers_fa05634c" formatted="false">Быстрый самостоятельный чат для серверов, личных сообщений и голосовой связи — часть семейства Oranges.LT.</string>
+    <string name="catalog_a_one_time_code_is_on_its_395743b6" formatted="false">Одноразовый код отправлен на вашу почту — он действует 10 минут.</string>
+    <string name="catalog_about_me_e3ba4ef3" formatted="false">Обо мне</string>
+    <string name="catalog_accent_color_e49578ed" formatted="false">Акцентный цвет</string>
+    <string name="catalog_account_created_check_your_email_for_a_7d4a9ecd" formatted="false">Аккаунт создан. Проверьте почту: там есть ссылка для подтверждения — </string>
+    <string name="catalog_account_standing_2b18a30b" formatted="false">Статус аккаунта</string>
+    <string name="catalog_add_a_friend_by_their_username_c1584607" formatted="false">Добавьте друга по имени пользователя.</string>
+    <string name="catalog_add_a_passkey_0daca495" formatted="false">Добавить ключ доступа</string>
+    <string name="catalog_add_a_server_5ee1e413" formatted="false">Добавить сервер</string>
+    <string name="catalog_add_another_device_67696610" formatted="false">Добавить другое устройство</string>
+    <string name="catalog_add_channel_901e4868" formatted="false">Добавить канал</string>
+    <string name="catalog_add_context_for_the_reviewer_e44f9147" formatted="false">Добавить контекст для проверяющего</string>
+    <string name="catalog_add_device_2d2367c4" formatted="false">Добавить устройство</string>
+    <string name="catalog_add_emoji_or_gif_1d91d61d" formatted="false">Добавить эмодзи или GIF</string>
+    <string name="catalog_add_friend_e0a731d8" formatted="false">Добавить друга</string>
+    <string name="catalog_add_friends_2dcf4e38" formatted="false">Добавить друзей</string>
+    <string name="catalog_add_people_b9c735ea" formatted="false">Добавить людей</string>
+    <string name="catalog_add_reaction_cf05eca8" formatted="false">Добавить реакцию</string>
+    <string name="catalog_add_this_phone_94a65dcf" formatted="false">Добавить этот телефон</string>
+    <string name="catalog_adding_a_second_device_before_you_need_1f6a418c" formatted="false">Добавить второе устройство заранее — вот и всё решение. Поэтому сначала нужно включить двухфакторную аутентификацию: запасное устройство — это запасной набор ключей, и для его добавления одного пароля недостаточно.</string>
+    <string name="catalog_all_your_friends_are_already_here_45cf3604" formatted="false">Все ваши друзья уже здесь.</string>
+    <string name="catalog_allow_anyone_to_mention_c6fe8761" formatted="false">Разрешить всем @упоминания</string>
+    <string name="catalog_allow_camera_1dfb1b87" formatted="false">Разрешить доступ к камере</string>
+    <string name="catalog_allow_camera_access_to_scan_without_leaving_ca7cd21f" formatted="false">Разрешите доступ к камере, чтобы сканировать, не выходя из OrangChat.</string>
+    <string name="catalog_allow_installs_first_a339d45d" formatted="false">Сначала разрешите установку</string>
+    <string name="catalog_already_have_an_account_log_in_b3a34236" formatted="false">Уже есть аккаунт? Войдите</string>
+    <string name="catalog_already_on_this_call_abb9cae6" formatted="false">Вы уже в этом звонке</string>
+    <string name="catalog_android_is_not_letting_orangchat_notify_you_eb9878eb" formatted="false">Android не позволяет OrangChat присылать уведомления о сообщениях и звонках. Включите их в системных настройках.</string>
+    <string name="catalog_answer_without_camera_979e59f8" formatted="false">Ответить без камеры</string>
+    <string name="catalog_anything_on_a_phone_that_is_already_7e329eae" formatted="false">• Всё на телефоне, который уже разблокирован и находится у другого человека. В этот момент он читает это так же, как и вы.</string>
+    <string name="catalog_app_icon_abde7a74" formatted="false">Значок приложения</string>
+    <string name="catalog_as_the_owner_you_cannot_leave_delete_030b7d7e" formatted="false">Как владелец, вы не можете выйти — вместо этого удалите сервер.</string>
+    <string name="catalog_ask_for_a_code_from_your_phone_b6d62586" formatted="false">При входе запрашивайте код с телефона в дополнение к паролю.</string>
+    <string name="catalog_ask_them_to_show_their_verification_qr_630e919c" formatted="false">Попросите их показать QR-код для проверки и поместите его в рамку.</string>
+    <string name="catalog_at_least_8_characters_1fe494b2" formatted="false">Не менее 8 символов</string>
+    <string name="catalog_at_least_8_characters_6089e5f3" formatted="false">Не менее 8 символов.</string>
+    <string name="catalog_attach_files_137135db" formatted="false">Прикрепить файлы</string>
+    <string name="catalog_audio_call_fb04a1a1" formatted="false">Аудиозвонок</string>
+    <string name="catalog_audit_log_3cfc5f1c" formatted="false">Журнал аудита</string>
+    <string name="catalog_authentication_code_b4f3ff1d" formatted="false">Код аутентификации</string>
+    <string name="catalog_authenticator_code_2908b4e9" formatted="false">Код приложения-аутентификатора</string>
+    <string name="catalog_authorized_encryption_devices_1f60a639" formatted="false">Авторизованные устройства шифрования</string>
+    <string name="catalog_authorizing_the_new_device_7d6e30db" formatted="false">Авторизация нового устройства</string>
+    <string name="catalog_banned_from_b1b7bda2" formatted="false">Заблокирован на</string>
+    <string name="catalog_before_a_message_leaves_this_phone_74f6bb9b" formatted="false">Прежде чем сообщение покинет этот телефон</string>
+    <string name="catalog_bot_account_a78d875e" formatted="false">Бот-аккаунт</string>
+    <string name="catalog_both_of_you_open_the_conversation_tap_bbf94671" formatted="false">Откройте беседу оба, нажмите на замок вверху, и один из вас отсканирует код другого. Затем поменяйтесь и сделайте наоборот: одно сканирование подтверждает только одно направление. Пока вы рядом, это занимает около десяти секунд.</string>
+    <string name="catalog_both_options_encrypt_everything_the_difference_is_098d8758" formatted="false">Оба варианта шифруют всё. Разница в том, будет ли подменённый замок остановлен до использования или обнаружен позже.</string>
+    <string name="catalog_both_screens_must_show_the_same_six_a112273d" formatted="false">На обоих экранах должны быть одинаковые шесть цифр. Если они отличаются, отмените.</string>
+    <string name="catalog_call_connected_78e88c19" formatted="false">ВЫЗОВ ПОДКЛЮЧЁН</string>
+    <string name="catalog_call_connected_dce17207" formatted="false">Вызов подключён</string>
+    <string name="catalog_call_ringtone_0618e939" formatted="false">Рингтон звонка</string>
+    <string name="catalog_call_sharing_defaults_c39b7d94" formatted="false">Настройки общего доступа в звонке</string>
+    <string name="catalog_calling_acd4a67d" formatted="false">Вызов…</string>
+    <string name="catalog_camera_access_is_needed_to_scan_the_dcfe064f" formatted="false">Для сканирования кода на компьютере нужен доступ к камере.</string>
+    <string name="catalog_camera_microphone_abf47618" formatted="false">Камера &amp; микрофон</string>
+    <string name="catalog_cancel_reply_bd62d2dd" formatted="false">Отменить ответ</string>
+    <string name="catalog_cancel_scanning_f1f3d169" formatted="false">Отменить сканирование</string>
+    <string name="catalog_change_audio_output_ccb8eada" formatted="false">Сменить устройство вывода звука</string>
+    <string name="catalog_change_background_0c868243" formatted="false">Сменить фон</string>
+    <string name="catalog_change_email_8f1514b5" formatted="false">Изменить адрес электронной почты</string>
+    <string name="catalog_change_group_icon_715ac3cf" formatted="false">Сменить значок группы</string>
+    <string name="catalog_change_password_8c684290" formatted="false">Изменить пароль</string>
+    <string name="catalog_changing_your_password_signs_out_every_other_062a10ab" formatted="false">После смены пароля все остальные сеансы будут завершены.</string>
+    <string name="catalog_channel_name_3be87bdd" formatted="false">Название канала</string>
+    <string name="catalog_check_for_updates_736b9062" formatted="false">Проверить обновления</string>
+    <string name="catalog_check_people_before_messaging_them_986118e4" formatted="false">Проверяйте людей перед отправкой сообщений</string>
+    <string name="catalog_check_them_again_feb54286" formatted="false">Проверить ещё раз</string>
+    <string name="catalog_check_them_first_27eeb4a8" formatted="false">Сначала проверить</string>
+    <string name="catalog_check_them_first_a_swap_cannot_happen_82229615" formatted="false">Сначала проверьте — подмена невозможна. Вы сами проверяете замок другого человека лично или во время звонка, прежде чем что-то будет отправлено ему. До этого ваши сообщения остаются на этом телефоне, всё ещё под замком, и никуда не уходят. Подменённому замку нечего открыть.</string>
+    <string name="catalog_checking_820d6004" formatted="false">Проверка…</string>
+    <string name="catalog_checking_someone_in_person_437f86fe" formatted="false">Проверить человека лично</string>
+    <string name="catalog_checking_someone_s_code_is_a_one_b6951560" formatted="false">Проверка кода человека — дело один на один, поэтому она проходит в личной переписке с ним; все, кого вы проверили там, будут отмечены как проверенные и здесь. Если ждать проверки всех в группе, это задерживало бы тех, кому это не нужно.</string>
+    <string name="catalog_checking_them_here_is_safer_than_reading_faa9c2e1" formatted="false">Проверять здесь надёжнее, чем сверять глазами: шестьдесят цифр никто на самом деле не сравнивает.</string>
+    <string name="catalog_choose_files_5910acf0" formatted="false">Выбрать файлы</string>
+    <string name="catalog_clear_css_6a933bda" formatted="false">Очистить CSS</string>
+    <string name="catalog_close_dm_43823b56" formatted="false">Закрыть личную переписку</string>
+    <string name="catalog_code_from_your_app_2e089607" formatted="false">Код из вашего приложения</string>
+    <string name="catalog_code_from_your_app_or_a_recovery_c6308bc3" formatted="false">Код из вашего приложения (или код восстановления)</string>
+    <string name="catalog_compact_messages_8efe5e6b" formatted="false">Компактные сообщения</string>
+    <string name="catalog_comparing_ad916050" formatted="false">Сравнение…</string>
+    <string name="catalog_confirm_new_password_f85039fd" formatted="false">Подтвердите новый пароль</string>
+    <string name="catalog_confirm_with_your_passkey_to_finish_signing_a7480f38" formatted="false">Подтвердите ключом доступа, чтобы завершить вход.</string>
+    <string name="catalog_confirm_your_password_198b73ff" formatted="false">Подтвердите пароль</string>
+    <string name="catalog_connecting_fd3e7969" formatted="false">Подключение…</string>
+    <string name="catalog_connection_and_server_info_b1f3ef22" formatted="false">Сведения о подключении и сервере</string>
+    <string name="catalog_continue_transfer_8ea86ccd" formatted="false">Продолжить перенос</string>
+    <string name="catalog_copy_channel_id_c32cdc5d" formatted="false">Копировать ID канала</string>
+    <string name="catalog_copy_message_26902efd" formatted="false">Копировать сообщение</string>
+    <string name="catalog_copy_user_id_6fff306b" formatted="false">Копировать ID пользователя</string>
+    <string name="catalog_could_not_connect_to_the_call_a713db79" formatted="false">Не удалось подключиться к звонку</string>
+    <string name="catalog_could_not_join_the_call_a95443d4" formatted="false">Не удалось присоединиться к звонку</string>
+    <string name="catalog_could_not_open_this_image_cb0d1e2e" formatted="false">Не удалось открыть изображение</string>
+    <string name="catalog_could_not_play_that_sound_5f4f3c4c" formatted="false">Не удалось воспроизвести этот звук</string>
+    <string name="catalog_could_not_play_this_video_8540287d" formatted="false">Не удалось воспроизвести это видео</string>
+    <string name="catalog_could_not_remove_the_image_a332686e" formatted="false">Не удалось удалить изображение</string>
+    <string name="catalog_could_not_save_your_profile_e13d9374" formatted="false">Не удалось сохранить профиль</string>
+    <string name="catalog_could_not_start_the_call_925e1fa3" formatted="false">Не удалось начать звонок</string>
+    <string name="catalog_couldn_t_decrypt_this_file_08287a15" formatted="false">Не удалось расшифровать этот файл</string>
+    <string name="catalog_couldn_t_load_gifs_e47c284a" formatted="false">Не удалось загрузить GIF</string>
+    <string name="catalog_couldn_t_reach_that_message_it_may_896fe39d" formatted="false">Не удалось перейти к этому сообщению — оно может быть слишком старым или удалено.</string>
+    <string name="catalog_create_a_channel_3ac48642" formatted="false">Создать канал</string>
+    <string name="catalog_create_a_server_3a0ab422" formatted="false">Создать сервер</string>
+    <string name="catalog_create_account_aaf37447" formatted="false">Создать аккаунт</string>
+    <string name="catalog_create_another_8b69f57c" formatted="false">Создать ещё один</string>
+    <string name="catalog_create_group_5a0b1c17" formatted="false">Создать группу</string>
+    <string name="catalog_create_invite_a8404622" formatted="false">Создать приглашение</string>
+    <string name="catalog_create_passkey_500022b0" formatted="false">Создать ключ доступа</string>
+    <string name="catalog_create_role_db859bad" formatted="false">Создать роль</string>
+    <string name="catalog_create_your_account_4046b581" formatted="false">Создать аккаунт</string>
+    <string name="catalog_creating_this_phone_s_protected_encryption_identity_f14e4807" formatted="false">Создаётся защищённая криптографическая идентичность этого телефона…</string>
+    <string name="catalog_current_password_19dff4da" formatted="false">Текущий пароль</string>
+    <string name="catalog_custom_ringtone_fd009ada" formatted="false">Свой рингтон</string>
+    <string name="catalog_danger_zone_963a652e" formatted="false">Опасная зона</string>
+    <string name="catalog_delete_account_1753c206" formatted="false">Удалить аккаунт</string>
+    <string name="catalog_delete_all_my_messages_3549d600" formatted="false">Удалить все мои сообщения</string>
+    <string name="catalog_delete_all_your_messages_f9463fad" formatted="false">Удалить все ваши сообщения</string>
+    <string name="catalog_delete_my_account_2ae3a019" formatted="false">Удалить мой аккаунт</string>
+    <string name="catalog_delete_recording_8b58ce23" formatted="false">Удалить запись</string>
+    <string name="catalog_delete_role_fbf0667e" formatted="false">Удалить роль</string>
+    <string name="catalog_delete_server_fb695fc6" formatted="false">Удалить сервер</string>
+    <string name="catalog_delete_them_all_a3132ab8" formatted="false">Удалить их все</string>
+    <string name="catalog_desktop_app_f7a44c6b" formatted="false">Приложение для компьютера</string>
+    <string name="catalog_device_default_f9aac6c5" formatted="false">По умолчанию на устройстве</string>
+    <string name="catalog_device_transfer_code_10d0a8b9" formatted="false">Код переноса устройства</string>
+    <string name="catalog_digits_confirmed_4ecb4c0f" formatted="false">Цифры подтверждены</string>
+    <string name="catalog_direct_messages_e7596a09" formatted="false">Личные сообщения</string>
+    <string name="catalog_direct_messages_f1b1f5c2" formatted="false">Личные сообщения</string>
+    <string name="catalog_display_name_avatar_bio_accent_css_e2684739" formatted="false">Отображаемое имя, аватар, о себе, акцент, CSS</string>
+    <string name="catalog_display_name_c7874aaa" formatted="false">Отображаемое имя</string>
+    <string name="catalog_display_name_optional_23d1974a" formatted="false">Отображаемое имя (необязательно)</string>
+    <string name="catalog_display_separately_ecf9d1a7" formatted="false">Показывать отдельно</string>
+    <string name="catalog_each_entry_is_a_device_with_a_8778c193" formatted="false">Каждая запись — устройство с активным входом. Отзыв устройства прекращает его </string>
+    <string name="catalog_edit_message_96116a52" formatted="false">Изменить сообщение</string>
+    <string name="catalog_edit_role_61dd63e9" formatted="false">Изменить роль</string>
+    <string name="catalog_edited_b6da09e0" formatted="false">(изменено)</string>
+    <string name="catalog_email_code_5cb76e8c" formatted="false">Код из письма</string>
+    <string name="catalog_email_me_a_code_cc025d42" formatted="false">Отправить код на почту</string>
+    <string name="catalog_email_me_a_code_instead_44cc1833" formatted="false">Вместо этого отправить код на почту</string>
+    <string name="catalog_email_password_8973dcae" formatted="false">Эл. почта &amp; пароль</string>
+    <string name="catalog_encryption_security_alert_7b6e7671" formatted="false">Предупреждение безопасности шифрования</string>
+    <string name="catalog_enter_a_fresh_two_factor_authentication_code_9784e1c2" formatted="false">Введите новый код двухфакторной аутентификации. Новое устройство будет добавлено в ваш журнал устройств, куда можно только добавлять записи.</string>
+    <string name="catalog_enter_the_6_digit_code_from_your_0a98bcca" formatted="false">Введите 6-значный код из приложения или код восстановления.</string>
+    <string name="catalog_enter_to_save_shift_enter_for_a_74c26ca9" formatted="false">Enter — сохранить · Shift+Enter — новая строка</string>
+    <string name="catalog_erase_my_encryption_keys_65f08bd6" formatted="false">Стереть мои ключи шифрования</string>
+    <string name="catalog_erase_them_now_9964fd63" formatted="false">Стереть их сейчас</string>
+    <string name="catalog_erase_your_encryption_keys_e1ad1aa2" formatted="false">Стереть ваши ключи шифрования?</string>
+    <string name="catalog_erasing_fd30764f" formatted="false">Стирание…</string>
+    <string name="catalog_every_device_added_or_removed_is_written_ec8b50d8" formatted="false">Каждое добавление или удаление устройства записывается в журнал, в который можно только добавлять записи: его нельзя изменить или стереть. Ваши устройства читают его при каждом запуске, поэтому здесь не может незаметно появиться устройство, которое добавили не вы: вы получите уведомление, а запись останется в журнале.</string>
+    <string name="catalog_every_direct_message_is_encrypted_always_and_bacae7ec" formatted="false">Каждое личное сообщение всегда шифруется, и это нельзя отключить. Эта настройка определяет, насколько тщательно проверяется замок другого человека перед отправкой ему ваших сообщений.</string>
+    <string name="catalog_every_message_already_in_your_encrypted_conversations_ae9912e3" formatted="false">Все сообщения, уже находящиеся в ваших зашифрованных беседах, навсегда станут нечитаемыми — для вас, для нас, для кого угодно. Их ничто не вернёт.</string>
+    <string name="catalog_everyone_930575f5" formatted="false">@everyone</string>
+    <string name="catalog_everyone_applies_to_every_member_it_has_12e47659" formatted="false">@everyone применяется к каждому участнику. У него нет цвета, его нельзя назначить или удалить.</string>
+    <string name="catalog_everyone_here_02cadf2a" formatted="false">все здесь</string>
+    <string name="catalog_everyone_in_this_voice_channel_hears_it_df8e9c42" formatted="false">Все в этом голосовом канале это слышат.</string>
+    <string name="catalog_everything_sent_from_now_on_uses_a_4d8b70ec" formatted="false">Всё, что будет отправлено с этого момента, использует новый ключ. Существующие сообщения останутся читаемыми, а все, кто всё ещё в беседе, сохранят доступ.</string>
+    <string name="catalog_expired_large_files_are_only_kept_for_a9b2c12d" formatted="false">Срок истёк — большие файлы хранятся только час</string>
+    <string name="catalog_expires_in_1_hour_26e2eae7" formatted="false">Истекает через 1 час</string>
+    <string name="catalog_fallback_mode_scan_this_code_from_an_45193b95" formatted="false">Резервный режим: отсканируйте этот код уже авторизованным телефоном или вставьте его на авторизованном компьютере.</string>
+    <string name="catalog_favourite_this_gif_a9fd24af" formatted="false">Добавить этот GIF в избранное</string>
+    <string name="catalog_find_a_member_036dc8dd" formatted="false">Найти участника</string>
+    <string name="catalog_find_friends_2fd354c9" formatted="false">Найти друзей</string>
+    <string name="catalog_flip_camera_ed114d76" formatted="false">Переключить камеру</string>
+    <string name="catalog_follow_the_installer_to_finish_updating_2742868e" formatted="false">Следуйте инструкциям установщика, чтобы завершить обновление</string>
+    <string name="catalog_freezes_the_account_if_you_think_someone_09f45852" formatted="false">Замораживает аккаунт, если вы думаете, что в нём есть кто-то ещё: завершает все </string>
+    <string name="catalog_get_notified_about_messages_d4bc1f2e" formatted="false">Получать уведомления о сообщениях?</string>
+    <string name="catalog_hang_up_66be99b5" formatted="false">Завершить звонок</string>
+    <string name="catalog_have_them_open_their_code_in_orangchat_9428c129" formatted="false">Попросите их открыть свой код в OrangChat и наведите на него камеру телефона. Затем телефон запомнит замок, который вы действительно видели, поэтому подменённый больше не совпадёт. Одно сканирование подтверждает только одно направление — покажите им и свой код.</string>
+    <string name="catalog_hide_my_code_835d9e98" formatted="false">Скрыть мой код</string>
+    <string name="catalog_hide_password_e40123b4" formatted="false">Скрыть пароль</string>
+    <string name="catalog_hold_steady_scanning_happens_automatically_ae832ed2" formatted="false">Держите телефон неподвижно — сканирование начнётся автоматически</string>
+    <string name="catalog_hold_the_mic_to_record_then_let_48d81b83" formatted="false">Удерживайте микрофон, чтобы записать, затем отпустите, чтобы отправить</string>
+    <string name="catalog_hold_to_record_a_voice_message_06b1b5f5" formatted="false">Удерживайте, чтобы записать голосовое сообщение</string>
+    <string name="catalog_how_does_this_work_1ae14530" formatted="false">Как это работает?</string>
+    <string name="catalog_how_your_messages_are_protected_bb07e15c" formatted="false">Как защищены ваши сообщения</string>
+    <string name="catalog_i_understand_842a9bdd" formatted="false">Понятно</string>
+    <string name="catalog_i_ve_saved_them_d4c0b9ed" formatted="false">Я сохранил(а) их</string>
+    <string name="catalog_if_a_safety_code_changes_or_a_fdad80c2" formatted="false">Если код безопасности изменится или в аккаунте появится устройство, которое добавили не вы, OrangChat остановит процесс и прямо сообщит об этом, а не покажет уведомление, которое можно смахнуть.</string>
+    <string name="catalog_in_call_07d16f43" formatted="false">В звонке</string>
+    <string name="catalog_in_plain_language_with_no_jargon_to_b56795a6" formatted="false">Простыми словами, без непонятных терминов.</string>
+    <string name="catalog_inappropriate_content_62db8957" formatted="false">Неподходящий контент</string>
+    <string name="catalog_invite_link_601e9d6c" formatted="false">Ссылка-приглашение</string>
+    <string name="catalog_invite_people_e1eb97af" formatted="false">Пригласить людей</string>
+    <string name="catalog_it_is_not_always_an_attack_it_c9d44cb1" formatted="false">Это не всегда атака: так бывает и когда человек теряет все устройства и начинает заново. Изнутри приложения их не отличить, поэтому оно просит связаться с человеком напрямую, прежде чем отправлять что-либо ещё.</string>
+    <string name="catalog_join_a_server_d59b6aba" formatted="false">Присоединиться к серверу</string>
+    <string name="catalog_join_muted_8ccaf5fe" formatted="false">Подключиться с выключенным микрофоном</string>
+    <string name="catalog_join_with_camera_on_c39f4e79" formatted="false">Подключиться с включённой камерой</string>
+    <string name="catalog_jump_to_latest_5aa2e089" formatted="false">К последним</string>
+    <string name="catalog_keys_device_log_verifying_people_0828f752" formatted="false">Ключи, журнал устройств, проверка людей</string>
+    <string name="catalog_leave_all_servers_65e7741b" formatted="false">Покинуть все серверы</string>
+    <string name="catalog_leave_group_92578912" formatted="false">Покинуть группу</string>
+    <string name="catalog_leave_server_da6fea13" formatted="false">Покинуть сервер</string>
+    <string name="catalog_leaves_every_server_you_re_in_except_bcbf7a17" formatted="false">Покидает все серверы, кроме тех, которыми вы владеете. Вам понадобится новое </string>
+    <string name="catalog_leaving_it_off_is_not_unprotected_every_94d76940" formatted="false">Отключение не означает, что вы «без защиты». Каждый замок всё равно сверяется с журналом, куда можно только добавлять записи, а ваши устройства читают его при каждом запуске. Разница в том, блокируется ли подменённый замок до использования или обнаруживается сразу после. Групповые беседы в любом случае отправляют сообщения сразу.</string>
+    <string name="catalog_let_people_see_when_you_re_typing_eb96518c" formatted="false">Показывать, когда вы печатаете.</string>
+    <string name="catalog_lift_lockdown_4131d82c" formatted="false">Снять блокировку аккаунта</string>
+    <string name="catalog_lift_timeout_560ca50c" formatted="false">Снять временное ограничение</string>
+    <string name="catalog_linked_image_96960966" formatted="false">Связанное изображение</string>
+    <string name="catalog_listening_to_aad82f87" formatted="false">СЛУШАЕТ</string>
+    <string name="catalog_listening_to_b35b0e8e" formatted="false">Слушает </string>
+    <string name="catalog_load_more_dfe60ca9" formatted="false">Загрузить ещё</string>
+    <string name="catalog_loading_33ce4174" formatted="false">Загрузка…</string>
+    <string name="catalog_lock_down_my_account_c7b52afc" formatted="false">Заблокировать мой аккаунт</string>
+    <string name="catalog_log_in_f7c400ed" formatted="false">Войти</string>
+    <string name="catalog_log_out_6e78c91f" formatted="false">Выйти</string>
+    <string name="catalog_lost_your_authenticator_af902070" formatted="false">Потеряли приложение-аутентификатор?</string>
+    <string name="catalog_lowercase_letters_digits_and_2_to_32_7bec3c28" formatted="false">Строчные буквы, цифры, _ и . — от 2 до 32 символов</string>
+    <string name="catalog_lowercase_letters_numbers_underscores_and_dots_57155ecc" formatted="false">Строчные буквы, цифры, подчёркивания и точки.</string>
+    <string name="catalog_make_a_new_key_cde9afba" formatted="false">Создать новый ключ</string>
+    <string name="catalog_mark_as_read_c1ee860b" formatted="false">Отметить как прочитанное</string>
+    <string name="catalog_messages_friend_requests_typing_notifications_17b64746" formatted="false">Сообщения, запросы в друзья, набор текста, уведомления</string>
+    <string name="catalog_messages_go_as_soon_as_you_send_e76569f5" formatted="false">Сообщения отправляются сразу. Если кто-то когда-нибудь подменит замок этого человека, ваши устройства это заметят и сообщат вам.</string>
+    <string name="catalog_microphone_access_is_needed_to_record_a_9afc8aaa" formatted="false">Для записи голосового сообщения нужен доступ к микрофону</string>
+    <string name="catalog_minimize_call_6cb0f0f8" formatted="false">Свернуть звонок</string>
+    <string name="catalog_missed_call_0200c293" formatted="false">Пропущенный звонок</string>
+    <string name="catalog_my_orange_grove_c6cfda8f" formatted="false">Моя апельсиновая роща</string>
+    <string name="catalog_need_an_account_sign_up_77472065" formatted="false">Нужен аккаунт? Зарегистрируйтесь</string>
+    <string name="catalog_never_used_8c1c3645" formatted="false"> · не использовалось</string>
+    <string name="catalog_new_email_b07e22b0" formatted="false">Новый адрес электронной почты</string>
+    <string name="catalog_new_group_f9850c0b" formatted="false">Новая группа</string>
+    <string name="catalog_new_key_for_this_conversation_651d7e16" formatted="false">Новый ключ для этой беседы</string>
+    <string name="catalog_new_messages_6d867124" formatted="false">Новые сообщения</string>
+    <string name="catalog_new_password_d850ee18" formatted="false">Новый пароль</string>
+    <string name="catalog_new_recovery_codes_90b8afc8" formatted="false">Новые коды восстановления</string>
+    <string name="catalog_new_roles_start_just_above_everyone_so_700d0555" formatted="false">Новые роли располагаются сразу над @everyone, поэтому они никогда не выше человека, который их создаёт.</string>
+    <string name="catalog_new_update_available_b0be29b0" formatted="false">Доступно новое обновление</string>
+    <string name="catalog_no_answer_a9c16dd0" formatted="false">Нет ответа</string>
+    <string name="catalog_no_devices_are_enrolled_on_this_account_025829c1" formatted="false">На этом аккаунте нет подключённых устройств.</string>
+    <string name="catalog_no_friends_yet_add_someone_first_a7ccf9a9" formatted="false">Пока нет друзей. Сначала добавьте кого-нибудь.</string>
+    <string name="catalog_no_friends_yet_add_someone_from_the_7d7f43ab" formatted="false">Пока нет друзей. Добавьте кого-нибудь на вкладке «Добавить».</string>
+    <string name="catalog_no_gifs_found_0d358df4" formatted="false">GIF не найдены</string>
+    <string name="catalog_no_matches_0be6a257" formatted="false">Нет совпадений.</string>
+    <string name="catalog_no_matching_friends_or_channels_fd0c1248" formatted="false">Нет совпадающих друзей или каналов</string>
+    <string name="catalog_no_passkeys_yet_6dc4fe0f" formatted="false">Пока нет ключей доступа.</string>
+    <string name="catalog_no_pending_requests_aeedf949" formatted="false">Нет ожидающих запросов.</string>
+    <string name="catalog_no_saved_gifs_yet_tap_the_bookmark_75705898" formatted="false">Пока нет сохранённых GIF — нажмите закладку у любого GIF, чтобы оставить его здесь.</string>
+    <string name="catalog_no_server_is_currently_restricting_you_061000ea" formatted="false">Ни один сервер сейчас не ограничивает вас.</string>
+    <string name="catalog_no_sounds_yet_someone_with_manage_expressions_011117e4" formatted="false">Пока нет звуков. Участник с правом «Управление выражениями» может добавить их в настройках сервера.</string>
+    <string name="catalog_none_set_4bf72e7e" formatted="false">Не задано</string>
+    <string name="catalog_not_in_call_32010878" formatted="false">Не в звонке</string>
+    <string name="catalog_not_in_the_same_room_you_will_d53e345b" formatted="false">Не в одной комнате? Вы оба увидите одинаковую короткую строку чисел — код безопасности. Попросите человека прочитать её по телефону или отправить через другое приложение, которому вы уже доверяете, и введите её в поле под кодом. Приложение сравнит все шестьдесят цифр — это больше, чем кто-либо способен проверить глазами. Если они совпадут, посредника нет. Единственное, что не подходит, — голосовой звонок OrangChat: его звук проходит через те же серверы, которые и проверяет эта проверка.</string>
+    <string name="catalog_not_me_1ad9a1eb" formatted="false">Не я</string>
+    <string name="catalog_not_now_e4571490" formatted="false">Не сейчас</string>
+    <string name="catalog_not_sent_587c501e" formatted="false">Не отправлено</string>
+    <string name="catalog_nothing_can_sign_in_and_no_new_e0c687ac" formatted="false">Никто не сможет войти, а новые личные сообщения и запросы в друзья не дойдут до вас. </string>
+    <string name="catalog_nothing_has_been_logged_yet_e4080778" formatted="false">Пока ничего не записано.</string>
+    <string name="catalog_nothing_is_sent_until_you_have_checked_6db8aee8" formatted="false">Ничего не отправляется, пока вы не проверите код человека лично или во время звонка. До этого ваши сообщения ждут здесь, запертые, и никуда не уходят.</string>
+    <string name="catalog_notifications_are_turned_off_e638becc" formatted="false">Уведомления отключены</string>
+    <string name="catalog_now_playing_586fa7a8" formatted="false">СЕЙЧАС ИГРАЕТ</string>
+    <string name="catalog_oc_pf_name_color_ff6a1a_9442cf4e" formatted="false">.oc-pf-name { color: #ff6a1a; }</string>
+    <string name="catalog_off_the_shade_and_lock_screen_show_29ea09db" formatted="false">Когда выключено, в шторке и на экране блокировки видно только, кто написал, и ничего больше. Зашифрованные сообщения тогда вообще не расшифровываются для уведомлений. Только на этом телефоне.</string>
+    <string name="catalog_on_call_fdd219b2" formatted="false">В звонке</string>
+    <string name="catalog_on_your_pc_open_settings_encryption_add_5a070e42" formatted="false">На компьютере откройте Настройки → Шифрование → Добавить другое устройство. На компьютере появится одноразовый QR-код.</string>
+    <string name="catalog_ongoing_call_5ae739b8" formatted="false">Текущий звонок</string>
+    <string name="catalog_only_continue_if_you_started_this_transfer_d563e585" formatted="false">Продолжайте, только если вы сами начали этот перенос и видите оба устройства.</string>
+    <string name="catalog_only_the_owner_can_rename_this_server_3db192cb" formatted="false">Переименовать этот сервер может только владелец</string>
+    <string name="catalog_only_the_people_in_the_conversation_can_ae492280" formatted="false">Открыть их могут только люди в беседе. Ни OrangChat, ни тот, кто украдёт базу данных, ни тот, кто придёт с судебным предписанием: у нас нет ключа, который можно было бы выдать. Это включено для каждого личного сообщения, и отключить нельзя.</string>
+    <string name="catalog_open_app_permissions_893246fb" formatted="false">Открыть разрешения приложения</string>
+    <string name="catalog_open_call_1c47457b" formatted="false">Открыть звонок</string>
+    <string name="catalog_orangchat_can_let_you_know_when_someone_13d0aac2" formatted="false">OrangChat может сообщать вам, когда кто-то пишет или звонит </string>
+    <string name="catalog_orangchat_device_transfer_9d5395e9" formatted="false">orangchat://device-transfer?…</string>
+    <string name="catalog_orangchat_only_opens_your_camera_and_microphone_16da857f" formatted="false">OrangChat включает камеру и микрофон только во время звонка. Android спрашивает </string>
+    <string name="catalog_otherwise_only_members_with_mention_everyone_can_a0476dcf" formatted="false">Иначе это могут только участники с правом «Упоминать всех».</string>
+    <string name="catalog_permanently_delete_2eea1fa8" formatted="false">Удалить навсегда</string>
+    <string name="catalog_personal_phone_a154b2eb" formatted="false">Личный телефон</string>
+    <string name="catalog_phone_connected_ac1141af" formatted="false">Телефон подключён</string>
+    <string name="catalog_pick_at_least_one_more_friend_for_1cd89bd0" formatted="false">Выберите для группы хотя бы ещё одного друга.</string>
+    <string name="catalog_point_this_phone_at_the_qr_code_cea07275" formatted="false">Наведите этот телефон на QR-код, показанный в OrangChat на компьютере.</string>
+    <string name="catalog_point_this_phone_at_the_transfer_code_d6baae81" formatted="false">Наведите этот телефон на код переноса, показанный на новом устройстве.</string>
+    <string name="catalog_privacy_security_9bb6e9c0" formatted="false">Конфиденциальность &amp; безопасность</string>
+    <string name="catalog_profile_themes_3d7fccd2" formatted="false">Темы профиля</string>
+    <string name="catalog_profile_themes_style_your_public_profile_card_7965d778" formatted="false">Темы профиля оформляют вашу публичную карточку профиля. Каждая запись проверяется через pull request, поставляется с приложением и очищается перед отображением.</string>
+    <string name="catalog_ready_made_styles_for_your_profile_card_83af5cba" formatted="false">Готовые стили для карточки профиля</string>
+    <string name="catalog_recording_locked_32fe3a05" formatted="false">Запись заблокирована</string>
+    <string name="catalog_recovery_codes_b3f5f8ca" formatted="false">Коды восстановления</string>
+    <string name="catalog_reduce_motion_25a5aef5" formatted="false">Уменьшить анимацию</string>
+    <string name="catalog_release_to_cancel_29bd6c29" formatted="false">Отпустите, чтобы отменить</string>
+    <string name="catalog_remove_background_for_everyone_275dc99e" formatted="false">Убрать фон у всех</string>
+    <string name="catalog_remove_friend_b16fc7ff" formatted="false">Удалить друга</string>
+    <string name="catalog_remove_from_favourites_624f82c1" formatted="false">Убрать из избранного</string>
+    <string name="catalog_remove_group_icon_5869f3b2" formatted="false">Удалить значок группы</string>
+    <string name="catalog_remove_passkey_988b1b7e" formatted="false">Удалить ключ доступа</string>
+    <string name="catalog_removes_every_message_you_ve_sent_in_f63902f1" formatted="false">Удаляет все отправленные вами сообщения на всех серверах и в группах — включая </string>
+    <string name="catalog_removing_this_only_affects_orangchat_delete_it_28979691" formatted="false">Удаление затронет только OrangChat. Удалите это в настройках самого устройства </string>
+    <string name="catalog_rename_passkey_cb9298c9" formatted="false">Переименовать ключ доступа</string>
+    <string name="catalog_replaces_the_key_used_from_now_on_c57ccaed" formatted="false">Меняет используемый с этого момента ключ, поэтому удалённое позже устройство не сможет читать ничего нового. Уже имеющиеся сообщения останутся читаемыми, и никто не потеряет доступ.</string>
+    <string name="catalog_replaces_the_orangchat_mark_for_you_everywhere_109fab70" formatted="false">Заменяет ваш значок OrangChat во всех сеансах. </string>
+    <string name="catalog_report_message_babfeaf5" formatted="false">Пожаловаться на сообщение</string>
+    <string name="catalog_report_received_2568a541" formatted="false">Жалоба получена</string>
+    <string name="catalog_reporting_reveals_this_one_decrypted_message_and_1e7d77a7" formatted="false">При отправке жалобы раскрываются это расшифрованное сообщение и ключ для одного сообщения. Ключ беседы и другие сообщения не раскрываются.</string>
+    <string name="catalog_request_sent_168996e3" formatted="false">Запрос отправлен</string>
+    <string name="catalog_resend_email_code_9a8ba727" formatted="false">Отправить код по почте ещё раз</string>
+    <string name="catalog_reset_to_defaults_ddefe47d" formatted="false">Сбросить настройки</string>
+    <string name="catalog_resolving_invite_62cce3b8" formatted="false">Открываем приглашение…</string>
+    <string name="catalog_revoke_device_66468c17" formatted="false">Отозвать устройство</string>
+    <string name="catalog_revoking_2c8a0ed4" formatted="false">Отзыв…</string>
+    <string name="catalog_ringing_417814b1" formatted="false">Звонит…</string>
+    <string name="catalog_role_name_4204d818" formatted="false">Название роли</string>
+    <string name="catalog_roles_grant_permissions_and_a_colour_members_51c7e585" formatted="false">Роли дают права и цвет. Участники получают цвет своей самой высокой роли.</string>
+    <string name="catalog_save_changes_179359b3" formatted="false">Сохранить изменения</string>
+    <string name="catalog_save_nickname_51ddb3ea" formatted="false">Сохранить псевдоним</string>
+    <string name="catalog_save_profile_f597c0e8" formatted="false">Сохранить профиль</string>
+    <string name="catalog_save_these_now_each_works_once_if_2a1aad82" formatted="false">Сохраните их сейчас: каждый сработает один раз, если вы потеряете телефон, и они показываются только сейчас.</string>
+    <string name="catalog_scan_code_from_pc_6c59b0aa" formatted="false">Сканировать код с компьютера</string>
+    <string name="catalog_scan_device_code_45e4e1cb" formatted="false">Сканировать код устройства</string>
+    <string name="catalog_scan_the_code_shown_by_the_new_953d3dac" formatted="false">Отсканируйте код, показанный новым устройством, или вставьте сюда полный код orangchat://device-transfer.</string>
+    <string name="catalog_scan_their_code_b273ef3b" formatted="false">Сканировать их код</string>
+    <string name="catalog_scan_verification_code_9569a83c" formatted="false">Сканировать код проверки</string>
+    <string name="catalog_search_by_name_or_username_9c923df6" formatted="false">Искать по имени или имени пользователя</string>
+    <string name="catalog_search_friends_and_channels_57990af1" formatted="false">Искать друзей и каналы</string>
+    <string name="catalog_search_klipy_9e867d1a" formatted="false">Искать в KLIPY</string>
+    <string name="catalog_search_messages_abea65ae" formatted="false">Искать сообщения</string>
+    <string name="catalog_search_profile_themes_99f3d314" formatted="false">Искать темы профиля</string>
+    <string name="catalog_searched_on_this_device_messages_not_opened_4abe22a1" formatted="false">Поиск выполнен на этом устройстве. Сообщения, не открытые здесь, могут отсутствовать.</string>
+    <string name="catalog_send_a_new_code_91904a28" formatted="false">Отправить новый код</string>
+    <string name="catalog_send_anyway_911263fe" formatted="false">Всё равно отправить</string>
+    <string name="catalog_send_friend_request_c3ed810d" formatted="false">Отправить запрос в друзья</string>
+    <string name="catalog_send_report_a5b32af9" formatted="false">Отправить жалобу</string>
+    <string name="catalog_send_straight_away_19f3932b" formatted="false">Отправить сразу</string>
+    <string name="catalog_send_straight_away_a_swap_gets_caught_2e19b55a" formatted="false">Отправить сразу — подмена будет замечена. Каждый опубликованный кем-либо замок записывается в журнал, куда можно только добавлять записи: его нельзя изменить или стереть. Ваши устройства читают страницу о вашем аккаунте при каждом запуске. Если когда-нибудь от вашего имени опубликуют замок, который создали не ваши устройства, они сообщат вам об этом, а запись останется в журнале, на который может указать любой. Подмену можно попытаться сделать, но незаметно это не получится.</string>
+    <string name="catalog_send_typing_indicators_6ca26372" formatted="false">Отправлять индикаторы набора</string>
+    <string name="catalog_sending_cf765512" formatted="false">Отправка…</string>
+    <string name="catalog_sending_straight_away_is_what_every_conversation_68012f61" formatted="false">Сообщения сразу отправляются в каждой беседе. Проверка перед отправкой — дополнительный шаг; включать её стоит только для людей, с которыми вы реально можете встретиться или созвониться.</string>
+    <string name="catalog_sending_voice_message_a48b5648" formatted="false">Отправка голосового сообщения…</string>
+    <string name="catalog_server_channels_those_have_shared_history_moderation_c68bcd1b" formatted="false">• Каналы серверов. У них общая история, модерация и поиск, для всего этого сервер должен их читать. Так шифруются только личные сообщения и групповые личные чаты.</string>
+    <string name="catalog_server_icon_8bf2f95a" formatted="false">Значок сервера</string>
+    <string name="catalog_server_name_738825fc" formatted="false">Название сервера</string>
+    <string name="catalog_server_settings_28af3cc7" formatted="false">Настройки сервера</string>
+    <string name="catalog_set_a_password_f5c8f412" formatted="false">Установить пароль</string>
+    <string name="catalog_set_chat_background_d07e7165" formatted="false">Установить фон чата</string>
+    <string name="catalog_set_group_icon_48042fd7" formatted="false">Установить значок группы</string>
+    <string name="catalog_set_password_94408e41" formatted="false">Установить пароль</string>
+    <string name="catalog_set_up_this_phone_again_6f53f3fd" formatted="false">Настроить этот телефон заново</string>
+    <string name="catalog_set_up_two_factor_a6722c51" formatted="false">Настроить двухфакторную защиту</string>
+    <string name="catalog_setting_up_cef9b69d" formatted="false">Настройка…</string>
+    <string name="catalog_share_to_orangchat_8cb49ef7" formatted="false">Поделиться в OrangChat</string>
+    <string name="catalog_shared_text_4517f1e8" formatted="false">Общий текст</string>
+    <string name="catalog_sharing_ad005909" formatted="false">Отправка…</string>
+    <string name="catalog_show_fallback_code_on_this_phone_90acc27c" formatted="false">Показать резервный код на этом телефоне</string>
+    <string name="catalog_show_members_with_this_role_in_their_f0fb058c" formatted="false">Показывать участников с этой ролью в отдельной группе.</string>
+    <string name="catalog_show_message_text_66bf26b1" formatted="false">Показывать текст сообщения</string>
+    <string name="catalog_show_my_code_342b7a4e" formatted="false">Показать мой код</string>
+    <string name="catalog_show_password_044b852f" formatted="false">Показать пароль</string>
+    <string name="catalog_shown_on_the_invite_page_28e6606d" formatted="false">Показывается на странице приглашения.</string>
+    <string name="catalog_sign_in_ada2e9e9" formatted="false">Войти</string>
+    <string name="catalog_sign_in_on_the_web_94061c18" formatted="false">Войти в веб-версии?</string>
+    <string name="catalog_sign_in_with_a_passkey_cf1c7263" formatted="false">Войти с ключом доступа</string>
+    <string name="catalog_sign_in_with_your_fingerprint_face_or_ec24e91a" formatted="false">Войти по отпечатку пальца, лицу или PIN-коду устройства вместо пароля. </string>
+    <string name="catalog_sign_out_dc1649a1" formatted="false">Выйти</string>
+    <string name="catalog_skip_the_scroll_and_swipe_animations_3bb4a091" formatted="false">Отключить анимацию прокрутки и смахивания.</string>
+    <string name="catalog_slide_to_cancel_8f64a698" formatted="false">Сдвиньте, чтобы отменить →</string>
+    <string name="catalog_slide_to_cancel_9c411f6d" formatted="false">‹ Сдвиньте, чтобы отменить</string>
+    <string name="catalog_slide_up_to_lock_recording_52127830" formatted="false">Сдвиньте вверх, чтобы заблокировать запись</string>
+    <string name="catalog_so_you_can_tell_it_apart_from_5878d69c" formatted="false">Чтобы потом отличить его от других устройств.</string>
+    <string name="catalog_someone_here_f47623b5" formatted="false">Кто-то здесь</string>
+    <string name="catalog_someone_scanned_this_account_s_code_to_cd6f3892" formatted="false">Кто-то отсканировал код этого аккаунта, чтобы войти в OrangChat в браузере. Подтвердите, только если это были вы.</string>
+    <string name="catalog_standing_together_scan_each_other_s_codes_faf20092" formatted="false">Стоите рядом? Отсканируйте коды друг друга: одно сканирование подтверждает только одно направление, поэтому сделайте оба.</string>
+    <string name="catalog_start_a_call_d7f39160" formatted="false">Начать звонок</string>
+    <string name="catalog_start_a_fresh_key_here_11c5421d" formatted="false">Создать новый ключ здесь</string>
+    <string name="catalog_start_calls_with_video_already_publishing_04f2d03f" formatted="false">Начинать звонки с уже включённым видео.</string>
+    <string name="catalog_start_every_call_with_your_microphone_off_087b5564" formatted="false">Начинать каждый звонок с выключенным микрофоном.</string>
+    <string name="catalog_start_over_with_new_keys_328f6a4a" formatted="false">Начать заново с новыми ключами</string>
+    <string name="catalog_start_video_call_dac036c6" formatted="false">Начать видеозвонок</string>
+    <string name="catalog_start_voice_call_f5e80dd9" formatted="false">Начать голосовой звонок</string>
+    <string name="catalog_stored_on_this_device_only_never_uploaded_1373e7ad" formatted="false">Хранится только на этом устройстве — никогда не загружается.</string>
+    <string name="catalog_style_your_card_for_everyone_who_views_08c9bf5c" formatted="false">Оформите карточку для всех, кто её увидит. У каждой части есть свой селектор: </string>
+    <string name="catalog_synced_to_your_device_s_keychain_4f237bce" formatted="false">Синхронизировано со связкой ключей устройства.</string>
+    <string name="catalog_take_a_picture_6d76bc64" formatted="false">Сделать снимок</string>
+    <string name="catalog_tap_the_key_to_copy_it_1965f6e7" formatted="false">Нажмите на ключ, чтобы скопировать его.</string>
+    <string name="catalog_text_size_3cc6e124" formatted="false">Размер текста</string>
+    <string name="catalog_text_size_motion_density_a9cc0369" formatted="false">Размер текста, анимация, плотность</string>
+    <string name="catalog_that_invite_is_expired_revoked_or_never_752c9ac3" formatted="false">Приглашение истекло, отозвано или никогда не существовало.</string>
+    <string name="catalog_that_is_also_why_adding_a_second_4bac217f" formatted="false">Вот почему добавление второго устройства — небольшая церемония, а не копирование и вставка. Старое устройство должно увидеть новое — код на экране, наведённую на него камеру — прежде чем что-либо будет перенесено.</string>
+    <string name="catalog_the_camera_could_not_start_you_can_a181859b" formatted="false">Не удалось запустить камеру. Повторите попытку или используйте системное приложение «Камера».</string>
+    <string name="catalog_the_digits_match_809c13bc" formatted="false">Цифры совпадают</string>
+    <string name="catalog_the_logbook_0b3e99f4" formatted="false">Журнал</string>
+    <string name="catalog_the_messages_only_that_device_could_open_dd92a9bc" formatted="false">Сообщения, которые могло открыть только это устройство, останутся заблокированными навсегда. Мы не можем восстановить их для вас: если бы могли, всё сказанное выше было бы неправдой.</string>
+    <string name="catalog_the_new_device_was_authorized_8ec267ba" formatted="false">Новое устройство авторизовано.</string>
+    <string name="catalog_the_quick_brown_fox_jumps_over_the_408d9438" formatted="false">Быстрая бурая лисица перепрыгивает через ленивую собаку.</string>
+    <string name="catalog_the_right_person_3860646e" formatted="false">нужный человек</string>
+    <string name="catalog_there_is_no_code_to_compare_yet_5ce7929c" formatted="false">Пока нет кода для сравнения.</string>
+    <string name="catalog_these_choices_are_stored_on_this_device_ac326393" formatted="false">Эти настройки хранятся только на этом устройстве.</string>
+    <string name="catalog_these_do_not_match_most_often_that_0139df50" formatted="false">Они не совпадают. Чаще всего цифру не расслышали или ввели неверно, поэтому проверьте ещё раз. Если они всё равно отличаются, между вами кто-то есть — ничего здесь не отправляйте, пока не поймёте, кто.</string>
+    <string name="catalog_these_numbers_appear_once_both_accounts_have_288c556c" formatted="false">Эти числа появляются, когда оба аккаунта настроят шифрование на устройстве.</string>
+    <string name="catalog_they_all_open_8a0f4e5d" formatted="false">они все открываются</string>
+    <string name="catalog_they_cannot_send_messages_react_or_speak_7fcf8d0c" formatted="false">Они не могут отправлять сообщения, реагировать или говорить, пока ограничение не истечёт.</string>
+    <string name="catalog_they_do_not_match_a5d86ddf" formatted="false">Они не совпадают</string>
+    <string name="catalog_they_open_371267bf" formatted="false">они открываются</string>
+    <string name="catalog_this_account_has_no_authenticator_app_set_3f1e6f47" formatted="false">На этом аккаунте не настроено приложение-аутентификатор, поэтому OrangChat отправит одноразовый код по электронной почте для подтверждения нового устройства.</string>
+    <string name="catalog_this_code_holds_nothing_secret_it_is_373de7f3" formatted="false">В этом коде нет ничего секретного. Его может видеть кто угодно; смысл сканированию придаёт то, что вы находитесь в одной комнате.</string>
+    <string name="catalog_this_conversation_is_not_encrypted_yet_00080602" formatted="false">Эта беседа ещё не зашифрована</string>
+    <string name="catalog_this_device_82229094" formatted="false">  ·  Это устройство</string>
+    <string name="catalog_this_device_fa5a6dd9" formatted="false">Это устройство</string>
+    <string name="catalog_this_device_will_stop_receiving_new_conversation_45e9c7a1" formatted="false">Это устройство перестанет получать новые ключи бесед. Оно останется в журнале устройств как отозванное, поэтому изменение нельзя скрыть.</string>
+    <string name="catalog_this_happens_the_moment_you_confirm_there_62922ade" formatted="false">Это произойдёт сразу после подтверждения: ожидания и отмены нет, потому что этот телефон подписывает действие собственным ключом. Каждое зашифрованное сообщение этого аккаунта навсегда станет нечитаемым для всех.</string>
+    <string name="catalog_this_is_your_code_they_can_scan_f71a20fe" formatted="false">Это ваш код. Другой человек может отсканировать его через замок вверху беседы или с этого экрана на своём телефоне.</string>
+    <string name="catalog_this_media_is_unavailable_1ed2c88e" formatted="false">Этот медиафайл недоступен</string>
+    <string name="catalog_this_phone_creates_its_own_non_copyable_e6604888" formatted="false">Этот телефон создаёт собственную непереносимую идентичность. С компьютера передаются только ключи истории зашифрованных бесед.</string>
+    <string name="catalog_this_phone_has_not_made_its_encryption_0af536c0" formatted="false">Этот телефон ещё не создал ключ шифрования.</string>
+    <string name="catalog_this_phone_is_not_authorized_yet_finish_1ca6df93" formatted="false">Этот телефон ещё не авторизован. Завершите «Добавить этот телефон», прежде чем он сможет читать зашифрованную историю или отзывать другое устройство шифрования.</string>
+    <string name="catalog_this_phone_is_now_an_authorized_encryption_65fc8f05" formatted="false">Этот телефон теперь авторизован для шифрования.</string>
+    <string name="catalog_this_phone_was_removed_from_your_account_a066cfb1" formatted="false">Этот телефон был удалён из вашего аккаунта с другого устройства. Его ключ больше ничего здесь не открывает, и он не сможет читать новые зашифрованные сообщения, пока вы не добавите его снова.</string>
+    <string name="catalog_this_replaces_all_of_your_existing_recovery_1ee473c2" formatted="false">Это заменит все существующие коды восстановления.</string>
+    <string name="catalog_this_version_of_orangchat_is_no_longer_91b823d1" formatted="false">Эта версия OrangChat больше не поддерживается и не может подключаться.</string>
+    <string name="catalog_those_don_t_match_5820ec54" formatted="false">Они не совпадают.</string>
+    <string name="catalog_throw_away_the_encryption_identity_on_this_e4c09f9c" formatted="false">Удалить криптографическую идентичность на этом аккаунте и создать здесь новую. Все остальные устройства будут удалены — их придётся добавить заново.</string>
+    <string name="catalog_tighter_spacing_between_messages_58e3bf31" formatted="false">Более плотные интервалы между сообщениями.</string>
+    <string name="catalog_time_out_71ed8fda" formatted="false">Временно ограничить</string>
+    <string name="catalog_timed_out_edcd3630" formatted="false">Временно ограничен</string>
+    <string name="catalog_timed_out_in_64510a0d" formatted="false">Временно ограничен в</string>
+    <string name="catalog_to_lock_a_box_for_someone_your_a0458be1" formatted="false">Чтобы запереть коробку для кого-то, вашему телефону нужен его замок, и он запрашивает его у наших серверов. Поэтому справедливый вопрос такой: что, если бы мы выдали вам замок, созданный нами, сохранили ключ и потом пересылали ваши сообщения?</string>
+    <string name="catalog_transfer_code_scanned_fdb95e51" formatted="false">Код переноса отсканирован</string>
+    <string name="catalog_turn_camera_off_97e661ba" formatted="false">Выключить камеру</string>
+    <string name="catalog_turn_camera_on_98c78a9e" formatted="false">Включить камеру</string>
+    <string name="catalog_turn_off_8807c2b3" formatted="false">Выключить</string>
+    <string name="catalog_turn_off_two_factor_ec64c330" formatted="false">Выключить двухфакторную защиту</string>
+    <string name="catalog_turn_on_two_factor_2d7b5797" formatted="false">Включить двухфакторную защиту</string>
+    <string name="catalog_turning_off_two_factor_leaves_your_password_7c7e274a" formatted="false">При отключении двухфакторной защиты единственной защитой останется пароль.</string>
+    <string name="catalog_two_answers_and_you_pick_how_much_c95f5a5c" formatted="false">Два варианта — выберите, сколько защиты вам нужно.</string>
+    <string name="catalog_two_factor_authentication_edfd617a" formatted="false">Двухфакторная аутентификация</string>
+    <string name="catalog_two_factor_is_on_65e04e1d" formatted="false">Двухфакторная защита включена</string>
+    <string name="catalog_type_to_search_this_server_s_messages_43fff226" formatted="false">Введите текст, чтобы искать сообщения этого сервера.</string>
+    <string name="catalog_type_to_search_your_cached_direct_messages_12182460" formatted="false">Введите текст, чтобы искать кэшированные личные сообщения.</string>
+    <string name="catalog_unknown_ip_70fef55a" formatted="false">неизвестный IP</string>
+    <string name="catalog_update_now_c4cbac00" formatted="false">Обновить сейчас</string>
+    <string name="catalog_update_required_f440d880" formatted="false">Требуется обновление</string>
+    <string name="catalog_update_to_continue_27e65968" formatted="false"> Обновите, чтобы продолжить.</string>
+    <string name="catalog_upload_failed_ad0d0603" formatted="false">Не удалось загрузить</string>
+    <string name="catalog_uploading_d921a79a" formatted="false">Загрузка…</string>
+    <string name="catalog_use_passkey_a93f1827" formatted="false">Использовать ключ доступа</string>
+    <string name="catalog_used_to_sign_in_there_s_no_51a10c36" formatted="false">Используется для входа. Письма с подтверждением не будет, поэтому перепроверьте адрес.</string>
+    <string name="catalog_user_settings_f2b85332" formatted="false">Настройки пользователя</string>
+    <string name="catalog_verify_this_contact_ee09ef5c" formatted="false">Проверить этот контакт</string>
+    <string name="catalog_version_and_build_3da1c1d8" formatted="false">Версия и сборка</string>
+    <string name="catalog_video_call_12d8c530" formatted="false">видеозвонок</string>
+    <string name="catalog_video_call_ad60f43c" formatted="false">Видеозвонок</string>
+    <string name="catalog_voice_call_329f832a" formatted="false">голосовой звонок</string>
+    <string name="catalog_voice_connected_538f3e5c" formatted="false">Голосовая связь подключена</string>
+    <string name="catalog_waiting_for_the_pc_to_calculate_the_a6606f84" formatted="false">Ожидание, пока компьютер вычислит цифры для сравнения…</string>
+    <string name="catalog_waiting_for_your_pc_b7329350" formatted="false">Ожидание компьютера…</string>
+    <string name="catalog_we_can_still_see_the_outside_of_c8bd071e" formatted="false">Нам всё ещё видна только внешняя сторона: кто отправил, кому, какого размера и когда. Содержимое нам недоступно.</string>
+    <string name="catalog_we_emailed_you_a_sign_in_code_e283ce1e" formatted="false">Мы отправили вам по электронной почте код для входа. Он действует 10 минут.</string>
+    <string name="catalog_welcome_back_b807833e" formatted="false">С возвращением</string>
+    <string name="catalog_what_happened_optional_9a81bdcf" formatted="false">Что произошло? (необязательно)</string>
+    <string name="catalog_what_happens_next_51ecc5b2" formatted="false">Что будет дальше</string>
+    <string name="catalog_what_incoming_calls_sound_like_5a0f66a3" formatted="false">Как звучат входящие звонки</string>
+    <string name="catalog_what_you_share_6998553a" formatted="false">Чем вы делитесь</string>
+    <string name="catalog_whatever_the_other_person_does_with_the_2d44e6c7" formatted="false">• Что бы другой человек ни сделал с сообщением. Он может сделать снимок экрана, сохранить его или показать кому-то. Шифрование защищает от посторонних, а не от получателей.</string>
+    <string name="catalog_when_joining_a_call_9f17cb1a" formatted="false">При подключении к звонку</string>
+    <string name="catalog_where_you_re_signed_in_af00ae96" formatted="false">Где выполнен вход</string>
+    <string name="catalog_who_can_add_you_07e171de" formatted="false">Кто может добавлять вас</string>
+    <string name="catalog_who_can_message_you_e9356e11" formatted="false">Кто может писать вам</string>
+    <string name="catalog_who_you_talk_to_when_and_how_96d03db2" formatted="false">• С кем вы общаетесь, когда и как часто. Даже к запертым коробкам нужно указать адресата.</string>
+    <string name="catalog_with_someone_new_your_messages_wait_on_376112de" formatted="false">С новым человеком ваши сообщения ждут на этом телефоне — запертые, никуда не отправленные — пока вы не увидите его код лично или не прочитаете друг другу числа во время звонка.</string>
+    <string name="catalog_yes_leave_them_all_8520c6e8" formatted="false">Да, покинуть их все</string>
+    <string name="catalog_yes_that_s_them_03f398c0" formatted="false">Да, это он</string>
+    <string name="catalog_you_can_also_scan_with_the_system_35d7d733" formatted="false">Можно также отсканировать системным приложением «Камера» и нажать «Открыть OrangChat».</string>
+    <string name="catalog_you_do_not_have_this_permission_d4f08a3c" formatted="false">У вас нет этого разрешения.</string>
+    <string name="catalog_you_example_com_50e2b46e" formatted="false">you@example.com</string>
+    <string name="catalog_you_ll_need_an_authenticator_app_such_60b7dd86" formatted="false">Вам понадобится приложение-аутентификатор, например Google Authenticator, 1Password или Aegis.</string>
+    <string name="catalog_you_re_on_the_latest_version_182b7c69" formatted="false">У вас установлена последняя версия</string>
+    <string name="catalog_you_ve_been_invited_to_join_3a282347" formatted="false">Вас пригласили присоединиться</string>
+    <string name="catalog_your_account_is_in_good_standing_1806a501" formatted="false">Ваш аккаунт в хорошем состоянии</string>
+    <string name="catalog_your_account_is_locked_down_d129bf10" formatted="false">Ваш аккаунт заблокирован</string>
+    <string name="catalog_your_current_password_6658f206" formatted="false">Ваш текущий пароль</string>
+    <string name="catalog_your_direct_messages_are_locked_on_this_0bc36ae0" formatted="false">Ваши личные сообщения запираются на этом телефоне до отправки. Ключ создан здесь, хранится в защищённом оборудовании телефона и не может быть скопирован — ни OrangChat, ни кем-либо с резервной копией базы данных.</string>
+    <string name="catalog_your_messages_are_locked_before_they_leave_a431b93a" formatted="false">Ваши сообщения запираются до того, как покинут этот телефон</string>
+    <string name="catalog_your_messages_stay_in_the_conversations_they_34246f3c" formatted="false">Ваши сообщения остаются в беседах, к которым относятся, и показаны как от </string>
+    <string name="catalog_your_password_26d745d4" formatted="false">Ваш пароль</string>
+    <string name="catalog_your_phone_and_your_computer_each_make_ade9350c" formatted="false">Ваш телефон и компьютер при первом использовании шифрования создают каждый свой ключ прямо на устройстве. Он попадает в часть устройства, предназначенную для защиты ключей, и сделан так, что его нельзя извлечь обратно — ни OrangChat, ни другим приложением, ни вами. Нечему утечь и нечего передавать.</string>
+    <string name="catalog_your_phone_puts_the_message_in_a_10625561" formatted="false">Ваш телефон кладёт сообщение в коробку и запирает её. Каждое устройство в беседе, и только они, имеет ключ от этой коробки. Наши серверы хранят и пересылают запертую коробку.</string>
+</resources>

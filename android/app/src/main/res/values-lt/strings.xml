@@ -1,0 +1,495 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+<string name="app_name">OrangChat</string>
+<string name="language_title">Kalba</string>
+<string name="language_subtitle">Pasirinkite programos kalbą</string>
+<string name="language_system">Naudoti sistemos kalbą</string>
+<string name="language_english">anglų kalba</string>
+<string name="language_lithuanian">Lietuvių</string>
+<string name="language_chinese">Kinų</string>
+<string name="language_hindi">Hindi</string>
+<string name="language_spanish">Ispanų</string>
+<string name="language_arabic">Arabų</string>
+<string name="language_french">Prancūzų</string>
+<string name="language_bengali">Bengalų</string>
+<string name="language_portuguese">Portugalų</string>
+<string name="language_russian">Rusų</string>
+<string name="language_urdu">Urdu</string>
+<string name="language_hint">Paleidus programą iš naujo, kalba pritaikoma visur.</string>
+<string name="catalog_1_add_this_key_to_your_app_c5c6bb28" formatted="false">1. Pridėkite šį raktą prie savo programos</string>
+<string name="catalog_1_attachment_82c9f82a" formatted="false">1 priedas</string>
+<string name="catalog_2026_oranges_lt_made_with_c3b7fea5" formatted="false">© 2026 Oranges.LT · Sukurta su 🍊</string>
+<string name="catalog_2_enter_the_6_digit_code_183ee7cb" formatted="false">2. Įveskite 6 skaitmenų kodą</string>
+<string name="catalog_a_deleted_account_b1c40a9e" formatted="false">Panaikinta paskyra</string>
+<string name="catalog_a_fast_self_hosted_chat_for_servers_fa05634c" formatted="false">Greitas, savarankiškai priglobtas pokalbis serveriams, DM ir balsui – Oranges.LT šeimos dalis.</string>
+<string name="catalog_a_one_time_code_is_on_its_395743b6" formatted="false">Vienkartinis kodas yra pakeliui į jūsų el. paštą – jo galiojimo laikas baigiasi po 10 minučių.</string>
+<string name="catalog_about_me_e3ba4ef3" formatted="false">Apie mane</string>
+<string name="catalog_accent_color_e49578ed" formatted="false">Akcentinė spalva</string>
+<string name="catalog_account_created_check_your_email_for_a_7d4a9ecd" formatted="false">Paskyra sukurta. Patikrinkite el. paštą, ar nėra patvirtinimo nuorodos – </string>
+<string name="catalog_account_standing_2b18a30b" formatted="false">Paskyros būsena</string>
+<string name="catalog_add_a_friend_by_their_username_c1584607" formatted="false">Pridėkite draugą pagal jo vartotojo vardą.</string>
+<string name="catalog_add_a_passkey_0daca495" formatted="false">Pridėkite prieigos raktą</string>
+<string name="catalog_add_a_server_5ee1e413" formatted="false">Pridėti serverį</string>
+<string name="catalog_add_another_device_67696610" formatted="false">Pridėkite kitą įrenginį</string>
+<string name="catalog_add_channel_901e4868" formatted="false">Pridėti kanalą</string>
+<string name="catalog_add_context_for_the_reviewer_e44f9147" formatted="false">Pridėti kontekstą peržiūrėtojui</string>
+<string name="catalog_add_device_2d2367c4" formatted="false">Pridėti įrenginį</string>
+<string name="catalog_add_emoji_or_gif_1d91d61d" formatted="false">Pridėkite jaustukų arba GIF</string>
+<string name="catalog_add_friend_e0a731d8" formatted="false">Pridėti draugą</string>
+<string name="catalog_add_friends_2dcf4e38" formatted="false">Pridėti draugų</string>
+<string name="catalog_add_people_b9c735ea" formatted="false">Pridėti žmonių</string>
+<string name="catalog_add_reaction_cf05eca8" formatted="false">Pridėti reakciją</string>
+<string name="catalog_add_this_phone_94a65dcf" formatted="false">Pridėti šį telefoną</string>
+<string name="catalog_adding_a_second_device_before_you_need_1f6a418c" formatted="false">Pridėti antrą įrenginį dar prieš jo prireikiant – štai visas atsakymas. Todėl pirmiausia turi būti įjungtas dviejų veiksnių autentifikavimas: atsarginis įrenginys yra atsarginis raktų rinkinys, o jam pridėti neužtenka vien slaptažodžio.</string>
+<string name="catalog_all_your_friends_are_already_here_45cf3604" formatted="false">Visi jūsų draugai jau čia.</string>
+<string name="catalog_allow_anyone_to_mention_c6fe8761" formatted="false">Leisti bet kam jus paminėti naudojant @</string>
+<string name="catalog_allow_camera_1dfb1b87" formatted="false">Leisti naudoti kamerą</string>
+<string name="catalog_allow_camera_access_to_scan_without_leaving_ca7cd21f" formatted="false">Leisti naudoti kamerą nuskaitymui neišeinant iš OrangChat.</string>
+<string name="catalog_allow_installs_first_a339d45d" formatted="false">Pirmiausia leisti diegti</string>
+<string name="catalog_already_have_an_account_log_in_b3a34236" formatted="false">Jau turite paskyrą? Prisijunkite</string>
+<string name="catalog_already_on_this_call_abb9cae6" formatted="false">Jau dalyvaujate šiame skambutyje</string>
+<string name="catalog_android_is_not_letting_orangchat_notify_you_eb9878eb" formatted="false">Android neleidžia OrangChat pranešti apie žinutes ar skambučius. Įjunkite juos sistemos nustatymuose.</string>
+<string name="catalog_answer_without_camera_979e59f8" formatted="false">Atsiliepti be kameros</string>
+<string name="catalog_anything_on_a_phone_that_is_already_7e329eae" formatted="false">• Viskas telefone, kuris jau atrakintas ir yra kito žmogaus rankose. Tuo metu jis skaito turinį taip pat, kaip ir jūs.</string>
+<string name="catalog_app_icon_abde7a74" formatted="false">Programėlės piktograma</string>
+<string name="catalog_as_the_owner_you_cannot_leave_delete_030b7d7e" formatted="false">Būdami savininku negalite išeiti – vietoj to ištrinkite serverį.</string>
+<string name="catalog_ask_for_a_code_from_your_phone_b6d62586" formatted="false">Prisijungiant, be slaptažodžio, prašoma ir telefono kodo.</string>
+<string name="catalog_ask_them_to_show_their_verification_qr_630e919c" formatted="false">Paprašykite jų parodyti patvirtinimo QR kodą ir sutalpinkite jį į rėmelį.</string>
+<string name="catalog_at_least_8_characters_1fe494b2" formatted="false">Mažiausiai 8 simboliai</string>
+<string name="catalog_at_least_8_characters_6089e5f3" formatted="false">Bent 8 simboliai.</string>
+<string name="catalog_attach_files_137135db" formatted="false">Pridėkite failus</string>
+<string name="catalog_audio_call_fb04a1a1" formatted="false">Garso skambutis</string>
+<string name="catalog_audit_log_3cfc5f1c" formatted="false">Audito žurnalas</string>
+<string name="catalog_authentication_code_b4f3ff1d" formatted="false">Autentifikavimo kodas</string>
+<string name="catalog_authenticator_code_2908b4e9" formatted="false">Autentifikatoriaus kodas</string>
+<string name="catalog_authorized_encryption_devices_1f60a639" formatted="false">Įgalioti šifravimo įrenginiai</string>
+<string name="catalog_authorizing_the_new_device_7d6e30db" formatted="false">Suteikiamas leidimas naujam įrenginiui</string>
+<string name="catalog_banned_from_b1b7bda2" formatted="false">Užblokuota serveryje</string>
+<string name="catalog_before_a_message_leaves_this_phone_74f6bb9b" formatted="false">Prieš žinutei paliekant šį telefoną</string>
+<string name="catalog_bot_account_a78d875e" formatted="false">Boto paskyra</string>
+<string name="catalog_both_of_you_open_the_conversation_tap_bbf94671" formatted="false">Abu atidarote pokalbį, bakstelėkite užraktą viršuje ir vienas iš jūsų nuskaitys kito kodą. Tada pakeiskite ir darykite atvirkščiai – vienas nuskaitymas įrodo tik vieną kryptį. Kol stovite kartu, užtrunka apie dešimt sekundžių.</string>
+<string name="catalog_both_options_encrypt_everything_the_difference_is_098d8758" formatted="false">Abi parinktys užšifruoja viską. Skirtumas yra tas, ar pakeistas užraktas sustabdomas prieš pradedant jį naudoti, ar pagaunamas po to.</string>
+<string name="catalog_both_screens_must_show_the_same_six_a112273d" formatted="false">Abiejuose ekranuose turi būti tie patys šeši skaitmenys. Jei jie skiriasi, atšaukite.</string>
+<string name="catalog_call_connected_78e88c19" formatted="false">SKAMBUTIS PRIJUNGTAS</string>
+<string name="catalog_call_connected_dce17207" formatted="false">Skambutis prijungtas</string>
+<string name="catalog_call_ringtone_0618e939" formatted="false">Skambučio skambėjimo tonas</string>
+<string name="catalog_call_sharing_defaults_c39b7d94" formatted="false">Numatytieji skambučio bendrinimo nustatymai</string>
+<string name="catalog_calling_acd4a67d" formatted="false">Skambinama…</string>
+<string name="catalog_camera_access_is_needed_to_scan_the_dcfe064f" formatted="false">Norint nuskaityti kodą kompiuteryje, reikia prieigos prie kameros.</string>
+<string name="catalog_camera_microphone_abf47618" formatted="false">Kamera &amp; mikrofonas</string>
+<string name="catalog_cancel_reply_bd62d2dd" formatted="false">Atšaukti atsakymą</string>
+<string name="catalog_cancel_scanning_f1f3d169" formatted="false">Atšaukti nuskaitymą</string>
+<string name="catalog_change_audio_output_ccb8eada" formatted="false">Keisti garso išvestį</string>
+<string name="catalog_change_background_0c868243" formatted="false">Keisti foną</string>
+<string name="catalog_change_email_8f1514b5" formatted="false">Keisti el. pašto adresą</string>
+<string name="catalog_change_group_icon_715ac3cf" formatted="false">Keisti grupės piktogramą</string>
+<string name="catalog_change_password_8c684290" formatted="false">Keisti slaptažodį</string>
+<string name="catalog_changing_your_password_signs_out_every_other_062a10ab" formatted="false">Pakeitus slaptažodį, atsijungiama visuose kituose seansuose.</string>
+<string name="catalog_channel_name_3be87bdd" formatted="false">Kanalo pavadinimas</string>
+<string name="catalog_check_for_updates_736b9062" formatted="false">Patikrinkite, ar nėra atnaujinimų</string>
+<string name="catalog_check_people_before_messaging_them_986118e4" formatted="false">Patikrinkite žmones prieš siųsdami jiems žinutę</string>
+<string name="catalog_check_them_again_feb54286" formatted="false">Patikrinti dar kartą</string>
+<string name="catalog_check_them_first_27eeb4a8" formatted="false">Pirmiausia patikrinti</string>
+<string name="catalog_check_them_first_a_swap_cannot_happen_82229615" formatted="false">Pirmiausia patikrinkite – pakeisti užraktą nepavyks. Prieš ką nors siunčiant kitam žmogui, jo užraktą patikrinate patys – gyvai arba skambučio metu. Kol to nepadarėte, jūsų rašomos žinutės lieka šiame telefone, užrakintos ir niekur neišsiunčiamos. Pakeistam užraktui nėra ko atrakinti.</string>
+<string name="catalog_checking_820d6004" formatted="false">Tikrinama…</string>
+<string name="catalog_checking_someone_in_person_437f86fe" formatted="false">Asmens tikrinimas gyvai</string>
+<string name="catalog_checking_someone_s_code_is_a_one_b6951560" formatted="false">Kito žmogaus kodo tikrinimas vyksta vienas su vienu, todėl tai daroma tiesioginėje žinutėje su tuo žmogumi – visi, kuriuos ten patikrinote, čia irgi rodomi kaip patikrinti. Laukti, kol bus patikrinti visi grupės nariai, reikštų stabdyti žmones, kurie to niekada neprašė.</string>
+<string name="catalog_checking_them_here_is_safer_than_reading_faa9c2e1" formatted="false">Patikrinti juos čia yra saugiau nei skaityti kartu – šešiasdešimt skaitmenų yra daugiau, nei kas nors iš tikrųjų palygintų iš akies.</string>
+<string name="catalog_choose_files_5910acf0" formatted="false">Pasirinkti failus</string>
+<string name="catalog_clear_css_6a933bda" formatted="false">Išvalyti CSS</string>
+<string name="catalog_close_dm_43823b56" formatted="false">Uždaryti asmeninį pokalbį</string>
+<string name="catalog_code_from_your_app_2e089607" formatted="false">Kodas iš jūsų programos</string>
+<string name="catalog_code_from_your_app_or_a_recovery_c6308bc3" formatted="false">Programos kodas (arba atkūrimo kodas)</string>
+<string name="catalog_compact_messages_8efe5e6b" formatted="false">Sutraukti žinutes</string>
+<string name="catalog_comparing_ad916050" formatted="false">Lyginama…</string>
+<string name="catalog_confirm_new_password_f85039fd" formatted="false">Patvirtinkite naują slaptažodį</string>
+<string name="catalog_confirm_with_your_passkey_to_finish_signing_a7480f38" formatted="false">Patvirtinkite savo prieigos raktu, kad užbaigtumėte prisijungimą.</string>
+<string name="catalog_confirm_your_password_198b73ff" formatted="false">Patvirtinkite slaptažodį</string>
+<string name="catalog_connecting_fd3e7969" formatted="false">Jungiamasi…</string>
+<string name="catalog_connection_and_server_info_b1f3ef22" formatted="false">Ryšio ir serverio informacija</string>
+<string name="catalog_continue_transfer_8ea86ccd" formatted="false">Tęsti perkėlimą</string>
+<string name="catalog_copy_channel_id_c32cdc5d" formatted="false">Kopijuoti kanalo ID</string>
+<string name="catalog_copy_message_26902efd" formatted="false">Kopijuoti žinutę</string>
+<string name="catalog_copy_user_id_6fff306b" formatted="false">Kopijuoti naudotojo ID</string>
+<string name="catalog_could_not_connect_to_the_call_a713db79" formatted="false">Nepavyko prisijungti prie skambučio</string>
+<string name="catalog_could_not_join_the_call_a95443d4" formatted="false">Nepavyko prisijungti prie skambučio</string>
+<string name="catalog_could_not_open_this_image_cb0d1e2e" formatted="false">Nepavyko atidaryti šio vaizdo</string>
+<string name="catalog_could_not_play_that_sound_5f4f3c4c" formatted="false">Nepavyko paleisti šio garso</string>
+<string name="catalog_could_not_play_this_video_8540287d" formatted="false">Nepavyko paleisti šio vaizdo įrašo</string>
+<string name="catalog_could_not_remove_the_image_a332686e" formatted="false">Nepavyko pašalinti vaizdo</string>
+<string name="catalog_could_not_save_your_profile_e13d9374" formatted="false">Nepavyko išsaugoti jūsų profilio</string>
+<string name="catalog_could_not_start_the_call_925e1fa3" formatted="false">Nepavyko pradėti skambučio</string>
+<string name="catalog_couldn_t_decrypt_this_file_08287a15" formatted="false">Nepavyko iššifruoti šio failo</string>
+<string name="catalog_couldn_t_load_gifs_e47c284a" formatted="false">Nepavyko įkelti GIF</string>
+<string name="catalog_couldn_t_reach_that_message_it_may_896fe39d" formatted="false">Nepavyko pasiekti tos žinutės – ji gali būti per sena arba ištrinta.</string>
+<string name="catalog_create_a_channel_3ac48642" formatted="false">Sukurti kanalą</string>
+<string name="catalog_create_a_server_3a0ab422" formatted="false">Sukurti serverį</string>
+<string name="catalog_create_account_aaf37447" formatted="false">Sukurti paskyrą</string>
+<string name="catalog_create_another_8b69f57c" formatted="false">Sukurti kitą</string>
+<string name="catalog_create_group_5a0b1c17" formatted="false">Sukurti grupę</string>
+<string name="catalog_create_invite_a8404622" formatted="false">Sukurti kvietimą</string>
+<string name="catalog_create_passkey_500022b0" formatted="false">Sukurti prieigos raktą</string>
+<string name="catalog_create_role_db859bad" formatted="false">Sukurti vaidmenį</string>
+<string name="catalog_create_your_account_4046b581" formatted="false">Susikurkite paskyrą</string>
+<string name="catalog_creating_this_phone_s_protected_encryption_identity_f14e4807" formatted="false">Kuriama apsaugota šio telefono šifravimo tapatybė…</string>
+<string name="catalog_current_password_19dff4da" formatted="false">Dabartinis slaptažodis</string>
+<string name="catalog_custom_ringtone_fd009ada" formatted="false">Pasirinktinis skambėjimo tonas</string>
+<string name="catalog_danger_zone_963a652e" formatted="false">Pavojaus zona</string>
+<string name="catalog_delete_account_1753c206" formatted="false">Ištrinti paskyrą</string>
+<string name="catalog_delete_all_my_messages_3549d600" formatted="false">Ištrinti visas mano žinutes</string>
+<string name="catalog_delete_all_your_messages_f9463fad" formatted="false">Ištrinkite visus pranešimus</string>
+<string name="catalog_delete_my_account_2ae3a019" formatted="false">Ištrinti mano paskyrą</string>
+<string name="catalog_delete_recording_8b58ce23" formatted="false">Ištrinti įrašą</string>
+<string name="catalog_delete_role_fbf0667e" formatted="false">Ištrinti vaidmenį</string>
+<string name="catalog_delete_server_fb695fc6" formatted="false">Ištrinti serverį</string>
+<string name="catalog_delete_them_all_a3132ab8" formatted="false">Ištrinkite juos visus</string>
+<string name="catalog_desktop_app_f7a44c6b" formatted="false">Darbalaukio programa</string>
+<string name="catalog_device_default_f9aac6c5" formatted="false">Numatytasis įrenginio nustatymas</string>
+<string name="catalog_device_transfer_code_10d0a8b9" formatted="false">Įrenginio perdavimo kodas</string>
+<string name="catalog_digits_confirmed_4ecb4c0f" formatted="false">Skaičiai patvirtinti</string>
+<string name="catalog_direct_messages_e7596a09" formatted="false">Tiesioginės žinutės</string>
+<string name="catalog_direct_messages_f1b1f5c2" formatted="false">Tiesioginiai pranešimai</string>
+<string name="catalog_display_name_avatar_bio_accent_css_e2684739" formatted="false">Rodomas vardas, avataras, aprašas, akcentas, CSS</string>
+<string name="catalog_display_name_c7874aaa" formatted="false">Rodomas vardas</string>
+<string name="catalog_display_name_optional_23d1974a" formatted="false">Rodomas vardas (neprivaloma)</string>
+<string name="catalog_display_separately_ecf9d1a7" formatted="false">Rodyti atskirai</string>
+<string name="catalog_each_entry_is_a_device_with_a_8778c193" formatted="false">Kiekvienas įrašas yra įrenginys su aktyviu prisijungimu. Atšaukus vieną, jis sustabdomas </string>
+<string name="catalog_edit_message_96116a52" formatted="false">Redaguoti pranešimą</string>
+<string name="catalog_edit_role_61dd63e9" formatted="false">Redaguoti vaidmenį</string>
+<string name="catalog_edited_b6da09e0" formatted="false">(redaguota)</string>
+<string name="catalog_email_code_5cb76e8c" formatted="false">El. pašto kodas</string>
+<string name="catalog_email_me_a_code_cc025d42" formatted="false">Atsiųskite man kodą el. paštu</string>
+<string name="catalog_email_me_a_code_instead_44cc1833" formatted="false">Vietoj to atsiųskite man kodą el. paštu</string>
+<string name="catalog_email_password_8973dcae" formatted="false">El. paštas &amp; slaptažodis</string>
+<string name="catalog_encryption_security_alert_7b6e7671" formatted="false">Šifravimo saugos įspėjimas</string>
+<string name="catalog_enter_a_fresh_two_factor_authentication_code_9784e1c2" formatted="false">Įveskite naują dviejų veiksnių autentifikavimo kodą. Naujasis įrenginys bus įtrauktas į jūsų tik papildymui skirtą įrenginių žurnalą.</string>
+<string name="catalog_enter_the_6_digit_code_from_your_0a98bcca" formatted="false">Įveskite 6 skaitmenų kodą iš programos arba atkūrimo kodą.</string>
+<string name="catalog_enter_to_save_shift_enter_for_a_74c26ca9" formatted="false">Paspauskite Enter, kad išsaugotumėte · Shift+Enter – naujai eilutei</string>
+<string name="catalog_erase_my_encryption_keys_65f08bd6" formatted="false">Ištrinti mano šifravimo raktus</string>
+<string name="catalog_erase_them_now_9964fd63" formatted="false">Ištrinti juos dabar</string>
+<string name="catalog_erase_your_encryption_keys_e1ad1aa2" formatted="false">Ištrinti šifravimo raktus?</string>
+<string name="catalog_erasing_fd30764f" formatted="false">Trinama…</string>
+<string name="catalog_every_device_added_or_removed_is_written_ec8b50d8" formatted="false">Kiekvienas pridėtas ar pašalintas įrenginys įrašomas į žurnalą, į kurį galima tik įrašyti naujus duomenis, bet niekada jų redaguoti ar ištrinti. Jūsų įrenginiai jį perskaito kiekvieną kartą, kai įsijungia, todėl įrenginys, kurio nepridėjote, negali čia atsirasti nepastebėtas – jums apie jį pranešama, o įrašas lieka žurnale.</string>
+<string name="catalog_every_direct_message_is_encrypted_always_and_bacae7ec" formatted="false">Kiekvienas tiesioginis pranešimas visada yra užšifruotas ir tos dalies negalima išjungti. Šis nustatymas susijęs su tuo, kaip kruopščiai tikrinamas kito asmens užraktas prieš jam siunčiant jūsų pranešimus.</string>
+<string name="catalog_every_message_already_in_your_encrypted_conversations_ae9912e3" formatted="false">Kiekviena žinutė, jau esanti jūsų užšifruotuose pokalbiuose, visam laikui tampa neįskaitoma – jums, mums ir visiems kitiems. Jų niekas negrąžins.</string>
+<string name="catalog_everyone_930575f5" formatted="false">@everyone</string>
+<string name="catalog_everyone_applies_to_every_member_it_has_12e47659" formatted="false">@everyone taikomas kiekvienam nariui. Jis neturi spalvos, jo negalima priskirti ar ištrinti.</string>
+<string name="catalog_everyone_here_02cadf2a" formatted="false">visi čia</string>
+<string name="catalog_everyone_in_this_voice_channel_hears_it_df8e9c42" formatted="false">Visi šiame balso kanale tai girdi.</string>
+<string name="catalog_everything_sent_from_now_on_uses_a_4d8b70ec" formatted="false">Nuo šiol viskas siunčiama naudojant naują raktą. Esami pranešimai išlieka įskaitomi, o visi pokalbio dalyviai turi prieigą.</string>
+<string name="catalog_expired_large_files_are_only_kept_for_a9b2c12d" formatted="false">Baigėsi galiojimo laikas – dideli failai saugomi tik valandą</string>
+<string name="catalog_expires_in_1_hour_26e2eae7" formatted="false">Galiojimas baigiasi po 1 valandos</string>
+<string name="catalog_fallback_mode_scan_this_code_from_an_45193b95" formatted="false">Atsarginis režimas: nuskaitykite šį kodą jau įgaliotu telefonu arba įklijuokite jį į įgaliotą kompiuterį.</string>
+<string name="catalog_favourite_this_gif_a9fd24af" formatted="false">Pamėgti šį GIF</string>
+<string name="catalog_find_a_member_036dc8dd" formatted="false">Rasti narį</string>
+<string name="catalog_find_friends_2fd354c9" formatted="false">Susirask draugus</string>
+<string name="catalog_flip_camera_ed114d76" formatted="false">Apversti kamerą</string>
+<string name="catalog_follow_the_installer_to_finish_updating_2742868e" formatted="false">Vadovaukitės diegimo programa, kad užbaigtumėte atnaujinimą</string>
+<string name="catalog_freezes_the_account_if_you_think_someone_09f45852" formatted="false">Jei manote, kad paskyroje yra kitas žmogus, ji sustabdoma: atsijungiama nuo kiekvieno </string>
+<string name="catalog_get_notified_about_messages_d4bc1f2e" formatted="false">Gauti pranešimus apie žinutes?</string>
+<string name="catalog_hang_up_66be99b5" formatted="false">Padėkite ragelį</string>
+<string name="catalog_have_them_open_their_code_in_orangchat_9428c129" formatted="false">Paprašykite jų atidaryti savo kodą OrangChat ir nukreipkite į jį šio telefono kamerą. Tada telefonas įsimena iš tikrųjų matytą užraktą, todėl pakeistas nebetiks. Vienas nuskaitymas įrodo vieną kryptį – parodykite jiems ir savąjį.</string>
+<string name="catalog_hide_my_code_835d9e98" formatted="false">Slėpti mano kodą</string>
+<string name="catalog_hide_password_e40123b4" formatted="false">Slėpti slaptažodį</string>
+<string name="catalog_hold_steady_scanning_happens_automatically_ae832ed2" formatted="false">Laikykite nejudindami – nuskaitymas vyksta automatiškai</string>
+<string name="catalog_hold_the_mic_to_record_then_let_48d81b83" formatted="false">Laikykite mikrofoną, kad įrašytumėte, tada atleiskite, kad išsiųstumėte</string>
+<string name="catalog_hold_to_record_a_voice_message_06b1b5f5" formatted="false">Palaikykite, kad įrašytumėte balso pranešimą</string>
+<string name="catalog_how_does_this_work_1ae14530" formatted="false">Kaip tai veikia?</string>
+<string name="catalog_how_your_messages_are_protected_bb07e15c" formatted="false">Kaip apsaugomos jūsų žinutės</string>
+<string name="catalog_i_understand_842a9bdd" formatted="false">Suprantu</string>
+<string name="catalog_i_ve_saved_them_d4c0b9ed" formatted="false">Išsaugojau juos</string>
+<string name="catalog_if_a_safety_code_changes_or_a_fdad80c2" formatted="false">Jei pasikeičia saugos kodas arba paskyroje pasirodo įrenginys, kurio nepridėjote, OrangChat sustoja ir aiškiai apie tai praneša, o ne rodo pranešimą, kurį galėtumėte nubraukti.</string>
+<string name="catalog_in_call_07d16f43" formatted="false">Skambutyje</string>
+<string name="catalog_in_plain_language_with_no_jargon_to_b56795a6" formatted="false">Paprasta kalba, be žargono.</string>
+<string name="catalog_inappropriate_content_62db8957" formatted="false">Netinkamas turinys</string>
+<string name="catalog_invite_link_601e9d6c" formatted="false">Kvietimo nuoroda</string>
+<string name="catalog_invite_people_e1eb97af" formatted="false">Pakvieskite žmones</string>
+<string name="catalog_it_is_not_always_an_attack_it_c9d44cb1" formatted="false">Tai ne visada reiškia ataką – taip nutinka ir tada, kai žmogus praranda visus įrenginius ir turi pradėti iš naujo. Iš programos vidaus šių atvejų atskirti neįmanoma, todėl prieš siųsdama ką nors daugiau ji prašo jūsų tiesiogiai pasitikrinti su tuo žmogumi.</string>
+<string name="catalog_join_a_server_d59b6aba" formatted="false">Prisijungti prie serverio</string>
+<string name="catalog_join_muted_8ccaf5fe" formatted="false">Prisijungimas nutildytas</string>
+<string name="catalog_join_with_camera_on_c39f4e79" formatted="false">Prisijunkite su įjungta kamera</string>
+<string name="catalog_jump_to_latest_5aa2e089" formatted="false">Pereiti prie naujausios</string>
+<string name="catalog_keys_device_log_verifying_people_0828f752" formatted="false">Raktai, įrenginių žurnalas, žmonių tikrinimas</string>
+<string name="catalog_leave_all_servers_65e7741b" formatted="false">Išeiti iš visų serverių</string>
+<string name="catalog_leave_group_92578912" formatted="false">Išeiti iš grupės</string>
+<string name="catalog_leave_server_da6fea13" formatted="false">Išeiti iš serverio</string>
+<string name="catalog_leaves_every_server_you_re_in_except_bcbf7a17" formatted="false">Paliekami visi serveriai, kuriuose esate, išskyrus jums priklausančius. Jums reikės naujo </string>
+<string name="catalog_leaving_it_off_is_not_unprotected_every_94d76940" formatted="false">Palikti išjungtą nereiškia „neapsaugota“. Kiekvienas užraktas vis tiek tikrinamas pagal žurnalą, kurį galima tik papildyti ir kurį jūsų įrenginiai perskaito kiekvieną kartą įsijungę. Skirtumas tas, ar pakeistas užraktas sustabdomas prieš jį panaudojant, ar aptinkamas iškart po to. Grupiniuose pokalbiuose žinutės visada siunčiamos iškart.</string>
+<string name="catalog_let_people_see_when_you_re_typing_eb96518c" formatted="false">Leisti žmonėms matyti, kada rašote.</string>
+<string name="catalog_lift_lockdown_4131d82c" formatted="false">Panaikinti paskyros užrakinimą</string>
+<string name="catalog_lift_timeout_560ca50c" formatted="false">Panaikinti skirtąjį laiką</string>
+<string name="catalog_linked_image_96960966" formatted="false">Susietas vaizdas</string>
+<string name="catalog_listening_to_aad82f87" formatted="false">KLAUSOMASI</string>
+<string name="catalog_listening_to_b35b0e8e" formatted="false">Klausoma </string>
+<string name="catalog_load_more_dfe60ca9" formatted="false">Įkelti daugiau</string>
+<string name="catalog_loading_33ce4174" formatted="false">Įkeliama…</string>
+<string name="catalog_lock_down_my_account_c7b52afc" formatted="false">Užrakinti mano paskyrą</string>
+<string name="catalog_log_in_f7c400ed" formatted="false">Prisijunkite</string>
+<string name="catalog_log_out_6e78c91f" formatted="false">Atsijungti</string>
+<string name="catalog_lost_your_authenticator_af902070" formatted="false">Pametėte autentifikavimo priemonę?</string>
+<string name="catalog_lowercase_letters_digits_and_2_to_32_7bec3c28" formatted="false">Mažosios raidės, skaitmenys, _ ir . – nuo 2 iki 32 simbolių</string>
+<string name="catalog_lowercase_letters_numbers_underscores_and_dots_57155ecc" formatted="false">Mažosios raidės, skaičiai, apatiniai brūkšniai ir taškai.</string>
+<string name="catalog_make_a_new_key_cde9afba" formatted="false">Sukurti naują raktą</string>
+<string name="catalog_mark_as_read_c1ee860b" formatted="false">Pažymėti kaip perskaitytą</string>
+<string name="catalog_messages_friend_requests_typing_notifications_17b64746" formatted="false">Žinutės, draugų užklausos, rašymo indikatorius, pranešimai</string>
+<string name="catalog_messages_go_as_soon_as_you_send_e76569f5" formatted="false">Žinutės išsiunčiamos iškart. Jei kas nors pakeis šio asmens užraktą, jūsų įrenginiai tai pastebės ir jums praneš.</string>
+<string name="catalog_microphone_access_is_needed_to_record_a_9afc8aaa" formatted="false">Norint įrašyti balso žinutę, reikia prieigos prie mikrofono</string>
+<string name="catalog_minimize_call_6cb0f0f8" formatted="false">Sumažinti skambučio langą</string>
+<string name="catalog_missed_call_0200c293" formatted="false">Praleistas skambutis</string>
+<string name="catalog_my_orange_grove_c6cfda8f" formatted="false">Mano apelsinų giraitė</string>
+<string name="catalog_need_an_account_sign_up_77472065" formatted="false">Reikia paskyros? Užsiregistruokite</string>
+<string name="catalog_never_used_8c1c3645" formatted="false"> · dar nenaudota</string>
+<string name="catalog_new_email_b07e22b0" formatted="false">Naujas el. pašto adresas</string>
+<string name="catalog_new_group_f9850c0b" formatted="false">Nauja grupė</string>
+<string name="catalog_new_key_for_this_conversation_651d7e16" formatted="false">Naujas šio pokalbio raktas</string>
+<string name="catalog_new_messages_6d867124" formatted="false">Nauji pranešimai</string>
+<string name="catalog_new_password_d850ee18" formatted="false">Naujas slaptažodis</string>
+<string name="catalog_new_recovery_codes_90b8afc8" formatted="false">Nauji atkūrimo kodai</string>
+<string name="catalog_new_roles_start_just_above_everyone_so_700d0555" formatted="false">Nauji vaidmenys pradedami iškart virš @everyone, todėl jie niekada nebus aukštesni už juos kuriantį žmogų.</string>
+<string name="catalog_new_update_available_b0be29b0" formatted="false">Galimas naujas atnaujinimas</string>
+<string name="catalog_no_answer_a9c16dd0" formatted="false">Neatsakyta</string>
+<string name="catalog_no_devices_are_enrolled_on_this_account_025829c1" formatted="false">Šioje paskyroje nėra užregistruotų įrenginių.</string>
+<string name="catalog_no_friends_yet_add_someone_first_a7ccf9a9" formatted="false">Kol kas nėra draugų. Pirmiausia ką nors pridėkite.</string>
+<string name="catalog_no_friends_yet_add_someone_from_the_7d7f43ab" formatted="false">Kol kas nėra draugų. Pridėkite ką nors skirtuke „Pridėti“.</string>
+<string name="catalog_no_gifs_found_0d358df4" formatted="false">GIF nerasta</string>
+<string name="catalog_no_matches_0be6a257" formatted="false">Atitikmenų nėra.</string>
+<string name="catalog_no_matching_friends_or_channels_fd0c1248" formatted="false">Atitinkančių draugų ar kanalų nėra</string>
+<string name="catalog_no_passkeys_yet_6dc4fe0f" formatted="false">Kol kas nėra prieigos raktų.</string>
+<string name="catalog_no_pending_requests_aeedf949" formatted="false">Nėra laukiančių užklausų.</string>
+<string name="catalog_no_saved_gifs_yet_tap_the_bookmark_75705898" formatted="false">Išsaugotų GIF dar nėra – palieskite bet kurio GIF žymelę, kad jis liktų čia.</string>
+<string name="catalog_no_server_is_currently_restricting_you_061000ea" formatted="false">Šiuo metu jūsų neriboja joks serveris.</string>
+<string name="catalog_no_sounds_yet_someone_with_manage_expressions_011117e4" formatted="false">Garsų dar nėra. Juos serverio nustatymuose gali pridėti asmuo, turintis teisę „Tvarkyti išraiškas“.</string>
+<string name="catalog_none_set_4bf72e7e" formatted="false">Nenustatyta</string>
+<string name="catalog_not_in_call_32010878" formatted="false">Ne skambutyje</string>
+<string name="catalog_not_in_the_same_room_you_will_d53e345b" formatted="false">Ne tame pačiame kambaryje? Abu matysite tą pačią trumpą skaičių eilutę – saugos kodą. Paprašykite, kad kitas žmogus jį perskaitytų per telefono skambutį arba atsiųstų per kitą programą, kuria jau pasitikite, tada įveskite jį į laukelį po kodu. Programa palygina visus šešiasdešimt skaitmenų – daugiau, nei kas nors sugeba palyginti akimis. Jei jie sutampa, tarp jūsų niekas nesikiša. Vienas dalykas netinka: „OrangChat“ balso skambutis, nes jo garsas keliauja per tuos pačius serverius, kurių veikimą šis patikrinimas ir skirtas patikrinti.</string>
+<string name="catalog_not_me_1ad9a1eb" formatted="false">Ne aš</string>
+<string name="catalog_not_now_e4571490" formatted="false">Ne dabar</string>
+<string name="catalog_not_sent_587c501e" formatted="false">Neišsiųsta</string>
+<string name="catalog_nothing_can_sign_in_and_no_new_e0c687ac" formatted="false">Niekas negali prisijungti, jūsų nepasiekia naujos asmeninės žinutės ar draugų užklausos. </string>
+<string name="catalog_nothing_has_been_logged_yet_e4080778" formatted="false">Kol kas nieko neužregistruota.</string>
+<string name="catalog_nothing_is_sent_until_you_have_checked_6db8aee8" formatted="false">Nieko nesiunčiama, kol nepatikrinote jų kodo gyvai arba skambučio metu. Iki tol žinutės lieka čia, užrakintos ir niekur nekeliauja.</string>
+<string name="catalog_notifications_are_turned_off_e638becc" formatted="false">Pranešimai išjungti</string>
+<string name="catalog_now_playing_586fa7a8" formatted="false">DABAR GROJAMA</string>
+<string name="catalog_oc_pf_name_color_ff6a1a_9442cf4e" formatted="false">.oc-pf-name { color: #ff6a1a; }</string>
+<string name="catalog_off_the_shade_and_lock_screen_show_29ea09db" formatted="false">Išjungus pranešimų skydelyje ir užrakinimo ekrane rodoma tik kas parašė, ir nieko daugiau. Užšifruotos žinutės tokiam pranešimui sukurti niekada neatrakinamos. Tik šiame telefone.</string>
+<string name="catalog_on_call_fdd219b2" formatted="false">Skambučio metu</string>
+<string name="catalog_on_your_pc_open_settings_encryption_add_5a070e42" formatted="false">Kompiuteryje atidarykite Nustatymai → Šifravimas → Pridėti kitą įrenginį. Kompiuteryje bus parodytas vienkartinis QR kodas.</string>
+<string name="catalog_ongoing_call_5ae739b8" formatted="false">Vykstantis skambutis</string>
+<string name="catalog_only_continue_if_you_started_this_transfer_d563e585" formatted="false">Tęskite tik tuo atveju, jei perkėlimą pradėjote jūs ir matote abu įrenginius.</string>
+<string name="catalog_only_the_owner_can_rename_this_server_3db192cb" formatted="false">Tik savininkas gali pervadinti šį serverį</string>
+<string name="catalog_only_the_people_in_the_conversation_can_ae492280" formatted="false">Juos gali atidaryti tik pokalbio dalyviai. Nei OrangChat, nei žmogus, pavogęs mūsų duomenų bazę, nei atėjęs su teismo nutartimi – neturime rakto, kurį galėtume perduoti. Tai įjungta kiekvienai tiesioginei žinutei ir išjungti negalima.</string>
+<string name="catalog_open_app_permissions_893246fb" formatted="false">Atidaryti programos leidimus</string>
+<string name="catalog_open_call_1c47457b" formatted="false">Atidaryti skambutį</string>
+<string name="catalog_orangchat_can_let_you_know_when_someone_13d0aac2" formatted="false">OrangChat gali pranešti, kai kas nors parašo arba jums paskambina </string>
+<string name="catalog_orangchat_device_transfer_9d5395e9" formatted="false">orangchat://device-transfer?…</string>
+<string name="catalog_orangchat_only_opens_your_camera_and_microphone_16da857f" formatted="false">OrangChat kamerą ir mikrofoną įjungia tik skambučio metu. Android klausia </string>
+<string name="catalog_otherwise_only_members_with_mention_everyone_can_a0476dcf" formatted="false">Kitu atveju gali tai daryti tik nariai, turintys leidimą „Paminėti visus“.</string>
+<string name="catalog_permanently_delete_2eea1fa8" formatted="false">Ištrinti visam laikui</string>
+<string name="catalog_personal_phone_a154b2eb" formatted="false">Asmeninis telefonas</string>
+<string name="catalog_phone_connected_ac1141af" formatted="false">Telefonas prijungtas</string>
+<string name="catalog_pick_at_least_one_more_friend_for_1cd89bd0" formatted="false">Grupėje pasirinkite dar bent vieną draugą.</string>
+<string name="catalog_point_this_phone_at_the_qr_code_cea07275" formatted="false">Nukreipkite šį telefoną į OrangChat kompiuteryje rodomą QR kodą.</string>
+<string name="catalog_point_this_phone_at_the_transfer_code_d6baae81" formatted="false">Nukreipkite šį telefoną į naujame įrenginyje rodomą perkėlimo kodą.</string>
+<string name="catalog_privacy_security_9bb6e9c0" formatted="false">Privatumas &amp; saugumas</string>
+<string name="catalog_profile_themes_3d7fccd2" formatted="false">Profilio temos</string>
+<string name="catalog_profile_themes_style_your_public_profile_card_7965d778" formatted="false">Profilio temos keičia viešos profilio kortelės išvaizdą. Kiekvienas įrašas peržiūrimas naudojant „pull request“, įtraukiamas į programą ir išvalomas prieš atvaizdavimą.</string>
+<string name="catalog_ready_made_styles_for_your_profile_card_83af5cba" formatted="false">Paruošti profilio kortelės stiliai</string>
+<string name="catalog_recording_locked_32fe3a05" formatted="false">Įrašoma, užrakinta</string>
+<string name="catalog_recovery_codes_b3f5f8ca" formatted="false">Atkūrimo kodai</string>
+<string name="catalog_reduce_motion_25a5aef5" formatted="false">Sumažinti judesį</string>
+<string name="catalog_release_to_cancel_29bd6c29" formatted="false">Atleiskite, kad atšauktumėte</string>
+<string name="catalog_remove_background_for_everyone_275dc99e" formatted="false">Pašalinti foną visiems</string>
+<string name="catalog_remove_friend_b16fc7ff" formatted="false">Pašalinti draugą</string>
+<string name="catalog_remove_from_favourites_624f82c1" formatted="false">Pašalinti iš mėgstamiausių</string>
+<string name="catalog_remove_group_icon_5869f3b2" formatted="false">Pašalinti grupės piktogramą</string>
+<string name="catalog_remove_passkey_988b1b7e" formatted="false">Pašalinti prieigos raktą</string>
+<string name="catalog_removes_every_message_you_ve_sent_in_f63902f1" formatted="false">Pašalinamos visos jūsų išsiųstos žinutės visuose serveriuose ir grupėse – įskaitant </string>
+<string name="catalog_removing_this_only_affects_orangchat_delete_it_28979691" formatted="false">Pašalinus tai paveikiamas tik OrangChat. Pašalinkite jį ir iš paties įrenginio </string>
+<string name="catalog_rename_passkey_cb9298c9" formatted="false">Pervadinti prieigos raktą</string>
+<string name="catalog_replaces_the_key_used_from_now_on_c57ccaed" formatted="false">Pakeičia nuo šiol naudojamą raktą, todėl nuo to laiko pašalintas įrenginys negali nuskaityti nieko naujo. Jau čia esantys pranešimai lieka skaitomi ir niekas nėra užrakintas.</string>
+<string name="catalog_replaces_the_orangchat_mark_for_you_everywhere_109fab70" formatted="false">Pakeičia OrangChat ženklą visur, kur esate prisijungę. </string>
+<string name="catalog_report_message_babfeaf5" formatted="false">Pranešti apie žinutę</string>
+<string name="catalog_report_received_2568a541" formatted="false">Pranešimas apie pažeidimą gautas</string>
+<string name="catalog_reporting_reveals_this_one_decrypted_message_and_1e7d77a7" formatted="false">Pranešus atskleidžiama ši viena iššifruota žinutė ir vienos žinutės raktas. Pokalbio raktas ar kitos žinutės neatskleidžiamos.</string>
+<string name="catalog_request_sent_168996e3" formatted="false">Užklausa išsiųsta</string>
+<string name="catalog_resend_email_code_9a8ba727" formatted="false">Iš naujo siųsti el. pašto kodą</string>
+<string name="catalog_reset_to_defaults_ddefe47d" formatted="false">Atstatyti į numatytuosius nustatymus</string>
+<string name="catalog_resolving_invite_62cce3b8" formatted="false">Tikrinamas kvietimas…</string>
+<string name="catalog_revoke_device_66468c17" formatted="false">Atšaukti įrenginio leidimą</string>
+<string name="catalog_revoking_2c8a0ed4" formatted="false">Atšaukiama…</string>
+<string name="catalog_ringing_417814b1" formatted="false">Skamba…</string>
+<string name="catalog_role_name_4204d818" formatted="false">Vaidmens pavadinimas</string>
+<string name="catalog_roles_grant_permissions_and_a_colour_members_51c7e585" formatted="false">Vaidmenys suteikia leidimus ir spalvą. Nariai perima aukščiausio savo vaidmens spalvą.</string>
+<string name="catalog_save_changes_179359b3" formatted="false">Išsaugoti pakeitimus</string>
+<string name="catalog_save_nickname_51ddb3ea" formatted="false">Išsaugoti slapyvardį</string>
+<string name="catalog_save_profile_f597c0e8" formatted="false">Išsaugoti profilį</string>
+<string name="catalog_save_these_now_each_works_once_if_2a1aad82" formatted="false">Išsaugokite juos dabar – kiekvienas veikia tik vieną kartą, jei pamestumėte telefoną, ir jie rodomi tik šį kartą.</string>
+<string name="catalog_scan_code_from_pc_6c59b0aa" formatted="false">Nuskaityti kodą iš kompiuterio</string>
+<string name="catalog_scan_device_code_45e4e1cb" formatted="false">Nuskaityti įrenginio kodą</string>
+<string name="catalog_scan_the_code_shown_by_the_new_953d3dac" formatted="false">Nuskaitykite naujo įrenginio rodomą kodą arba įklijuokite visą orangchat://device-transfer kodą čia.</string>
+<string name="catalog_scan_their_code_b273ef3b" formatted="false">Nuskaitykite jų kodą</string>
+<string name="catalog_scan_verification_code_9569a83c" formatted="false">Nuskaityti patvirtinimo kodą</string>
+<string name="catalog_search_by_name_or_username_9c923df6" formatted="false">Ieškokite pagal vardą arba vartotojo vardą</string>
+<string name="catalog_search_friends_and_channels_57990af1" formatted="false">Ieškoti draugų ir kanalų</string>
+<string name="catalog_search_klipy_9e867d1a" formatted="false">Ieškoti KLIPY</string>
+<string name="catalog_search_messages_abea65ae" formatted="false">Ieškoti žinučių</string>
+<string name="catalog_search_profile_themes_99f3d314" formatted="false">Ieškoti profilio temų</string>
+<string name="catalog_searched_on_this_device_messages_not_opened_4abe22a1" formatted="false">Ieškota šiame įrenginyje. Čia neatidarytų žinučių gali trūkti.</string>
+<string name="catalog_send_a_new_code_91904a28" formatted="false">Siųsti naują kodą</string>
+<string name="catalog_send_anyway_911263fe" formatted="false">Vis tiek siųsti</string>
+<string name="catalog_send_friend_request_c3ed810d" formatted="false">Siųsti draugo užklausą</string>
+<string name="catalog_send_report_a5b32af9" formatted="false">Siųsti ataskaitą</string>
+<string name="catalog_send_straight_away_19f3932b" formatted="false">Siųsti iškart</string>
+<string name="catalog_send_straight_away_a_swap_gets_caught_2e19b55a" formatted="false">Siųsti iškart – pakeistas užraktas bus aptiktas. Kiekvienas kieno nors paskelbtas užraktas įrašomas į žurnalą, kurį galima tik papildyti, bet niekada redaguoti ar ištrinti. Jūsų įrenginiai kaskart įsijungę perskaito jūsų paskyros puslapį. Jei jūsų vardu kada nors paskelbiamas užraktas, kurio nesukūrė jūsų įrenginiai, jie jums praneša, o įrašas lieka žurnale, į kurį gali parodyti bet kas. Užraktą galima mėginti pakeisti, bet ne nepastebimai.</string>
+<string name="catalog_send_typing_indicators_6ca26372" formatted="false">Siųsti rašymo indikatorius</string>
+<string name="catalog_sending_cf765512" formatted="false">Siunčiama…</string>
+<string name="catalog_sending_straight_away_is_what_every_conversation_68012f61" formatted="false">Kiekviename pokalbyje žinutės siunčiamos iškart. Tikrinimas pirmiausia – papildomas žingsnis; verta jį įjungti tik žmonėms, su kuriais realiai galite susitikti ar pasikalbėti.</string>
+<string name="catalog_sending_voice_message_a48b5648" formatted="false">Siunčiama balso žinutė…</string>
+<string name="catalog_server_channels_those_have_shared_history_moderation_c68bcd1b" formatted="false">• Serverio kanalai. Juose saugoma bendra istorija, atliekamas moderavimas ir paieška – tam serveris turi juos perskaityti. Taip šifruojamos tik tiesioginės ir grupinės asmeninės žinutės.</string>
+<string name="catalog_server_icon_8bf2f95a" formatted="false">Serverio piktograma</string>
+<string name="catalog_server_name_738825fc" formatted="false">Serverio pavadinimas</string>
+<string name="catalog_server_settings_28af3cc7" formatted="false">Serverio nustatymai</string>
+<string name="catalog_set_a_password_f5c8f412" formatted="false">Nustatykite slaptažodį</string>
+<string name="catalog_set_chat_background_d07e7165" formatted="false">Nustatyti pokalbio foną</string>
+<string name="catalog_set_group_icon_48042fd7" formatted="false">Nustatyti grupės piktogramą</string>
+<string name="catalog_set_password_94408e41" formatted="false">Nustatyti slaptažodį</string>
+<string name="catalog_set_up_this_phone_again_6f53f3fd" formatted="false">Iš naujo nustatyti šį telefoną</string>
+<string name="catalog_set_up_two_factor_a6722c51" formatted="false">Nustatyti dviejų veiksnių autentifikavimą</string>
+<string name="catalog_setting_up_cef9b69d" formatted="false">Nustatoma…</string>
+<string name="catalog_share_to_orangchat_8cb49ef7" formatted="false">Bendrinti su OrangChat</string>
+<string name="catalog_shared_text_4517f1e8" formatted="false">Bendrinamas tekstas</string>
+<string name="catalog_sharing_ad005909" formatted="false">Bendrinama…</string>
+<string name="catalog_show_fallback_code_on_this_phone_90acc27c" formatted="false">Rodyti atsarginį kodą šiame telefone</string>
+<string name="catalog_show_members_with_this_role_in_their_f0fb058c" formatted="false">Rodyti šio vaidmens narius jų grupėje.</string>
+<string name="catalog_show_message_text_66bf26b1" formatted="false">Rodyti pranešimo tekstą</string>
+<string name="catalog_show_my_code_342b7a4e" formatted="false">Rodyti mano kodą</string>
+<string name="catalog_show_password_044b852f" formatted="false">Rodyti slaptažodį</string>
+<string name="catalog_shown_on_the_invite_page_28e6606d" formatted="false">Rodoma kvietimo puslapyje.</string>
+<string name="catalog_sign_in_ada2e9e9" formatted="false">Prisijunkite</string>
+<string name="catalog_sign_in_on_the_web_94061c18" formatted="false">Prisijungti žiniatinklyje?</string>
+<string name="catalog_sign_in_with_a_passkey_cf1c7263" formatted="false">Prisijunkite naudodami prieigos raktą</string>
+<string name="catalog_sign_in_with_your_fingerprint_face_or_ec24e91a" formatted="false">Prisijunkite piršto atspaudu, veidu arba įrenginio PIN kodu, o ne slaptažodžiu. </string>
+<string name="catalog_sign_out_dc1649a1" formatted="false">Atsijungti</string>
+<string name="catalog_skip_the_scroll_and_swipe_animations_3bb4a091" formatted="false">Praleisti slinkimo ir braukimo animacijas.</string>
+<string name="catalog_slide_to_cancel_8f64a698" formatted="false">Slinkite, kad atšauktumėte →</string>
+<string name="catalog_slide_to_cancel_9c411f6d" formatted="false">‹ Slinkite, kad atšauktumėte</string>
+<string name="catalog_slide_up_to_lock_recording_52127830" formatted="false">Slinkite aukštyn, kad užrakintumėte įrašą</string>
+<string name="catalog_so_you_can_tell_it_apart_from_5878d69c" formatted="false">Taigi vėliau galėsite jį atskirti nuo kitų įrenginių.</string>
+<string name="catalog_someone_here_f47623b5" formatted="false">Kažkas čia</string>
+<string name="catalog_someone_scanned_this_account_s_code_to_cd6f3892" formatted="false">Kažkas nuskenavo šios paskyros kodą, kad naršyklėje prisijungtų prie OrangChat. Patvirtinkite tik tuo atveju, jei tai buvote jūs.</string>
+<string name="catalog_standing_together_scan_each_other_s_codes_faf20092" formatted="false">Esate kartu? Nuskaitykite vienas kito kodus – vienas nuskaitymas įrodo vieną kryptį, todėl atlikite abu.</string>
+<string name="catalog_start_a_call_d7f39160" formatted="false">Pradėti skambutį</string>
+<string name="catalog_start_a_fresh_key_here_11c5421d" formatted="false">Pradėti naudoti naują raktą čia</string>
+<string name="catalog_start_calls_with_video_already_publishing_04f2d03f" formatted="false">Pradėti skambučius su jau įjungtu vaizdu.</string>
+<string name="catalog_start_every_call_with_your_microphone_off_087b5564" formatted="false">Pradėkite kiekvieną skambutį išjungę mikrofoną.</string>
+<string name="catalog_start_over_with_new_keys_328f6a4a" formatted="false">Pradėti iš naujo su naujais raktais</string>
+<string name="catalog_start_video_call_dac036c6" formatted="false">Pradėti vaizdo skambutį</string>
+<string name="catalog_start_voice_call_f5e80dd9" formatted="false">Pradėti balso skambutį</string>
+<string name="catalog_stored_on_this_device_only_never_uploaded_1373e7ad" formatted="false">Saugoma tik šiame įrenginyje – niekada neįkeliama.</string>
+<string name="catalog_style_your_card_for_everyone_who_views_08c9bf5c" formatted="false">Nustatykite kortelės išvaizdą visiems, kurie ją peržiūri. Kiekvienai daliai yra atskiras selektorius: </string>
+<string name="catalog_synced_to_your_device_s_keychain_4f237bce" formatted="false">Sinchronizuota su jūsų įrenginio raktų pakabuku.</string>
+<string name="catalog_take_a_picture_6d76bc64" formatted="false">Nufotografuokite</string>
+<string name="catalog_tap_the_key_to_copy_it_1965f6e7" formatted="false">Palieskite raktą, kad jį nukopijuotumėte.</string>
+<string name="catalog_text_size_3cc6e124" formatted="false">Teksto dydis</string>
+<string name="catalog_text_size_motion_density_a9cc0369" formatted="false">Teksto dydis, judėjimas, tankis</string>
+<string name="catalog_that_invite_is_expired_revoked_or_never_752c9ac3" formatted="false">Šis kvietimas nebegalioja, atšauktas arba niekada neegzistavo.</string>
+<string name="catalog_that_is_also_why_adding_a_second_4bac217f" formatted="false">Štai kodėl antrojo įrenginio pridėjimas yra nedidelė ceremonija, o ne kopijavimas ir įklijavimas. Senasis įrenginys turi matyti naująjį – kodą ekrane, į jį nukreiptą kamerą – prieš tai, kai kas nors pajudės.</string>
+<string name="catalog_the_camera_could_not_start_you_can_a181859b" formatted="false">Nepavyko paleisti kameros. Galite bandyti dar kartą arba naudoti sistemos kameros programą.</string>
+<string name="catalog_the_digits_match_809c13bc" formatted="false">Skaitmenys sutampa</string>
+<string name="catalog_the_logbook_0b3e99f4" formatted="false">Žurnalas</string>
+<string name="catalog_the_messages_only_that_device_could_open_dd92a9bc" formatted="false">Žinutės, kurias galėjo atidaryti tik tas įrenginys, lieka užrakintos visam laikui. Negalime jų jums atkurti – jei galėtume, tai, kas pasakyta aukščiau, nebūtų tiesa.</string>
+<string name="catalog_the_new_device_was_authorized_8ec267ba" formatted="false">Naujasis įrenginys įgaliotas.</string>
+<string name="catalog_the_quick_brown_fox_jumps_over_the_408d9438" formatted="false">Greita rudoji lapė peršoka per tinginį šunį.</string>
+<string name="catalog_the_right_person_3860646e" formatted="false">teisingas žmogus</string>
+<string name="catalog_there_is_no_code_to_compare_yet_5ce7929c" formatted="false">Kol kas nėra kodo, su kuriuo būtų galima palyginti.</string>
+<string name="catalog_these_choices_are_stored_on_this_device_ac326393" formatted="false">Šie pasirinkimai saugomi tik šiame įrenginyje.</string>
+<string name="catalog_these_do_not_match_most_often_that_0139df50" formatted="false">Šie nesutampa. Dažniausiai tai klaidingai išgirstas arba neteisingai įvestas skaitmuo, todėl patikrinkite dar kartą. Jei vis tiek skiriasi, kažkas stovi tarp jūsų – nieko čia nesiųskite, kol nežinote, kas.</string>
+<string name="catalog_these_numbers_appear_once_both_accounts_have_288c556c" formatted="false">Šie skaičiai rodomi, kai abi paskyros nustato šifravimą įrenginyje.</string>
+<string name="catalog_they_all_open_8a0f4e5d" formatted="false">jie visi atidaro</string>
+<string name="catalog_they_cannot_send_messages_react_or_speak_7fcf8d0c" formatted="false">Jie negali siųsti žinučių, reaguoti ar kalbėti, kol baigsis galiojimo laikas.</string>
+<string name="catalog_they_do_not_match_a5d86ddf" formatted="false">Jie nesutampa</string>
+<string name="catalog_they_open_371267bf" formatted="false">jie atidaro</string>
+<string name="catalog_this_account_has_no_authenticator_app_set_3f1e6f47" formatted="false">Šioje paskyroje nenustatyta autentifikavimo programa, todėl OrangChat el. paštu atsiųs vienkartinį kodą naujam įrenginiui patvirtinti.</string>
+<string name="catalog_this_code_holds_nothing_secret_it_is_373de7f3" formatted="false">Šiame kode nėra jokios paslapties. Jį saugu rodyti bet kam; nuskaitymui prasmę suteikia tai, kad esate tame pačiame kambaryje.</string>
+<string name="catalog_this_conversation_is_not_encrypted_yet_00080602" formatted="false">Šis pokalbis dar nėra užšifruotas</string>
+<string name="catalog_this_device_82229094" formatted="false">  · Šis įrenginys</string>
+<string name="catalog_this_device_fa5a6dd9" formatted="false">Šis įrenginys</string>
+<string name="catalog_this_device_will_stop_receiving_new_conversation_45e9c7a1" formatted="false">Šis įrenginys nebegaus naujų pokalbių raktų. Jis liks atšauktu įrenginiu tik papildymui skirtame įrenginių žurnale, todėl pakeitimo neįmanoma paslėpti.</string>
+<string name="catalog_this_happens_the_moment_you_confirm_there_62922ade" formatted="false">Tai įvyksta vos patvirtinus – nėra laukimo laikotarpio ir nieko negalima atšaukti, nes šis telefonas pasirašo savo raktu. Kiekviena šios paskyros užšifruota žinutė visiems laikams tampa neįskaitoma.</string>
+<string name="catalog_this_is_your_code_they_can_scan_f71a20fe" formatted="false">Tai jūsų kodas. Jie gali jį nuskaityti nuo pokalbio viršuje esančio užrakto arba iš šio ekrano savo telefone.</string>
+<string name="catalog_this_media_is_unavailable_1ed2c88e" formatted="false">Ši medija nepasiekiama</string>
+<string name="catalog_this_phone_creates_its_own_non_copyable_e6604888" formatted="false">Šis telefonas sukuria savo nekopijuojamą tapatybę. Iš kompiuterio perkeliami tik užšifruotos pokalbių istorijos raktai.</string>
+<string name="catalog_this_phone_has_not_made_its_encryption_0af536c0" formatted="false">Šis telefonas dar nesukūrė savo šifravimo rakto.</string>
+<string name="catalog_this_phone_is_not_authorized_yet_finish_1ca6df93" formatted="false">Šis telefonas dar neįgaliotas. Užbaikite „Pridėti šį telefoną“, kad jis galėtų skaityti užšifruotą istoriją arba atšaukti kito šifravimo įrenginio leidimą.</string>
+<string name="catalog_this_phone_is_now_an_authorized_encryption_65fc8f05" formatted="false">Šis telefonas dabar yra įgaliotas šifravimo įrenginys.</string>
+<string name="catalog_this_phone_was_removed_from_your_account_a066cfb1" formatted="false">Šis telefonas buvo pašalintas iš paskyros kitu įrenginiu. Jo raktas čia nieko nebeatidaro, o naujų užšifruotų žinučių jis negalės skaityti, kol vėl jo nepridėsite.</string>
+<string name="catalog_this_replaces_all_of_your_existing_recovery_1ee473c2" formatted="false">Tai pakeičia visus jūsų esamus atkūrimo kodus.</string>
+<string name="catalog_this_version_of_orangchat_is_no_longer_91b823d1" formatted="false">Ši OrangChat versija nebepalaikoma ir nebegali prisijungti.</string>
+<string name="catalog_those_don_t_match_5820ec54" formatted="false">Tie nesutampa.</string>
+<string name="catalog_throw_away_the_encryption_identity_on_this_e4c09f9c" formatted="false">Išmeskite šios paskyros šifravimo tapatybę ir sukurkite čia naują. Visi kiti įrenginiai bus pašalinti ir juos reikės pridėti iš naujo.</string>
+<string name="catalog_tighter_spacing_between_messages_58e3bf31" formatted="false">Mažesni tarpai tarp žinučių.</string>
+<string name="catalog_time_out_71ed8fda" formatted="false">Laikinai apriboti</string>
+<string name="catalog_timed_out_edcd3630" formatted="false">Laikinai apribotas</string>
+<string name="catalog_timed_out_in_64510a0d" formatted="false">Laikinai apribota serveryje</string>
+<string name="catalog_to_lock_a_box_for_someone_your_a0458be1" formatted="false">Kad užrakintumėte kam nors skirtą dėžutę, telefonui reikia jo užrakto ir jis paprašo jo mūsų serverių. Todėl teisingas klausimas toks: kas, jei perduotume jums savo sukurtą užraktą, pasiliktume raktą ir vėliau perduotume jūsų žinutes?</string>
+<string name="catalog_transfer_code_scanned_fdb95e51" formatted="false">Perkėlimo kodas nuskaitytas</string>
+<string name="catalog_turn_camera_off_97e661ba" formatted="false">Išjunkite fotoaparatą</string>
+<string name="catalog_turn_camera_on_98c78a9e" formatted="false">Įjunkite fotoaparatą</string>
+<string name="catalog_turn_off_8807c2b3" formatted="false">Išjungti</string>
+<string name="catalog_turn_off_two_factor_ec64c330" formatted="false">Išjungti dviejų veiksnių autentifikavimą</string>
+<string name="catalog_turn_on_two_factor_2d7b5797" formatted="false">Įjungti dviejų veiksnių autentifikavimą</string>
+<string name="catalog_turning_off_two_factor_leaves_your_password_7c7e274a" formatted="false">Išjungus dviejų veiksnių autentifikavimą, slaptažodis lieka vienintele apsauga.</string>
+<string name="catalog_two_answers_and_you_pick_how_much_c95f5a5c" formatted="false">Yra du būdai – pasirinkite, kiek saugumo jums reikia.</string>
+<string name="catalog_two_factor_authentication_edfd617a" formatted="false">Dviejų veiksnių autentifikavimas</string>
+<string name="catalog_two_factor_is_on_65e04e1d" formatted="false">Dviejų veiksnių autentifikavimas įjungtas</string>
+<string name="catalog_type_to_search_this_server_s_messages_43fff226" formatted="false">Įveskite tekstą, kad ieškotumėte šio serverio žinučių.</string>
+<string name="catalog_type_to_search_your_cached_direct_messages_12182460" formatted="false">Įveskite tekstą, kad ieškotumėte talpykloje esančių asmeninių žinučių.</string>
+<string name="catalog_unknown_ip_70fef55a" formatted="false">nežinomas IP</string>
+<string name="catalog_update_now_c4cbac00" formatted="false">Atnaujinti dabar</string>
+<string name="catalog_update_required_f440d880" formatted="false">Reikia atnaujinti</string>
+<string name="catalog_update_to_continue_27e65968" formatted="false"> Atnaujinkite, kad galėtumėte tęsti.</string>
+<string name="catalog_upload_failed_ad0d0603" formatted="false">Nepavyko įkelti</string>
+<string name="catalog_uploading_d921a79a" formatted="false">Įkeliama…</string>
+<string name="catalog_use_passkey_a93f1827" formatted="false">Naudokite prieigos raktą</string>
+<string name="catalog_used_to_sign_in_there_s_no_51a10c36" formatted="false">Naudota prisijungti. Nėra patvirtinimo el. laiško, todėl dar kartą patikrinkite.</string>
+<string name="catalog_user_settings_f2b85332" formatted="false">Vartotojo nustatymai</string>
+<string name="catalog_verify_this_contact_ee09ef5c" formatted="false">Patvirtinti šį kontaktą</string>
+<string name="catalog_version_and_build_3da1c1d8" formatted="false">Versija ir komponavimo numeris</string>
+<string name="catalog_video_call_12d8c530" formatted="false">vaizdo skambutis</string>
+<string name="catalog_video_call_ad60f43c" formatted="false">Vaizdo skambutis</string>
+<string name="catalog_voice_call_329f832a" formatted="false">balso skambutis</string>
+<string name="catalog_voice_connected_538f3e5c" formatted="false">Balso ryšys užmegztas</string>
+<string name="catalog_waiting_for_the_pc_to_calculate_the_a6606f84" formatted="false">Laukiama, kol kompiuteris apskaičiuos palyginimo skaitmenis…</string>
+<string name="catalog_waiting_for_your_pc_b7329350" formatted="false">Laukiama jūsų kompiuterio…</string>
+<string name="catalog_we_can_still_see_the_outside_of_c8bd071e" formatted="false">Vis dar matome jo išorę: kas jį atsiuntė, kam atiteko, kokio dydžio ir kada. Mes negalime pamatyti, kas yra viduje.</string>
+<string name="catalog_we_emailed_you_a_sign_in_code_e283ce1e" formatted="false">Išsiuntėme jums prisijungimo kodą el. paštu. Jis nustoja galioti po 10 minučių.</string>
+<string name="catalog_welcome_back_b807833e" formatted="false">Sveiki sugrįžę</string>
+<string name="catalog_what_happened_optional_9a81bdcf" formatted="false">Kas atsitiko? (neprivaloma)</string>
+<string name="catalog_what_happens_next_51ecc5b2" formatted="false">Kas vyksta toliau</string>
+<string name="catalog_what_incoming_calls_sound_like_5a0f66a3" formatted="false">Kaip skamba įeinantys skambučiai</string>
+<string name="catalog_what_you_share_6998553a" formatted="false">Ką bendrinate</string>
+<string name="catalog_whatever_the_other_person_does_with_the_2d44e6c7" formatted="false">• Ką kitas žmogus daro su žinute. Jis gali padaryti ekrano kopiją, ją išsaugoti arba parodyti kitam. Šifravimas sustabdo nepažįstamus žmones, bet ne gavėjus.</string>
+<string name="catalog_when_joining_a_call_9f17cb1a" formatted="false">Prisijungiant prie skambučio</string>
+<string name="catalog_where_you_re_signed_in_af00ae96" formatted="false">Kur esate prisijungę</string>
+<string name="catalog_who_can_add_you_07e171de" formatted="false">Kas gali jus pridėti</string>
+<string name="catalog_who_can_message_you_e9356e11" formatted="false">Kas gali jums rašyti</string>
+<string name="catalog_who_you_talk_to_when_and_how_96d03db2" formatted="false">• Su kuo kalbate, kada ir kaip dažnai. Užrakintas dėžutes vis tiek reikia adresuoti kam nors.</string>
+<string name="catalog_with_someone_new_your_messages_wait_on_376112de" formatted="false">Su nauju žmogumi jūsų žinutės laukia šiame telefone – užrakintos, niekur neišsiųstos – kol pamatysite jo kodą gyvai arba perskaitysite skaičius vienas kitam skambučio metu.</string>
+<string name="catalog_yes_leave_them_all_8520c6e8" formatted="false">Taip, išeiti iš visų</string>
+<string name="catalog_yes_that_s_them_03f398c0" formatted="false">Taip, tai jis</string>
+<string name="catalog_you_can_also_scan_with_the_system_35d7d733" formatted="false">Taip pat galite nuskaityti naudodami sistemos Kameros programą ir paliesti „Atidaryti OrangChat“.</string>
+<string name="catalog_you_do_not_have_this_permission_d4f08a3c" formatted="false">Neturite šio leidimo.</string>
+<string name="catalog_you_example_com_50e2b46e" formatted="false">you@example.com</string>
+<string name="catalog_you_ll_need_an_authenticator_app_such_60b7dd86" formatted="false">Jums reikės autentifikavimo programos, pvz., Google Authenticator, 1Password arba Aegis.</string>
+<string name="catalog_you_re_on_the_latest_version_182b7c69" formatted="false">Naudojate naujausią versiją</string>
+<string name="catalog_you_ve_been_invited_to_join_3a282347" formatted="false">Buvote pakviesti prisijungti</string>
+<string name="catalog_your_account_is_in_good_standing_1806a501" formatted="false">Jūsų paskyros būsena gera</string>
+<string name="catalog_your_account_is_locked_down_d129bf10" formatted="false">Jūsų paskyra užrakinta</string>
+<string name="catalog_your_current_password_6658f206" formatted="false">Jūsų dabartinis slaptažodis</string>
+<string name="catalog_your_direct_messages_are_locked_on_this_0bc36ae0" formatted="false">Jūsų asmeninės žinutės šiame telefone užrakinamos prieš jas išsiunčiant. Raktas sukurtas čia, saugomas telefono saugioje aparatinėje įrangoje ir jo negalima nukopijuoti – nei OrangChat, nei žmogui, turinčiam duomenų bazės atsarginę kopiją.</string>
+<string name="catalog_your_messages_are_locked_before_they_leave_a431b93a" formatted="false">Jūsų žinutės užrakinamos prieš joms paliekant šį telefoną</string>
+<string name="catalog_your_messages_stay_in_the_conversations_they_34246f3c" formatted="false">Jūsų žinutės lieka pokalbiuose, kuriems priklauso, ir rodomos kaip nuo </string>
+<string name="catalog_your_password_26d745d4" formatted="false">Jūsų slaptažodis</string>
+<string name="catalog_your_phone_and_your_computer_each_make_ade9350c" formatted="false">Jūsų telefonas ir kompiuteris, pirmą kartą juose naudojant šifravimą, kiekvienas pačiame įrenginyje sukuria savo raktą. Jis patenka į įrenginio dalį, skirtą raktams saugoti, ir yra sukurtas taip, kad jo nebūtų galima išgauti – nei OrangChat, nei kitai programai, nei jums. Nėra ko nutekinti ir nėra ką perduoti.</string>
+<string name="catalog_your_phone_puts_the_message_in_a_10625561" formatted="false">Jūsų telefonas įdeda žinutę į dėžutę ir ją užrakina. Visi pokalbio įrenginiai ir tik jie turi šios dėžutės raktą. Mūsų serveriai saugo užrakintą dėžutę ir ją perduoda.</string>
+</resources>
