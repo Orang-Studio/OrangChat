@@ -1185,7 +1185,6 @@ class AppViewModel @Inject constructor(
         messageCacheJobs.values.forEach(Job::cancel)
         messageCacheJobs.clear()
         authRepository.currentUser?.id?.let { offlineCache.clear(it) }
-        e2eeRepository.signOut()
         authRepository.logout()
     }
 

@@ -1,0 +1,8 @@
+OrangChat 1.0.1
+
+Fixed
+- Signing out no longer deletes this phone's end-to-end encryption identity,
+  device keys, or encrypted local history.
+- The email fallback after a passkey prompt now keeps the passkey bypass while
+  the authenticator code is verified, preventing the login loop.
+- Existing passkeys remain registered on the account when a session ends.

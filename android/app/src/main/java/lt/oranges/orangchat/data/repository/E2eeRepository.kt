@@ -1024,5 +1024,4 @@ class E2eeRepository @Inject constructor(
 
     fun sealedAttachment(attachmentId: String) = keystore.sealedAttachment(attachmentId)
 
-    fun signOut() = keystore.clear()
 }

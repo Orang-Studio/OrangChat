@@ -19,6 +19,7 @@ data class AuthFormState(
     val needsTwoFactor: Boolean = false,
     val loginToken: String? = null,
     val passkeyPrompt: PasskeyChallenge? = null,
+    val skipPasskey: Boolean = false,
     val notice: String? = null,
     val verificationSent: Boolean = false,
 )
@@ -39,10 +40,10 @@ class AuthViewModel @Inject constructor(
         lostAuthenticator: Boolean = false,
     ) {
         if (!validate(email, password)) return
+        val bypassPasskey = skipPasskey || _state.value.skipPasskey
         val needs2fa = _state.value.needsTwoFactor && !lostAuthenticator
-        run(keepTwoFactor = needs2fa) {
-            val challenge =
-                authRepository.login(email, password, totpCode, skipPasskey, lostAuthenticator)
+        run(keepTwoFactor = needs2fa, skipPasskey = bypassPasskey) {
+            val challenge = authRepository.login(email, password, totpCode, bypassPasskey, lostAuthenticator)
             when {
                 challenge.user != null -> AuthFormState()
                 challenge.passkeyRequired && challenge.ceremonyToken.isNotBlank() && challenge.challenge != null ->
@@ -121,6 +122,7 @@ class AuthViewModel @Inject constructor(
         keepTwoFactor: Boolean = false,
         keepLoginToken: Boolean = false,
         keepPasskey: Boolean = false,
+        skipPasskey: Boolean = false,
         block: suspend () -> AuthFormState,
     ) {
         val token = _state.value.loginToken.takeIf { keepLoginToken }
@@ -130,7 +132,9 @@ class AuthViewModel @Inject constructor(
             needsTwoFactor = keepTwoFactor,
             loginToken = token,
             passkeyPrompt = prompt,
+            skipPasskey = skipPasskey || _state.value.skipPasskey,
         )
+        val bypassPasskey = _state.value.skipPasskey
         viewModelScope.launch {
             try {
                 _state.value = block()
@@ -140,25 +144,33 @@ class AuthViewModel @Inject constructor(
                     _state.value = AuthFormState(
                         needsTwoFactor = true,
                         error = if (keepTwoFactor) "That code isn't right. Try the current one." else null,
+                        skipPasskey = bypassPasskey,
                     )
                 } else {
-                    _state.value = AuthFormState(loginToken = token, error = serverMessage(e, body, token != null))
+                    _state.value = AuthFormState(
+                        loginToken = token,
+                        error = serverMessage(e, body, token != null),
+                        skipPasskey = bypassPasskey,
+                    )
                 }
             } catch (e: Passkeys.Cancelled) {
                 _state.value = AuthFormState(
                     passkeyPrompt = prompt,
                     error = "That was cancelled. Try again, or use an email code.",
+                    skipPasskey = bypassPasskey,
                 )
             } catch (e: Passkeys.NoneAvailable) {
                 _state.value = AuthFormState(
                     passkeyPrompt = prompt,
                     error = "No passkey for OrangChat on this device. Try again, or use an email code.",
+                    skipPasskey = bypassPasskey,
                 )
             } catch (e: Exception) {
                 _state.value = AuthFormState(
                     loginToken = token,
                     passkeyPrompt = prompt,
                     error = e.message ?: "Something went wrong. Try again.",
+                    skipPasskey = bypassPasskey,
                 )
             }
         }
