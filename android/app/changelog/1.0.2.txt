@@ -1,0 +1,17 @@
+OrangChat 1.0.2
+
+New
+- Mute a conversation or a server from its long-press menu, for 15 minutes,
+  an hour, 8 hours, a day, or until you turn it back on. Muted chats stop
+  sending notifications and are marked in the direct message list.
+- Tap your own status dot in the sidebar to switch between online, idle and
+  do not disturb without opening settings.
+- Profile cards now show the person's current status on their avatar.
+
+Changed
+- Jumping to a message from search or from a reply now lands it near the top
+  of the screen instead of the very bottom, so the replies around it are
+  visible.
+- Message avatars in a conversation no longer carry a status dot; it stays on
+  the header, sidebars and member list.
+- The idle moon icon is a little fuller and easier to read at small sizes.
