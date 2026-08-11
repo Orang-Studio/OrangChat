@@ -66,6 +66,7 @@ private fun ProfileCardNative(
     presence: PresenceStatus? = null,
 ) {
     val c = OrangTheme.colors
+    val context = LocalContext.current
     val outerShape = RoundedCornerShape(OrangRadius.xl)
     val avatarShape = RoundedCornerShape(OrangRadius.md)
     val accent = user.accentColor?.let { Color(it).copy(alpha = 1f) } ?: c.surface4
@@ -143,13 +144,13 @@ private fun ProfileCardNative(
 
                     user.bio?.takeIf { it.isNotBlank() }?.let { bio ->
                         ProfileDivider()
-                        ProfileLabel("About me")
+                        ProfileLabel(AppStrings.get(context, R.string.catalog_about_me_e3ba4ef3))
                         Text(bio, color = c.ink, fontSize = 14.sp)
                     }
 
                     user.createdAt.takeIf { it.isNotBlank() }?.let { createdAt ->
                         ProfileDivider()
-                        ProfileLabel("Member since")
+                        ProfileLabel(AppStrings.get(context, R.string.catalog_member_since_f425b08f))
                         Text(formatFullTime(createdAt), color = c.ink, fontSize = 14.sp)
                     }
                 }

@@ -70,7 +70,10 @@ fun FriendsScreen(
     val c = OrangTheme.colors
     var tab by remember { mutableIntStateOf(0) }
     var addName by remember { mutableStateOf("") }
-    val tabs = listOf("Friends", "Pending", "Add")
+    val friendsLabel = AppStrings.get(context, R.string.catalog_friends_c11d5e1d)
+    val pendingLabel = AppStrings.get(context, R.string.catalog_pending_96f608c1)
+    val addLabel = AppStrings.get(context, R.string.catalog_add_61cc55aa)
+    val tabs = listOf(friendsLabel, pendingLabel, addLabel)
 
     Column(modifier = modifier.fillMaxSize().background(c.surface2)) {
         Row(
@@ -84,7 +87,7 @@ fun FriendsScreen(
                 modifier = Modifier.clickable(onClick = onBack).padding(4.dp),
             )
             Spacer(Modifier.width(4.dp))
-            Text("Friends", color = c.ink, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text(friendsLabel, color = c.ink, fontWeight = FontWeight.Bold, fontSize = 18.sp)
         }
         OrangTabs(tabs, tab, { tab = it }, modifier = Modifier.padding(horizontal = 12.dp))
         Spacer(Modifier.height(8.dp))

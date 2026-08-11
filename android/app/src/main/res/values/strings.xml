@@ -26,6 +26,7 @@
     <string name="catalog_account_85dfa32c" formatted="false">Account</string>
     <string name="catalog_account_created_check_your_email_for_a_7d4a9ecd" formatted="false">Account created. Check your email for a verification link - </string>
     <string name="catalog_account_standing_2b18a30b" formatted="false">Account standing</string>
+    <string name="catalog_add_61cc55aa" formatted="false">Add</string>
     <string name="catalog_add_a_friend_by_their_username_c1584607" formatted="false">Add a friend by their username.</string>
     <string name="catalog_add_a_passkey_0daca495" formatted="false">Add a passkey</string>
     <string name="catalog_add_a_server_5ee1e413" formatted="false">Add a server</string>
@@ -254,6 +255,7 @@
     <string name="catalog_for_1_hour_32c996ba" formatted="false">For 1 hour</string>
     <string name="catalog_for_8_hours_3e610b98" formatted="false">For 8 hours</string>
     <string name="catalog_for_24_hours_0a7aea9d" formatted="false">For 24 hours</string>
+    <string name="catalog_friends_c11d5e1d" formatted="false">Friends</string>
     <string name="catalog_friends_of_friends_9abdf2fe" formatted="false">Friends of friends</string>
     <string name="catalog_friends_only_0b2d5f25" formatted="false">Friends only</string>
     <string name="catalog_generate_fc45f9b7" formatted="false">Generate</string>
@@ -319,6 +321,7 @@
     <string name="catalog_lowercase_letters_numbers_underscores_and_dots_57155ecc" formatted="false">Lowercase letters, numbers, underscores, and dots.</string>
     <string name="catalog_make_a_new_key_cde9afba" formatted="false">Make a new key</string>
     <string name="catalog_mark_as_read_c1ee860b" formatted="false">Mark as read</string>
+    <string name="catalog_member_since_f425b08f" formatted="false">Member since</string>
     <string name="catalog_messages_friend_requests_typing_notifications_17b64746" formatted="false">Messages, friend requests, typing, notifications</string>
     <string name="catalog_messages_go_as_soon_as_you_send_e76569f5" formatted="false">Messages go as soon as you send them. If anyone ever swaps this person\'s lock, your devices notice and tell you.</string>
     <string name="catalog_microphone_access_is_needed_to_record_a_9afc8aaa" formatted="false">Microphone access is needed to record a voice message</string>
@@ -400,6 +403,7 @@
     <string name="catalog_password_changed_1_s_other_session_was_10fc8ee3" formatted="true">Password changed. %1$s other session was signed out.</string>
     <string name="catalog_password_changed_1_s_other_sessions_were_64e22cd3" formatted="true">Password changed. %1$s other sessions were signed out.</string>
     <string name="catalog_password_changed_47fa5289" formatted="false">Password changed.</string>
+    <string name="catalog_pending_96f608c1" formatted="false">Pending</string>
     <string name="catalog_permanently_delete_2eea1fa8" formatted="false">Permanently delete</string>
     <string name="catalog_personal_phone_a154b2eb" formatted="false">Personal phone</string>
     <string name="catalog_phone_connected_ac1141af" formatted="false">Phone connected</string>

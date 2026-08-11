@@ -14,12 +14,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import lt.oranges.orangchat.R
 import lt.oranges.orangchat.data.model.PresenceStatus
 import lt.oranges.orangchat.data.model.User
 import lt.oranges.orangchat.ui.theme.OrangTheme
+import lt.oranges.orangchat.util.AppStrings
 import java.io.ByteArrayInputStream
 
 private const val ESTIMATED_CARD_HEIGHT_DP = 240
@@ -33,9 +36,12 @@ fun ProfileCardWebView(
     modifier: Modifier = Modifier,
     presence: PresenceStatus? = null,
 ) {
+    val context = LocalContext.current
     val colors = OrangTheme.colors
-    val card = remember(user, presence, colors) {
-        buildProfileCardHtml(user, colors, presence)
+    val aboutMeLabel = AppStrings.get(context, R.string.catalog_about_me_e3ba4ef3)
+    val memberSinceLabel = AppStrings.get(context, R.string.catalog_member_since_f425b08f)
+    val card = remember(user, presence, colors, aboutMeLabel, memberSinceLabel) {
+        buildProfileCardHtml(user, colors, aboutMeLabel, memberSinceLabel, presence)
     }
     var heightDp by remember(user.id) { mutableIntStateOf(0) }
 

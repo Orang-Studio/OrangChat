@@ -41,6 +41,8 @@ class ProfileCardOriginTest {
                 badges = listOf("beta"),
             ),
             colors = DarkOrangColors,
+            aboutMeLabel = "About me",
+            memberSinceLabel = "Member since",
         )
 
         assertTrue(card.html.contains("data-badge-label=\"Beta\""))
@@ -75,6 +77,8 @@ class ProfileCardOriginTest {
                 ),
             ),
             colors = DarkOrangColors,
+            aboutMeLabel = "About me",
+            memberSinceLabel = "Member since",
         )
 
         assertTrue(card.html.contains("""class="oc-pf-activity" data-kind="game""""))
@@ -100,6 +104,8 @@ class ProfileCardOriginTest {
                 ),
             ),
             colors = DarkOrangColors,
+            aboutMeLabel = "About me",
+            memberSinceLabel = "Member since",
         )
 
         assertTrue(card.html.contains("oc-pf-activity-label\">LISTENING TO"))

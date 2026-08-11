@@ -79,6 +79,8 @@ data class ProfileCardHtml(val html: String, val imageAllowlist: Set<String>)
 fun buildProfileCardHtml(
     user: User,
     colors: OrangColors,
+    aboutMeLabel: String,
+    memberSinceLabel: String,
     presence: PresenceStatus? = null,
 ): ProfileCardHtml {
     val badgeScriptNonce = UUID.randomUUID().toString()
@@ -139,10 +141,10 @@ fun buildProfileCardHtml(
         """<div class="oc-pf-badges">$imgs<span class="oc-pf-badge-label" role="tooltip" hidden></span></div>"""
     } ?: ""
     val bio = user.bio?.takeIf { it.isNotBlank() }?.let {
-        """<div class="oc-pf-bio oc-pf-section"><h3 class="oc-pf-heading">About me</h3><p class="oc-pf-bio-text">${it.escapeHtml()}</p></div>"""
+        """<div class="oc-pf-bio oc-pf-section"><h3 class="oc-pf-heading">${aboutMeLabel.escapeHtml()}</h3><p class="oc-pf-bio-text">${it.escapeHtml()}</p></div>"""
     } ?: ""
     val member = user.createdAt.takeIf { it.isNotBlank() }?.let {
-        """<div class="oc-pf-member oc-pf-section"><h3 class="oc-pf-heading">Member since</h3><p class="oc-pf-member-text">${formatFullTime(it).escapeHtml()}</p></div>"""
+        """<div class="oc-pf-member oc-pf-section"><h3 class="oc-pf-heading">${memberSinceLabel.escapeHtml()}</h3><p class="oc-pf-member-text">${formatFullTime(it).escapeHtml()}</p></div>"""
     } ?: ""
 
     val imageAllowlist = setOfNotNull(avatar, banner, activityArtwork) + badgeUrls
