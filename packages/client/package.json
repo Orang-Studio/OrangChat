@@ -8,7 +8,9 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "i18n:extract": "node tools/i18n-bridge/extract.mjs",
+    "i18n:regenerate": "node tools/i18n-bridge/regenerate.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

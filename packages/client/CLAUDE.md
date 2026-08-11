@@ -19,11 +19,12 @@ to regenerate the reviewed Android candidate catalogue.
 ## Community translation (Weblate)
 
 The 10 real locale catalogues are community-translatable through the
-self-hosted Weblate instance at `chat.oranges.lt/translation`. Weblate can't
+the self-hosted Weblate instance at `https://oranges.lt/translate/`. Weblate can't
 edit `.ts` files, so `tools/i18n-bridge/` bridges them to flat JSON in
 `i18n-weblate/`: `pnpm i18n:extract` turns the `.ts` catalogues into JSON
 before syncing to Weblate, `pnpm i18n:regenerate` turns Weblate's translated
-JSON back into `.ts` after pulling. See `tools/i18n-bridge/README.md`.
+JSON back into `.ts` after pulling. Weblate syncs the `main` branch. See
+`tools/i18n-bridge/README.md`.
 `pirate.ts`/`lolcat.ts` are excluded - they're generated from `en.ts` at
 import time, not stored translations, so there's nothing for a translator to
 edit.

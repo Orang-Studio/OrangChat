@@ -92,6 +92,7 @@ OrangChat is not affiliated with, endorsed by, or associated with Discord, Meta,
 - [docs/BOTS.md](docs/BOTS.md) - writing bots
 - [docs/PASSKEYS.md](docs/PASSKEYS.md) - passkey sign-in
 - [deploy/DEPLOY.md](deploy/DEPLOY.md) - self-hosting guide
+- [Community translations](https://oranges.lt/translate/) - Weblate translation project
 - [GitHub Issues](https://github.com/Orang-Studio/OrangChat/issues) - bugs and feature requests
 - [Wiki](https://github.com/Orang-Studio/OrangChat/wiki) - additional documentation
 
