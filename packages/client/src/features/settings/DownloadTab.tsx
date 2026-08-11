@@ -1,6 +1,7 @@
 import type { IconType } from "react-icons";
 import { FaAndroid, FaApple, FaLinux, FaWindows } from "react-icons/fa";
 import { SectionTitle } from "./controls";
+import { t } from "../../lib/i18n";
 
 interface Platform {
   id: string;
@@ -56,10 +57,9 @@ export function DownloadTab() {
   return (
     <div className="space-y-6">
       <div>
-        <SectionTitle>Get the app</SectionTitle>
+        <SectionTitle>{t("downloadTab.getTheApp")}</SectionTitle>
         <p className="mb-4 text-sm text-ink-secondary">
-          OrangChat runs in your browser, but the native apps add tray, notifications, and
-          screen sharing.
+          {t("downloadTab.orangchatRunsInYourBrowserBut")}
         </p>
         <ul className="space-y-2">
           {PLATFORMS.map(({ id, label, detail, href, Icon, iconClass, secondary }) => (
@@ -75,7 +75,7 @@ export function DownloadTab() {
                   <span className="block text-sm font-medium text-ink">{label}</span>
                   <span className="block truncate text-xs text-ink-muted">{detail}</span>
                 </span>
-                <span className="text-xs font-medium text-primary">Download</span>
+                <span className="text-xs font-medium text-primary">{t("common.download")}</span>
               </a>
               {secondary && (
                 <a
@@ -91,7 +91,7 @@ export function DownloadTab() {
           ))}
         </ul>
         <p className="mt-3 flex items-center gap-1.5 text-xs text-ink-muted">
-          <FaApple aria-hidden className="size-3.5" /> macOS/iOS aren't available yet.
+          <FaApple aria-hidden className="size-3.5" /> {t("downloadTab.macosIosArentAvailableYet")}
         </p>
       </div>
     </div>

@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.search
 
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +40,7 @@ import lt.oranges.orangchat.ui.components.Avatar
 import lt.oranges.orangchat.ui.components.OrangTextField
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
+import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.formatTime
 
 /**
@@ -60,6 +63,7 @@ fun SearchScreen(
     modifier: Modifier = Modifier,
     vm: SearchViewModel = hiltViewModel(),
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val state by vm.state.collectAsStateWithLifecycle()
     // Keep the renderer safe if an overlapping page comes back from the server.
@@ -83,7 +87,7 @@ fun SearchScreen(
                 value = state.query,
                 onValueChange = { vm.onQueryChange(serverId, channelIds, it) },
                 label = null,
-                placeholder = "Search messages",
+                placeholder = AppStrings.get(context, R.string.catalog_search_messages_abea65ae),
                 modifier = Modifier.weight(1f),
             )
         }
@@ -101,8 +105,8 @@ fun SearchScreen(
             ) { Text(state.error!!, color = c.danger, fontSize = 13.sp) }
 
             state.query.isBlank() -> Hint(
-                if (serverId == null) "Type to search your cached direct messages."
-                else "Type to search this server's messages.",
+                if (serverId == null) AppStrings.get(context, R.string.catalog_type_to_search_your_cached_direct_messages_12182460)
+                else AppStrings.get(context, R.string.catalog_type_to_search_this_server_s_messages_43fff226),
             )
 
             results.isEmpty() -> Hint(
@@ -121,7 +125,7 @@ fun SearchScreen(
                 if (serverId == null || state.searchedLocally) {
                     item(key = "local-search-notice") {
                         Text(
-                            text = "Searched on this device. Messages not opened here may be missing.",
+                            text = AppStrings.get(context, R.string.catalog_searched_on_this_device_messages_not_opened_4abe22a1),
                             color = c.inkMuted,
                             fontSize = 11.sp,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
@@ -140,7 +144,7 @@ fun SearchScreen(
                 if (state.hasMore) {
                     item {
                         Text(
-                            text = if (state.loading) "Loading…" else "Load more",
+                            text = if (state.loading) AppStrings.get(context, R.string.catalog_loading_33ce4174) else AppStrings.get(context, R.string.catalog_load_more_dfe60ca9),
                             color = c.primary,
                             fontSize = 13.sp,
                             modifier = Modifier

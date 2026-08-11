@@ -29,6 +29,7 @@ import { ApiError } from '../../lib/api';
 import { Button } from '../../components/ui/Button';
 import { TextField } from '../../components/ui/TextField';
 import { PasswordField } from '../../components/ui/PasswordField';
+import { t } from "../../lib/i18n";
 
 /**
  * The password buys one second factor, and the account stops at the strongest
@@ -265,10 +266,10 @@ export function LoginPage() {
           className="space-y-4"
         >
           <p className="text-sm text-ink-secondary">
-            We emailed you a sign-in code. It expires in 10 minutes.
+            {t("loginPage.weEmailedYouASignIn")}
           </p>
           <TextField
-            label="Email code"
+            label={t("loginPage.emailCode")}
             inputMode="numeric"
             autoComplete="one-time-code"
             autoFocus
@@ -284,7 +285,7 @@ export function LoginPage() {
             disabled={!emailCode.trim()}
             className="w-full"
           >
-            Sign in
+            {t("loginPage.signIn")}
           </Button>
           <Button
             type="button"
@@ -293,10 +294,10 @@ export function LoginPage() {
             onClick={() => resendMutation.mutate(loginToken)}
             className="w-full"
           >
-            Send a new code
+            {t("loginPage.sendANewCode")}
           </Button>
           <Button type="button" variant="ghost" onClick={restart} className="w-full">
-            Back
+            {t("common.back")}
           </Button>
         </form>
       );
@@ -306,7 +307,7 @@ export function LoginPage() {
       return (
         <div className="space-y-4">
           <p className="text-sm text-ink-secondary">
-            Confirm with your passkey to finish signing in.
+            {t("loginPage.confirmWithYourPasskeyToFinish")}
           </p>
           {alert}
           <Button
@@ -315,7 +316,7 @@ export function LoginPage() {
             onClick={() => void answerPasskey(passkeyPrompt)}
             className="w-full"
           >
-            Use passkey
+            {t("loginPage.usePasskey")}
           </Button>
           {/* The way out for someone whose authenticator isn't to hand. It
               re-submits the password, so this is a fallback and not a bypass. */}
@@ -326,10 +327,10 @@ export function LoginPage() {
             onClick={() => credentials && void submitLogin({ ...credentials, skipPasskey: true })}
             className="w-full"
           >
-            Email me a code instead
+            {t("loginPage.emailMeACodeInstead")}
           </Button>
           <Button type="button" variant="ghost" onClick={restart} className="w-full">
-            Back
+            {t("common.back")}
           </Button>
         </div>
       );
@@ -346,12 +347,12 @@ export function LoginPage() {
           className="space-y-4"
         >
           <TextField
-            label="Authenticator code"
+            label={t("loginPage.authenticatorCode")}
             inputMode="numeric"
             autoComplete="one-time-code"
             autoFocus
             placeholder="123456"
-            hint="Enter the 6-digit code from your app, or a recovery code."
+            hint={t("loginPage.enterThe6DigitCodeFrom")}
             value={totpCode}
             onChange={(event) => setTotpCode(event.target.value.slice(0, 32))}
           />
@@ -362,7 +363,7 @@ export function LoginPage() {
             disabled={!totpCode.trim()}
             className="w-full"
           >
-            Verify
+            {t("loginPage.verify")}
           </Button>
           {/* A phone left at home must not be a locked account. This drops to the
               emailed code, which is weaker - so it is a button somebody has to
@@ -374,10 +375,10 @@ export function LoginPage() {
             onClick={() => void submitLogin({ ...credentials, lostAuthenticator: true })}
             className="w-full"
           >
-            Lost your authenticator?
+            {t("loginPage.lostYourAuthenticator")}
           </Button>
           <Button type="button" variant="ghost" onClick={restart} className="w-full">
-            Back
+            {t("common.back")}
           </Button>
         </form>
       );
@@ -389,7 +390,7 @@ export function LoginPage() {
         <OAuthDivider />
         <form noValidate onSubmit={handleSubmit(submitLogin)} className="space-y-4">
           <TextField
-            label="Email"
+            label={t("loginPage.email")}
             type="email"
             // "webauthn" is what lets the browser list saved passkeys in this
             // field's own dropdown, alongside the conditional request above.
@@ -398,7 +399,7 @@ export function LoginPage() {
             {...register('email')}
           />
           <PasswordField
-            label="Password"
+            label={t("loginPage.password")}
             autoComplete="current-password"
             error={errors.password?.message}
             {...register('password')}
@@ -410,7 +411,7 @@ export function LoginPage() {
             disabled={!recaptchaReady}
             className="w-full"
           >
-            Log in
+            {t("loginPage.logIn")}
           </Button>
         </form>
         {passkeysSupported() && (
@@ -421,7 +422,7 @@ export function LoginPage() {
             className="mt-4 flex w-full items-center justify-center gap-2 text-sm text-ink-secondary hover:underline disabled:opacity-60"
           >
             <KeyRound aria-hidden className="size-4" />
-            Sign in with a passkey
+            {t("loginPage.signInWithAPasskey")}
           </button>
         )}
         <button
@@ -430,7 +431,7 @@ export function LoginPage() {
           className="mt-4 flex w-full items-center justify-center gap-2 text-sm text-ink-secondary hover:underline"
         >
           <QrCode aria-hidden className="size-4" />
-          Sign in with your phone
+          {t("loginPage.signInWithYourPhone")}
         </button>
       </>
     );
@@ -438,13 +439,13 @@ export function LoginPage() {
 
   return (
     <AuthLayout
-      title="Welcome back"
-      subtitle="Log in to keep the conversation going."
+      title={t("loginPage.welcomeBack")}
+      subtitle={t("loginPage.logInToKeepTheConversation")}
       footer={
         <>
-          New to OrangChat?{' '}
+          {t("loginPage.newToOrangchat")}{" "}
           <Link to="/signup" className="font-medium text-primary hover:underline">
-            Create an account
+            {t("loginPage.createAnAccount")}
           </Link>
         </>
       }

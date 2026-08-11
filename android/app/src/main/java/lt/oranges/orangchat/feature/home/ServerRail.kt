@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.home
 
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,6 +40,7 @@ import lt.oranges.orangchat.feature.unread.mentionsForServer
 import lt.oranges.orangchat.feature.unread.unreadDmCount
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
+import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.absoluteUrl
 
 /** The leftmost server rail: Home/DMs button, server icons, and add-server. */
@@ -52,6 +55,7 @@ fun ServerRail(
     modifier: Modifier = Modifier,
     unreads: Map<String, UnreadState> = emptyMap(),
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     Column(
         modifier = modifier
@@ -64,7 +68,7 @@ fun ServerRail(
     ) {
         Box {
             RailButton(selected = homeSelected, onClick = onHome) {
-                Icon(Icons.Default.Chat, contentDescription = "Direct messages", tint = it)
+                Icon(Icons.Default.Chat, contentDescription = AppStrings.get(context, R.string.catalog_direct_messages_e7596a09), tint = it)
             }
             // Unread DMs badge, Discord-style, on the home button.
             MentionBadge(
@@ -102,7 +106,7 @@ fun ServerRail(
             }
             item {
                 RailButton(selected = false, accent = true, onClick = onAddServer) {
-                    Icon(Icons.Default.Add, contentDescription = "Add a server", tint = it)
+                    Icon(Icons.Default.Add, contentDescription = AppStrings.get(context, R.string.catalog_add_a_server_5ee1e413), tint = it)
                 }
             }
         }

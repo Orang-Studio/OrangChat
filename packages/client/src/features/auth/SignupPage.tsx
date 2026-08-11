@@ -12,6 +12,7 @@ import { Recaptcha, type RecaptchaHandle } from "./Recaptcha";
 import { Button } from "../../components/ui/Button";
 import { TextField } from "../../components/ui/TextField";
 import { PasswordField } from "../../components/ui/PasswordField";
+import { t, tNodes } from "../../lib/i18n";
 
 /** Form-side variant: an empty display name means "not provided". */
 const signupFormSchema = signupSchema.extend({
@@ -64,13 +65,13 @@ export function SignupPage() {
 
   return (
     <AuthLayout
-      title="Create your account"
-      subtitle="Claim your username and start chatting."
+      title={t("signupPage.createYourAccount")}
+      subtitle={t("signupPage.claimYourUsernameAndStartChatting")}
       footer={
         <>
-          Already have an account?{" "}
+          {t("signupPage.alreadyHaveAnAccount")}{" "}
           <Link to="/login" className="font-medium text-primary hover:underline">
-            Log in
+            {t("signupPage.logIn")}
           </Link>
         </>
       }
@@ -79,30 +80,30 @@ export function SignupPage() {
       <OAuthDivider />
       <form noValidate onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {verificationSent ? (
-          <p role="status" className="rounded-lg bg-primary-soft px-3 py-3 text-sm text-ink">Check your email for a verification link. You must verify it before signing in.</p>
+          <p role="status" className="rounded-lg bg-primary-soft px-3 py-3 text-sm text-ink">{t("signupPage.checkYourEmailForAVerification")}</p>
         ) : (<>
         <TextField
-          label="Email"
+          label={t("signupPage.email")}
           type="email"
           autoComplete="email"
           error={errors.email?.message}
           {...register("email")}
         />
         <TextField
-          label="Username"
+          label={t("signupPage.username")}
           autoComplete="username"
-          hint="Lowercase letters, numbers, underscores, and dots."
+          hint={t("signupPage.lowercaseLettersNumbersUnderscoresAndDots")}
           error={errors.username?.message}
           {...register("username")}
         />
         <TextField
-          label="Display name (optional)"
+          label={t("signupPage.displayNameOptional")}
           autoComplete="nickname"
           error={errors.displayName?.message}
           {...register("displayName")}
         />
         <PasswordField
-          label="Password"
+          label={t("signupPage.password")}
           autoComplete="new-password"
           error={errors.password?.message}
           {...register("password")}
@@ -119,13 +120,26 @@ export function SignupPage() {
           disabled={!recaptchaReady}
           className="w-full"
         >
-          Create account
+          {t("signupPage.createAccount")}
         </Button>
         <p className="text-center text-xs leading-5 text-ink-muted">
-          By creating an account, you agree to the{" "}
-          <Link to="/terms" className="oc-link">Terms of Service</Link> and{" "}
-          <Link to="/guidelines" className="oc-link">Community Guidelines</Link>, and acknowledge
-          the <Link to="/privacy" className="oc-link">Privacy Policy</Link>.
+          {tNodes("signupPage.legalConsent", {
+            terms: (
+              <Link to="/terms" className="oc-link">
+                {t("signupPage.termsOfService")}
+              </Link>
+            ),
+            guidelines: (
+              <Link to="/guidelines" className="oc-link">
+                {t("signupPage.communityGuidelines")}
+              </Link>
+            ),
+            privacy: (
+              <Link to="/privacy" className="oc-link">
+                {t("signupPage.privacyPolicy")}
+              </Link>
+            ),
+          })}
         </p>
         </>)}
       </form>

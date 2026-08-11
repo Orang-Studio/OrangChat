@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { LogoMark } from "../components/LogoMark";
+import { t } from "../lib/i18n";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -34,10 +35,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-surface-0 p-6 text-center"
         >
           <LogoMark className="size-16" />
-          <h1 className="text-lg font-semibold text-ink">Something went wrong</h1>
+          <h1 className="text-lg font-semibold text-ink">{t("errorBoundary.somethingWentWrong")}</h1>
           <p className="max-w-md text-sm text-ink-muted">
-            OrangChat hit an unexpected error and could not keep showing this
-            page. Your messages are safe — reload to try again.
+            {t("errorBoundary.orangchatHitAnUnexpectedErrorAnd")}
           </p>
           <pre className="max-h-40 max-w-full overflow-auto rounded-md border border-border bg-surface-2 p-3 text-left text-xs text-ink-secondary">
             {this.state.error.message || String(this.state.error)}
@@ -47,7 +47,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             onClick={() => window.location.reload()}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-ink-on-primary hover:bg-primary-hover"
           >
-            Reload OrangChat
+            {t("errorBoundary.reloadOrangchat")}
           </button>
         </div>
       );

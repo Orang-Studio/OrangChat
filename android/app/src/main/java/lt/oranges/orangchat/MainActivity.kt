@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.content.Intent
 import android.net.Uri
 import android.util.Rational
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
@@ -52,7 +51,7 @@ import lt.oranges.orangchat.notifications.NotificationHelper
 import lt.oranges.orangchat.util.InviteLink
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : LocalizedActivity() {
     @Inject lateinit var callManager: CallManager
     @Inject lateinit var notificationHelper: NotificationHelper
     @Inject lateinit var pendingInviteStore: PendingInviteStore

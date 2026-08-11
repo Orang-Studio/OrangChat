@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.invite
 
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +26,7 @@ import coil.compose.AsyncImage
 import lt.oranges.orangchat.data.model.InvitePreview
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
+import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.absoluteUrl
 
 /** "12 members", but "1 member". */
@@ -40,6 +43,7 @@ fun InviteCard(
     modifier: Modifier = Modifier,
     action: @Composable (() -> Unit)? = null,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     Column(
         modifier = modifier
@@ -51,7 +55,7 @@ fun InviteCard(
     ) {
         Text(
             text = preview.inviterName?.let { "$it invited you to join" }
-                ?: "You've been invited to join",
+                ?: AppStrings.get(context, R.string.catalog_you_ve_been_invited_to_join_3a282347),
             color = c.inkMuted,
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium,

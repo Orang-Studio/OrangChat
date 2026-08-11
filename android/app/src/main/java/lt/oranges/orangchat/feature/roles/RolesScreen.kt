@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.roles
-
+import lt.oranges.orangchat.util.AppStrings
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -76,6 +78,7 @@ fun RolesScreen(
     onDelete: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     var editingId by remember(detail.server.id) { mutableStateOf<String?>(null) }
     var creating by remember { mutableStateOf(false) }
@@ -107,7 +110,7 @@ fun RolesScreen(
         ) {
             item {
                 Text(
-                    "Roles grant permissions and a colour. Members take the colour of their highest role.",
+                    AppStrings.get(context, R.string.catalog_roles_grant_permissions_and_a_colour_members_51c7e585),
                     color = c.inkMuted,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(bottom = 8.dp),
@@ -116,7 +119,7 @@ fun RolesScreen(
             if (canManage) {
                 item {
                     OrangButton(
-                        text = "Create role",
+                        text = AppStrings.get(context, R.string.catalog_create_role_db859bad),
                         onClick = { creating = true },
                         variant = ButtonVariant.Secondary,
                         modifier = Modifier.fillMaxWidth(),
@@ -173,17 +176,18 @@ private fun RoleRow(role: Role, memberCount: Int, editable: Boolean, onClick: ()
 
 @Composable
 private fun CreateRoleDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit) {
+        val context = LocalContext.current
     var name by remember { mutableStateOf("") }
     OrangDialog(
         onDismiss = onDismiss,
-        title = "Create role",
-        description = "New roles start just above @everyone, so they never outrank the person creating them.",
+        title = AppStrings.get(context, R.string.catalog_create_role_db859bad),
+        description = AppStrings.get(context, R.string.catalog_new_roles_start_just_above_everyone_so_700d0555),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             OrangTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = "Role name",
+                label = AppStrings.get(context, R.string.catalog_role_name_4204d818),
                 placeholder = "Moderator",
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -215,6 +219,7 @@ private fun RoleEditor(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val isEveryone = role.position == Permissions.EVERYONE_POSITION
 
@@ -234,7 +239,7 @@ private fun RoleEditor(
         mentionable != role.mentionable || perms != original
 
     Column(modifier = modifier.fillMaxSize().background(c.surface2)) {
-        Header(title = if (isEveryone) "@everyone" else "Edit role", onBack = onBack)
+        Header(title = if (isEveryone) AppStrings.get(context, R.string.catalog_everyone_930575f5) else AppStrings.get(context, R.string.catalog_edit_role_61dd63e9), onBack = onBack)
 
         Column(
             modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState()),
@@ -245,27 +250,27 @@ private fun RoleEditor(
                     OrangTextField(
                         value = name,
                         onValueChange = { name = it },
-                        label = "Role name",
+                        label = AppStrings.get(context, R.string.catalog_role_name_4204d818),
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Text("Colour", color = c.inkMuted, fontSize = 12.sp)
                     ColorSwatches(selected = color, onSelect = { color = it })
                     ToggleRow(
-                        label = "Display separately",
-                        hint = "Show members with this role in their own group.",
+                        label = AppStrings.get(context, R.string.catalog_display_separately_ecf9d1a7),
+                        hint = AppStrings.get(context, R.string.catalog_show_members_with_this_role_in_their_f0fb058c),
                         checked = hoist,
                         onCheckedChange = { hoist = it },
                     )
                     ToggleRow(
-                        label = "Allow anyone to @mention",
-                        hint = "Otherwise only members with Mention Everyone can.",
+                        label = AppStrings.get(context, R.string.catalog_allow_anyone_to_mention_c6fe8761),
+                        hint = AppStrings.get(context, R.string.catalog_otherwise_only_members_with_mention_everyone_can_a0476dcf),
                         checked = mentionable,
                         onCheckedChange = { mentionable = it },
                     )
                 }
             } else {
                 Text(
-                    "@everyone applies to every member. It has no colour and cannot be assigned or deleted.",
+                    AppStrings.get(context, R.string.catalog_everyone_applies_to_every_member_it_has_12e47659),
                     color = c.inkMuted,
                     fontSize = 12.sp,
                 )
@@ -277,7 +282,7 @@ private fun RoleEditor(
                         val canToggle = allowed and info.bit != 0L
                         ToggleRow(
                             label = info.label,
-                            hint = if (canToggle) info.description else "You do not have this permission.",
+                            hint = if (canToggle) info.description else AppStrings.get(context, R.string.catalog_you_do_not_have_this_permission_d4f08a3c),
                             checked = perms and info.bit != 0L,
                             enabled = canToggle,
                             onCheckedChange = { on ->
@@ -289,7 +294,7 @@ private fun RoleEditor(
             }
 
             OrangButton(
-                text = "Save changes",
+                text = AppStrings.get(context, R.string.catalog_save_changes_179359b3),
                 onClick = {
                     onSave(
                         UpdateRoleRequest(
@@ -306,9 +311,9 @@ private fun RoleEditor(
             )
 
             if (!isEveryone) {
-                Section("Danger zone") {
+                Section(AppStrings.get(context, R.string.catalog_danger_zone_963a652e)) {
                     OrangButton(
-                        text = "Delete role",
+                        text = AppStrings.get(context, R.string.catalog_delete_role_fbf0667e),
                         onClick = { confirmDelete = true },
                         variant = ButtonVariant.Danger,
                         modifier = Modifier.fillMaxWidth(),

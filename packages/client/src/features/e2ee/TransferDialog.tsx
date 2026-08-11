@@ -19,6 +19,7 @@ import {
   type PendingInvitation,
   type PendingEnrolment,
 } from './transfer';
+import { t } from "../../lib/i18n";
 
 /**
  * Device transfer (docs/E2EE.md §4), from both ends.
@@ -37,7 +38,7 @@ function Digits({ value }: { value: string }) {
 function TransferProgress({ step }: { step: 1 | 2 | 3 | 4 }) {
   const labels = ['Scan', 'Compare', 'Verify', 'Finish'];
   return (
-    <ol aria-label="Transfer progress" className="grid grid-cols-4 gap-1">
+    <ol aria-label={t("transferDialog.transferProgress")} className="grid grid-cols-4 gap-1">
       {labels.map((label, index) => {
         const number = index + 1;
         const complete = number < step;
@@ -87,8 +88,7 @@ function SasStep({
   return (
     <div className="space-y-4">
       <p className="text-sm text-ink-secondary">
-        Both screens should show the same six digits. If they differ, something is between your two
-        devices - stop here.
+        {t("transferDialog.bothScreensShouldShowTheSame")}
       </p>
       <Digits value={sas} />
       {children}
@@ -99,10 +99,10 @@ function SasStep({
       )}
       <div className="flex gap-2">
         <Button type="button" className="flex-1" onClick={onConfirm} loading={busy}>
-          They match
+          {t("transferDialog.theyMatch")}
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel} disabled={busy}>
-          They don't
+          {t("transferDialog.theyDont")}
         </Button>
       </div>
     </div>
@@ -152,10 +152,9 @@ function AddThisDevice({ onDone }: { onDone: () => void }) {
           >
             <Loader2 aria-hidden className="mt-0.5 size-5 shrink-0 animate-spin text-primary" />
             <div>
-              <p className="text-sm font-semibold">Digits confirmed</p>
+              <p className="text-sm font-semibold">{t("transferDialog.digitsConfirmed")}</p>
               <p className="text-xs text-ink-muted">
-                Enter the security code on the authorized device. This device is waiting for the
-                encrypted history and signed authorization.
+                {t("transferDialog.enterTheSecurityCodeOnThe")}
               </p>
             </div>
           </div>
@@ -192,12 +191,10 @@ function AddThisDevice({ onDone }: { onDone: () => void }) {
   return (
     <div className="mt-3 space-y-3">
       <p className="text-sm text-ink-secondary">
-        On a device you're already signed in on, open Settings → Encryption and choose "Add another
-        device", then point it at this code. Keep them close together - the transfer only goes over
-        your local network.
+        {t("transferDialog.onADeviceYoureAlreadySigned")}
       </p>
       {pending ? (
-        <QrCode value={pending.qr} label="Device transfer code" />
+        <QrCode value={pending.qr} label={t("transferDialog.deviceTransferCode")} />
       ) : (
         <div className="flex justify-center py-8">
           <Loader2 aria-hidden className="size-5 animate-spin text-ink-muted" />
@@ -205,7 +202,7 @@ function AddThisDevice({ onDone }: { onDone: () => void }) {
       )}
       <p className="flex items-center justify-center gap-1.5 text-xs text-ink-muted">
         <Smartphone aria-hidden className="size-3.5" />
-        Waiting for the other device…
+        {t("transferDialog.waitingForTheOtherDevice")}
       </p>
     </div>
   );
@@ -265,20 +262,20 @@ function AddAnotherDevice({ onDone }: { onDone: () => void }) {
           <div className="rounded-lg border border-border bg-surface-1 p-3">
             <p className="flex items-center gap-2 text-sm font-semibold">
               <Smartphone aria-hidden className="size-4 text-primary" />
-              Scan this with your phone
+              {t("transferDialog.scanThisWithYourPhone")}
             </p>
             <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-ink-secondary">
-              <li>Update the phone to OrangChat 0.5.4 and sign in to this account.</li>
-              <li>Open Settings → Encryption → Add this phone.</li>
-              <li>Tap “Scan code from PC” and point OrangChat at this code.</li>
+              <li>{t("transferDialog.updateThePhoneToOrangchat0")}</li>
+              <li>{t("transferDialog.openSettingsEncryptionAddThisPhone")}</li>
+              <li>{t("transferDialog.tapScanCodeFromPcAnd")}</li>
             </ol>
           </div>
           {invitation ? (
-            <QrCode value={invitation.qr} label="Add phone to this account" />
+            <QrCode value={invitation.qr} label={t("transferDialog.addPhoneToThisAccount")} />
           ) : (
             <div className="flex items-center justify-center gap-2 py-10 text-sm text-ink-muted">
               <Loader2 aria-hidden className="size-5 animate-spin" />
-              Creating one-time code…
+              {t("transferDialog.creatingOneTimeCode")}
             </div>
           )}
           <p
@@ -289,7 +286,7 @@ function AddAnotherDevice({ onDone }: { onDone: () => void }) {
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-50" />
               <span className="relative inline-flex size-2 rounded-full bg-primary" />
             </span>
-            Waiting for your phone to scan…
+            {t("transferDialog.waitingForYourPhoneToScan")}
           </p>
           {error && (
             <div className="space-y-2">
@@ -307,7 +304,7 @@ function AddAnotherDevice({ onDone }: { onDone: () => void }) {
                   setAttempt((value) => value + 1);
                 }}
               >
-                Try again
+                {t("transferDialog.tryAgain")}
               </Button>
             </div>
           )}
@@ -321,7 +318,7 @@ function AddAnotherDevice({ onDone }: { onDone: () => void }) {
             }}
           >
             <QrCodeIcon aria-hidden className="size-4" />
-            Use a code shown by the new device instead
+            {t("transferDialog.useACodeShownByThe")}
           </Button>
         </div>
       );
@@ -330,7 +327,7 @@ function AddAnotherDevice({ onDone }: { onDone: () => void }) {
     return (
       <div className="mt-3 space-y-3">
         <p className="text-sm text-ink-secondary">
-          Scan the code shown on the new device, or use the paste option if this PC has no camera.
+          {t("transferDialog.scanTheCodeShownOnThe")}
         </p>
         <QrScanner
           expect={QR_KIND.deviceTransfer}
@@ -344,7 +341,7 @@ function AddAnotherDevice({ onDone }: { onDone: () => void }) {
               .finally(() => setBusy(false));
           }}
         />
-        {busy && <p className="text-xs text-ink-muted">Connecting to the other device…</p>}
+        {busy && <p className="text-xs text-ink-muted">{t("transferDialog.connectingToTheOtherDevice")}</p>}
         {error && (
           <p role="alert" className="text-sm text-danger">
             {error}
@@ -361,7 +358,7 @@ function AddAnotherDevice({ onDone }: { onDone: () => void }) {
             setAttempt((value) => value + 1);
           }}
         >
-          Show a code for my phone to scan
+          {t("transferDialog.showACodeForMyPhone")}
         </Button>
       </div>
     );
@@ -396,10 +393,9 @@ function AddAnotherDevice({ onDone }: { onDone: () => void }) {
       >
         <Loader2 aria-hidden className="mt-0.5 size-5 shrink-0 animate-spin text-primary" />
         <div>
-          <p className="text-sm font-semibold">Authorizing your phone</p>
+          <p className="text-sm font-semibold">{t("transferDialog.authorizingYourPhone")}</p>
           <p className="text-xs text-ink-muted">
-            Encrypting conversation-history keys, signing the new device, and waiting for the phone
-            to store them securely…
+            {t("transferDialog.encryptingConversationHistoryKeysSigningThe")}
           </p>
         </div>
       </div>
@@ -420,18 +416,16 @@ function AddAnotherDevice({ onDone }: { onDone: () => void }) {
     >
       <TransferProgress step={3} />
       <p className="text-sm text-ink-secondary">
-        Adding a device is a security event, so it takes a fresh second-factor code. Every other
-        device on your account will be told about it.
+        {t("transferDialog.addingADeviceIsASecurity")}
       </p>
       {!twoFactorEnabled && !loginToken && (
         <div className="rounded-lg border border-border bg-surface-1 p-3">
           <p className="flex items-center gap-2 text-sm font-semibold">
             <Mail aria-hidden className="size-4 text-primary" />
-            Use an email code instead
+            {t("transferDialog.useAnEmailCodeInstead")}
           </p>
           <p className="mt-1 text-xs text-ink-secondary">
-            This account has no authenticator app set up, so OrangChat will email a one-time code
-            to the address on your account. Check your email before entering it here.
+            {t("transferDialog.thisAccountHasNoAuthenticatorApp")}
           </p>
           <Button
             type="button"
@@ -441,14 +435,14 @@ function AddAnotherDevice({ onDone }: { onDone: () => void }) {
             loading={sendingEmail}
           >
             <Mail aria-hidden className="size-4" />
-            Email me a code
+            {t("transferDialog.emailMeACode")}
           </Button>
         </div>
       )}
       {!twoFactorEnabled && loginToken && (
         <p role="status" className="flex items-center gap-2 text-xs text-ink-secondary">
           <Mail aria-hidden className="size-3.5 text-primary" />
-          A one-time code is on its way to your email - it expires in 10 minutes.
+          {t("transferDialog.aOneTimeCodeIsOn")}
         </p>
       )}
       <TextField
@@ -471,7 +465,7 @@ function AddAnotherDevice({ onDone }: { onDone: () => void }) {
         disabled={code.trim().length === 0 || (!twoFactorEnabled && loginToken === null)}
       >
         <ShieldCheck aria-hidden className="size-4" />
-        Add this device
+        {t("transferDialog.addThisDevice")}
       </Button>
       {!twoFactorEnabled && loginToken && (
         <Button
@@ -481,7 +475,7 @@ function AddAnotherDevice({ onDone }: { onDone: () => void }) {
           onClick={sendEmailCode}
           disabled={sendingEmail}
         >
-          Resend email code
+          {t("transferDialog.resendEmailCode")}
         </Button>
       )}
     </form>

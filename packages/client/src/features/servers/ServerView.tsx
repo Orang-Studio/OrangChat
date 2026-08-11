@@ -5,6 +5,7 @@ import { useServerDetail } from "./queries";
 import { ChannelSidebar } from "../channels/ChannelSidebar";
 import { MemberList } from "../members/MemberList";
 import { ChatView } from "../chat/ChatView";
+import { t } from "../../lib/i18n";
 
 /**
  * Everything right of the server rail for one server: channel sidebar, chat,
@@ -30,7 +31,7 @@ export function ServerView() {
     return (
       <PanelShell sidebar={<div className="w-60 shrink-0 bg-surface-1" />}>
         <div className="flex flex-1 flex-col items-center justify-center gap-2 bg-surface-2 p-6 text-center">
-          <p className="font-semibold">Couldn't load this server</p>
+          <p className="font-semibold">{t("serverView.couldntLoadThisServer")}</p>
           <p className="text-sm text-ink-secondary">
             {error instanceof Error ? error.message : "It may have been deleted."}
           </p>
@@ -72,7 +73,7 @@ export function ServerView() {
         <ChatView key={channel.id} channel={channel} members={detail.members} />
       ) : (
         <div className="flex flex-1 items-center justify-center bg-surface-2 p-6 text-center text-sm text-ink-secondary">
-          No text channels yet - create one from the server menu.
+          {t("serverView.noTextChannelsYetCreateOne")}
         </div>
       )}
     </PanelShell>

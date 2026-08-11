@@ -3,6 +3,7 @@ import { Avatar } from "../../components/Avatar";
 import { Button } from "../../components/ui/Button";
 import { Dialog, DialogContent } from "../../components/ui/Dialog";
 import { callActions, useCallStore } from "./callStore";
+import { t } from "../../lib/i18n";
 
 /**
  * The ringing popup. Mounted once app-wide (see AppShell) rather than under a
@@ -44,14 +45,14 @@ export function IncomingCallDialog() {
               className="flex-1"
             >
               <PhoneOff aria-hidden className="size-4" />
-              Decline
+              {t("incomingCallDialog.decline")}
             </Button>
             <Button
               onClick={() => void callActions.accept()}
               className="flex-1 bg-success text-white hover:opacity-90"
             >
               <Phone aria-hidden className="size-4" />
-              Accept
+              {t("incomingCallDialog.accept")}
             </Button>
           </div>
           {incoming.video && (
@@ -61,7 +62,7 @@ export function IncomingCallDialog() {
               className="w-full"
             >
               <Video aria-hidden className="size-4" />
-              Accept with camera
+              {t("incomingCallDialog.acceptWithCamera")}
             </Button>
           )}
         </div>

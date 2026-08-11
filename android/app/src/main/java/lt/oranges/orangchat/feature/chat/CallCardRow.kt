@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.chat
 
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -40,6 +42,7 @@ import lt.oranges.orangchat.ui.components.OrangDropdownMenu
 import lt.oranges.orangchat.ui.components.Text
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
+import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.formatTime
 
 /** How many faces fit on the card before the rest are a count. */
@@ -63,6 +66,7 @@ fun CallCardRow(
     onCall: Boolean,
     onStartCall: ((video: Boolean) -> Unit)?,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     var menuOpen by remember { mutableStateOf(false) }
 
@@ -72,12 +76,12 @@ fun CallCardRow(
     val caller = if (notice.callerId == selfId) "You" else message.author.displayName
 
     val title = when {
-        notice.live && notice.joined.size > 1 -> "Ongoing call"
+        notice.live && notice.joined.size > 1 -> AppStrings.get(context, R.string.catalog_ongoing_call_5ae739b8)
         notice.live -> "$caller is calling"
         // "No answer" from our side, "Missed call" from theirs: the same call,
         // but only one of them is something the reader failed to pick up.
-        notice.missed && notice.callerId == selfId -> "No answer"
-        notice.missed -> "Missed call"
+        notice.missed && notice.callerId == selfId -> AppStrings.get(context, R.string.catalog_no_answer_a9c16dd0)
+        notice.missed -> AppStrings.get(context, R.string.catalog_missed_call_0200c293)
         notice.video -> "$caller started a video call"
         else -> "$caller started a call"
     }
@@ -166,7 +170,7 @@ fun CallCardRow(
             if (notice.live) {
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    text = if (onCall) "On call" else "Join",
+                    text = if (onCall) AppStrings.get(context, R.string.catalog_on_call_fdd219b2) else "Join",
                     color = c.inkOnPrimary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -184,8 +188,8 @@ fun CallCardRow(
                 expanded = menuOpen,
                 onDismiss = { menuOpen = false },
                 items = listOf(
-                    MenuItem("Audio call", Icons.Default.Call) { onStartCall(false) },
-                    MenuItem("Video call", Icons.Default.Videocam) { onStartCall(true) },
+                    MenuItem(AppStrings.get(context, R.string.catalog_audio_call_fb04a1a1), Icons.Default.Call) { onStartCall(false) },
+                    MenuItem(AppStrings.get(context, R.string.catalog_video_call_ad60f43c), Icons.Default.Videocam) { onStartCall(true) },
                 ),
             )
         }

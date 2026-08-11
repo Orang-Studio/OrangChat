@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.ui.components
 
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -21,6 +23,7 @@ import lt.oranges.orangchat.data.model.PresenceStatus
 import lt.oranges.orangchat.data.model.PresenceDevice
 import lt.oranges.orangchat.data.model.User
 import lt.oranges.orangchat.ui.theme.OrangTheme
+import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.absoluteUrl
 
 /** Presence dot colors, mirroring Avatar.tsx STATUS_COLOR. */
@@ -73,6 +76,7 @@ fun Avatar(
     devices: List<PresenceDevice> = emptyList(),
     shape: Shape = CircleShape,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     Box(modifier = modifier.size(size)) {
         if (!avatarUrl.isNullOrBlank()) {
@@ -101,7 +105,7 @@ fun Avatar(
             // disc behind it is what shows through the shape's cut-outs.
             val badge = (size.value * 0.38f).coerceAtLeast(16f).dp
             val device = when {
-                PresenceDevice.DESKTOP in devices -> "Desktop app"
+                PresenceDevice.DESKTOP in devices -> AppStrings.get(context, R.string.catalog_desktop_app_f7a44c6b)
                 PresenceDevice.BROWSER in devices -> "Browser"
                 PresenceDevice.MOBILE in devices -> "Mobile"
                 else -> null

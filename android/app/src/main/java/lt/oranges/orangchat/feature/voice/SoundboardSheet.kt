@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.voice
-
+import lt.oranges.orangchat.util.AppStrings
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,16 +37,17 @@ fun SoundboardSheet(
     onDismiss: () -> Unit,
     onPlay: (Sound) -> Unit,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     OrangDialog(
         onDismiss = onDismiss,
         title = "Soundboard",
-        description = "Everyone in this voice channel hears it.",
+        description = AppStrings.get(context, R.string.catalog_everyone_in_this_voice_channel_hears_it_df8e9c42),
     ) {
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (sounds.isEmpty()) {
                 Text(
-                    "No sounds yet. Someone with Manage Expressions can add them in server settings.",
+                    AppStrings.get(context, R.string.catalog_no_sounds_yet_someone_with_manage_expressions_011117e4),
                     color = c.inkMuted,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(vertical = 12.dp),

@@ -1,5 +1,6 @@
 package lt.oranges.orangchat.feature.voice
-
+import lt.oranges.orangchat.util.AppStrings
+import lt.oranges.orangchat.R
 import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
@@ -227,7 +228,7 @@ class CallManager @Inject constructor(
                 ringtonePlayer.stop()
                 _current.value = null
                 CallService.stop(context)
-                _error.value = e.message ?: "Could not start the call"
+                _error.value = e.message ?: AppStrings.get(context, R.string.catalog_could_not_start_the_call_925e1fa3)
             }
         }
     }
@@ -282,7 +283,7 @@ class CallManager @Inject constructor(
                 Log.w(TAG, "acceptCall failed", e)
                 _current.value = null
                 CallService.stop(context)
-                _error.value = e.message ?: "Could not join the call"
+                _error.value = e.message ?: AppStrings.get(context, R.string.catalog_could_not_join_the_call_a95443d4)
             }
         }
     }
@@ -305,7 +306,7 @@ class CallManager @Inject constructor(
         val active = _current.value ?: return
         scope.launch {
             runCatching { socketManager.playSound(active.channelId, soundId) }
-                .onFailure { _error.value = it.message ?: "Could not play that sound" }
+                .onFailure { _error.value = it.message ?: AppStrings.get(context, R.string.catalog_could_not_play_that_sound_5f4f3c4c) }
         }
     }
 
@@ -561,7 +562,7 @@ class CallManager @Inject constructor(
             clearAudioOutputs()
             _remoteSpeakingIds.value = emptySet()
             CallService.stop(context)
-            _error.value = e.message ?: "Could not connect to the call"
+            _error.value = e.message ?: AppStrings.get(context, R.string.catalog_could_not_connect_to_the_call_a713db79)
         }
     }
 

@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.invite
-
+import lt.oranges.orangchat.util.AppStrings
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -42,9 +44,10 @@ fun AddServerDialog(
     onCreate: (String) -> Unit,
     onJoined: (Server) -> Unit,
 ) {
+        val context = LocalContext.current
     var tab by remember { mutableStateOf(0) }
 
-    OrangDialog(onDismiss = onDismiss, title = if (tab == 0) "Create a server" else "Join a server") {
+    OrangDialog(onDismiss = onDismiss, title = if (tab == 0) AppStrings.get(context, R.string.catalog_create_a_server_3a0ab422) else AppStrings.get(context, R.string.catalog_join_a_server_d59b6aba)) {
         Column {
             OrangTabs(tabs = TABS, selectedIndex = tab, onSelect = { tab = it })
             Spacer(Modifier.height(16.dp))
@@ -59,13 +62,14 @@ fun AddServerDialog(
 
 @Composable
 private fun CreateServerForm(onDismiss: () -> Unit, onCreate: (String) -> Unit) {
+        val context = LocalContext.current
     var name by remember { mutableStateOf("") }
     Column {
         OrangTextField(
             value = name,
             onValueChange = { name = it },
-            label = "Server name",
-            placeholder = "My orange grove",
+            label = AppStrings.get(context, R.string.catalog_server_name_738825fc),
+            placeholder = AppStrings.get(context, R.string.catalog_my_orange_grove_c6cfda8f),
         )
         Spacer(Modifier.height(20.dp))
         Row(
@@ -88,6 +92,7 @@ private fun CreateServerForm(onDismiss: () -> Unit, onCreate: (String) -> Unit) 
  */
 @Composable
 private fun JoinServerForm(onDismiss: () -> Unit, onJoined: (Server) -> Unit) {
+        val context = LocalContext.current
     val vm: InviteViewModel = hiltViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     var input by remember { mutableStateOf("") }
@@ -99,13 +104,13 @@ private fun JoinServerForm(onDismiss: () -> Unit, onJoined: (Server) -> Unit) {
         OrangTextField(
             value = input,
             onValueChange = { input = it },
-            label = "Invite link",
+            label = AppStrings.get(context, R.string.catalog_invite_link_601e9d6c),
             placeholder = "https://chat.oranges.lt/invite/dQw4w9Wg",
         )
 
         when {
-            state.resolving -> Hint("Resolving invite…")
-            state.invalid -> Hint("That invite is expired, revoked, or never existed.")
+            state.resolving -> Hint(AppStrings.get(context, R.string.catalog_resolving_invite_62cce3b8))
+            state.invalid -> Hint(AppStrings.get(context, R.string.catalog_that_invite_is_expired_revoked_or_never_752c9ac3))
             state.preview != null -> {
                 Spacer(Modifier.height(12.dp))
                 InviteCard(preview = state.preview!!)
@@ -157,18 +162,19 @@ fun DeepLinkInviteDialog(
     onDismiss: () -> Unit,
     onJoined: (Server) -> Unit,
 ) {
+        val context = LocalContext.current
     val vm: InviteViewModel = hiltViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     val c = OrangTheme.colors
 
     LaunchedEffect(code) { vm.resolve(code) }
 
-    OrangDialog(onDismiss = onDismiss, title = "Join a server") {
+    OrangDialog(onDismiss = onDismiss, title = AppStrings.get(context, R.string.catalog_join_a_server_d59b6aba)) {
         Column {
             when {
-                state.resolving -> Hint("Resolving invite…")
+                state.resolving -> Hint(AppStrings.get(context, R.string.catalog_resolving_invite_62cce3b8))
                 state.invalid -> Text(
-                    text = "That invite is expired, revoked, or never existed.",
+                    text = AppStrings.get(context, R.string.catalog_that_invite_is_expired_revoked_or_never_752c9ac3),
                     color = c.inkSecondary,
                     fontSize = 13.sp,
                 )
@@ -185,7 +191,7 @@ fun DeepLinkInviteDialog(
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
             ) {
                 OrangButton(
-                    text = if (state.invalid) "Close" else "Not now",
+                    text = if (state.invalid) "Close" else AppStrings.get(context, R.string.catalog_not_now_e4571490),
                     onClick = onDismiss,
                     variant = ButtonVariant.Secondary,
                 )

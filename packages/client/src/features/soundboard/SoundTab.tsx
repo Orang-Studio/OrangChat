@@ -10,6 +10,7 @@ import {
   uploadSound,
 } from "./api";
 import { soundKeys, useSounds } from "./queries";
+import { t } from "../../lib/i18n";
 
 function nameFromFile(file: File): string {
   const base = file.name.replace(/\.[^.]+$/, "").trim();
@@ -78,8 +79,8 @@ function SoundRow({ server, sound }: { server: Server; sound: Sound }) {
           audio.volume = sound.volume;
           void audio.play().catch(() => {});
         }}
-        aria-label={`Preview ${sound.name}`}
-        title={`Preview ${sound.name}`}
+        aria-label={t("soundTab.previewName", { name: sound.name })}
+        title={t("soundTab.previewName", { name: sound.name })}
         className="grid size-9 shrink-0 place-items-center rounded-lg bg-surface-3 text-ink-secondary transition-colors hover:text-ink"
       >
         <span aria-hidden className="text-base leading-none">
@@ -92,7 +93,7 @@ function SoundRow({ server, sound }: { server: Server; sound: Sound }) {
           onChange={(e) => setName(e.target.value)}
           onBlur={() => name !== sound.name && save.mutate({ name })}
           onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-          aria-label={`Rename ${sound.name}`}
+          aria-label={t("soundTab.renameName", { name: sound.name })}
           className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-sm outline-none hover:border-border focus:border-primary"
         />
         {error ? (
@@ -104,7 +105,7 @@ function SoundRow({ server, sound }: { server: Server; sound: Sound }) {
         )}
       </div>
       <label className="flex shrink-0 items-center gap-1.5 text-xs text-ink-muted">
-        <span className="sr-only">Volume for {sound.name}</span>
+        <span className="sr-only">{t("soundTab.volumeForName", { name: sound.name })}</span>
         <input
           type="range"
           min={0}
@@ -122,8 +123,8 @@ function SoundRow({ server, sound }: { server: Server; sound: Sound }) {
         type="button"
         onClick={() => remove.mutate()}
         disabled={remove.isPending}
-        aria-label={`Delete ${sound.name}`}
-        title={`Delete ${sound.name}`}
+        aria-label={t("soundTab.deleteName", { name: sound.name })}
+        title={t("soundTab.deleteName", { name: sound.name })}
         className="shrink-0 rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-3 hover:text-danger disabled:opacity-50"
       >
         <Trash2 aria-hidden className="size-4" />
@@ -150,12 +151,17 @@ export function SoundTab({ server }: { server: Server }) {
   const onFile = async (file: File | undefined) => {
     if (!file) return;
     if (file.size > MAX_SOUND_BYTES) {
-      setError("Sound must be 1 MB or smaller.");
+      setError(t("soundTab.maxSizeMb"));
       return;
     }
     const seconds = await probeDuration(file);
     if (seconds !== null && seconds > MAX_SOUND_SECS + 0.15) {
-      setError(`Sounds must be ${MAX_SOUND_SECS} seconds or shorter (that one is ${seconds.toFixed(1)}s).`);
+      setError(
+        t("soundTab.soundsMustBeSecondsOrShorter", {
+          max: MAX_SOUND_SECS,
+          actual: seconds.toFixed(1),
+        }),
+      );
       return;
     }
     upload.mutate(file);
@@ -165,9 +171,9 @@ export function SoundTab({ server }: { server: Server }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold">Soundboard</h3>
+          <h3 className="text-sm font-semibold">{t("soundTab.soundboard")}</h3>
           <p className="text-xs text-ink-muted">
-            MP3, OGG, WAV or FLAC up to 1 MB and {MAX_SOUND_SECS} seconds.
+            {t("soundTab.mp3OggWavOrFlacUpTo", { seconds: MAX_SOUND_SECS })}
           </p>
         </div>
         <button
@@ -177,7 +183,7 @@ export function SoundTab({ server }: { server: Server }) {
           className="flex shrink-0 items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           <Upload aria-hidden className="size-4" />
-          {upload.isPending ? "Uploading…" : "Upload"}
+          {upload.isPending ? t("soundTab.uploading") : t("soundTab.upload")}
         </button>
       </div>
       <input
@@ -197,7 +203,7 @@ export function SoundTab({ server }: { server: Server }) {
       )}
 
       {isLoading ? (
-        <p className="text-sm text-ink-muted">Loading…</p>
+        <p className="text-sm text-ink-muted">{t("common.loading")}</p>
       ) : sounds && sounds.length > 0 ? (
         <ul className="max-h-80 space-y-2 overflow-y-auto">
           {sounds.map((sound) => (
@@ -206,7 +212,7 @@ export function SoundTab({ server }: { server: Server }) {
         </ul>
       ) : (
         <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-ink-muted">
-          No sounds yet. Upload one to play it in this server's voice channels.
+          {t("soundTab.noSoundsYetUploadOneTo")}
         </p>
       )}
     </div>

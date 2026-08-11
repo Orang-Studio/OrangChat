@@ -1,6 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import { LogoMark } from "../../components/LogoMark";
 import { SectionTitle } from "./controls";
+import { t } from "../../lib/i18n";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "dev";
 const BUILD_TIME = typeof __BUILD_TIME__ === "string" ? __BUILD_TIME__ : null;
@@ -30,26 +31,26 @@ export function AboutTab() {
       <div className="flex flex-col items-center gap-3 py-4 text-center">
         <LogoMark className="size-16" />
         <div>
-          <h2 className="text-xl font-semibold">OrangChat</h2>
-          <p className="text-sm text-ink-muted">Version {APP_VERSION}</p>
+          <h2 className="text-xl font-semibold">{t("aboutTab.orangchat")}</h2>
+          <p className="text-sm text-ink-muted">{t("aboutTab.versionNumber", { version: APP_VERSION })}</p>
         </div>
         <p className="max-w-xs text-sm text-ink-secondary">
-          A fast, self-hosted chat for servers, DMs, and voice - part of the Oranges.LT family.
+          {t("aboutTab.aFastSelfHostedChatFor")}
         </p>
       </div>
 
       <div>
-        <SectionTitle>Build</SectionTitle>
+        <SectionTitle>{t("aboutTab.build")}</SectionTitle>
         <div className="rounded-lg border border-border bg-surface-1 px-3">
-          <Row label="Version" value={APP_VERSION} />
-          <Row label="Built" value={buildLabel} />
-          <Row label="Client" value="Web (PWA)" />
-          <Row label="Platform" value={platform} />
+          <Row label={t("aboutTab.version")} value={APP_VERSION} />
+          <Row label={t("aboutTab.built")} value={buildLabel} />
+          <Row label={t("aboutTab.client")} value="Web (PWA)" />
+          <Row label={t("aboutTab.platform")} value={platform} />
         </div>
       </div>
 
       <div>
-        <SectionTitle>Links</SectionTitle>
+        <SectionTitle>{t("aboutTab.links")}</SectionTitle>
         <div className="space-y-1">
           <a
             href="https://oranges.lt"
@@ -57,7 +58,7 @@ export function AboutTab() {
             rel="noreferrer"
             className="oc-link flex items-center justify-between rounded-lg border border-border px-3 py-2.5 text-sm transition-colors hover:border-border-strong"
           >
-            Oranges.LT
+            {t("aboutTab.orangesLt")}
             <ExternalLink aria-hidden className="size-4 text-ink-muted" />
           </a>
           <a
@@ -73,7 +74,7 @@ export function AboutTab() {
       </div>
 
       <p className="text-center text-xs text-ink-muted">
-        © {new Date().getFullYear()} Oranges.LT · Made with 🍊
+        {t("aboutTab.copyrightMadeWith", { year: new Date().getFullYear() })}
       </p>
     </div>
   );

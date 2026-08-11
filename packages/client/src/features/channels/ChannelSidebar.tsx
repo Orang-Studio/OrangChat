@@ -32,6 +32,7 @@ import { VoicePanel } from "../voice/VoicePanel";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { toggleCategoryCollapsed, useCollapsedCategories } from "./collapsedCategories";
 import { InviteDialog } from "./InviteDialog";
+import { t } from "../../lib/i18n";
 
 interface ChannelSidebarProps {
   server: Server;
@@ -172,7 +173,7 @@ function VoiceChannelRow({
                     title={`${name} is sharing their screen`}
                     className="shrink-0 rounded border border-primary px-1 text-[10px] font-bold uppercase leading-tight text-primary"
                   >
-                    Live
+                    {t("channelSidebar.live")}
                   </span>
                 )}
                 {(p.muted || p.deafened) && (
@@ -240,35 +241,35 @@ export function ChannelSidebar({ server, channels, members, roles }: ChannelSide
           {canInvite && (
             <DropdownMenuItem onSelect={() => setInviteOpen(true)}>
               <UserPlus aria-hidden className="size-4" />
-              Invite people
+              {t("channelSidebar.invitePeople")}
             </DropdownMenuItem>
           )}
           {canManageChannels && (
             <DropdownMenuItem onSelect={() => setCreateOpen(true)}>
               <Plus aria-hidden className="size-4" />
-              Create channel
+              {t("channelSidebar.createChannel")}
             </DropdownMenuItem>
           )}
           {showSettings && (
             <DropdownMenuItem onSelect={() => setSettingsOpen(true)}>
               <Settings aria-hidden className="size-4" />
-              Server settings
+              {t("channelSidebar.serverSettings")}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
 
       {/* Channels */}
-      <nav aria-label="Channels" className="flex-1 space-y-0.5 overflow-y-auto p-2">
+      <nav aria-label={t("channelSidebar.channels")} className="flex-1 space-y-0.5 overflow-y-auto p-2">
         <div className="flex items-center justify-between px-2 pb-1 pt-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Channels
+            {t("channelSidebar.channels")}
           </span>
           {canManageChannels && (
             <button
               type="button"
               onClick={() => setCreateOpen(true)}
-              aria-label="Create channel"
+              aria-label={t("channelSidebar.createChannel")}
               className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
             >
               <Plus aria-hidden className="size-5" />
@@ -314,7 +315,7 @@ export function ChannelSidebar({ server, channels, members, roles }: ChannelSide
                     />
                   ))}
                   {children.length === 0 && (
-                    <p className="px-2 py-1 text-xs text-ink-muted">Empty</p>
+                    <p className="px-2 py-1 text-xs text-ink-muted">{t("channelSidebar.empty")}</p>
                   )}
                 </div>
               )}
@@ -323,7 +324,7 @@ export function ChannelSidebar({ server, channels, members, roles }: ChannelSide
         })}
 
         {channels.length === 0 && (
-          <p className="px-2 py-4 text-sm text-ink-muted">No channels yet.</p>
+          <p className="px-2 py-4 text-sm text-ink-muted">{t("channelSidebar.noChannelsYet")}</p>
         )}
       </nav>
 

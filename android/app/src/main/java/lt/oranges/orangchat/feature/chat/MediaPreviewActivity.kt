@@ -1,5 +1,6 @@
 package lt.oranges.orangchat.feature.chat
 
+import lt.oranges.orangchat.R
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color as AndroidColor
@@ -84,11 +85,13 @@ import kotlinx.coroutines.delay
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import lt.oranges.orangchat.LocalizedActivity
 import lt.oranges.orangchat.data.model.Attachment
 import lt.oranges.orangchat.data.model.Message
 import lt.oranges.orangchat.ui.components.Avatar
 import lt.oranges.orangchat.ui.components.Text
 import lt.oranges.orangchat.ui.theme.OrangChatTheme
+import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.absoluteUrl
 import lt.oranges.orangchat.util.formatFullTime
 import lt.oranges.orangchat.util.inlineUrl
@@ -115,7 +118,7 @@ internal object MediaPreviewTransport {
  * system bars and back gesture directly, so there is one coordinate system.
  */
 @AndroidEntryPoint
-class MediaPreviewActivity : ComponentActivity() {
+class MediaPreviewActivity : LocalizedActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -309,6 +312,7 @@ private fun FullscreenMediaPreview(attachment: Attachment, onClose: () -> Unit) 
  */
 @Composable
 private fun PreviewSenderBar(message: Message, modifier: Modifier = Modifier) {
+        val context = LocalContext.current
     var pickerOpen by remember(message.id) { mutableStateOf(false) }
     val chipShape = RoundedCornerShape(50)
 
@@ -422,7 +426,7 @@ private fun PreviewSenderBar(message: Message, modifier: Modifier = Modifier) {
                     ) {
                         Icon(
                             Icons.Default.AddReaction,
-                            contentDescription = "Add reaction",
+                            contentDescription = AppStrings.get(context, R.string.catalog_add_reaction_cf05eca8),
                             tint = Color.White.copy(alpha = 0.85f),
                             modifier = Modifier.size(15.dp),
                         )
@@ -437,6 +441,7 @@ private fun PreviewSenderBar(message: Message, modifier: Modifier = Modifier) {
 
 @Composable
 private fun PreviewLoading(source: AttachmentSource, onToggleChrome: () -> Unit) {
+        val context = LocalContext.current
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -456,7 +461,7 @@ private fun PreviewLoading(source: AttachmentSource, onToggleChrome: () -> Unit)
                 Spacer(Modifier.height(8.dp))
             }
             Text(
-                if (source.unavailable) "This media is unavailable" else source.phaseLabel,
+                if (source.unavailable) AppStrings.get(context, R.string.catalog_this_media_is_unavailable_1ed2c88e) else source.phaseLabel,
                 color = Color.White.copy(alpha = 0.75f),
                 fontSize = 12.sp,
             )
@@ -470,6 +475,7 @@ private fun FullscreenImage(
     url: String,
     onToggleChrome: () -> Unit,
 ) {
+        val context = LocalContext.current
     var scale by remember(attachment.id) { mutableFloatStateOf(1f) }
     var offset by remember(attachment.id) { mutableStateOf(Offset.Zero) }
     var broken by remember(attachment.id) { mutableStateOf(false) }
@@ -499,7 +505,7 @@ private fun FullscreenImage(
         contentAlignment = Alignment.Center,
     ) {
         if (broken) {
-            Text("Could not open this image", color = Color.White.copy(alpha = 0.75f))
+            Text(AppStrings.get(context, R.string.catalog_could_not_open_this_image_cb0d1e2e), color = Color.White.copy(alpha = 0.75f))
         } else {
             AsyncImage(
                 model = url,
@@ -580,7 +586,7 @@ private fun FullscreenVideo(
 
         if (broken) {
             Text(
-                "Could not play this video",
+                AppStrings.get(context, R.string.catalog_could_not_play_this_video_8540287d),
                 color = Color.White.copy(alpha = 0.75f),
                 modifier = Modifier.align(Alignment.Center),
             )
@@ -730,6 +736,7 @@ private fun PreviewTopBar(
 
 @Composable
 private fun GifFavoriteAction(attachment: Attachment, resolvedUrl: String?) {
+        val context = LocalContext.current
     val viewModel: KlipyGifViewModel = hiltViewModel()
     val favorites by viewModel.favorites.collectAsState()
     val url = resolvedUrl ?: absoluteUrl(inlineUrl(attachment.url)) ?: attachment.url
@@ -747,7 +754,7 @@ private fun GifFavoriteAction(attachment: Attachment, resolvedUrl: String?) {
     OverlayIconButton(
         onClick = { viewModel.toggleFavorite(gif) },
         icon = if (saved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-        label = if (saved) "Remove from favourites" else "Favourite this GIF",
+        label = if (saved) AppStrings.get(context, R.string.catalog_remove_from_favourites_624f82c1) else AppStrings.get(context, R.string.catalog_favourite_this_gif_a9fd24af),
     )
 }
 

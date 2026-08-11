@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.ui.components
 
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
+import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.absoluteUrl
 
 /**
@@ -40,6 +43,7 @@ fun ImageField(
     square: Boolean = false,
     enabled: Boolean = true,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val previewModifier =
         if (square) Modifier.size(height) else Modifier.fillMaxWidth().height(height)
@@ -59,13 +63,13 @@ fun ImageField(
                     modifier = previewModifier,
                 )
             } else {
-                Text("None set", color = c.inkMuted, fontSize = 12.sp)
+                Text(AppStrings.get(context, R.string.catalog_none_set_4bf72e7e), color = c.inkMuted, fontSize = 12.sp)
             }
         }
         if (enabled) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OrangButton(
-                    text = if (busy) "Uploading…" else "Upload",
+                    text = if (busy) AppStrings.get(context, R.string.catalog_uploading_d921a79a) else "Upload",
                     onClick = onPick,
                     enabled = !busy,
                     loading = busy,

@@ -4,6 +4,7 @@ import { AlertTriangle, Download, RefreshCw, X } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { desktop } from "../../lib/desktop";
 import { fetchUpdatePolicy, shouldPrompt, useUpgradeGate } from "./upgradeGate";
+import { t } from "../../lib/i18n";
 
 /** Re-ask periodically so a long-running window notices a release. */
 const POLL_MS = 6 * 60 * 60 * 1000;
@@ -41,14 +42,14 @@ export function UpdateGate() {
       <Download aria-hidden className="size-4 shrink-0 text-primary" />
       <p className="flex-1">
         {urgent
-          ? `OrangChat ${latest} fixes problems in the version you are running.`
-          : `OrangChat ${latest} is available.`}
+          ? t("updateGate.fixesProblemsInTheVersion", { latest: latest ?? "" })
+          : t("updateGate.isAvailable", { latest: latest ?? "" })}
       </p>
       <UpdateAction />
       <button
         type="button"
         onClick={dismiss}
-        aria-label="Dismiss update notice"
+        aria-label={t("updateGate.dismissUpdateNotice")}
         className="rounded-lg p-2.5 text-ink-muted hover:bg-surface-3 hover:text-ink"
       >
         <X aria-hidden className="size-5" />
@@ -68,11 +69,12 @@ function UpgradeWall({ latest }: { latest: string | null }) {
       <div className="w-full max-w-sm rounded-xl border border-border bg-surface-1 p-6 text-center shadow-xl">
         <AlertTriangle aria-hidden className="mx-auto size-8 text-warning" />
         <h2 id="update-required-title" className="mt-4 text-lg font-semibold text-ink">
-          Update required
+          {t("updateGate.updateRequired")}
         </h2>
         <p className="mt-2 text-sm text-ink-secondary">
-          This version of OrangChat is no longer supported and can no longer connect.
-          {latest ? ` Update to ${latest} to continue.` : " Update to continue."}
+          {latest
+            ? t("updateGate.notSupportedUpdateToVersion", { latest })
+            : t("updateGate.notSupportedUpdateToContinue")}
         </p>
         <div className="mt-5 flex justify-center">
           <UpdateAction />
@@ -92,14 +94,14 @@ function UpdateAction() {
     return (
       <Button size="sm" onClick={() => void check()}>
         <Download aria-hidden className="size-4" />
-        Update
+        {t("updateGate.update")}
       </Button>
     );
   }
   return (
     <Button size="sm" onClick={() => window.location.reload()}>
       <RefreshCw aria-hidden className="size-4" />
-      Reload
+      {t("updateGate.reload")}
     </Button>
   );
 }

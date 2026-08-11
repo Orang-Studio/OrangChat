@@ -12,6 +12,7 @@ import { isEncrypted } from "../e2ee/store";
 import { useEmojiMap, withMessageEmojis } from "../emojis/queries";
 import { useServerDetail } from "../servers/queries";
 import { searchMessages } from "./api";
+import { t, tNodes } from "../../lib/i18n";
 
 interface SearchDialogProps {
   /** Absent in a DM, where there is no server-side index to search. */
@@ -52,8 +53,8 @@ export function SearchDialog({
 
   // Debounce the query so we don't hit the API on every keystroke.
   useEffect(() => {
-    const t = setTimeout(() => setQuery(raw.trim()), 300);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setQuery(raw.trim()), 300);
+    return () => clearTimeout(timer);
   }, [raw]);
 
   // Reset on close.
@@ -122,7 +123,7 @@ export function SearchDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Search messages" className="max-w-lg">
+      <DialogContent title={t("searchDialog.searchMessages")} className="max-w-lg">
         <div className="mt-3 flex items-center gap-2">
           <div className="relative flex-1">
             <Search
@@ -131,10 +132,14 @@ export function SearchDialog({
             />
             <input
               autoFocus
-              aria-label="Search messages"
+              aria-label={t("searchDialog.searchMessages")}
               value={raw}
               onChange={(e) => setRaw(e.target.value)}
-              placeholder={local ? "Search this conversation…" : "Search this server…"}
+              placeholder={
+                local
+                  ? t("searchDialog.searchThisConversation")
+                  : t("searchDialog.searchThisServer")
+              }
               className="h-11 w-full rounded-lg border border-border bg-surface-1 pl-9 pr-3 text-base text-ink placeholder:text-ink-muted hover:border-border-strong md:h-10 md:text-sm"
             />
           </div>
@@ -143,8 +148,7 @@ export function SearchDialog({
         {local && (
           <p className="mt-2 flex items-start gap-1.5 text-xs text-ink-muted">
             <Lock aria-hidden className="mt-0.5 size-3 shrink-0" />
-            Searched on this device. Encrypted messages this device has never opened are not in
-            these results.
+            {t("searchDialog.searchedOnThisDeviceEncryptedMessages")}
           </p>
         )}
 
@@ -156,26 +160,28 @@ export function SearchDialog({
               onChange={(e) => setThisChannel(e.target.checked)}
               className="accent-primary"
             />
-            Only this channel
+            {t("searchDialog.onlyThisChannel")}
           </label>
         )}
 
         <div className="mt-3 min-h-[8rem] max-h-[50dvh] overflow-y-auto">
           {query.length === 0 ? (
-            <p className="py-8 text-center text-sm text-ink-muted">Type to search messages.</p>
+            <p className="py-8 text-center text-sm text-ink-muted">{t("searchDialog.typeToSearchMessages")}</p>
           ) : isFetching && results.length === 0 ? (
             <div className="flex justify-center py-8">
               <Loader2 aria-hidden className="size-5 animate-spin text-ink-muted" />
             </div>
           ) : results.length === 0 ? (
             <p className="py-8 text-center text-sm text-ink-muted">
-              No messages found for “{query}”.
+              {t("searchDialog.noMessagesFoundFor", { query })}
               {!local && (
                 // Server search matches whole words, so a partial one finds
                 // nothing and looks broken without saying why.
                 <span className="mt-1 block text-xs">
-                  Server search matches whole words. Try <code>"an exact phrase"</code> or{" "}
-                  <code>-exclude</code> a word.
+                  {tNodes("searchDialog.serverSearchHint", {
+                    phrase: <code>"an exact phrase"</code>,
+                    exclude: <code>-exclude</code>,
+                  })}
                 </span>
               )}
             </p>

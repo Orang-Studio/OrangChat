@@ -18,6 +18,8 @@ import lt.oranges.orangchat.data.remote.TwoFactorSetup
 import lt.oranges.orangchat.data.repository.AuthRepository
 import lt.oranges.orangchat.data.repository.ServerRepository
 import lt.oranges.orangchat.feature.auth.Passkeys
+import lt.oranges.orangchat.util.AppStrings
+import lt.oranges.orangchat.R
 import retrofit2.HttpException
 import javax.inject.Inject
 
@@ -134,7 +136,7 @@ class SettingsViewModel @Inject constructor(
                 }
                 val uploaded = authRepository.uploadImage(part, "app-icon")
                 authRepository.updateMe(UpdateMeRequest(appIconUrl = uploaded.url))
-            }.onFailure { _appIconError.value = it.message ?: "Upload failed" }
+            }.onFailure { _appIconError.value = it.message ?: AppStrings.get(appContext, R.string.catalog_upload_failed_ad0d0603) }
             _appIconUploading.value = false
         }
     }
@@ -143,7 +145,7 @@ class SettingsViewModel @Inject constructor(
     fun removeAppIcon() {
         viewModelScope.launch {
             runCatching { authRepository.updateMe(UpdateMeRequest(appIconUrl = "")) }
-                .onFailure { _appIconError.value = it.message ?: "Could not remove the icon" }
+                .onFailure { _appIconError.value = it.message ?: AppStrings.get(appContext, R.string.catalog_could_not_remove_the_icon_fdb51d9b) }
         }
     }
 
@@ -227,7 +229,7 @@ class SettingsViewModel @Inject constructor(
                     typingIndicators,
                     e2eeStrict,
                 ).also { e2eeRepository.setGlobalStrict(it.e2eeStrict) }
-            }.onFailure { _privacyError.value = it.message ?: "Could not save your privacy settings" }
+            }.onFailure { _privacyError.value = it.message ?: AppStrings.get(appContext, R.string.catalog_could_not_save_your_privacy_settings_fddd2cf0) }
         }
     }
 
@@ -252,7 +254,7 @@ class SettingsViewModel @Inject constructor(
             _twoFactor.value = TwoFactorUi.Loading
             runCatching { authRepository.setupTwoFactor(password) }
                 .onSuccess { _twoFactor.value = TwoFactorUi.Setup(it) }
-                .onFailure { _twoFactor.value = TwoFactorUi.Off(it.message ?: "Could not start setup") }
+                .onFailure { _twoFactor.value = TwoFactorUi.Off(it.message ?: AppStrings.get(appContext, R.string.catalog_could_not_start_setup_0c01e9d7)) }
         }
     }
 
@@ -263,7 +265,7 @@ class SettingsViewModel @Inject constructor(
             runCatching { authRepository.enableTwoFactor(code) }
                 .onSuccess { _twoFactor.value = TwoFactorUi.ShowCodes(it.backupCodes) }
                 .onFailure {
-                    _twoFactor.value = current.copy(verifying = false, error = it.message ?: "That code isn't right")
+                    _twoFactor.value = current.copy(verifying = false, error = it.message ?: AppStrings.get(appContext, R.string.catalog_that_code_isn_t_right_e78cef5d))
                 }
         }
     }
@@ -275,7 +277,7 @@ class SettingsViewModel @Inject constructor(
             runCatching { authRepository.disableTwoFactor(password, code) }
                 .onSuccess { _twoFactor.value = TwoFactorUi.Off() }
                 .onFailure {
-                    _twoFactor.value = current.copy(busy = false, error = it.message ?: "That code isn't right")
+                    _twoFactor.value = current.copy(busy = false, error = it.message ?: AppStrings.get(appContext, R.string.catalog_that_code_isn_t_right_e78cef5d))
                 }
         }
     }
@@ -287,7 +289,7 @@ class SettingsViewModel @Inject constructor(
             runCatching { authRepository.regenerateBackupCodes(password, code) }
                 .onSuccess { _twoFactor.value = TwoFactorUi.ShowCodes(it.backupCodes) }
                 .onFailure {
-                    _twoFactor.value = current.copy(busy = false, error = it.message ?: "That code isn't right")
+                    _twoFactor.value = current.copy(busy = false, error = it.message ?: AppStrings.get(appContext, R.string.catalog_that_code_isn_t_right_e78cef5d))
                 }
         }
     }
@@ -308,7 +310,7 @@ class SettingsViewModel @Inject constructor(
                 .onFailure {
                     _passkeys.value = PasskeysUi(
                         loading = false,
-                        error = passkeyMessage(it, "Could not load passkeys"),
+                        error = passkeyMessage(it, AppStrings.get(appContext, R.string.catalog_could_not_load_passkeys_dd561090)),
                     )
                 }
         }
@@ -337,7 +339,7 @@ class SettingsViewModel @Inject constructor(
                 authRepository.finishPasskeyRegistration(started.ceremonyToken, name, response)
             }
                 .onSuccess { refreshPasskeys(); onDone() }
-                .onFailure { _passkeys.value = current.copy(busy = false, error = passkeyMessage(it)) }
+                .onFailure { _passkeys.value = current.copy(busy = false, error = passkeyMessage(it, AppStrings.get(appContext, R.string.catalog_that_didn_t_work_try_again_9ae914fa))) }
         }
     }
 
@@ -348,7 +350,7 @@ class SettingsViewModel @Inject constructor(
             runCatching { authRepository.renamePasskey(id, name) }
                 .onSuccess { refreshPasskeys(); onDone() }
                 .onFailure {
-                    _passkeys.value = current.copy(busy = false, error = passkeyMessage(it, "Could not rename"))
+                    _passkeys.value = current.copy(busy = false, error = passkeyMessage(it, AppStrings.get(appContext, R.string.catalog_could_not_rename_deb92092)))
                 }
         }
     }
@@ -366,7 +368,7 @@ class SettingsViewModel @Inject constructor(
                 .onSuccess { refreshPasskeys(); onDone() }
                 .onFailure {
                     _passkeys.value =
-                        current.copy(busy = false, error = passkeyMessage(it, "Could not remove the passkey"))
+                        current.copy(busy = false, error = passkeyMessage(it, AppStrings.get(appContext, R.string.catalog_could_not_remove_the_passkey_5245ad98)))
                 }
         }
     }
@@ -380,11 +382,11 @@ class SettingsViewModel @Inject constructor(
      * digging that out, [HttpException.message] is only ever "HTTP 400 Bad
      * Request", which tells the person at the phone nothing they can act on.
      */
-    private fun passkeyMessage(e: Throwable, fallback: String = "That didn't work. Try again."): String = when (e) {
-        is Passkeys.Cancelled -> "That was cancelled."
+    private fun passkeyMessage(e: Throwable, fallback: String): String = when (e) {
+        is Passkeys.Cancelled -> AppStrings.get(appContext, R.string.catalog_that_was_cancelled_b8e83864)
         is HttpException -> serverMessage(e) ?: when (e.code()) {
-            401 -> "Incorrect password."
-            429 -> "Too many attempts. Wait a moment and try again."
+            401 -> AppStrings.get(appContext, R.string.catalog_incorrect_password_b68db3d0)
+            429 -> AppStrings.get(appContext, R.string.catalog_too_many_attempts_wait_a_moment_and_585a4cea)
             else -> fallback
         }
         else -> e.message ?: fallback
@@ -413,16 +415,18 @@ class SettingsViewModel @Inject constructor(
                 .onSuccess { result ->
                     _credentials.value = CredentialsUi(
                         done = if (result.sessionsRevoked > 0) {
-                            val plural = if (result.sessionsRevoked == 1) " was" else "s were"
-                            "Password changed. ${result.sessionsRevoked} other session$plural signed out."
+                            if (result.sessionsRevoked == 1)
+                                AppStrings.get(appContext, R.string.catalog_password_changed_1_s_other_session_was_10fc8ee3, result.sessionsRevoked)
+                            else
+                                AppStrings.get(appContext, R.string.catalog_password_changed_1_s_other_sessions_were_64e22cd3, result.sessionsRevoked)
                         } else {
-                            "Password changed."
+                            AppStrings.get(appContext, R.string.catalog_password_changed_47fa5289)
                         },
                     )
                     onDone()
                 }
                 .onFailure {
-                    _credentials.value = CredentialsUi(error = it.message ?: "Could not change password")
+                    _credentials.value = CredentialsUi(error = it.message ?: AppStrings.get(appContext, R.string.catalog_could_not_change_password_ccfd53b0))
                 }
         }
     }
@@ -436,7 +440,7 @@ class SettingsViewModel @Inject constructor(
             _credentials.value = CredentialsUi(busy = true)
             runCatching { authRepository.deleteAccount(password, username, code) }
                 .onFailure {
-                    _credentials.value = CredentialsUi(error = it.message ?: "Could not delete account")
+                    _credentials.value = CredentialsUi(error = it.message ?: AppStrings.get(appContext, R.string.catalog_could_not_delete_account_b721f0dc))
                 }
         }
     }
@@ -456,18 +460,20 @@ class SettingsViewModel @Inject constructor(
                 .onSuccess { result ->
                     _lockdown.value = CredentialsUi(
                         done = if (result.lockdown && result.sessionsRevoked > 0) {
-                            val plural = if (result.sessionsRevoked == 1) "" else "s"
-                            "Locked down. Signed out ${result.sessionsRevoked} other session$plural."
+                            if (result.sessionsRevoked == 1)
+                                AppStrings.get(appContext, R.string.catalog_locked_down_signed_out_1_s_other_d382c238, result.sessionsRevoked)
+                            else
+                                AppStrings.get(appContext, R.string.catalog_locked_down_signed_out_1_s_other_ecca9d9f, result.sessionsRevoked)
                         } else if (result.lockdown) {
-                            "Locked down."
+                            AppStrings.get(appContext, R.string.catalog_locked_down_1dc1036e)
                         } else {
-                            "Lockdown lifted."
+                            AppStrings.get(appContext, R.string.catalog_lockdown_lifted_f4f1b05c)
                         },
                     )
                     onDone()
                 }
                 .onFailure {
-                    _lockdown.value = CredentialsUi(error = it.message ?: "Could not change lockdown")
+                    _lockdown.value = CredentialsUi(error = it.message ?: AppStrings.get(appContext, R.string.catalog_could_not_change_lockdown_fec83d39))
                 }
         }
     }
@@ -481,7 +487,7 @@ class SettingsViewModel @Inject constructor(
             _sessions.value = SessionsUi.Loading
             runCatching { authRepository.sessions() }
                 .onSuccess { _sessions.value = SessionsUi.Loaded(it.sessions) }
-                .onFailure { _sessions.value = SessionsUi.Failed(it.message ?: "Could not load devices") }
+                .onFailure { _sessions.value = SessionsUi.Failed(it.message ?: AppStrings.get(appContext, R.string.catalog_could_not_load_devices_6cf850e0)) }
         }
     }
 
@@ -489,7 +495,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { authRepository.revokeSession(jti) }
                 .onSuccess { refreshSessions() }
-                .onFailure { _sessions.value = SessionsUi.Failed(it.message ?: "Could not revoke") }
+                .onFailure { _sessions.value = SessionsUi.Failed(it.message ?: AppStrings.get(appContext, R.string.catalog_could_not_revoke_361c2e4b)) }
         }
     }
 
@@ -497,7 +503,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { authRepository.revokeOtherSessions() }
                 .onSuccess { refreshSessions() }
-                .onFailure { _sessions.value = SessionsUi.Failed(it.message ?: "Could not revoke") }
+                .onFailure { _sessions.value = SessionsUi.Failed(it.message ?: AppStrings.get(appContext, R.string.catalog_could_not_revoke_361c2e4b)) }
         }
     }
 
@@ -532,12 +538,14 @@ class SettingsViewModel @Inject constructor(
             _wipe.value = CredentialsUi(busy = true)
             runCatching { authRepository.deleteAllMessages(password, code) }
                 .onSuccess {
-                    val plural = if (it.deleted == 1L) "" else "s"
-                    _wipe.value = CredentialsUi(done = "Deleted ${it.deleted} message$plural.")
+                    _wipe.value = CredentialsUi(
+                        done = if (it.deleted == 1L) AppStrings.get(appContext, R.string.catalog_deleted_1_s_message_8ffc45b2, it.deleted)
+                        else AppStrings.get(appContext, R.string.catalog_deleted_1_s_messages_9ec1f966, it.deleted),
+                    )
                     onDone()
                 }
                 .onFailure {
-                    _wipe.value = CredentialsUi(error = it.message ?: "Could not delete messages")
+                    _wipe.value = CredentialsUi(error = it.message ?: AppStrings.get(appContext, R.string.catalog_could_not_delete_messages_6af8eeaf))
                 }
         }
     }
@@ -551,7 +559,7 @@ class SettingsViewModel @Inject constructor(
             _standing.value = StandingUi.Loading
             runCatching { authRepository.accountStanding() }
                 .onSuccess { _standing.value = StandingUi.Loaded(it) }
-                .onFailure { _standing.value = StandingUi.Failed(it.message ?: "Could not load standing") }
+                .onFailure { _standing.value = StandingUi.Failed(it.message ?: AppStrings.get(appContext, R.string.catalog_could_not_load_standing_51712f13)) }
         }
     }
 
@@ -564,7 +572,7 @@ class SettingsViewModel @Inject constructor(
             _leaveAll.value = LeaveAllUi.Busy
             runCatching { serverRepository.leaveAllServers() }
                 .onSuccess { _leaveAll.value = LeaveAllUi.Done(it.left, it.keptOwned) }
-                .onFailure { _leaveAll.value = LeaveAllUi.Failed(it.message ?: "Could not leave servers") }
+                .onFailure { _leaveAll.value = LeaveAllUi.Failed(it.message ?: AppStrings.get(appContext, R.string.catalog_could_not_leave_servers_eb0a0647)) }
         }
     }
 
@@ -577,11 +585,11 @@ class SettingsViewModel @Inject constructor(
             _credentials.value = CredentialsUi(busy = true)
             runCatching { authRepository.changeEmail(password, email, code) }
                 .onSuccess {
-                    _credentials.value = CredentialsUi(done = "Email changed to ${it.email}.")
+                    _credentials.value = CredentialsUi(done = AppStrings.get(appContext, R.string.catalog_email_changed_to_1_s_2755e486, it.email))
                     onDone()
                 }
                 .onFailure {
-                    _credentials.value = CredentialsUi(error = it.message ?: "Could not change email")
+                    _credentials.value = CredentialsUi(error = it.message ?: AppStrings.get(appContext, R.string.catalog_could_not_change_email_0f20cf3a))
                 }
         }
     }

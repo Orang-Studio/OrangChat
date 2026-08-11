@@ -6,6 +6,7 @@ import { useAuthStore } from "../../stores/auth";
 import { ServerIcon } from "./ServerIcon";
 import { setPendingInvite } from "./invite-url";
 import { inviteBlockedReason, useInvite } from "./useInvite";
+import { t } from "../../lib/i18n";
 
 /** "12 members", but "1 member". */
 function memberLabel(count: number): string {
@@ -37,7 +38,7 @@ export function InviteCard({ code, className }: { code: string; className?: stri
   if (preview.isPending) {
     return (
       <Frame className={className}>
-        <p className="text-sm text-ink-muted">Resolving invite…</p>
+        <p className="text-sm text-ink-muted">{t("inviteCard.resolvingInvite")}</p>
       </Frame>
     );
   }
@@ -48,10 +49,10 @@ export function InviteCard({ code, className }: { code: string; className?: stri
     return (
       <Frame className={className}>
         <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
-          Invite invalid
+          {t("inviteCard.inviteInvalid")}
         </p>
         <p className="mt-1 text-sm text-ink-secondary">
-          This invite is expired, revoked, or never existed.
+          {t("inviteCard.thisInviteIsExpiredRevokedOr")}
         </p>
       </Frame>
     );
@@ -113,16 +114,16 @@ function InviteBody({ data, signedIn, code, joining, joinError, onJoin }: Invite
               state={{ from: { pathname: `/invite/${code}` } }}
               onClick={() => setPendingInvite(code)}
             >
-              Sign in to join
+              {t("inviteCard.signInToJoin")}
             </Link>
           </Button>
         ) : isMember ? (
           <Button asChild variant="secondary" size="sm">
-            <Link to={`/servers/${data.server.id}`}>Joined</Link>
+            <Link to={`/servers/${data.server.id}`}>{t("inviteCard.joined")}</Link>
           </Button>
         ) : (
           <Button size="sm" onClick={onJoin} loading={joining} disabled={!!blocked}>
-            Join
+            {t("inviteCard.join")}
           </Button>
         )}
       </div>

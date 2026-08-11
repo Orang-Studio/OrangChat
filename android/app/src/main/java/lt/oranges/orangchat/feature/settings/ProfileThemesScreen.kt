@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.settings
-
+import lt.oranges.orangchat.util.AppStrings
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -54,6 +56,7 @@ fun ProfileThemesScreen(
     modifier: Modifier = Modifier,
     vm: ProfileViewModel = hiltViewModel(),
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val state by vm.state.collectAsStateWithLifecycle()
     var query by remember { mutableStateOf("") }
@@ -69,7 +72,7 @@ fun ProfileThemesScreen(
     }
 
     Column(modifier = modifier.fillMaxSize().background(c.surface2)) {
-        SettingsTopBar("Profile themes", onBack)
+        SettingsTopBar(AppStrings.get(context, R.string.catalog_profile_themes_3d7fccd2), onBack)
 
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
             Row(
@@ -80,7 +83,7 @@ fun ProfileThemesScreen(
                     .padding(12.dp),
             ) {
                 Text(
-                    "Profile themes style your public profile card. Every entry is reviewed through a pull request, bundled with the app, and sanitized before it renders.",
+                    AppStrings.get(context, R.string.catalog_profile_themes_style_your_public_profile_card_7965d778),
                     color = c.inkSecondary,
                     fontSize = 12.sp,
                 )
@@ -89,8 +92,8 @@ fun ProfileThemesScreen(
             OrangTextField(
                 value = query,
                 onValueChange = { query = it },
-                label = "Search",
-                placeholder = "Search profile themes",
+                label = AppStrings.get(context, R.string.catalog_search_bce06414),
+                placeholder = AppStrings.get(context, R.string.catalog_search_profile_themes_99f3d314),
             )
             state.error?.let { err ->
                 Spacer(Modifier.height(8.dp))
@@ -102,7 +105,7 @@ fun ProfileThemesScreen(
 
         if (filtered.isEmpty()) {
             Text(
-                "No profile themes match “$query”.",
+                AppStrings.get(context, R.string.catalog_no_profile_themes_match_1_s_a67c627c, query),
                 color = c.inkMuted,
                 fontSize = 14.sp,
                 modifier = Modifier.fillMaxWidth().padding(32.dp),
@@ -134,6 +137,7 @@ private fun ThemeCard(
     saving: Boolean,
     onToggle: (active: Boolean) -> Unit,
 ) {
+    val context = LocalContext.current
     val c = OrangTheme.colors
     Column(
         modifier = Modifier
@@ -144,8 +148,8 @@ private fun ThemeCard(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(theme.name, color = c.ink, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                Text("by ${theme.authors.joinToString(", ")}", color = c.inkMuted, fontSize = 12.sp)
+                Text(theme.displayName(context), color = c.ink, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                Text(AppStrings.get(context, R.string.catalog_by_1_s_7930f2dd, theme.authors.joinToString(", ")), color = c.inkMuted, fontSize = 12.sp)
             }
             Row(
                 modifier = Modifier
@@ -166,7 +170,7 @@ private fun ThemeCard(
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    if (active) "Installed" else "Install",
+                    if (active) AppStrings.get(context, R.string.catalog_installed_7bb4405c) else AppStrings.get(context, R.string.catalog_install_fd6c3ebf),
                     color = if (active) c.ink else c.inkOnPrimary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
@@ -174,7 +178,7 @@ private fun ThemeCard(
             }
         }
         Spacer(Modifier.height(8.dp))
-        Text(theme.description, color = c.inkSecondary, fontSize = 13.sp)
+        Text(theme.displayDescription(context), color = c.inkSecondary, fontSize = 13.sp)
         Spacer(Modifier.height(8.dp))
         Row(
             modifier = Modifier

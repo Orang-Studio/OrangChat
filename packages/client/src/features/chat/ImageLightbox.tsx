@@ -8,6 +8,7 @@ import { isGif, isGifFavorite, useFavoriteGifs } from "./favoriteGifs";
 import { ImageContextMenu } from "./ImageContextMenu";
 import { MediaSenderBar, type MediaContext } from "./MediaSenderBar";
 import { useMediaZoom, type MediaOrigin } from "./useMediaZoom";
+import { t } from "../../lib/i18n";
 
 /**
  * Full-bleed viewer for an image attachment.
@@ -91,7 +92,7 @@ export function ImageLightbox({
             )}
             <button
               type="button"
-              aria-label="Zoom out"
+              aria-label={t("imageLightbox.zoomOut")}
               disabled={scale <= 1}
               onClick={() => setScale((value) => Math.max(1, value - 0.5))}
               className="rounded-lg p-1.5 transition-colors hover:bg-white/15 disabled:opacity-40"
@@ -100,7 +101,7 @@ export function ImageLightbox({
             </button>
             <button
               type="button"
-              aria-label="Reset zoom"
+              aria-label={t("imageLightbox.resetZoom")}
               disabled={scale === 1}
               onClick={() => setScale(1)}
               className="rounded-lg p-1.5 transition-colors hover:bg-white/15 disabled:opacity-40"
@@ -109,7 +110,7 @@ export function ImageLightbox({
             </button>
             <button
               type="button"
-              aria-label="Zoom in"
+              aria-label={t("imageLightbox.zoomIn")}
               disabled={scale >= 4}
               onClick={() => setScale((value) => Math.min(4, value + 0.5))}
               className="rounded-lg p-1.5 transition-colors hover:bg-white/15 disabled:opacity-40"
@@ -124,10 +125,10 @@ export function ImageLightbox({
               className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-white/15"
             >
               <Download aria-hidden className="size-4" />
-              Download
+              {t("common.download")}
             </a>
             <RadixDialog.Close
-              aria-label="Close"
+              aria-label={t("common.close")}
               className="rounded-lg p-1.5 transition-colors hover:bg-white/15"
             >
               <X aria-hidden className="size-4" />

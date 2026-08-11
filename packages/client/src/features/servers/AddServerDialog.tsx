@@ -8,6 +8,7 @@ import { Dialog, DialogContent } from "../../components/ui/Dialog";
 import { createServer, joinViaInvite } from "./api";
 import { parseInviteInput } from "./invite-url";
 import { serverKeys } from "./queries";
+import { t } from "../../lib/i18n";
 
 interface AddServerDialogProps {
   open: boolean;
@@ -63,7 +64,7 @@ export function AddServerDialog({ open, onOpenChange }: AddServerDialogProps) {
       >
         <div
           role="tablist"
-          aria-label="Add server mode"
+          aria-label={t("addServerDialog.addServerMode")}
           className="mb-4 grid grid-cols-2 gap-1 rounded-lg bg-surface-1 p-1"
         >
           {(["create", "join"] as const).map((m) => (
@@ -88,16 +89,16 @@ export function AddServerDialog({ open, onOpenChange }: AddServerDialogProps) {
         <form onSubmit={onSubmit} className="space-y-4">
           {mode === "create" ? (
             <TextField
-              label="Server name"
+              label={t("addServerDialog.serverName")}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="My orange grove"
+              placeholder={t("addServerDialog.myOrangeGrove")}
               maxLength={100}
               autoFocus
             />
           ) : (
             <TextField
-              label="Invite link"
+              label={t("addServerDialog.inviteLink")}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               placeholder="https://chat.oranges.lt/invite/dQw4w9Wg"

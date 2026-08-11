@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.dms
-
+import lt.oranges.orangchat.util.AppStrings
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -68,6 +70,7 @@ fun NewGroupScreen(
     /** Remaining seats: how many more people the group can take (15-person cap). */
     maxSelection: Int = MAX_RECIPIENTS,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     var query by remember { mutableStateOf("") }
     var selected by remember { mutableStateOf<List<Friend>>(emptyList()) }
@@ -106,15 +109,15 @@ fun NewGroupScreen(
                 modifier = Modifier.clickable(onClick = onBack).padding(4.dp),
             )
             Spacer(Modifier.width(4.dp))
-            Text(if (addMode) "Add friends" else "New group", color = c.ink, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text(if (addMode) AppStrings.get(context, R.string.catalog_add_friends_2dcf4e38) else AppStrings.get(context, R.string.catalog_new_group_f9850c0b), color = c.ink, fontWeight = FontWeight.Bold, fontSize = 18.sp)
         }
 
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
             OrangTextField(
                 value = query,
                 onValueChange = { query = it },
-                label = "Find friends",
-                placeholder = "Search by name or username",
+                label = AppStrings.get(context, R.string.catalog_find_friends_2fd354c9),
+                placeholder = AppStrings.get(context, R.string.catalog_search_by_name_or_username_9c923df6),
             )
             if (selected.isNotEmpty()) {
                 Spacer(Modifier.height(10.dp))
@@ -147,7 +150,7 @@ fun NewGroupScreen(
                 item {
                     Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                         Text(
-                            if (addMode) "All your friends are already here." else "No friends yet. Add someone first.",
+                            if (addMode) AppStrings.get(context, R.string.catalog_all_your_friends_are_already_here_45cf3604) else AppStrings.get(context, R.string.catalog_no_friends_yet_add_someone_first_a7ccf9a9),
                             color = c.inkMuted,
                             fontSize = 14.sp,
                         )
@@ -156,7 +159,7 @@ fun NewGroupScreen(
             } else if (visible.isEmpty()) {
                 item {
                     Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                        Text("No matches.", color = c.inkMuted, fontSize = 14.sp)
+                        Text(AppStrings.get(context, R.string.catalog_no_matches_0be6a257), color = c.inkMuted, fontSize = 14.sp)
                     }
                 }
             }
@@ -204,7 +207,7 @@ fun NewGroupScreen(
         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(c.border))
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             val count = selected.size
-            val verb = if (addMode) "Add" else "Create group"
+            val verb = if (addMode) "Add" else AppStrings.get(context, R.string.catalog_create_group_5a0b1c17)
             OrangButton(
                 text = if (count == 0) verb else "$verb ($count)",
                 onClick = { if (count >= minSelection) onConfirm(selected.map { it.user.id }) },
@@ -213,7 +216,7 @@ fun NewGroupScreen(
             )
             if (!addMode && count == 1) {
                 Spacer(Modifier.height(6.dp))
-                Text("Pick at least one more friend for a group.", color = c.inkMuted, fontSize = 12.sp)
+                Text(AppStrings.get(context, R.string.catalog_pick_at_least_one_more_friend_for_1cd89bd0), color = c.inkMuted, fontSize = 12.sp)
             }
         }
     }

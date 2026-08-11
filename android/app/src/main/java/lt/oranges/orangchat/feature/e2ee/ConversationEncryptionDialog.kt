@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.e2ee
-
+import lt.oranges.orangchat.util.AppStrings
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -79,6 +81,7 @@ fun ConversationEncryptionDialog(
     onCompareSafetyNumber: ((String, (AppViewModel.SafetyNumberVerdict) -> Unit) -> Unit)? = null,
     onDismiss: () -> Unit,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val clipboard = LocalClipboardManager.current
     var explainerOpen by remember { mutableStateOf(false) }
@@ -86,7 +89,7 @@ fun ConversationEncryptionDialog(
     var confirmingReset by remember { mutableStateOf(false) }
     var copied by remember { mutableStateOf(false) }
 
-    val who = if (info.group) "everyone here" else (peerName ?: "them")
+    val who = if (info.group) AppStrings.get(context, R.string.catalog_everyone_here_02cadf2a) else (peerName ?: "them")
     val title = if (info.verified) {
         "Encrypted, and you have checked who you're talking to"
     } else {
@@ -124,24 +127,24 @@ fun ConversationEncryptionDialog(
             if (!info.group && canScan) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        if (info.verified) "Check them again" else "Check that it is really $who",
+                        if (info.verified) AppStrings.get(context, R.string.catalog_check_them_again_feb54286) else "Check that it is really $who",
                         color = c.ink,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                     )
                     Text(
-                        "Standing together? Scan each other's codes - one scan proves one direction, so do both.",
+                        AppStrings.get(context, R.string.catalog_standing_together_scan_each_other_s_codes_faf20092),
                         color = c.inkMuted,
                         fontSize = 12.sp,
                     )
                     OrangButton(
-                        text = "Scan their code",
+                        text = AppStrings.get(context, R.string.catalog_scan_their_code_b273ef3b),
                         onClick = onScan,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     if (info.myCode != null) {
                         OrangButton(
-                            text = if (showMyCode) "Hide my code" else "Show my code",
+                            text = if (showMyCode) AppStrings.get(context, R.string.catalog_hide_my_code_835d9e98) else AppStrings.get(context, R.string.catalog_show_my_code_342b7a4e),
                             onClick = { showMyCode = !showMyCode },
                             variant = ButtonVariant.Secondary,
                             modifier = Modifier.fillMaxWidth(),
@@ -149,7 +152,7 @@ fun ConversationEncryptionDialog(
                         if (showMyCode) {
                             E2eeQrImage(info.myCode, "My verification code")
                             Text(
-                                "This code holds nothing secret. It is safe for anyone to see; being in the room is what makes scanning it mean something.",
+                                AppStrings.get(context, R.string.catalog_this_code_holds_nothing_secret_it_is_373de7f3),
                                 color = c.inkMuted,
                                 fontSize = 12.sp,
                             )
@@ -197,7 +200,7 @@ fun ConversationEncryptionDialog(
                     }
                 } else {
                     Text(
-                        "These numbers appear once both accounts have set up encryption on a device.",
+                        AppStrings.get(context, R.string.catalog_these_numbers_appear_once_both_accounts_have_288c556c),
                         color = c.inkMuted,
                         fontSize = 12.sp,
                     )
@@ -208,12 +211,12 @@ fun ConversationEncryptionDialog(
                 OutlinedCard {
                     CardHeading(Icons.Default.Refresh, "Start a fresh key")
                     Text(
-                        "Replaces the key used from now on, so a device that has since been removed cannot read anything new. Messages already here stay readable, and nobody is locked out.",
+                        AppStrings.get(context, R.string.catalog_replaces_the_key_used_from_now_on_c57ccaed),
                         color = c.inkMuted,
                         fontSize = 12.sp,
                     )
                     OrangButton(
-                        text = "New key for this conversation",
+                        text = AppStrings.get(context, R.string.catalog_new_key_for_this_conversation_651d7e16),
                         onClick = { confirmingReset = true },
                         variant = ButtonVariant.Secondary,
                     )
@@ -240,16 +243,16 @@ fun ConversationEncryptionDialog(
     if (confirmingReset && onResetEncryption != null) {
         OrangDialog(
             onDismiss = { confirmingReset = false },
-            title = "Start a fresh key here",
+            title = AppStrings.get(context, R.string.catalog_start_a_fresh_key_here_11c5421d),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "Everything sent from now on uses a new key. Existing messages stay readable, and everyone still in the conversation keeps access.",
+                    AppStrings.get(context, R.string.catalog_everything_sent_from_now_on_uses_a_4d8b70ec),
                     color = c.inkSecondary,
                     fontSize = 14.sp,
                 )
                 OrangButton(
-                    text = "Make a new key",
+                    text = AppStrings.get(context, R.string.catalog_make_a_new_key_cde9afba),
                     onClick = {
                         confirmingReset = false
                         onResetEncryption()
@@ -303,30 +306,31 @@ private fun StateCard(
  */
 @Composable
 private fun ModeChoice(strict: Boolean, onStandard: () -> Unit, onStrict: () -> Unit) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            "Before a message leaves this phone",
+            AppStrings.get(context, R.string.catalog_before_a_message_leaves_this_phone_74f6bb9b),
             color = c.ink,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
         )
         Text(
-            "Both options encrypt everything. The difference is whether a swapped lock is stopped before it can be used, or caught afterwards.",
+            AppStrings.get(context, R.string.catalog_both_options_encrypt_everything_the_difference_is_098d8758),
             color = c.inkMuted,
             fontSize = 12.sp,
         )
         ModeCard(
             icon = Icons.Default.Lock,
-            title = "Send straight away",
-            body = "Messages go as soon as you send them. If anyone ever swaps this person's lock, your devices notice and tell you.",
+            title = AppStrings.get(context, R.string.catalog_send_straight_away_19f3932b),
+            body = AppStrings.get(context, R.string.catalog_messages_go_as_soon_as_you_send_e76569f5),
             selected = !strict,
             onClick = { if (strict) onStandard() },
         )
         ModeCard(
             icon = Icons.Default.Shield,
-            title = "Check them first",
-            body = "Nothing is sent until you have checked their code in person or on a call. Until then your messages wait here, locked, and go nowhere.",
+            title = AppStrings.get(context, R.string.catalog_check_them_first_27eeb4a8),
+            body = AppStrings.get(context, R.string.catalog_nothing_is_sent_until_you_have_checked_6db8aee8),
             selected = strict,
             onClick = { if (!strict) onStrict() },
         )
@@ -385,11 +389,12 @@ private fun ModeCard(
  */
 @Composable
 private fun GroupModeNote() {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     OutlinedCard {
         CardHeading(Icons.Default.Group, "Group conversations send straight away")
         Text(
-            "Checking someone's code is a one-to-one thing, so it happens in your direct message with them - and anyone you have checked there shows as checked here too. Waiting on everyone in a group to be checked would hold up people who never asked for it.",
+            AppStrings.get(context, R.string.catalog_checking_someone_s_code_is_a_one_b6951560),
             color = c.inkMuted,
             fontSize = 12.sp,
         )
@@ -413,6 +418,7 @@ private fun TypedSafetyNumberCheck(
     who: String,
     onCompare: (String, (AppViewModel.SafetyNumberVerdict) -> Unit) -> Unit,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     var typed by remember { mutableStateOf("") }
     var verdict by remember { mutableStateOf<AppViewModel.SafetyNumberVerdict?>(null) }
@@ -431,12 +437,12 @@ private fun TypedSafetyNumberCheck(
                 "Type the numbers $who read out"
             },
             placeholder = "00000 00000 00000 …",
-            hint = "Checking them here is safer than reading along - sixty digits is more than anyone actually compares by eye.",
+            hint = AppStrings.get(context, R.string.catalog_checking_them_here_is_safer_than_reading_faa9c2e1),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth(),
         )
         OrangButton(
-            text = if (comparing) "Comparing…" else "Compare",
+            text = if (comparing) AppStrings.get(context, R.string.catalog_comparing_ad916050) else "Compare",
             onClick = {
                 comparing = true
                 onCompare(typed) {
@@ -455,7 +461,7 @@ private fun TypedSafetyNumberCheck(
                 fontSize = 12.sp,
             )
             AppViewModel.SafetyNumberVerdict.MISMATCH -> Text(
-                "These do not match. Most often that is a digit misheard or mistyped, so check it once more. If it still differs, somebody is standing between you - do not send anything here until you know which.",
+                AppStrings.get(context, R.string.catalog_these_do_not_match_most_often_that_0139df50),
                 color = c.danger,
                 fontSize = 12.sp,
             )
@@ -469,7 +475,7 @@ private fun TypedSafetyNumberCheck(
                 fontSize = 12.sp,
             )
             AppViewModel.SafetyNumberVerdict.UNAVAILABLE -> Text(
-                "There is no code to compare yet.",
+                AppStrings.get(context, R.string.catalog_there_is_no_code_to_compare_yet_5ce7929c),
                 color = c.inkMuted,
                 fontSize = 12.sp,
             )

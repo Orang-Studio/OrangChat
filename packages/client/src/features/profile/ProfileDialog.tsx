@@ -24,6 +24,7 @@ import {
   useFriends,
 } from "../friends/queries";
 import { ProfileCard } from "./ProfileCard";
+import { t } from "../../lib/i18n";
 
 interface ProfileDialogProps {
   user: User;
@@ -129,7 +130,7 @@ export function ProfileDialog({ user, open, onOpenChange }: ProfileDialogProps) 
                 onClick={() => messageMutation.mutate()}
               >
                 <MessageSquare aria-hidden className="size-4" />
-                Message
+                {t("profileDialog.message")}
               </Button>
               {isFriend ? (
                 <Button
@@ -139,7 +140,7 @@ export function ProfileDialog({ user, open, onOpenChange }: ProfileDialogProps) 
                   onClick={() => removeMutation.mutate()}
                 >
                   <UserMinus aria-hidden className="size-4" />
-                  Remove
+                  {t("common.remove")}
                 </Button>
               ) : incoming ? (
                 <Button
@@ -147,7 +148,7 @@ export function ProfileDialog({ user, open, onOpenChange }: ProfileDialogProps) 
                   onClick={() => acceptMutation.mutate()}
                 >
                   <UserPlus aria-hidden className="size-4" />
-                  Accept
+                  {t("profileDialog.accept")}
                 </Button>
               ) : (
                 <Button

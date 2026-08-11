@@ -1,5 +1,6 @@
 package lt.oranges.orangchat.feature.chat
 
+import lt.oranges.orangchat.R
 import android.annotation.SuppressLint
 import android.graphics.Color
 import android.net.Uri
@@ -40,6 +41,7 @@ import coil.compose.AsyncImage
 import lt.oranges.orangchat.data.model.Attachment
 import lt.oranges.orangchat.data.remote.LinkPreviewData
 import lt.oranges.orangchat.feature.invite.ChatInviteEmbed
+import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.InviteLink
 import lt.oranges.orangchat.util.absoluteUrl
 import lt.oranges.orangchat.ui.theme.OrangRadius
@@ -212,7 +214,7 @@ private fun LinkedImageEmbed(url: String) {
     Spacer(Modifier.height(6.dp))
     AsyncImage(
         model = url,
-        contentDescription = "Linked image",
+        contentDescription = AppStrings.get(context, R.string.catalog_linked_image_96960966),
         contentScale = ContentScale.Fit,
         modifier = Modifier
             .fillMaxWidth()

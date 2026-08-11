@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import { Avatar } from "../../components/Avatar";
 import { Button } from "../../components/ui/Button";
 import { getAuditLog } from "./api";
+import { t } from "../../lib/i18n";
 
 /**
  * Every action the server records, in the order it recorded them.
@@ -77,7 +78,7 @@ export function AuditLogTab({ server }: { server: Server }) {
           disabled={offset === 0 || isFetching}
           onClick={() => setOffset((o) => Math.max(0, o - 50))}
         >
-          Newer
+          {t("auditLogTab.newer")}
         </Button>
         <Button
           variant="secondary"
@@ -85,7 +86,7 @@ export function AuditLogTab({ server }: { server: Server }) {
           disabled={!data.nextCursor || isFetching}
           onClick={() => setOffset((o) => o + 50)}
         >
-          Older
+          {t("auditLogTab.older")}
         </Button>
       </div>
     </div>
@@ -111,7 +112,9 @@ function AuditRow({ entry }: { entry: AuditLogEntry }) {
           {ACTION_LABELS[entry.action] ?? entry.action}
         </p>
         {changed.length > 0 && (
-          <p className="mt-0.5 truncate text-xs text-ink-muted">Changed: {changed.join(", ")}</p>
+          <p className="mt-0.5 truncate text-xs text-ink-muted">
+            {t("auditLogTab.changed", { list: changed.join(", ") })}
+          </p>
         )}
         {entry.reason && (
           <p className="mt-0.5 text-xs italic text-ink-secondary">“{entry.reason}”</p>

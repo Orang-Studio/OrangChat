@@ -23,6 +23,9 @@
  */
 package lt.oranges.orangchat.feature.chat.voicemessage
 
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
+import lt.oranges.orangchat.util.AppStrings
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -173,6 +176,7 @@ fun VoiceRecordingStrip(
     modifier: Modifier = Modifier,
     colors: VoiceRecorderColors = orangVoiceRecorderColors(),
 ) {
+        val context = LocalContext.current
     val cancelling = state.phase == VoicePhase.Cancelling
     val locked = state.phase == VoicePhase.RecordingLocked
     val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
@@ -228,9 +232,9 @@ fun VoiceRecordingStrip(
         } else {
             Text(
                 text = when {
-                    cancelling -> "Release to cancel"
-                    isRtl -> "Slide to cancel →"
-                    else -> "‹ Slide to cancel"
+                    cancelling -> AppStrings.get(context, R.string.catalog_release_to_cancel_29bd6c29)
+                    isRtl -> AppStrings.get(context, R.string.catalog_slide_to_cancel_8f64a698)
+                    else -> AppStrings.get(context, R.string.catalog_slide_to_cancel_9c411f6d)
                 },
                 color = hintColor,
                 fontSize = 12.sp,
@@ -268,6 +272,7 @@ fun VoiceMicButton(
     canStart: () -> Boolean = { true },
     onTapTooShort: () -> Unit = {},
 ) {
+        val context = LocalContext.current
     val density = LocalDensity.current
     val lockThresholdPx = with(density) { lockThreshold.toPx() }
     val cancelThresholdPx = with(density) { cancelThreshold.toPx() }
@@ -304,8 +309,8 @@ fun VoiceMicButton(
     )
     val phaseDescription = when (state.phase) {
         VoicePhase.RecordingHeld -> "Recording"
-        VoicePhase.RecordingLocked -> "Recording, locked"
-        VoicePhase.Cancelling -> "Release to cancel"
+        VoicePhase.RecordingLocked -> AppStrings.get(context, R.string.catalog_recording_locked_32fe3a05)
+        VoicePhase.Cancelling -> AppStrings.get(context, R.string.catalog_release_to_cancel_29bd6c29)
         VoicePhase.Idle -> "Idle"
     }
 
@@ -313,7 +318,7 @@ fun VoiceMicButton(
         modifier = modifier
             .size(44.dp)
             .semantics {
-                contentDescription = "Hold to record a voice message"
+                contentDescription = AppStrings.get(context, R.string.catalog_hold_to_record_a_voice_message_06b1b5f5)
                 role = Role.Button
                 stateDescription = phaseDescription
             }
@@ -408,6 +413,7 @@ private fun VoiceLockTarget(
     colors: VoiceRecorderColors,
     modifier: Modifier = Modifier,
 ) {
+        val context = LocalContext.current
     val lift by animateFloatAsState(
         targetValue = progress,
         animationSpec = tween(durationMillis = 60),
@@ -427,7 +433,7 @@ private fun VoiceLockTarget(
         ) {
             Icon(
                 Icons.Default.Lock,
-                contentDescription = "Slide up to lock recording",
+                contentDescription = AppStrings.get(context, R.string.catalog_slide_up_to_lock_recording_52127830),
                 tint = if (lift > 0.5f) colors.onAccent else colors.lock,
                 modifier = Modifier.size(14.dp),
             )
@@ -450,13 +456,14 @@ fun VoiceDeleteButton(
     modifier: Modifier = Modifier,
     colors: VoiceRecorderColors = orangVoiceRecorderColors(),
 ) {
+        val context = LocalContext.current
     Box(
         modifier = modifier
             .size(44.dp)
             .clip(CircleShape)
             .clickable(onClick = onClick)
             .semantics {
-                contentDescription = "Delete recording"
+                contentDescription = AppStrings.get(context, R.string.catalog_delete_recording_8b58ce23)
                 role = Role.Button
             },
         contentAlignment = Alignment.Center,

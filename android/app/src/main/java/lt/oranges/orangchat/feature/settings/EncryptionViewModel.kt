@@ -2,7 +2,9 @@ package lt.oranges.orangchat.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.Context
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,6 +14,8 @@ import lt.oranges.orangchat.data.model.E2eeDevice
 import lt.oranges.orangchat.data.remote.ApiService
 import lt.oranges.orangchat.data.repository.AuthRepository
 import lt.oranges.orangchat.data.repository.E2eeRepository
+import lt.oranges.orangchat.util.AppStrings
+import lt.oranges.orangchat.R
 
 /**
  * Backs the Encryption settings screen. The device list is *verified* here
@@ -21,6 +25,7 @@ import lt.oranges.orangchat.data.repository.E2eeRepository
  */
 @HiltViewModel
 class EncryptionViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val api: ApiService,
     private val e2ee: E2eeRepository,
     private val auth: AuthRepository,
@@ -134,7 +139,7 @@ class EncryptionViewModel @Inject constructor(
                 .onFailure {
                     _state.value = _state.value.copy(
                         resetting = false,
-                        error = it.message ?: "This phone could not be set up again.",
+                        error = it.message ?: AppStrings.get(context, R.string.catalog_this_phone_could_not_be_set_up_ee589c92),
                     )
                 }
         }
@@ -168,7 +173,7 @@ class EncryptionViewModel @Inject constructor(
     private fun startNewDevice(invitation: String?) {
         val userId = auth.currentUser?.id
         if (userId == null) {
-            _state.value = _state.value.copy(transferError = "Sign in before adding this device.")
+            _state.value = _state.value.copy(transferError = AppStrings.get(context, R.string.catalog_sign_in_before_adding_this_device_8327420f))
             return
         }
         _state.value = _state.value.copy(
@@ -250,7 +255,7 @@ class EncryptionViewModel @Inject constructor(
                 .onFailure {
                     _state.value = _state.value.copy(
                         requestingEmailCode = false,
-                        transferError = it.message ?: "The email code could not be sent.",
+                        transferError = it.message ?: AppStrings.get(context, R.string.catalog_the_email_code_could_not_be_sent_7bee875a),
                     )
                 }
         }
@@ -258,7 +263,7 @@ class EncryptionViewModel @Inject constructor(
 
     fun revokeDevice(deviceId: String) {
         if (deviceId == _state.value.deviceId) {
-            _state.value = _state.value.copy(error = "This phone cannot revoke itself.")
+            _state.value = _state.value.copy(error = AppStrings.get(context, R.string.catalog_this_phone_cannot_revoke_itself_4f680a33))
             return
         }
         _state.value = _state.value.copy(
@@ -271,14 +276,14 @@ class EncryptionViewModel @Inject constructor(
                 .onSuccess {
                     _state.value = _state.value.copy(
                         revokingDeviceId = null,
-                        notice = "The encryption device was revoked.",
+                        notice = AppStrings.get(context, R.string.catalog_the_encryption_device_was_revoked_5d4569c7),
                     )
                     refresh()
                 }
                 .onFailure {
                     _state.value = _state.value.copy(
                         revokingDeviceId = null,
-                        error = it.message ?: "The device could not be revoked.",
+                        error = it.message ?: AppStrings.get(context, R.string.catalog_the_device_could_not_be_revoked_8f71eb6b),
                     )
                 }
         }
@@ -309,14 +314,14 @@ class EncryptionViewModel @Inject constructor(
                     }
                     _state.value = _state.value.copy(
                         erasing = false,
-                        notice = "Your old keys are gone. This phone has fresh ones.",
+                        notice = AppStrings.get(context, R.string.catalog_your_old_keys_are_gone_this_phone_be322585),
                     )
                     refresh()
                 }
                 .onFailure {
                     _state.value = _state.value.copy(
                         erasing = false,
-                        error = it.message ?: "The keys could not be erased.",
+                        error = it.message ?: AppStrings.get(context, R.string.catalog_the_keys_could_not_be_erased_fc80d5dd),
                     )
                 }
         }
@@ -390,7 +395,7 @@ class EncryptionViewModel @Inject constructor(
     private fun transferFailed(error: Throwable) {
         _state.value = _state.value.copy(
             transferStep = TransferStep.IDLE,
-            transferError = error.message ?: "The device transfer failed.",
+            transferError = error.message ?: AppStrings.get(context, R.string.catalog_the_device_transfer_failed_7a70c4fe),
         )
     }
 }

@@ -97,6 +97,10 @@ pub struct Config {
     /// rest); a key that's absent - or a missing file - leaves the badge alone.
     /// See services::badge.
     pub badges_file: String,
+    /// Directory of server-served string catalogs (`<dir>/<platform>/*.json`),
+    /// authored by android/tools/export_server_catalogs.py and loaded at boot.
+    /// See http::i18n.
+    pub i18n_dir: String,
     /// Which client builds are still allowed in, per platform. Unset thresholds
     /// mean that platform is never nagged and never blocked, so a fresh
     /// deployment enforces nothing until someone opts in. See
@@ -188,6 +192,10 @@ impl Config {
                 .ok()
                 .filter(|v| !v.is_empty())
                 .unwrap_or_else(|| "badges.json".into()),
+            i18n_dir: env::var("I18N_DIR")
+                .ok()
+                .filter(|v| !v.is_empty())
+                .unwrap_or_else(|| "i18n".into()),
             update_policy: UpdatePolicy {
                 android: platform_policy("ANDROID"),
                 desktop: platform_policy("DESKTOP"),

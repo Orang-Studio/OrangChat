@@ -4,6 +4,7 @@ import { Music } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { useVoiceStore } from "../voice/store";
 import { playSound, useUsableSounds } from "./queries";
+import { t } from "../../lib/i18n";
 
 /**
  * The soundboard, as a popover off the voice controls.
@@ -27,8 +28,8 @@ export function SoundboardPanel({ className }: { className?: string }) {
       <Popover.Trigger asChild>
         <button
           type="button"
-          aria-label="Soundboard"
-          title="Soundboard"
+          aria-label={t("soundboardPanel.soundboard")}
+          title={t("soundboardPanel.soundboard")}
           className={cn(
             "rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink",
             className,
@@ -45,10 +46,10 @@ export function SoundboardPanel({ className }: { className?: string }) {
           className="z-50 w-[min(20rem,calc(100vw-1.5rem))] rounded-xl border border-border bg-surface-4 p-2 shadow-2xl"
         >
           <h3 className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
-            Soundboard
+            {t("soundboardPanel.soundboard")}
           </h3>
           {isLoading ? (
-            <p className="px-1 py-6 text-center text-xs text-ink-muted">Loading…</p>
+            <p className="px-1 py-6 text-center text-xs text-ink-muted">{t("common.loading")}</p>
           ) : sounds && sounds.length > 0 ? (
             <div className="grid max-h-64 grid-cols-3 gap-1.5 overflow-y-auto">
               {sounds.map((sound) => (
@@ -70,7 +71,7 @@ export function SoundboardPanel({ className }: { className?: string }) {
             </div>
           ) : (
             <p className="px-2 py-6 text-center text-xs text-ink-muted">
-              No sounds yet. Add some in Server settings → Sounds.
+              {t("soundboardPanel.noSoundsYetAddSomeIn")}
             </p>
           )}
         </Popover.Content>

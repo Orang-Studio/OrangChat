@@ -1,5 +1,6 @@
 package lt.oranges.orangchat.feature.home
-
+import lt.oranges.orangchat.util.AppStrings
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -147,10 +148,10 @@ fun HomeScreen(
         }
         androidx.compose.material3.AlertDialog(
             onDismissRequest = dismissRationale,
-            title = { androidx.compose.material3.Text("Get notified about messages?") },
+            title = { androidx.compose.material3.Text(AppStrings.get(context, R.string.catalog_get_notified_about_messages_d4bc1f2e)) },
             text = {
                 androidx.compose.material3.Text(
-                    "OrangChat can let you know when someone messages or calls you " +
+                    AppStrings.get(context, R.string.catalog_orangchat_can_let_you_know_when_someone_13d0aac2) +
                         "while the app is closed. Without this, messages only arrive " +
                         "while you have OrangChat open.",
                 )
@@ -165,7 +166,7 @@ fun HomeScreen(
             },
             dismissButton = {
                 androidx.compose.material3.TextButton(onClick = dismissRationale) {
-                    androidx.compose.material3.Text("Not now")
+                    androidx.compose.material3.Text(AppStrings.get(context, R.string.catalog_not_now_e4571490))
                 }
             },
         )
@@ -1006,7 +1007,7 @@ fun HomeScreen(
     e2eeError?.let { error ->
         androidx.compose.material3.AlertDialog(
             onDismissRequest = {},
-            title = { androidx.compose.material3.Text("Encryption security alert") },
+            title = { androidx.compose.material3.Text(AppStrings.get(context, R.string.catalog_encryption_security_alert_7b6e7671)) },
             text = {
                 androidx.compose.material3.Text(
                     "$error\n\nMessaging is blocked until this identity or device-log change is resolved.",
@@ -1014,15 +1015,15 @@ fun HomeScreen(
             },
             confirmButton = {
                 androidx.compose.material3.TextButton(onClick = appViewModel::clearE2eeError) {
-                    androidx.compose.material3.Text("I understand")
+                    androidx.compose.material3.Text(AppStrings.get(context, R.string.catalog_i_understand_842a9bdd))
                 }
             },
         )
     }
     if (showCreateChannel && detail != null) {
         CreateEntityDialog(
-            title = "Create a channel",
-            label = "Channel name",
+            title = AppStrings.get(context, R.string.catalog_create_a_channel_3ac48642),
+            label = AppStrings.get(context, R.string.catalog_channel_name_3be87bdd),
             onDismiss = { showCreateChannel = false },
             onConfirm = { name -> appViewModel.createChannel(detail!!.server.id, name, "text"); showCreateChannel = false },
         )

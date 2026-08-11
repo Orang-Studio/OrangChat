@@ -1,6 +1,7 @@
 import { Fragment, useState, type ReactNode } from "react";
 import { EMOJI_SHORTCODE_SOURCE, EMOJI_TOKEN_SOURCE } from "@orangchat/shared";
 import { cn } from "./cn";
+import { t } from "./i18n";
 
 // Anchored forms of the shared emoji grammar, so the renderer and the send-time
 // normalizer can never drift on what a token is. The token rule runs before the
@@ -83,7 +84,7 @@ function Spoiler({ children }: { children: ReactNode }) {
     <button
       type="button"
       onClick={() => setRevealed(true)}
-      aria-label="Spoiler, click to reveal"
+      aria-label={t("markdown.spoilerClickToReveal")}
       // text-transparent covers bare text; nested marks (code, links) bring
       // their own colours and backgrounds, so those are hidden outright.
       className="rounded bg-ink-muted px-0.5 text-transparent transition-colors hover:bg-ink-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary [&_*]:invisible"

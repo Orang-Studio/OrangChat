@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.voice
-
+import lt.oranges.orangchat.util.AppStrings
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -59,8 +61,9 @@ fun IncomingCallOverlay(
     onDecline: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
-    val kind = if (call.video) "video call" else "voice call"
+    val kind = if (call.video) AppStrings.get(context, R.string.catalog_video_call_12d8c530) else AppStrings.get(context, R.string.catalog_voice_call_329f832a)
 
     Box(
         modifier = modifier
@@ -109,7 +112,7 @@ fun IncomingCallOverlay(
             // Answering a video call with the camera off is a normal choice.
             if (call.video) {
                 Text(
-                    text = "Answer without camera",
+                    text = AppStrings.get(context, R.string.catalog_answer_without_camera_979e59f8),
                     color = c.inkSecondary,
                     fontSize = 13.sp,
                     modifier = Modifier
@@ -188,14 +191,15 @@ fun CallBar(
     onSoundboard: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     var outputMenuOpen by remember { mutableStateOf(false) }
     val selectedOutput = audioOutputs.firstOrNull { it.id == selectedAudioOutputId }
     val status = when {
-        state.phase == CallPhase.OUTGOING -> "Calling…"
-        state.connecting -> "Connecting…"
-        state.kind == SessionKind.VOICE_CHANNEL -> "Voice connected"
-        else -> "Call connected"
+        state.phase == CallPhase.OUTGOING -> AppStrings.get(context, R.string.catalog_calling_acd4a67d)
+        state.connecting -> AppStrings.get(context, R.string.catalog_connecting_fd3e7969)
+        state.kind == SessionKind.VOICE_CHANNEL -> AppStrings.get(context, R.string.catalog_voice_connected_538f3e5c)
+        else -> AppStrings.get(context, R.string.catalog_call_connected_dce17207)
     }
 
     Column(
@@ -222,7 +226,7 @@ fun CallBar(
                 IconButton(onClick = onOpen, modifier = Modifier.size(40.dp)) {
                     Icon(
                         Icons.Default.KeyboardArrowUp,
-                        contentDescription = "Open call",
+                        contentDescription = AppStrings.get(context, R.string.catalog_open_call_1c47457b),
                         tint = c.inkMuted,
                     )
                 }
@@ -257,7 +261,7 @@ fun CallBar(
                     Icon(
                         Icons.AutoMirrored.Filled.VolumeUp,
                         contentDescription = selectedOutput?.let { "Audio output: ${it.name}" }
-                            ?: "Change audio output",
+                            ?: AppStrings.get(context, R.string.catalog_change_audio_output_ccb8eada),
                         tint = if (selectedOutput != null) c.primary else c.inkMuted,
                     )
                 }
@@ -277,7 +281,7 @@ fun CallBar(
             IconButton(onClick = onToggleCamera, modifier = Modifier.size(40.dp)) {
                 Icon(
                     if (state.video) Icons.Default.Videocam else Icons.Default.VideocamOff,
-                    contentDescription = if (state.video) "Turn camera off" else "Turn camera on",
+                    contentDescription = if (state.video) AppStrings.get(context, R.string.catalog_turn_camera_off_97e661ba) else AppStrings.get(context, R.string.catalog_turn_camera_on_98c78a9e),
                     tint = if (state.video) c.primary else c.inkMuted,
                 )
             }
@@ -285,7 +289,7 @@ fun CallBar(
                 IconButton(onClick = onFlipCamera, modifier = Modifier.size(40.dp)) {
                     Icon(
                         Icons.Default.Cameraswitch,
-                        contentDescription = "Flip camera",
+                        contentDescription = AppStrings.get(context, R.string.catalog_flip_camera_ed114d76),
                         tint = c.inkMuted,
                     )
                 }
@@ -300,7 +304,7 @@ fun CallBar(
                 }
             }
             IconButton(onClick = onHangUp, modifier = Modifier.size(40.dp)) {
-                Icon(Icons.Default.CallEnd, contentDescription = "Hang up", tint = c.danger)
+                Icon(Icons.Default.CallEnd, contentDescription = AppStrings.get(context, R.string.catalog_hang_up_66be99b5), tint = c.danger)
             }
         }
     }

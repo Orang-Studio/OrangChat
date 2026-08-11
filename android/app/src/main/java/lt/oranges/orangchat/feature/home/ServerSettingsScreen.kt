@@ -1,5 +1,6 @@
 package lt.oranges.orangchat.feature.home
 
+import lt.oranges.orangchat.R
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -41,6 +42,7 @@ import lt.oranges.orangchat.data.model.Hierarchy
 import lt.oranges.orangchat.data.model.Permissions
 import lt.oranges.orangchat.data.model.ServerDetail
 import lt.oranges.orangchat.data.model.hasPermission
+import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.InviteLink
 import lt.oranges.orangchat.ui.components.ButtonVariant
 import lt.oranges.orangchat.ui.components.ConfirmDialog
@@ -104,7 +106,7 @@ fun ServerSettingsScreen(
                 modifier = Modifier.clickable(onClick = onBack).padding(4.dp),
             )
             Spacer(Modifier.width(4.dp))
-            Text("Server settings", color = c.ink, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text(AppStrings.get(context, R.string.catalog_server_settings_28af3cc7), color = c.ink, fontWeight = FontWeight.Bold, fontSize = 18.sp)
         }
         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(c.border))
 
@@ -116,9 +118,9 @@ fun ServerSettingsScreen(
                 OrangTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = "Server name",
+                    label = AppStrings.get(context, R.string.catalog_server_name_738825fc),
                     enabled = isOwner,
-                    hint = if (isOwner) null else "Only the owner can rename this server",
+                    hint = if (isOwner) null else AppStrings.get(context, R.string.catalog_only_the_owner_can_rename_this_server_3db192cb),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OrangTextField(
@@ -126,11 +128,11 @@ fun ServerSettingsScreen(
                     onValueChange = { if (it.length <= 1024) description = it },
                     label = "Description",
                     enabled = isOwner,
-                    hint = "Shown on the invite page.",
+                    hint = AppStrings.get(context, R.string.catalog_shown_on_the_invite_page_28e6606d),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 ImageField(
-                    label = "Server icon",
+                    label = AppStrings.get(context, R.string.catalog_server_icon_8bf2f95a),
                     url = detail.server.iconUrl,
                     height = 72.dp,
                     square = true,
@@ -160,7 +162,7 @@ fun ServerSettingsScreen(
                 }
             }
 
-            Section("Invite people") {
+            Section(AppStrings.get(context, R.string.catalog_invite_people_e1eb97af)) {
                 inviteCode?.let { code ->
                     // A link rather than the bare code: it unfurls into a join
                     // card when posted in chat, and opens straight into the app
@@ -206,7 +208,7 @@ fun ServerSettingsScreen(
                     }
                 }
                 OrangButton(
-                    text = if (inviteCode == null) "Create invite" else "Create another",
+                    text = if (inviteCode == null) AppStrings.get(context, R.string.catalog_create_invite_a8404622) else AppStrings.get(context, R.string.catalog_create_another_8b69f57c),
                     onClick = { onCreateInvite { code -> inviteCode = code } },
                     variant = ButtonVariant.Secondary,
                 )
@@ -226,26 +228,26 @@ fun ServerSettingsScreen(
                     )
                 }
                 if (myPerms.hasPermission(Permissions.VIEW_AUDIT_LOG)) {
-                    NavRow(label = "Audit log", value = "", onClick = onOpenAuditLog)
+                    NavRow(label = AppStrings.get(context, R.string.catalog_audit_log_3cfc5f1c), value = "", onClick = onOpenAuditLog)
                 }
             }
 
-            Section("Danger zone") {
+            Section(AppStrings.get(context, R.string.catalog_danger_zone_963a652e)) {
                 if (isOwner) {
                     Text(
-                        text = "As the owner you cannot leave - delete the server instead.",
+                        text = AppStrings.get(context, R.string.catalog_as_the_owner_you_cannot_leave_delete_030b7d7e),
                         color = c.inkMuted,
                         fontSize = 12.sp,
                     )
                     OrangButton(
-                        text = "Delete server",
+                        text = AppStrings.get(context, R.string.catalog_delete_server_fb695fc6),
                         onClick = { confirmDelete = true },
                         variant = ButtonVariant.Danger,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 } else {
                     OrangButton(
-                        text = "Leave server",
+                        text = AppStrings.get(context, R.string.catalog_leave_server_da6fea13),
                         onClick = { confirmLeave = true },
                         variant = ButtonVariant.Danger,
                         modifier = Modifier.fillMaxWidth(),

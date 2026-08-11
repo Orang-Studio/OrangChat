@@ -6,6 +6,7 @@ import { Button } from "../../components/ui/Button";
 import { formatFullTime } from "../../lib/time";
 import { SectionTitle } from "./controls";
 import { getSessions, revokeOtherSessions, revokeSession } from "./api";
+import { t, tCount } from "../../lib/i18n";
 
 /**
  * Best-effort device name from a User-Agent. Deliberately coarse: the string is
@@ -60,7 +61,7 @@ function SessionRow({
           {label}
           {session.current && (
             <span className="ml-2 rounded bg-primary-soft px-1.5 py-0.5 text-xs text-primary">
-              This device
+              {t("devicesTab.thisDevice")}
             </span>
           )}
         </p>
@@ -69,7 +70,9 @@ function SessionRow({
           {session.lastSeenAt && ` · last active ${formatFullTime(session.lastSeenAt)}`}
         </p>
         {session.createdAt && (
-          <p className="text-xs text-ink-muted">Signed in {formatFullTime(session.createdAt)}</p>
+          <p className="text-xs text-ink-muted">
+            {t("devicesTab.signedInAt", { time: formatFullTime(session.createdAt) })}
+          </p>
         )}
       </div>
       <Button
@@ -126,10 +129,9 @@ export function DevicesTab() {
   return (
     <div className="space-y-4">
       <div>
-        <SectionTitle>Where you're signed in</SectionTitle>
+        <SectionTitle>{t("devicesTab.whereYoureSignedIn")}</SectionTitle>
         <p className="text-sm text-ink-secondary">
-          Each entry is a device with a live sign-in. Revoking one stops it
-          renewing; it loses access within a few minutes.
+          {t("devicesTab.eachEntryIsADeviceWith")}
         </p>
       </div>
 
@@ -162,7 +164,7 @@ export function DevicesTab() {
             loading={revokeOthers.isPending}
             onClick={() => revokeOthers.mutate()}
           >
-            Sign out {others} other device{others === 1 ? "" : "s"}
+            {tCount("devicesTab.signOutOtherDevices", others)}
           </Button>
           {revokeOthers.isError && (
             <p className="mt-2 text-sm text-danger">{revokeOthers.error.message}</p>

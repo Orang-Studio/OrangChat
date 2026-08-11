@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.updates
-
+import lt.oranges.orangchat.util.AppStrings
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -20,10 +22,11 @@ fun UpdateAvailableDialog(
     onDismiss: () -> Unit,
     onUpdate: () -> Unit,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New update available", color = c.ink) },
+        title = { Text(AppStrings.get(context, R.string.catalog_new_update_available_b0be29b0), color = c.ink) },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
@@ -42,7 +45,7 @@ fun UpdateAvailableDialog(
             TextButton(onClick = onDismiss) { Text("Later", color = c.inkSecondary) }
         },
         confirmButton = {
-            TextButton(onClick = onUpdate) { Text("Update now", color = c.primary) }
+            TextButton(onClick = onUpdate) { Text(AppStrings.get(context, R.string.catalog_update_now_c4cbac00), color = c.primary) }
         },
     )
 }

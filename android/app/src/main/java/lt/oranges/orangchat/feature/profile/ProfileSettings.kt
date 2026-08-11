@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.profile
 
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -39,6 +41,7 @@ import lt.oranges.orangchat.ui.components.OrangButton
 import lt.oranges.orangchat.ui.components.OrangTextField
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
+import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.PROFILE_CSS_MAX_LEN
 import lt.oranges.orangchat.util.absoluteUrl
 
@@ -59,6 +62,7 @@ fun ProfileSettingsSection(
     modifier: Modifier = Modifier,
     vm: ProfileViewModel = hiltViewModel(),
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val state by vm.state.collectAsStateWithLifecycle()
 
@@ -102,14 +106,14 @@ fun ProfileSettingsSection(
         OrangTextField(
             value = displayName,
             onValueChange = { displayName = it.take(64) },
-            label = "Display name",
+            label = AppStrings.get(context, R.string.catalog_display_name_c7874aaa),
             modifier = Modifier.fillMaxWidth(),
         )
         OrangTextField(
             value = username,
             onValueChange = { username = it.lowercase().take(32) },
             label = "Username",
-            hint = "Lowercase letters, numbers, underscores, and dots.",
+            hint = AppStrings.get(context, R.string.catalog_lowercase_letters_numbers_underscores_and_dots_57155ecc),
             modifier = Modifier.fillMaxWidth(),
         )
         ImageField(
@@ -133,7 +137,7 @@ fun ProfileSettingsSection(
         OrangTextField(
             value = bio,
             onValueChange = { bio = it.take(4000) },
-            label = "About me",
+            label = AppStrings.get(context, R.string.catalog_about_me_e3ba4ef3),
             singleLine = false,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -147,7 +151,7 @@ fun ProfileSettingsSection(
         )
 
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("Accent color", color = c.inkSecondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            Text(AppStrings.get(context, R.string.catalog_accent_color_e49578ed), color = c.inkSecondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 ACCENT_COLORS.chunked(4).forEach { colors ->
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -173,7 +177,7 @@ fun ProfileSettingsSection(
 
         ProfileSectionTitle("Profile CSS")
         Text(
-            text = "Style your card for everyone who views it. Every part has a hook: " +
+            text = AppStrings.get(context, R.string.catalog_style_your_card_for_everyone_who_views_08c9bf5c) +
                 ".oc-profile-card, .oc-pf-banner(-img), .oc-pf-avatar(-frame/-img/-fallback), " +
                 ".oc-pf-body, .oc-pf-head, .oc-pf-name, .oc-pf-pronouns, .oc-pf-identity, " +
                 ".oc-pf-username, .oc-pf-devices/-device, .oc-pf-activity(-name), " +
@@ -189,13 +193,13 @@ fun ProfileSettingsSection(
             value = profileCss,
             onValueChange = { profileCss = it.take(PROFILE_CSS_MAX_LEN) },
             label = "CSS",
-            placeholder = ".oc-pf-name { color: #ff6a1a; }",
+            placeholder = AppStrings.get(context, R.string.catalog_oc_pf_name_color_ff6a1a_9442cf4e),
             singleLine = false,
             modifier = Modifier.fillMaxWidth(),
         )
         if (profileCss.isNotBlank()) {
             OrangButton(
-                text = "Clear CSS",
+                text = AppStrings.get(context, R.string.catalog_clear_css_6a933bda),
                 onClick = { profileCss = "" },
                 variant = ButtonVariant.Ghost,
             )
@@ -204,7 +208,7 @@ fun ProfileSettingsSection(
         state.error?.let { Text(it, color = c.danger, fontSize = 12.sp) }
 
         OrangButton(
-            text = "Save profile",
+            text = AppStrings.get(context, R.string.catalog_save_profile_f597c0e8),
             onClick = {
                 vm.save(
                     username = username.trim().takeIf { it != self.username },

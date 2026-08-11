@@ -15,15 +15,22 @@ export const STATUS_TEXT: Record<PresenceStatus, string> = {
  * alone fails for the ~8% of men with red/green deficiency, and at 12px the
  * green and the amber dot are the same dot.
  *
+ * `mobile` swaps the disc for a phone silhouette carrying the same cut-outs, so
+ * "online" and "online, on their phone" are one glance apart without spending a
+ * second badge on it. Only meaningful while online - `devices` is empty offline.
+ *
  * The cut-outs are punched through with a mask rather than painted, so whatever
  * sits behind the badge shows through them and the shape reads on any surface.
  */
 export function StatusIcon({
   status,
+  mobile = false,
   className,
   label,
 }: {
   status: PresenceStatus;
+  /** Draw the phone silhouette instead of the disc. */
+  mobile?: boolean;
   className?: string;
   /** Accessible name; pass null when a parent already labels the badge. */
   label?: string | null;
@@ -36,10 +43,29 @@ export function StatusIcon({
       {...(label === null ? { "aria-hidden": true } : { role: "img", "aria-label": label })}
     >
       <mask id={maskId}>
-        <circle cx="6" cy="6" r="6" fill="white" />
-        {status === "idle" && <circle cx="4.6" cy="4.6" r="5.2" fill="black" />}
-        {status === "dnd" && <rect x="1.4" y="4.9" width="9.2" height="2.2" rx="1.1" fill="black" />}
-        {status === "offline" && <circle cx="6" cy="6" r="2.8" fill="black" />}
+        {mobile ? (
+          <>
+            <rect x="3.1" y="0.2" width="5.8" height="11.6" rx="1.5" fill="white" />
+            {/* The disc's crescent and ring cut-outs are sized for a circle and
+                would swallow a shape this narrow, so the phone hollows out its
+                own screen instead - still three shapes, still one glance. */}
+            {status !== "online" && (
+              <rect x="4.3" y="1.4" width="3.4" height="9.2" rx="0.7" fill="black" />
+            )}
+            {status === "dnd" && (
+              <rect x="2.1" y="4.9" width="7.8" height="2.2" rx="1.1" fill="white" />
+            )}
+          </>
+        ) : (
+          <>
+            <circle cx="6" cy="6" r="6" fill="white" />
+            {status === "idle" && <circle cx="4.6" cy="4.6" r="5.2" fill="black" />}
+            {status === "dnd" && (
+              <rect x="1.4" y="4.9" width="9.2" height="2.2" rx="1.1" fill="black" />
+            )}
+            {status === "offline" && <circle cx="6" cy="6" r="2.8" fill="black" />}
+          </>
+        )}
       </mask>
       <rect width="12" height="12" fill="currentColor" mask={`url(#${maskId})`} />
     </svg>

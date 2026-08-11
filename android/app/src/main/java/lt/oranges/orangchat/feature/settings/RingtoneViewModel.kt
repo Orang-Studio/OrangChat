@@ -1,5 +1,6 @@
 package lt.oranges.orangchat.feature.settings
-
+import lt.oranges.orangchat.util.AppStrings
+import lt.oranges.orangchat.R
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -40,9 +41,9 @@ class RingtoneViewModel @Inject constructor(
             )
         }.isSuccess
 
-        val name = displayName(uri) ?: uri.lastPathSegment ?: "Custom ringtone"
+        val name = displayName(uri) ?: uri.lastPathSegment ?: AppStrings.get(context, R.string.catalog_custom_ringtone_fd009ada)
         tokenStore.ringtoneUri = uri.toString()
-        tokenStore.ringtoneName = if (persisted) name else "$name (may not survive a restart)"
+        tokenStore.ringtoneName = if (persisted) name else AppStrings.get(context, R.string.catalog_1_s_may_not_survive_a_restart_c2a049ce, name)
         _ringtoneName.value = tokenStore.ringtoneName
     }
 

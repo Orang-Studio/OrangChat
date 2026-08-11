@@ -1,5 +1,6 @@
 package lt.oranges.orangchat.feature.profile
 
+import lt.oranges.orangchat.R
 import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import lt.oranges.orangchat.data.repository.AuthRepository
+import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.buildImagePart
 import javax.inject.Inject
 
@@ -59,7 +61,7 @@ class ProfileViewModel @Inject constructor(
                     profileCss = profileCss,
                 )
             }.onFailure {
-                _state.value = _state.value.copy(error = it.message ?: "Could not save your profile")
+                _state.value = _state.value.copy(error = it.message ?: AppStrings.get(context, R.string.catalog_could_not_save_your_profile_e13d9374))
             }
             _state.value = _state.value.copy(saving = false)
         }
@@ -77,7 +79,7 @@ class ProfileViewModel @Inject constructor(
                     ImageKind.BANNER -> authRepository.updateProfile(bannerUrl = uploaded.url)
                 }
             }.onFailure {
-                _state.value = _state.value.copy(error = it.message ?: "Upload failed")
+                _state.value = _state.value.copy(error = it.message ?: AppStrings.get(context, R.string.catalog_upload_failed_ad0d0603))
             }
             _state.value = _state.value.copy(uploading = null)
         }
@@ -92,7 +94,7 @@ class ProfileViewModel @Inject constructor(
                     ImageKind.BANNER -> authRepository.updateProfile(bannerUrl = "")
                 }
             }.onFailure {
-                _state.value = _state.value.copy(error = it.message ?: "Could not remove the image")
+                _state.value = _state.value.copy(error = it.message ?: AppStrings.get(context, R.string.catalog_could_not_remove_the_image_a332686e))
             }
         }
     }

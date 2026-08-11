@@ -7,6 +7,7 @@ import { emojiToken, useUsableEmojis } from "../emojis/queries";
 import { useServers } from "../servers/queries";
 import { EMOJI_CATEGORIES } from "./emoji-data";
 import { useFavoriteGifs } from "./favoriteGifs";
+import { t } from "../../lib/i18n";
 
 interface KlipyFile {
   url: string;
@@ -211,8 +212,8 @@ function GifPanel({ onPick }: { onPick: (url: string) => void }) {
       <input
         value={query}
         onChange={(event) => setQuery(event.target.value)}
-        placeholder="Search KLIPY"
-        aria-label="Search KLIPY GIFs"
+        placeholder={t("expressionPicker.searchKlipy")}
+        aria-label={t("expressionPicker.searchKlipyGifs")}
         className="w-full rounded-lg border border-border bg-surface-1 px-3 py-2 text-sm outline-none focus:border-primary"
       />
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -221,7 +222,7 @@ function GifPanel({ onPick }: { onPick: (url: string) => void }) {
         {favoriteGifs.length > 0 && !query.trim() && (
           <div className="mb-2">
             <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-              Favourites
+              {t("expressionPicker.favourites")}
             </p>
             <div className="columns-2 gap-1.5">
               {favoriteGifs.map((gif) => (
@@ -248,11 +249,11 @@ function GifPanel({ onPick }: { onPick: (url: string) => void }) {
           </div>
         )}
         {loading && gifs.length === 0 ? (
-          <p className="grid h-full place-items-center text-xs text-ink-muted">Loading GIFs…</p>
+          <p className="grid h-full place-items-center text-xs text-ink-muted">{t("expressionPicker.loadingGifs")}</p>
         ) : error ? (
           <p role="alert" className="grid h-full place-items-center px-4 text-center text-xs text-danger">{error}</p>
         ) : gifs.length === 0 ? (
-          <p className="grid h-full place-items-center text-xs text-ink-muted">No GIFs found</p>
+          <p className="grid h-full place-items-center text-xs text-ink-muted">{t("expressionPicker.noGifsFound")}</p>
         ) : (
           <div className="columns-2 gap-1.5">
             {gifs.map((gif) => (
@@ -285,7 +286,7 @@ function GifPanel({ onPick }: { onPick: (url: string) => void }) {
         rel="noopener noreferrer"
         className="self-end text-[10px] font-medium text-ink-muted hover:text-ink"
       >
-        Powered by KLIPY
+        {t("expressionPicker.poweredByKlipy")}
       </a>
     </div>
   );
@@ -306,7 +307,7 @@ export function ExpressionPicker({
       <Popover.Trigger asChild>
         <button
           type="button"
-          aria-label="Add emoji or GIF"
+          aria-label={t("expressionPicker.addEmojiOrGif")}
           className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-1 hover:text-ink"
         >
           <Smile aria-hidden className="size-5" />

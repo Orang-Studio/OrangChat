@@ -13,6 +13,7 @@ import { useConnectionStore } from "../../stores/connection";
 import { Button } from "../../components/ui/Button";
 import { SectionTitle, Toggle } from "./controls";
 import { desktop, type UpdateCheckResult } from "../../lib/desktop";
+import { t } from "../../lib/i18n";
 
 function ConnectionRow() {
   const status = useConnectionStore((s) => s.status);
@@ -20,12 +21,16 @@ function ConnectionRow() {
   const dot =
     status === "connected" ? "bg-success" : status === "connecting" ? "bg-warning" : "bg-danger";
   const label =
-    status === "connected" ? "Connected" : status === "connecting" ? "Connecting…" : "Disconnected";
+    status === "connected"
+      ? t("systemTab.connected")
+      : status === "connecting"
+        ? t("systemTab.connecting")
+        : t("systemTab.disconnected");
   return (
     <div className="flex items-center justify-between rounded-lg border border-border bg-surface-1 px-3 py-2.5 text-sm">
       <span className="flex items-center gap-2">
         <span className={`size-2.5 rounded-full ${dot}`} />
-        Realtime connection
+        {t("systemTab.realtimeConnection")}
       </span>
       <span className="text-ink-muted">
         {label}
@@ -47,19 +52,19 @@ function NotificationsRow() {
   };
 
   if (!supported) {
-    return <p className="text-sm text-ink-muted">This browser doesn't support notifications.</p>;
+    return <p className="text-sm text-ink-muted">{t("systemTab.thisBrowserDoesntSupportNotifications")}</p>;
   }
   if (perm === "denied") {
     return (
       <p className="text-sm text-ink-muted">
-        Notifications are blocked. Enable them for this site in your browser settings.
+        {t("systemTab.notificationsAreBlockedEnableThemFor")}
       </p>
     );
   }
   if (perm === "default") {
     return (
       <Button type="button" variant="secondary" size="sm" onClick={() => void enable()}>
-        Enable notifications
+        {t("systemTab.enableNotifications")}
       </Button>
     );
   }
@@ -73,8 +78,8 @@ function NotificationsRow() {
           else await disablePushNotifications();
         })().catch(() => setPref(false));
       }}
-      label="Desktop notifications"
-      hint="Push alerts for direct messages and @mentions, even when OrangChat is closed."
+      label={t("systemTab.desktopNotifications")}
+      hint={t("systemTab.pushAlertsForDirectMessagesAnd")}
     />
   );
 }
@@ -96,8 +101,8 @@ function MessagePreviewsRow() {
         setPreviews(next);
         void setMessagePreviews(next).catch(() => setPreviews(!next));
       }}
-      label="Show message text"
-      hint="Off, notifications show who wrote and nothing more. Encrypted messages are then never unlocked to make a notification at all. This browser only."
+      label={t("systemTab.showMessageText")}
+      hint={t("systemTab.offNotificationsShowWhoWroteAnd")}
     />
   );
 }
@@ -123,10 +128,12 @@ function StorageRow() {
   return (
     <div className="space-y-2">
       <p className="text-sm text-ink-secondary">
-        Cached data on this device{usage ? `: ~${usage}` : ""}.
+        {usage
+          ? t("systemTab.cachedDataOnThisDeviceUsage", { usage })
+          : t("systemTab.cachedDataOnThisDevice")}
       </p>
       <Button type="button" variant="secondary" size="sm" onClick={() => void clearCaches()}>
-        Clear cache & reload
+        {t("systemTab.clearCacheReload")}
       </Button>
     </div>
   );
@@ -151,20 +158,22 @@ function UpdatesRow() {
   };
 
   const message = (() => {
-    if (state === "checking") return "Checking for updates…";
+    if (state === "checking") return t("systemTab.checkingForUpdates");
     if (!state || typeof state === "string") return null;
     switch (state.status) {
       case "available":
       case "downloading":
-        return `Update ${state.version ?? ""} found - downloading. You'll be asked to restart.`;
+        return t("systemTab.updateFoundDownloading", { version: state.version ?? "" });
       case "current":
-        return `You're on the latest version${state.version ? ` (${state.version})` : ""}.`;
+        return state.version
+          ? t("systemTab.onLatestVersionNumbered", { version: state.version })
+          : t("systemTab.onLatestVersion");
       case "dev":
-        return state.message ?? "Update checks only run in the installed app.";
+        return state.message ?? t("systemTab.updateChecksOnlyRunInThe");
       case "error":
-        return `Couldn't check right now. Try again later.${
-          state.message ? ` (${state.message})` : ""
-        }`;
+        return state.message
+          ? t("systemTab.couldntCheckRightNowWithMessage", { message: state.message })
+          : t("systemTab.couldntCheckRightNow");
       default:
         return null;
     }
@@ -173,7 +182,12 @@ function UpdatesRow() {
   return (
     <div className="space-y-2">
       <p className="text-sm text-ink-secondary">
-        OrangChat {desktop?.version ? `${desktop.version} ` : ""}for {desktop?.platform}.
+        {desktop?.version
+          ? t("systemTab.orangchatVersionForPlatform", {
+              version: desktop.version,
+              platform: desktop?.platform ?? "",
+            })
+          : t("systemTab.orangchatForPlatform", { platform: desktop?.platform ?? "" })}
       </p>
       {supported ? (
         <>
@@ -184,14 +198,13 @@ function UpdatesRow() {
             loading={state === "checking"}
             onClick={() => void check()}
           >
-            Check for updates
+            {t("systemTab.checkForUpdates")}
           </Button>
           {message && <p className="text-sm text-ink-muted">{message}</p>}
         </>
       ) : (
         <p className="text-sm text-ink-muted">
-          This app build can't check from here - use Help → Check for Updates… in the window menu,
-          or the tray icon.
+          {t("systemTab.thisAppBuildCantCheckFrom")}
         </p>
       )}
     </div>
@@ -203,24 +216,24 @@ export function SystemTab() {
     <div className="space-y-6">
       {desktop && (
         <div>
-          <SectionTitle>App updates</SectionTitle>
+          <SectionTitle>{t("systemTab.appUpdates")}</SectionTitle>
           <UpdatesRow />
         </div>
       )}
 
       <div className={`space-y-3 ${desktop ? "border-t border-border pt-5" : ""}`}>
-        <SectionTitle>Notifications</SectionTitle>
+        <SectionTitle>{t("systemTab.notifications")}</SectionTitle>
         <NotificationsRow />
         <MessagePreviewsRow />
       </div>
 
       <div className="space-y-2 border-t border-border pt-5">
-        <SectionTitle>Status</SectionTitle>
+        <SectionTitle>{t("systemTab.status")}</SectionTitle>
         <ConnectionRow />
       </div>
 
       <div className="border-t border-border pt-5">
-        <SectionTitle>Storage</SectionTitle>
+        <SectionTitle>{t("systemTab.storage")}</SectionTitle>
         <StorageRow />
       </div>
     </div>

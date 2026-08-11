@@ -12,6 +12,7 @@ import { useAuthStore } from "../../stores/auth";
 import { useFriends } from "../friends/queries";
 import { addDmParticipants, createDm } from "./api";
 import { upsertConversation } from "./queries";
+import { t } from "../../lib/i18n";
 
 interface NewDmDialogProps {
   open: boolean;
@@ -89,10 +90,10 @@ export function NewDmDialog({ open, onOpenChange, addTo, groupMode = false }: Ne
       >
         <div className="space-y-3">
           <TextField
-            label="Find friends"
+            label={t("newDmDialog.findFriends")}
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="Search by name or username"
+            placeholder={t("newDmDialog.searchByNameOrUsername")}
             autoFocus
           />
 
@@ -103,7 +104,7 @@ export function NewDmDialog({ open, onOpenChange, addTo, groupMode = false }: Ne
                   key={user.id}
                   type="button"
                   onClick={() => toggle(user)}
-                  title="Remove"
+                  title={t("common.remove")}
                   className="flex items-center gap-1.5 rounded-md bg-primary-soft px-2.5 py-1 text-sm text-primary"
                 >
                   {user.displayName}

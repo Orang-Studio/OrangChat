@@ -5,6 +5,7 @@ import { Button } from "../../components/ui/Button";
 import { Dialog, DialogContent } from "../../components/ui/Dialog";
 import { createInvite } from "../servers/api";
 import { inviteUrl } from "../servers/invite-url";
+import { t } from "../../lib/i18n";
 
 interface InviteDialogProps {
   serverId: string;
@@ -44,8 +45,8 @@ export function InviteDialog({ serverId, open, onOpenChange }: InviteDialogProps
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        title="Invite people"
-        description="Share this link - it unfurls into a join card when posted in chat, and opens the app on phones that have it. Expires in 7 days."
+        title={t("inviteDialog.invitePeople")}
+        description={t("inviteDialog.shareThisLinkItUnfurlsInto")}
       >
         {mutation.isError ? (
           <p role="alert" className="rounded-lg bg-primary-soft px-3 py-2 text-sm text-danger">

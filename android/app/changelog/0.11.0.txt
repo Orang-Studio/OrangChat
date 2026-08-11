@@ -1,0 +1,17 @@
+Languages for everyone
+
+New
+- The web client now includes English, Lithuanian, Mandarin Chinese, Hindi,
+  Spanish, Modern Standard Arabic, French, Bengali, Portuguese, Russian and
+  Urdu catalogues.
+- The Android language selector now lists the same languages.
+
+Changed
+- Server GIF icons animate only for the selected server.
+- Presence badges are smaller, distinguish mobile users, and appear on profile
+  views and direct-message headers.
+- Full-screen media reactions stay current while the viewer is open.
+
+Fixed
+- Reply indicators sit above the message they describe.
+- Grouped-message spacing is consistent from the first message onward.

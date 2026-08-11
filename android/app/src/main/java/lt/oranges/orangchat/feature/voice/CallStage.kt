@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.voice
-
+import lt.oranges.orangchat.util.AppStrings
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -83,6 +85,7 @@ fun DmCallScreen(
     onSoundboard: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val roster = state.call
     val connected = roster?.participants.orEmpty().toSet()
@@ -109,7 +112,7 @@ fun DmCallScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (state.phase == CallPhase.OUTGOING) "CALLING" else "CALL CONNECTED",
+                    text = if (state.phase == CallPhase.OUTGOING) "CALLING" else AppStrings.get(context, R.string.catalog_call_connected_78e88c19),
                     color = if (state.phase == CallPhase.OUTGOING) c.warning else c.success,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -126,7 +129,7 @@ fun DmCallScreen(
             IconButton(onClick = onMinimize) {
                 Icon(
                     Icons.Default.KeyboardArrowDown,
-                    contentDescription = "Minimize call",
+                    contentDescription = AppStrings.get(context, R.string.catalog_minimize_call_6cb0f0f8),
                     tint = c.inkSecondary,
                 )
             }
@@ -214,13 +217,14 @@ private fun ParticipantTile(
     status: ParticipantStatus,
     onExpand: () -> Unit = {},
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val shape = RoundedCornerShape(OrangRadius.xl2)
     val statusText = when {
         speaking -> "Speaking"
-        status == ParticipantStatus.CONNECTED -> "In call"
-        status == ParticipantStatus.RINGING -> "Ringing…"
-        else -> "Not in call"
+        status == ParticipantStatus.CONNECTED -> AppStrings.get(context, R.string.catalog_in_call_07d16f43)
+        status == ParticipantStatus.RINGING -> AppStrings.get(context, R.string.catalog_ringing_417814b1)
+        else -> AppStrings.get(context, R.string.catalog_not_in_call_32010878)
     }
     val statusColor = when {
         speaking || status == ParticipantStatus.CONNECTED -> c.success

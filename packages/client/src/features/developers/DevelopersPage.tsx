@@ -18,6 +18,7 @@ import {
   type Bot,
   type MintedToken,
 } from "./api";
+import { t, tNodes } from "../../lib/i18n";
 
 const botKeys = {
   all: ["bots"] as const,
@@ -40,9 +41,9 @@ function TokenReveal({ token, onDone }: { token: MintedToken; onDone: () => void
 
   return (
     <div className="rounded-lg border border-primary/40 bg-primary/5 p-3">
-      <p className="text-sm font-medium">Copy this token now</p>
+      <p className="text-sm font-medium">{t("developersPage.copyThisTokenNow")}</p>
       <p className="mt-1 text-xs text-ink-secondary">
-        It is stored hashed and cannot be shown again. If you lose it, mint a new one.
+        {t("developersPage.itIsStoredHashedAndCannot")}
       </p>
       <div className="mt-2 flex items-center gap-2">
         <code className="min-w-0 flex-1 overflow-x-auto rounded bg-surface-1 px-2 py-1.5 font-mono text-xs">
@@ -54,7 +55,7 @@ function TokenReveal({ token, onDone }: { token: MintedToken; onDone: () => void
         </Button>
       </div>
       <Button size="sm" variant="ghost" className="mt-2" onClick={onDone}>
-        I've saved it
+        {t("developersPage.iveSavedIt")}
       </Button>
     </div>
   );
@@ -83,7 +84,7 @@ function InviteToServer({ bot }: { bot: Bot }) {
         onChange={(e) => setServerId(e.target.value)}
         className="h-8 rounded-lg border border-border-strong bg-surface-3 px-2 text-sm"
       >
-        <option value="">Add to server…</option>
+        <option value="">{t("developersPage.addToServer")}</option>
         {(servers ?? []).map((s) => (
           <option key={s.id} value={s.id}>
             {s.name}
@@ -130,10 +131,10 @@ function TokenList({ bot }: { bot: Bot }) {
   return (
     <div className="mt-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-ink-secondary">Tokens</p>
+        <p className="text-xs font-medium text-ink-secondary">{t("developersPage.tokens")}</p>
         <Button size="sm" variant="ghost" loading={mint.isPending} onClick={() => mint.mutate()}>
           <KeyRound className="size-4" />
-          New token
+          {t("developersPage.newToken")}
         </Button>
       </div>
 
@@ -144,22 +145,22 @@ function TokenList({ bot }: { bot: Bot }) {
       ) : null}
 
       <ul className="mt-2 space-y-1">
-        {(data?.tokens ?? []).map((t) => (
+        {(data?.tokens ?? []).map((token) => (
           <li
-            key={t.id}
+            key={token.id}
             className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5"
           >
-            <code className="font-mono text-xs text-ink-secondary">…{t.hint}</code>
+            <code className="font-mono text-xs text-ink-secondary">…{token.hint}</code>
             <span className="min-w-0 flex-1 truncate text-xs text-ink-secondary">
-              {t.lastUsedAt
-                ? `last used ${formatFullTime(t.lastUsedAt)}`
-                : `created ${formatFullTime(t.createdAt)}, never used`}
+              {token.lastUsedAt
+                ? `last used ${formatFullTime(token.lastUsedAt)}`
+                : `created ${formatFullTime(token.createdAt)}, never used`}
             </span>
             <Button
               size="sm"
               variant="ghost"
-              aria-label="Revoke token"
-              onClick={() => revoke.mutate(t.id)}
+              aria-label={t("developersPage.revokeToken")}
+              onClick={() => revoke.mutate(token.id)}
             >
               <Trash2 className="size-4" />
             </Button>
@@ -167,7 +168,7 @@ function TokenList({ bot }: { bot: Bot }) {
         ))}
         {data && data.tokens.length === 0 ? (
           <li className="px-2.5 py-1.5 text-xs text-ink-secondary">
-            No tokens. This bot cannot sign in until you mint one.
+            {t("developersPage.noTokensThisBotCannotSign")}
           </li>
         ) : null}
       </ul>
@@ -200,7 +201,7 @@ function BotCard({ bot }: { bot: Bot }) {
           <div className="flex items-center gap-2">
             <p className="truncate text-sm font-medium">{bot.displayName}</p>
             <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-              Bot
+              {t("developersPage.bot")}
             </span>
           </div>
           <p className="text-xs text-ink-secondary">@{bot.username}</p>
@@ -219,7 +220,7 @@ function BotCard({ bot }: { bot: Bot }) {
 
       <div className="mt-3 space-y-2">
         <label className="block text-xs font-medium text-ink-secondary">
-          Display name
+          {t("developersPage.displayName")}
           <input
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
@@ -228,7 +229,7 @@ function BotCard({ bot }: { bot: Bot }) {
           />
         </label>
         <ImageField
-          label="Avatar"
+          label={t("developersPage.avatar")}
           kind="avatar"
           value={avatar.url}
           preview={avatar.preview}
@@ -236,7 +237,7 @@ function BotCard({ bot }: { bot: Bot }) {
         />
         {dirty ? (
           <Button size="sm" loading={save.isPending} onClick={() => save.mutate()}>
-            Save changes
+            {t("developersPage.saveChanges")}
           </Button>
         ) : null}
       </div>
@@ -277,7 +278,7 @@ function CreateBot() {
     return (
       <Button size="sm" variant="secondary" className="mb-3" onClick={() => setOpen(true)}>
         <Plus className="size-4" />
-        New bot
+        {t("developersPage.newBot")}
       </Button>
     );
   }
@@ -286,7 +287,7 @@ function CreateBot() {
     <div className="mb-3 rounded-lg border border-border p-3">
       <div className="space-y-2">
         <label className="block text-xs font-medium text-ink-secondary">
-          Username
+          {t("developersPage.username")}
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -296,11 +297,11 @@ function CreateBot() {
           />
         </label>
         <label className="block text-xs font-medium text-ink-secondary">
-          Display name
+          {t("developersPage.displayName")}
           <input
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="Helper"
+            placeholder={t("developersPage.helper")}
             maxLength={32}
             className="mt-1 h-9 w-full rounded-lg border border-border-strong bg-surface-1 px-2.5 text-sm text-ink"
           />
@@ -316,10 +317,10 @@ function CreateBot() {
           loading={create.isPending}
           onClick={() => create.mutate()}
         >
-          Create
+          {t("common.create")}
         </Button>
         <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
-          Cancel
+          {t("common.cancel")}
         </Button>
       </div>
     </div>
@@ -335,29 +336,33 @@ export function DevelopersPage() {
         <button
           type="button"
           onClick={panelActions.openLeft}
-          aria-label="Open navigation"
+          aria-label={t("developersPage.openNavigation")}
           className="rounded-lg p-1.5 text-ink-secondary transition-colors hover:bg-surface-3 hover:text-ink md:hidden"
         >
           <Menu aria-hidden className="size-5" />
         </button>
-        <span className="font-semibold">Developers</span>
+        <span className="font-semibold">{t("developersPage.developers")}</span>
       </header>
 
       <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto p-4">
-      <h2 className="mb-1 text-base font-semibold">Bots</h2>
+      <h2 className="mb-1 text-base font-semibold">{t("developersPage.bots")}</h2>
       <p className="mb-3 text-sm text-ink-secondary">
-        Build on OrangChat with the{" "}
-        <code className="rounded bg-surface-3 px-1 py-0.5 font-mono text-xs">@orangchat/bot</code>{" "}
-        package for JavaScript or{" "}
-        <code className="rounded bg-surface-3 px-1 py-0.5 font-mono text-xs">orangchat</code> for
-        Python. A bot is a real account: invite it to a server and give it roles like anyone else.
-        Bots cannot read DMs — those are end-to-end encrypted.
+        {tNodes("developersPage.botsIntro", {
+          js: (
+            <code className="rounded bg-surface-3 px-1 py-0.5 font-mono text-xs">
+              @orangchat/bot
+            </code>
+          ),
+          py: (
+            <code className="rounded bg-surface-3 px-1 py-0.5 font-mono text-xs">orangchat</code>
+          ),
+        })}
       </p>
 
       <CreateBot />
 
       {isLoading ? (
-        <p className="text-sm text-ink-secondary">Loading…</p>
+        <p className="text-sm text-ink-secondary">{t("common.loading")}</p>
       ) : data && data.bots.length > 0 ? (
         <ul className="space-y-3">
           {data.bots.map((bot) => (
@@ -367,7 +372,7 @@ export function DevelopersPage() {
       ) : (
         <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center">
           <BotIcon aria-hidden className="mx-auto size-6 text-ink-secondary" />
-          <p className="mt-2 text-sm text-ink-secondary">You haven't made any bots yet.</p>
+          <p className="mt-2 text-sm text-ink-secondary">{t("developersPage.youHaventMadeAnyBotsYet")}</p>
         </div>
       )}
       </div>

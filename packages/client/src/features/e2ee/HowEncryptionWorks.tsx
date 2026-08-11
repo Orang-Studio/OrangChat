@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Dialog, DialogContent } from '../../components/ui/Dialog';
 import { cn } from '../../lib/cn';
+import { t } from "../../lib/i18n";
 
 /**
  * The plain-language explanation of end-to-end encryption, written for somebody
@@ -56,124 +57,87 @@ export function HowEncryptionWorks() {
       <div className="rounded-xl border border-border bg-surface-1 p-4">
         <p className="flex items-center gap-2 text-sm font-semibold">
           <Lock aria-hidden className="size-4 text-primary" />
-          Your direct messages are locked before they leave your device
+          {t("howEncryptionWorks.yourDirectMessagesAreLockedBefore")}
         </p>
         <p className="mt-2 text-sm leading-relaxed text-ink-secondary">
-          Only the people in the conversation can open them. Not OrangChat, not somebody who steals
-          our database, not somebody who turns up with a court order - we do not hold a key we could
-          hand over. This is on for every direct message and there is no way to switch it off.
+          {t("howEncryptionWorks.onlyThePeopleInTheConversation")}
         </p>
       </div>
 
-      <Section icon={KeyRound} title="Every device cuts its own key">
+      <Section icon={KeyRound} title={t("howEncryptionWorks.everyDeviceCutsItsOwnKey")}>
         <p>
-          Your phone and your computer each make their own key, on the device itself, the first time
-          you use encryption there. It goes into the part of the device built to guard keys, and it
-          is made so that it cannot be read back out - not by OrangChat, not by another app, not by
-          you. There is nothing to leak and nothing to hand over.
+          {t("howEncryptionWorks.yourPhoneAndYourComputerEach")}
         </p>
         <p>
-          That is also why adding a second device is a small ceremony instead of a copy and paste.
-          Your old device has to see the new one - a code on the screen, a camera pointed at it -
-          before anything moves.
+          {t("howEncryptionWorks.thatIsAlsoWhyAddingA")}
         </p>
       </Section>
 
-      <Section icon={Lock} title="What happens when you press send">
+      <Section icon={Lock} title={t("howEncryptionWorks.whatHappensWhenYouPressSend")}>
         <p>
-          Your device puts the message in a box and locks it. Every device in the conversation, and
-          only those, holds a key to that box. Our servers store and pass along the locked box.
+          {t("howEncryptionWorks.yourDevicePutsTheMessageIn")}
         </p>
         <p>
-          We can still see the outside of it: who sent it, who it went to, how big it was and when.
-          We cannot see what is inside.
+          {t("howEncryptionWorks.weCanStillSeeTheOutside")}
         </p>
       </Section>
 
-      <Section icon={BookOpen} title="The hard part: is it really their lock?">
+      <Section icon={BookOpen} title={t("howEncryptionWorks.theHardPartIsItReally")}>
         <p>
-          To lock a box for someone, your device needs their lock, and it asks our servers for it.
-          So the fair question is: what if we handed you a lock we had made ourselves, kept the key,
-          and passed your messages along afterwards?
+          {t("howEncryptionWorks.toLockABoxForSomeone")}
         </p>
-        <p>Two answers, and you pick how much you want.</p>
+        <p>{t("howEncryptionWorks.twoAnswersAndYouPickHow")}</p>
         <p>
-          <span className="font-medium text-ink">Standard - a swap gets caught.</span> Every lock
-          anyone publishes is written into a logbook that can only be added to, never edited or
-          erased. Your own devices read the page about your account every time they start. If a lock
-          is ever published in your name that your devices did not make, they tell you, and the
-          entry stays in the book where anyone can point at it. A swap can be attempted; it cannot
-          be attempted quietly.
+          <span className="font-medium text-ink">{t("howEncryptionWorks.standardASwapGetsCaught")}</span> {t("howEncryptionWorks.everyLockAnyonePublishesIsWritten")}
         </p>
         <p>
-          <span className="font-medium text-ink">Verify first - a swap cannot happen.</span> You
-          check the other person's lock yourself, in person or on a call, before anything is sent to
-          them. Until you have, messages you type stay on your device, still locked, and go nowhere.
-          There is nothing for a swapped lock to open.
+          <span className="font-medium text-ink">{t("howEncryptionWorks.verifyFirstASwapCannotHappen")}</span> {t("howEncryptionWorks.youCheckTheOtherPersonsLock")}
         </p>
         <p>
-          Standard is what every conversation gets. Verify first is the extra step, and it is only
-          worth turning on for people you can realistically meet or ring.
+          {t("howEncryptionWorks.standardIsWhatEveryConversationGets")}
         </p>
       </Section>
 
-      <Section icon={ScanLine} title="How you verify someone">
+      <Section icon={ScanLine} title={t("howEncryptionWorks.howYouVerifySomeone")}>
         <p>
-          Both of you open the conversation, tap the lock at the top, and one of you scans the
-          other's code. Then swap and do it the other way round - one scan only proves one
-          direction. It takes about ten seconds while you are stood together.
+          {t("howEncryptionWorks.bothOfYouOpenTheConversation")}
         </p>
         <p>
-          Not in the same room? You will each see the same short row of numbers, called a safety
-          code. Have them read it out on a phone call, or send it over another app you already
-          trust, and type it into the box under the code - the app compares all sixty digits, which
-          is more than anyone manages by eye. If it matches, nobody is in the middle. The one thing
-          that does not count is an OrangChat voice call - that audio goes through the same servers
-          this check exists to test.
+          {t("howEncryptionWorks.notInTheSameRoomYou")}
         </p>
       </Section>
 
-      <Section icon={TriangleAlert} title="If something ever looks wrong">
+      <Section icon={TriangleAlert} title={t("howEncryptionWorks.ifSomethingEverLooksWrong")}>
         <p>
-          If a safety code changes, or a device you did not add appears on your account, OrangChat
-          stops and takes over the screen instead of showing a notification you might swipe away.
+          {t("howEncryptionWorks.ifASafetyCodeChangesOr")}
         </p>
         <p>
-          It is not always an attack - it is also what happens when somebody loses every device and
-          has to start over. There is no way to tell those apart from inside the app, which is why
-          it asks you to check with the person directly before you send anything else.
+          {t("howEncryptionWorks.itIsNotAlwaysAnAttack")}
         </p>
       </Section>
 
-      <Section icon={Smartphone} title="If you lose your only device">
+      <Section icon={Smartphone} title={t("howEncryptionWorks.ifYouLoseYourOnlyDevice")}>
         <p>
-          The messages only that device could open stay locked, permanently. We cannot recover them
-          for you - if we could, none of the above would be true.
+          {t("howEncryptionWorks.theMessagesOnlyThatDeviceCould")}
         </p>
         <p>
-          Adding a second device before you need one is the whole answer. That is also why
-          two-factor authentication has to be on first: a spare device is a spare set of keys, and
-          it should take more than a password to make one.
+          {t("howEncryptionWorks.addingASecondDeviceBeforeYou")}
         </p>
       </Section>
 
-      <Section icon={EyeOff} title="What this does not hide">
+      <Section icon={EyeOff} title={t("howEncryptionWorks.whatThisDoesNotHide")}>
         <ul className="list-disc space-y-1.5 pl-5">
           <li>
-            Who you talk to, when, and how often. Locked boxes still have to be addressed to
-            somebody.
+            {t("howEncryptionWorks.whoYouTalkToWhenAnd")}
           </li>
           <li>
-            Whatever the other person does with the message. They can screenshot it, save it, or
-            show someone. Encryption stops strangers, not recipients.
+            {t("howEncryptionWorks.whateverTheOtherPersonDoesWith")}
           </li>
           <li>
-            Anything on a device that is already unlocked and in someone else's hands. At that point
-            they are reading it the same way you do.
+            {t("howEncryptionWorks.anythingOnADeviceThatIs")}
           </li>
           <li>
-            Server channels. Those have shared history, moderation and search, all of which need the
-            server to read them. Only direct messages and group DMs are encrypted this way.
+            {t("howEncryptionWorks.serverChannelsThoseHaveSharedHistory")}
           </li>
         </ul>
       </Section>
@@ -191,8 +155,8 @@ export function HowEncryptionWorksDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        title="How your messages are protected"
-        description="In plain language, with no jargon to get past first."
+        title={t("howEncryptionWorks.howYourMessagesAreProtected")}
+        description={t("howEncryptionWorks.inPlainLanguageWithNoJargon")}
         className="max-w-lg"
       >
         <div className="mt-4">
@@ -217,7 +181,7 @@ export function HowEncryptionWorksLink({ className }: { className?: string }) {
         )}
       >
         <CircleHelp aria-hidden className="size-3.5" />
-        How does this work?
+        {t("howEncryptionWorks.howDoesThisWork")}
       </button>
       <HowEncryptionWorksDialog open={open} onOpenChange={setOpen} />
     </>

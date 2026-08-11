@@ -46,6 +46,7 @@ import { GroupIcon } from './GroupIcon';
 import { NewDmDialog } from './NewDmDialog';
 import { leaveDm } from './api';
 import { ActivityStatus } from '../../components/ActivityStatus';
+import { t } from "../../lib/i18n";
 
 const copyText = (text: string) => void navigator.clipboard?.writeText(text);
 
@@ -196,7 +197,7 @@ function ConversationRow({
             </span>
             <UnreadBadge
               count={active ? 0 : unreadCount}
-              label="unread messages"
+              label={t("dmSidebar.unreadMessages")}
               className="mt-0.5"
             />
           </Link>
@@ -205,13 +206,13 @@ function ConversationRow({
         <ContextMenuContent>
           <ContextMenuItem disabled={!unread} onSelect={() => markRead.mutate()}>
             <Check aria-hidden className="size-4" />
-            Mark As Read
+            {t("dmSidebar.markAsRead")}
           </ContextMenuItem>
 
           {other && (
             <ContextMenuItem onSelect={() => setProfileOpen(true)}>
               <UserIcon aria-hidden className="size-4" />
-              Profile
+              {t("dmSidebar.profile")}
             </ContextMenuItem>
           )}
 
@@ -219,7 +220,7 @@ function ConversationRow({
             onSelect={() => void callActions.start(conversationToChannel(conversation, selfId))}
           >
             <Phone aria-hidden className="size-4" />
-            Start a Call
+            {t("dmSidebar.startACall")}
           </ContextMenuItem>
 
           {other && isFriend && (
@@ -227,7 +228,7 @@ function ConversationRow({
               <ContextMenuSeparator />
               <ContextMenuItem danger onSelect={() => setConfirmRemove(true)}>
                 <UserX aria-hidden className="size-4" />
-                Remove Friend
+                {t("dmSidebar.removeFriend")}
               </ContextMenuItem>
             </>
           )}
@@ -246,12 +247,12 @@ function ConversationRow({
           {other && (
             <ContextMenuItem onSelect={() => copyText(other.id)}>
               <Copy aria-hidden className="size-4" />
-              Copy User ID
+              {t("dmSidebar.copyUserId")}
             </ContextMenuItem>
           )}
           <ContextMenuItem onSelect={() => copyText(conversation.id)}>
             <Copy aria-hidden className="size-4" />
-            Copy Channel ID
+            {t("dmSidebar.copyChannelId")}
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
@@ -268,8 +269,8 @@ function ConversationRow({
           if (!next) remove.reset();
         }}
         title={`Remove ${other?.displayName ?? "this user"}?`}
-        description="They'll be removed from your friends, and you'll need a new request to reconnect. Your message history stays."
-        confirmLabel="Remove Friend"
+        description={t("dmSidebar.theyllBeRemovedFromYourFriends")}
+        confirmLabel={t("dmSidebar.removeFriend")}
         danger
         loading={remove.isPending}
         error={remove.isError ? remove.error.message : undefined}
@@ -313,10 +314,10 @@ export function DmSidebar() {
   return (
     <div className="flex w-60 shrink-0 flex-col bg-surface-1">
       <header className="flex h-12 items-center border-b border-border px-4 font-semibold">
-        Direct Messages
+        {t("dmSidebar.directMessages")}
       </header>
 
-      <nav aria-label="Conversations" className="flex-1 space-y-0.5 overflow-y-auto p-2">
+      <nav aria-label={t("dmSidebar.conversations")} className="flex-1 space-y-0.5 overflow-y-auto p-2">
         <Link
           to="/friends"
           aria-current={onFriends ? 'page' : undefined}
@@ -330,7 +331,7 @@ export function DmSidebar() {
           <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-3 text-ink-secondary">
             <Users aria-hidden className="size-4" />
           </span>
-          <span className="flex-1 text-sm font-medium">Friends</span>
+          <span className="flex-1 text-sm font-medium">{t("dmSidebar.friends")}</span>
           {incomingCount > 0 && (
             <span className="min-w-5 rounded-md bg-danger px-1.5 text-center text-xs font-semibold text-white">
               {incomingCount}
@@ -351,19 +352,19 @@ export function DmSidebar() {
           <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-3 text-ink-secondary">
             <Bot aria-hidden className="size-4" />
           </span>
-          <span className="flex-1 text-sm font-medium">Developers</span>
+          <span className="flex-1 text-sm font-medium">{t("dmSidebar.developers")}</span>
         </Link>
 
         <div className="flex items-center justify-between px-2 pb-1 pt-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Conversations
+            {t("dmSidebar.conversations")}
           </span>
           <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={() => setNewGroupOpen(true)}
-              aria-label="New group"
-              title="New group"
+              aria-label={t("dmSidebar.newGroup")}
+              title={t("dmSidebar.newGroup")}
               className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
             >
               <Users aria-hidden className="size-5" />
@@ -371,8 +372,8 @@ export function DmSidebar() {
             <button
               type="button"
               onClick={() => setNewDmOpen(true)}
-              aria-label="New direct message"
-              title="New direct message"
+              aria-label={t("dmSidebar.newDirectMessage")}
+              title={t("dmSidebar.newDirectMessage")}
               className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
             >
               <Plus aria-hidden className="size-5" />
@@ -385,7 +386,7 @@ export function DmSidebar() {
         ))}
         {conversations?.length === 0 && (
           <p className="px-2 py-4 text-sm text-ink-muted">
-            No conversations yet - hit + to message someone.
+            {t("dmSidebar.noConversationsYetHitToMessage")}
           </p>
         )}
       </nav>

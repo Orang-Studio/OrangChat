@@ -1,0 +1,684 @@
+<resources>
+    <string name="app_name">OrangChat</string>
+    <string name="language_arabic">العربية</string>
+    <string name="language_bengali">বাংলা</string>
+    <string name="language_chinese">中文</string>
+    <string name="language_english">Pirate English</string>
+    <string name="language_french">Français</string>
+    <string name="language_hindi">हिन्दी</string>
+    <string name="language_hint">Restart th’ app t’ use th’ tongue everywhere.</string>
+    <string name="language_lithuanian">Lietuvių</string>
+    <string name="language_portuguese">Português</string>
+    <string name="language_russian">Русский</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_subtitle">Choose th’ app\'s tongue</string>
+    <string name="language_system">Match th’ system</string>
+    <string name="language_title">Tongue</string>
+    <string name="language_urdu">اردو</string>
+    <string name="catalog_1_add_this_key_to_your_app_c5c6bb28" formatted="false">1. Add this key t’ yer app</string>
+    <string name="catalog_1_attachment_82c9f82a" formatted="false">1 attachment, arrr</string>
+    <string name="catalog_1_s_2_s_78c505fe" formatted="true">%1$s %2$s</string>
+    <string name="catalog_1_s_entries_head_2_s_f1d9bc39" formatted="true">%1$s entries · head %2$s…</string>
+    <string name="catalog_1_s_entry_head_2_s_8bef329a" formatted="true">%1$s entry · head %2$s…</string>
+    <string name="catalog_1_s_may_not_survive_a_restart_c2a049ce" formatted="true">%1$s (may not survive a restart)</string>
+    <string name="catalog_1_s_on_2_s_105d6e4b" formatted="true">%1$s on %2$s</string>
+    <string name="catalog_1_s_recovery_code_left_fb553535" formatted="true">%1$s recovery code left.</string>
+    <string name="catalog_1_s_recovery_codes_left_da20cfb2" formatted="true">%1$s recovery codes left.</string>
+    <string name="catalog_2026_oranges_lt_made_with_c3b7fea5" formatted="false">© 2026 Oranges.LT · Made wit’ 🍊</string>
+    <string name="catalog_2_enter_the_6_digit_code_183ee7cb" formatted="false">2. Enter th’ 6-digit code</string>
+    <string name="catalog_2fa_e8442a3a" formatted="false">2FA</string>
+    <string name="catalog_a_dark_card_with_a_glowing_purple_1407c4d4" formatted="false">A dark card with a glowing purple name and a striped banner.</string>
+    <string name="catalog_a_deleted_account_b1c40a9e" formatted="false">A scuttled account</string>
+    <string name="catalog_a_fast_self_hosted_chat_for_servers_fa05634c" formatted="false">A fast, self-hosted chat fer servers, DMs, an’ voice - part o’ th’ Oranges.LT family. Arrr.</string>
+    <string name="catalog_a_green_on_black_monospace_card_for_9a798bea" formatted="false">A green-on-black monospace card for the command-line at heart.</string>
+    <string name="catalog_a_one_time_code_is_on_its_395743b6" formatted="false">A one-time code be on its way t’ yer email - it expires in 10 minutes. Arrr.</string>
+    <string name="catalog_a_passkey_only_works_on_the_site_ca725d27" formatted="false">A passkey only works on the site that created it, so it can\'t be phished - which is why we ask for one instead of an emailed code when your account has one.</string>
+    <string name="catalog_a_warm_paper_toned_card_with_a_3ae147be" formatted="false">A warm, paper-toned card with a serif name.</string>
+    <string name="catalog_about_6b21fb79" formatted="false">About</string>
+    <string name="catalog_about_me_e3ba4ef3" formatted="false">About me, matey</string>
+    <string name="catalog_accent_color_e49578ed" formatted="false">Accent colour</string>
+    <string name="catalog_accessibility_d660049b" formatted="false">Accessibility</string>
+    <string name="catalog_account_85dfa32c" formatted="false">Account</string>
+    <string name="catalog_account_created_check_your_email_for_a_7d4a9ecd" formatted="false">Account created. Check yer email fer a verification link - </string>
+    <string name="catalog_account_standing_2b18a30b" formatted="false">Account status</string>
+    <string name="catalog_add_a_friend_by_their_username_c1584607" formatted="false">Add a matey by their username.</string>
+    <string name="catalog_add_a_passkey_0daca495" formatted="false">Add a passkey, matey</string>
+    <string name="catalog_add_a_server_5ee1e413" formatted="false">Add a server, matey</string>
+    <string name="catalog_add_another_device_67696610" formatted="false">Add another device, matey</string>
+    <string name="catalog_add_channel_901e4868" formatted="false">Add a channel</string>
+    <string name="catalog_add_context_for_the_reviewer_e44f9147" formatted="false">Add context fer th’ reviewer</string>
+    <string name="catalog_add_device_2d2367c4" formatted="false">Add a device</string>
+    <string name="catalog_add_emoji_or_gif_1d91d61d" formatted="false">Add emoji or GIF, arrr</string>
+    <string name="catalog_add_friend_e0a731d8" formatted="false">Add a matey</string>
+    <string name="catalog_add_friends_2dcf4e38" formatted="false">Add mateys</string>
+    <string name="catalog_add_people_b9c735ea" formatted="false">Add folk</string>
+    <string name="catalog_add_reaction_cf05eca8" formatted="false">Add a reaction, arrr</string>
+    <string name="catalog_add_this_phone_94a65dcf" formatted="false">Add this phone, matey</string>
+    <string name="catalog_added_1_s_76044af1" formatted="true">Added %1$s</string>
+    <string name="catalog_added_by_another_authorized_device_bab74dd1" formatted="false">Added by another authorized device</string>
+    <string name="catalog_adding_a_second_device_before_you_need_1f6a418c" formatted="false">Adding a second device before ye need one be th’ whole answer. That be also why two-factor authentication has t’ be on first: a spare device be a spare set o’ keys, an’ it should take more than a password t’ make one. Arrr.</string>
+    <string name="catalog_all_your_friends_are_already_here_45cf3604" formatted="false">All yer mateys be already here.</string>
+    <string name="catalog_allow_anyone_to_mention_c6fe8761" formatted="false">Allow anyone t’ @mention</string>
+    <string name="catalog_allow_camera_1dfb1b87" formatted="false">Permit th’ camera</string>
+    <string name="catalog_allow_camera_access_to_scan_without_leaving_ca7cd21f" formatted="false">Allow camera access t’ scan without leaving OrangChat.</string>
+    <string name="catalog_allow_installs_first_a339d45d" formatted="false">Permit installs first</string>
+    <string name="catalog_already_have_an_account_log_in_b3a34236" formatted="false">Got an account already? Sign aboard</string>
+    <string name="catalog_already_on_this_call_abb9cae6" formatted="false">Already aboard this call</string>
+    <string name="catalog_android_browser_05f5cb3d" formatted="false">Android browser</string>
+    <string name="catalog_android_cannot_repoint_its_own_launcher_icon_cdbe2f10" formatted="false">Android cannot repoint its own launcher icon, so on this device the change shows up in the web app and the desktop app.</string>
+    <string name="catalog_android_is_not_letting_orangchat_notify_you_eb9878eb" formatted="false">Android be not letting OrangChat notify ye about messages or calls. Turn ’em on in system settings.</string>
+    <string name="catalog_android_native_a2dee752" formatted="false">Android (native)</string>
+    <string name="catalog_answer_without_camera_979e59f8" formatted="false">Answer sans camera</string>
+    <string name="catalog_anyone_can_start_a_conversation_fa59af86" formatted="false">Anyone can start a conversation.</string>
+    <string name="catalog_anyone_who_knows_your_username_b7505a81" formatted="false">Anyone who knows your username.</string>
+    <string name="catalog_anything_on_a_phone_that_is_already_7e329eae" formatted="false">• Anything on a phone that be already unlocked an’ in some soul else\'s hands. At that point they be reading it th’ same way ye do. Arrr.</string>
+    <string name="catalog_api_d93d10ff" formatted="false">API</string>
+    <string name="catalog_app_icon_abde7a74" formatted="false">App badge</string>
+    <string name="catalog_appearance_41def7a0" formatted="false">Appearance</string>
+    <string name="catalog_as_the_owner_you_cannot_leave_delete_030b7d7e" formatted="false">As th’ owner ye can’t leave - delete th’ server instead.</string>
+    <string name="catalog_ask_for_a_code_from_your_phone_b6d62586" formatted="false">Ask fer a code from yer phone in addition t’ yer password when ye sign in. Arrr.</string>
+    <string name="catalog_ask_them_to_show_their_verification_qr_630e919c" formatted="false">Ask ’em t’ show their verification QR, then fit it inside th’ frame.</string>
+    <string name="catalog_at_least_8_characters_1fe494b2" formatted="false">No fewer than 8 characters</string>
+    <string name="catalog_at_least_8_characters_6089e5f3" formatted="false">No fewer than 8 characters.</string>
+    <string name="catalog_attach_files_137135db" formatted="false">Lash on files</string>
+    <string name="catalog_audio_call_fb04a1a1" formatted="false">Voice call</string>
+    <string name="catalog_audit_log_3cfc5f1c" formatted="false">Ship’s log</string>
+    <string name="catalog_authentication_code_b4f3ff1d" formatted="false">Proof code</string>
+    <string name="catalog_authenticator_code_2908b4e9" formatted="false">Authenticator’s code</string>
+    <string name="catalog_authorized_encryption_devices_1f60a639" formatted="false">Cleared encryption devices</string>
+    <string name="catalog_authorizing_the_new_device_7d6e30db" formatted="false">Authorizing th’ new device</string>
+    <string name="catalog_back_b52b36b7" formatted="false">Back</string>
+    <string name="catalog_backend_e758ca64" formatted="false">Backend</string>
+    <string name="catalog_banned_from_b1b7bda2" formatted="false">Banished from</string>
+    <string name="catalog_before_a_message_leaves_this_phone_74f6bb9b" formatted="false">Afore a message leaves this phone</string>
+    <string name="catalog_bot_account_a78d875e" formatted="false">Bot’s account</string>
+    <string name="catalog_both_devices_show_six_digits_compare_them_4427b9f0" formatted="false">Both devices show six digits. Compare them and cancel if they differ.</string>
+    <string name="catalog_both_of_you_open_the_conversation_tap_bbf94671" formatted="false">Both o’ ye open th’ conversation, tap th’ lock at th’ top, an’ one o’ ye scans th’ other\'s code. Then swap an’ do it th’ other way round - one scan only proves one direction. It takes about ten seconds while ye be stood together. Arrr.</string>
+    <string name="catalog_both_options_encrypt_everything_the_difference_is_098d8758" formatted="false">Both options encrypt everything. Th’ difference be whether a swapped lock be stopped before it can be used, or caught afterwards. Arrr.</string>
+    <string name="catalog_both_screens_must_show_the_same_six_a112273d" formatted="false">Both screens must show th’ same six digits. If they differ, cancel.</string>
+    <string name="catalog_browser_54a2cf5e" formatted="false">Browser</string>
+    <string name="catalog_build_bbd80cf7" formatted="false">Build</string>
+    <string name="catalog_by_1_s_7930f2dd" formatted="true">by %1$s</string>
+    <string name="catalog_call_connected_78e88c19" formatted="false">CALL AHOY</string>
+    <string name="catalog_call_connected_dce17207" formatted="false">Call be connected</string>
+    <string name="catalog_call_ringtone_0618e939" formatted="false">Call bell</string>
+    <string name="catalog_call_sharing_defaults_c39b7d94" formatted="false">Call-sharing defaults</string>
+    <string name="catalog_calling_acd4a67d" formatted="false">Hailing…</string>
+    <string name="catalog_camera_access_is_needed_to_scan_the_dcfe064f" formatted="false">Camera access be needed t’ scan th’ code on yer PC.</string>
+    <string name="catalog_camera_microphone_abf47618" formatted="false">Camera &amp; speaking horn</string>
+    <string name="catalog_cancel_77dfd213" formatted="false">Cancel</string>
+    <string name="catalog_cancel_reply_bd62d2dd" formatted="false">Belay reply</string>
+    <string name="catalog_cancel_scanning_f1f3d169" formatted="false">Belay scanning</string>
+    <string name="catalog_change_audio_output_ccb8eada" formatted="false">Shift sound output</string>
+    <string name="catalog_change_background_0c868243" formatted="false">Shift backdrop</string>
+    <string name="catalog_change_email_8f1514b5" formatted="false">Shift email</string>
+    <string name="catalog_change_group_icon_715ac3cf" formatted="false">Shift group badge</string>
+    <string name="catalog_change_password_8c684290" formatted="false">Shift password</string>
+    <string name="catalog_changing_your_password_signs_out_every_other_062a10ab" formatted="false">Changing yer password signs out every other session.</string>
+    <string name="catalog_channel_name_3be87bdd" formatted="false">Channel’s name</string>
+    <string name="catalog_check_for_updates_736b9062" formatted="false">Check fer updates</string>
+    <string name="catalog_check_people_before_messaging_them_986118e4" formatted="false">Check folk afore messaging ’em</string>
+    <string name="catalog_check_them_again_feb54286" formatted="false">Check ’em again</string>
+    <string name="catalog_check_them_first_27eeb4a8" formatted="false">Check ’em first</string>
+    <string name="catalog_check_them_first_a_swap_cannot_happen_82229615" formatted="false">Check ’em first - a swap can’t happen. Ye check th’ other person\'s lock yourself, in person or on a call, before anything be sent t’ ’em. Until ye have, messages ye type stay on this phone, still locked, an’ go nowhere. There be nothing fer a swapped lock t’ open. Arrr.</string>
+    <string name="catalog_checking_820d6004" formatted="false">Taking soundings…</string>
+    <string name="catalog_checking_someone_in_person_437f86fe" formatted="false">Checking some soul in person</string>
+    <string name="catalog_checking_someone_s_code_is_a_one_b6951560" formatted="false">Checking some soul\'s code be a one-t’-one thing, so it happens in yer direct message wit’ ’em - an’ anyone ye have checked there shows as checked here too. Waiting on all hands in a group t’ be checked would hold up folk who never asked fer it. Arrr.</string>
+    <string name="catalog_checking_them_here_is_safer_than_reading_faa9c2e1" formatted="false">Checking ’em here be safer than reading along - sixty digits be more than anyone actually compares by eye. Arrr.</string>
+    <string name="catalog_choose_78b7c9f6" formatted="false">Choose</string>
+    <string name="catalog_choose_files_5910acf0" formatted="false">Pick files</string>
+    <string name="catalog_clear_css_6a933bda" formatted="false">Wipe CSS clean</string>
+    <string name="catalog_client_1bdd79b1" formatted="false">Client</string>
+    <string name="catalog_close_dm_43823b56" formatted="false">Shut DM</string>
+    <string name="catalog_code_from_your_app_2e089607" formatted="false">Code from yer app</string>
+    <string name="catalog_code_from_your_app_or_a_recovery_c6308bc3" formatted="false">Code from yer app (or a recovery code)</string>
+    <string name="catalog_communication_ade0d50c" formatted="false">Communication</string>
+    <string name="catalog_compact_messages_8efe5e6b" formatted="false">Tight messages</string>
+    <string name="catalog_compare_8d105cf4" formatted="false">Compare</string>
+    <string name="catalog_comparing_ad916050" formatted="false">Sizing up…</string>
+    <string name="catalog_confirm_2fa_on_the_authorized_pc_7bc4ca9d" formatted="false">Confirm 2FA on the authorized PC.</string>
+    <string name="catalog_confirm_new_password_f85039fd" formatted="false">Confirm yer new password</string>
+    <string name="catalog_confirm_the_digits_and_enter_the_security_cd1b28db" formatted="false">Confirm the digits and enter the security code on the authorized device. This phone is waiting for the encrypted history and its signed authorization…</string>
+    <string name="catalog_confirm_with_your_passkey_to_finish_signing_a7480f38" formatted="false">Confirm wit’ yer passkey t’ finish signing in.</string>
+    <string name="catalog_confirm_your_password_198b73ff" formatted="false">Confirm yer password</string>
+    <string name="catalog_connect_b65463cb" formatted="false">Connect</string>
+    <string name="catalog_connected_c2f9b7b4" formatted="false">Connected</string>
+    <string name="catalog_connecting_fd3e7969" formatted="false">Making fast…</string>
+    <string name="catalog_connection_6512ee15" formatted="false">Connection</string>
+    <string name="catalog_connection_and_server_info_b1f3ef22" formatted="false">Connection an’ server info</string>
+    <string name="catalog_continue_transfer_8ea86ccd" formatted="false">Carry on transfer</string>
+    <string name="catalog_copy_af74f7c5" formatted="false">Copy</string>
+    <string name="catalog_copy_channel_id_c32cdc5d" formatted="false">Copy channel ID, matey</string>
+    <string name="catalog_copy_message_26902efd" formatted="false">Copy this message</string>
+    <string name="catalog_copy_user_id_6fff306b" formatted="false">Copy user ID, matey</string>
+    <string name="catalog_could_not_change_email_0f20cf3a" formatted="false">Could not change email</string>
+    <string name="catalog_could_not_change_lockdown_fec83d39" formatted="false">Could not change lockdown</string>
+    <string name="catalog_could_not_change_password_ccfd53b0" formatted="false">Could not change password</string>
+    <string name="catalog_could_not_connect_to_the_call_a713db79" formatted="false">Could not connect t’ th’ call</string>
+    <string name="catalog_could_not_delete_account_b721f0dc" formatted="false">Could not delete account</string>
+    <string name="catalog_could_not_delete_messages_6af8eeaf" formatted="false">Could not delete messages</string>
+    <string name="catalog_could_not_join_the_call_a95443d4" formatted="false">Could not join th’ call</string>
+    <string name="catalog_could_not_leave_servers_eb0a0647" formatted="false">Could not leave servers</string>
+    <string name="catalog_could_not_load_devices_6cf850e0" formatted="false">Could not load devices</string>
+    <string name="catalog_could_not_load_passkeys_dd561090" formatted="false">Could not load passkeys</string>
+    <string name="catalog_could_not_load_standing_51712f13" formatted="false">Could not load standing</string>
+    <string name="catalog_could_not_open_the_installer_a59d8717" formatted="false">Could not open the installer</string>
+    <string name="catalog_could_not_open_this_image_cb0d1e2e" formatted="false">Couldn’t open this image</string>
+    <string name="catalog_could_not_play_that_sound_5f4f3c4c" formatted="false">Couldn’t play that sound</string>
+    <string name="catalog_could_not_play_this_video_8540287d" formatted="false">Couldn’t play this video</string>
+    <string name="catalog_could_not_reach_the_update_server_58cd6971" formatted="false">Could not reach the update server</string>
+    <string name="catalog_could_not_remove_the_icon_fdb51d9b" formatted="false">Could not remove the icon</string>
+    <string name="catalog_could_not_remove_the_image_a332686e" formatted="false">Could not remove th’ image</string>
+    <string name="catalog_could_not_remove_the_passkey_5245ad98" formatted="false">Could not remove the passkey</string>
+    <string name="catalog_could_not_rename_deb92092" formatted="false">Could not rename</string>
+    <string name="catalog_could_not_revoke_361c2e4b" formatted="false">Could not revoke</string>
+    <string name="catalog_could_not_save_your_privacy_settings_fddd2cf0" formatted="false">Could not save your privacy settings</string>
+    <string name="catalog_could_not_save_your_profile_e13d9374" formatted="false">Could not save yer profile</string>
+    <string name="catalog_could_not_start_setup_0c01e9d7" formatted="false">Could not start setup</string>
+    <string name="catalog_could_not_start_the_call_925e1fa3" formatted="false">Could not start th’ call</string>
+    <string name="catalog_couldn_t_decrypt_this_file_08287a15" formatted="false">Couldn\'t unlock this file</string>
+    <string name="catalog_couldn_t_load_gifs_e47c284a" formatted="false">Couldn\'t haul in GIFs</string>
+    <string name="catalog_couldn_t_reach_that_message_it_may_896fe39d" formatted="false">Couldn\'t find that message — it be too far astern or scuttled.</string>
+    <string name="catalog_create_a_channel_3ac48642" formatted="false">Make a channel</string>
+    <string name="catalog_create_a_server_3a0ab422" formatted="false">Make a server</string>
+    <string name="catalog_create_account_aaf37447" formatted="false">Make account</string>
+    <string name="catalog_create_another_8b69f57c" formatted="false">Make another</string>
+    <string name="catalog_create_group_5a0b1c17" formatted="false">Make group</string>
+    <string name="catalog_create_invite_a8404622" formatted="false">Make invite</string>
+    <string name="catalog_create_passkey_500022b0" formatted="false">Make passkey</string>
+    <string name="catalog_create_role_db859bad" formatted="false">Make role</string>
+    <string name="catalog_create_your_account_4046b581" formatted="false">Make yer account</string>
+    <string name="catalog_creating_this_phone_s_protected_encryption_identity_f14e4807" formatted="false">Forging this phone’s guarded encryption identity…</string>
+    <string name="catalog_current_password_19dff4da" formatted="false">Password in use</string>
+    <string name="catalog_custom_ringtone_fd009ada" formatted="false">Custom call bell</string>
+    <string name="catalog_danger_zone_963a652e" formatted="false">Danger waters</string>
+    <string name="catalog_dark_ae1ef014" formatted="false">Dark</string>
+    <string name="catalog_debug_bd604d99" formatted="false">Debug</string>
+    <string name="catalog_delete_account_1753c206" formatted="false">Scuttle account</string>
+    <string name="catalog_delete_all_my_messages_3549d600" formatted="false">Scuttle all me messages</string>
+    <string name="catalog_delete_all_your_messages_f9463fad" formatted="false">Scuttle all yer messages</string>
+    <string name="catalog_delete_my_account_2ae3a019" formatted="false">Scuttle me account</string>
+    <string name="catalog_delete_recording_8b58ce23" formatted="false">Scuttle recording</string>
+    <string name="catalog_delete_role_fbf0667e" formatted="false">Scuttle role</string>
+    <string name="catalog_delete_server_fb695fc6" formatted="false">Scuttle server</string>
+    <string name="catalog_delete_them_all_a3132ab8" formatted="false">Scuttle ’em all</string>
+    <string name="catalog_deleted_1_s_message_8ffc45b2" formatted="true">Deleted %1$s message.</string>
+    <string name="catalog_deleted_1_s_messages_9ec1f966" formatted="true">Deleted %1$s messages.</string>
+    <string name="catalog_deleted_user_everything_else_profile_connections_friends_6e1c6e09" formatted="false">deleted user. Everything else - profile, connections, friends, server memberships - is erased. This can\'t be undone.</string>
+    <string name="catalog_desktop_app_f7a44c6b" formatted="false">Desktop deck app</string>
+    <string name="catalog_device_1_s_91ca155d" formatted="true">Device %1$s</string>
+    <string name="catalog_device_default_f9aac6c5" formatted="false">Device’s usual setting</string>
+    <string name="catalog_device_transfer_code_10d0a8b9" formatted="false">Device-transfer code</string>
+    <string name="catalog_device_transfer_qr_code_d3864e5b" formatted="false">Device transfer QR code</string>
+    <string name="catalog_devices_df485c87" formatted="false">Devices</string>
+    <string name="catalog_digits_confirmed_4ecb4c0f" formatted="false">Digits be confirmed</string>
+    <string name="catalog_direct_messages_e7596a09" formatted="false">Private missives</string>
+    <string name="catalog_direct_messages_f1b1f5c2" formatted="false">Private Missives</string>
+    <string name="catalog_disconnected_771e05f2" formatted="false">Disconnected</string>
+    <string name="catalog_display_574ff9b0" formatted="false">Display</string>
+    <string name="catalog_display_name_avatar_bio_accent_css_e2684739" formatted="false">Shown name, avatar, bio, accent, CSS</string>
+    <string name="catalog_display_name_c7874aaa" formatted="false">Shown name</string>
+    <string name="catalog_display_name_optional_23d1974a" formatted="false">Shown name (if ye fancy)</string>
+    <string name="catalog_display_separately_ecf9d1a7" formatted="false">Show separately</string>
+    <string name="catalog_do_not_disturb_875ba794" formatted="false">Do Not Disturb</string>
+    <string name="catalog_done_e9b450d1" formatted="false">Done</string>
+    <string name="catalog_download_failed_01125e1b" formatted="false">Download failed</string>
+    <string name="catalog_download_install_7db0bddc" formatted="false">Download &amp; install</string>
+    <string name="catalog_downloading_1_s_66b84142" formatted="true">Downloading %1$s…</string>
+    <string name="catalog_each_entry_is_a_device_with_a_8778c193" formatted="false">Each entry be a device wit’ a live sign-in. Revoking one stops it </string>
+    <string name="catalog_edit_message_96116a52" formatted="false">Edit this missive</string>
+    <string name="catalog_edit_role_61dd63e9" formatted="false">Edit this role</string>
+    <string name="catalog_edited_b6da09e0" formatted="false">(tinkered)</string>
+    <string name="catalog_email_changed_to_1_s_2755e486" formatted="true">Email changed to %1$s.</string>
+    <string name="catalog_email_code_5cb76e8c" formatted="false">Mail code, matey</string>
+    <string name="catalog_email_me_a_code_cc025d42" formatted="false">Send me a code by email</string>
+    <string name="catalog_email_me_a_code_instead_44cc1833" formatted="false">Send me a code by email instead</string>
+    <string name="catalog_email_password_8973dcae" formatted="false">Email &amp; secret word</string>
+    <string name="catalog_encrypted_history_keys_are_sent_and_the_aa611cee" formatted="false">Encrypted history keys are sent and the new device is recorded as authorized.</string>
+    <string name="catalog_encryption_0af149c2" formatted="false">Encryption</string>
+    <string name="catalog_encryption_security_alert_7b6e7671" formatted="false">Encryption safety warning</string>
+    <string name="catalog_enter_a_fresh_two_factor_authentication_code_9784e1c2" formatted="false">Enter a fresh two-factor authentication code. Th’ new device shall be signed into yer append-only device log. Arrr.</string>
+    <string name="catalog_enter_the_6_digit_code_from_your_0a98bcca" formatted="false">Enter th’ 6-digit code from yer app, or a recovery code.</string>
+    <string name="catalog_enter_to_save_shift_enter_for_a_74c26ca9" formatted="false">Enter t’ save · Shift+Enter fer a new line</string>
+    <string name="catalog_erase_my_encryption_keys_65f08bd6" formatted="false">Scuttle me encryption keys</string>
+    <string name="catalog_erase_them_now_9964fd63" formatted="false">Scuttle ’em now</string>
+    <string name="catalog_erase_your_encryption_keys_e1ad1aa2" formatted="false">Scuttle yer encryption keys?</string>
+    <string name="catalog_erasing_fd30764f" formatted="false">Scuttling…</string>
+    <string name="catalog_every_device_added_or_removed_is_written_ec8b50d8" formatted="false">Every device added or removed be written into a logbook that can only be added t’, never edited or erased. Yer devices read it on every start, so a device ye did not add can’t appear here quietly - ye get told, an’ th’ entry stays in th’ book. Arrr.</string>
+    <string name="catalog_every_direct_message_is_encrypted_always_and_bacae7ec" formatted="false">Every direct message be encrypted, always, an’ that part can’t be switched off. This setting be about how carefully th’ other person\'s lock be checked before yer messages be sent t’ it. Arrr.</string>
+    <string name="catalog_every_message_already_in_your_encrypted_conversations_ae9912e3" formatted="false">Every message already in yer encrypted conversations becomes permanently unreadable - by ye, by us, by anyone. Nothing brings ’em back. Arrr.</string>
+    <string name="catalog_everyone_930575f5" formatted="false">@everyone</string>
+    <string name="catalog_everyone_applies_to_every_member_it_has_12e47659" formatted="false">@everyone applies t’ every member. It has no colour an’ can’t be assigned or deleted. Arrr.</string>
+    <string name="catalog_everyone_c756f6af" formatted="false">Everyone</string>
+    <string name="catalog_everyone_here_02cadf2a" formatted="false">all hands here</string>
+    <string name="catalog_everyone_in_this_voice_channel_hears_it_df8e9c42" formatted="false">All hands in this voice channel hears it.</string>
+    <string name="catalog_everything_sent_from_now_on_uses_a_4d8b70ec" formatted="false">Everything sent from now on uses a new key. Existing messages stay readable, an’ all hands still in th’ conversation keeps access. Arrr.</string>
+    <string name="catalog_expired_large_files_are_only_kept_for_a9b2c12d" formatted="false">Expired - large files be only kept fer an hour</string>
+    <string name="catalog_expires_in_1_hour_26e2eae7" formatted="false">Runs out in 1 hour</string>
+    <string name="catalog_fallback_mode_scan_this_code_from_an_45193b95" formatted="false">Fallback mode: scan this code from an already-authorized phone, or paste it into an authorized computer. Arrr.</string>
+    <string name="catalog_favourite_this_gif_a9fd24af" formatted="false">Keep this GIF</string>
+    <string name="catalog_find_a_member_036dc8dd" formatted="false">Find a crew member</string>
+    <string name="catalog_find_friends_2fd354c9" formatted="false">Find mateys</string>
+    <string name="catalog_finish_b74bdee9" formatted="false">Finish</string>
+    <string name="catalog_first_device_on_this_account_452cc989" formatted="false">First device on this account</string>
+    <string name="catalog_flip_camera_ed114d76" formatted="false">Turn camera round</string>
+    <string name="catalog_follow_the_installer_to_finish_updating_2742868e" formatted="false">Follow th’ installer t’ finish updating</string>
+    <string name="catalog_for_permission_the_first_time_you_join_1cbeb90e" formatted="false">for permission the first time you join one.</string>
+    <string name="catalog_freezes_the_account_if_you_think_someone_09f45852" formatted="false">Freezes th’ account if ye think some soul else be in it: signs out every </string>
+    <string name="catalog_friends_of_friends_9abdf2fe" formatted="false">Friends of friends</string>
+    <string name="catalog_friends_only_0b2d5f25" formatted="false">Friends only</string>
+    <string name="catalog_generate_fc45f9b7" formatted="false">Generate</string>
+    <string name="catalog_get_notified_about_messages_d4bc1f2e" formatted="false">Hear word of new missives?</string>
+    <string name="catalog_hang_up_66be99b5" formatted="false">End hail</string>
+    <string name="catalog_have_them_open_their_code_in_orangchat_9428c129" formatted="false">Have ’em open their code in OrangChat an’ point this phone\'s camera at it. Yer phone then remembers th’ lock ye actually saw, so a swapped one no longer matches. One scan proves one direction - show ’em yours too.</string>
+    <string name="catalog_hide_my_code_835d9e98" formatted="false">Hide me code</string>
+    <string name="catalog_hide_password_e40123b4" formatted="false">Hide secret word</string>
+    <string name="catalog_hold_steady_scanning_happens_automatically_ae832ed2" formatted="false">Hold steady — scanning happens on its own</string>
+    <string name="catalog_hold_the_mic_to_record_then_let_48d81b83" formatted="false">Hold th’ mic t’ record, then let go t’ send</string>
+    <string name="catalog_hold_to_record_a_voice_message_06b1b5f5" formatted="false">Hold t’ record a voice message</string>
+    <string name="catalog_how_does_this_work_1ae14530" formatted="false">How does this work, matey?</string>
+    <string name="catalog_how_your_messages_are_protected_bb07e15c" formatted="false">How yer messages be protected</string>
+    <string name="catalog_i_understand_842a9bdd" formatted="false">Aye, I understand</string>
+    <string name="catalog_i_ve_saved_them_d4c0b9ed" formatted="false">I\'ve saved ’em</string>
+    <string name="catalog_icon_716f63b9" formatted="false">Icon</string>
+    <string name="catalog_idle_cc1ebdd0" formatted="false">Idle</string>
+    <string name="catalog_if_a_safety_code_changes_or_a_fdad80c2" formatted="false">If a safety code changes, or a device ye did not add appears on yer account, OrangChat stops an’ tells ye outright instead o’ showing a notification ye might swipe away.</string>
+    <string name="catalog_in_call_07d16f43" formatted="false">On a hail</string>
+    <string name="catalog_in_plain_language_with_no_jargon_to_b56795a6" formatted="false">In plain language, wit’ no jargon t’ get past first.</string>
+    <string name="catalog_inappropriate_content_62db8957" formatted="false">Unsavoury cargo</string>
+    <string name="catalog_incorrect_password_b68db3d0" formatted="false">Incorrect password.</string>
+    <string name="catalog_install_fd6c3ebf" formatted="false">Install</string>
+    <string name="catalog_installed_7bb4405c" formatted="false">Installed</string>
+    <string name="catalog_invite_link_601e9d6c" formatted="false">Boarding link</string>
+    <string name="catalog_invite_people_e1eb97af" formatted="false">Invite crew</string>
+    <string name="catalog_invite_to_get_back_into_any_of_016b015f" formatted="false">invite to get back into any of them.</string>
+    <string name="catalog_ios_browser_1da182c5" formatted="false">iOS browser</string>
+    <string name="catalog_it_is_not_always_an_attack_it_c9d44cb1" formatted="false">It be not always an attack - it be also what happens when some soul loses every device an’ has t’ start over. There be no way t’ tell those apart from inside th’ app, which be why it asks ye t’ check wit’ th’ person directly before ye send anything else. Arrr.</string>
+    <string name="catalog_join_a_server_d59b6aba" formatted="false">Come aboard a server</string>
+    <string name="catalog_join_muted_8ccaf5fe" formatted="false">Come aboard muted</string>
+    <string name="catalog_join_with_camera_on_c39f4e79" formatted="false">Join wit’ camera on</string>
+    <string name="catalog_jump_to_latest_5aa2e089" formatted="false">Jump t’ latest</string>
+    <string name="catalog_keys_device_log_verifying_people_0828f752" formatted="false">Keys, device log, checking folk</string>
+    <string name="catalog_last_active_1_s_df09e3bb" formatted="true"> · last active %1$s</string>
+    <string name="catalog_last_used_1_s_c8f76185" formatted="true"> · last used %1$s</string>
+    <string name="catalog_leave_all_servers_65e7741b" formatted="false">Abandon all servers</string>
+    <string name="catalog_leave_group_92578912" formatted="false">Leave this crew</string>
+    <string name="catalog_leave_server_da6fea13" formatted="false">Leave this server</string>
+    <string name="catalog_leaves_every_server_you_re_in_except_bcbf7a17" formatted="false">Leaves every server ye\'re in except th’ ones ye own. Ye\'ll need a new </string>
+    <string name="catalog_leaving_it_off_is_not_unprotected_every_94d76940" formatted="false">Leaving it off be not \"unprotected\". Every lock be still checked against a logbook that can only be added t’, which yer own devices read on every start. Th’ difference be whether a swapped lock be stopped before it can be used, or caught right after. Group conversations always send straight away, either way. Arrr.</string>
+    <string name="catalog_left_1_s_server_2619a08f" formatted="true">Left %1$s server.</string>
+    <string name="catalog_left_1_s_servers_8833549c" formatted="true">Left %1$s servers.</string>
+    <string name="catalog_let_people_see_when_you_re_typing_eb96518c" formatted="false">Let folk see when ye\'re typing.</string>
+    <string name="catalog_lift_lockdown_4131d82c" formatted="false">Raise lockdown</string>
+    <string name="catalog_lift_timeout_560ca50c" formatted="false">Lift time-out</string>
+    <string name="catalog_light_a36ef8ab" formatted="false">Light</string>
+    <string name="catalog_linked_image_96960966" formatted="false">Image by link</string>
+    <string name="catalog_listening_to_aad82f87" formatted="false">HEARING</string>
+    <string name="catalog_listening_to_b35b0e8e" formatted="false">Listening t’ </string>
+    <string name="catalog_load_more_dfe60ca9" formatted="false">Haul in more</string>
+    <string name="catalog_loading_33ce4174" formatted="false">Hauling in…</string>
+    <string name="catalog_lock_down_my_account_c7b52afc" formatted="false">Lock down me account</string>
+    <string name="catalog_lockdown_8ba04349" formatted="false">Lockdown</string>
+    <string name="catalog_lockdown_lifted_f4f1b05c" formatted="false">Lockdown lifted.</string>
+    <string name="catalog_locked_down_1dc1036e" formatted="false">Locked down.</string>
+    <string name="catalog_locked_down_signed_out_1_s_other_d382c238" formatted="true">Locked down. Signed out %1$s other session.</string>
+    <string name="catalog_locked_down_signed_out_1_s_other_ecca9d9f" formatted="true">Locked down. Signed out %1$s other sessions.</string>
+    <string name="catalog_log_in_f7c400ed" formatted="false">Sign aboard</string>
+    <string name="catalog_log_out_6e78c91f" formatted="false">Sign off</string>
+    <string name="catalog_lost_your_authenticator_af902070" formatted="false">Lost yer authenticator?</string>
+    <string name="catalog_lowercase_letters_digits_and_2_to_32_7bec3c28" formatted="false">Lowercase letters, digits, _ an’ . - 2 t’ 32 chars</string>
+    <string name="catalog_lowercase_letters_numbers_underscores_and_dots_57155ecc" formatted="false">Lowercase letters, numbers, underscores, an’ dots.</string>
+    <string name="catalog_make_a_new_key_cde9afba" formatted="false">Forge a new key</string>
+    <string name="catalog_mark_as_read_c1ee860b" formatted="false">Mark as read, matey</string>
+    <string name="catalog_messages_friend_requests_typing_notifications_17b64746" formatted="false">Missives, matey requests, typing, notices</string>
+    <string name="catalog_messages_go_as_soon_as_you_send_e76569f5" formatted="false">Messages go as soon as ye send ’em. If anyone ever swaps this person\'s lock, yer devices notice an’ tell ye. Arrr.</string>
+    <string name="catalog_microphone_access_is_needed_to_record_a_9afc8aaa" formatted="false">Microphone access be needed t’ record a voice message</string>
+    <string name="catalog_minimize_call_6cb0f0f8" formatted="false">Stow call</string>
+    <string name="catalog_missed_call_0200c293" formatted="false">Missed hail</string>
+    <string name="catalog_my_contact_verification_qr_code_44a80ea4" formatted="false">My contact verification QR code</string>
+    <string name="catalog_my_orange_grove_c6cfda8f" formatted="false">Me orange grove</string>
+    <string name="catalog_name_709a2322" formatted="false">Name</string>
+    <string name="catalog_need_an_account_sign_up_77472065" formatted="false">Need an account? Sign aboard</string>
+    <string name="catalog_neon_00706b5e" formatted="false">Neon</string>
+    <string name="catalog_never_used_8c1c3645" formatted="false"> · never aboard</string>
+    <string name="catalog_new_email_b07e22b0" formatted="false">Fresh email</string>
+    <string name="catalog_new_group_f9850c0b" formatted="false">Fresh crew</string>
+    <string name="catalog_new_key_for_this_conversation_651d7e16" formatted="false">New key fer this conversation</string>
+    <string name="catalog_new_messages_6d867124" formatted="false">Fresh missives</string>
+    <string name="catalog_new_password_d850ee18" formatted="false">Fresh secret word</string>
+    <string name="catalog_new_recovery_codes_90b8afc8" formatted="false">Fresh recovery codes</string>
+    <string name="catalog_new_roles_start_just_above_everyone_so_700d0555" formatted="false">New roles start just above @everyone, so they never outrank th’ person creating ’em. Arrr.</string>
+    <string name="catalog_new_update_available_b0be29b0" formatted="false">Fresh update be ready</string>
+    <string name="catalog_no_answer_a9c16dd0" formatted="false">No answer, arrr</string>
+    <string name="catalog_no_devices_are_enrolled_on_this_account_025829c1" formatted="false">No devices be enrolled on this account.</string>
+    <string name="catalog_no_friends_yet_add_someone_first_a7ccf9a9" formatted="false">No mateys yet. Add some soul first.</string>
+    <string name="catalog_no_friends_yet_add_someone_from_the_7d7f43ab" formatted="false">No mateys yet. Add some soul from th’ Add tab.</string>
+    <string name="catalog_no_gifs_found_0d358df4" formatted="false">No GIFs in sight</string>
+    <string name="catalog_no_matches_0be6a257" formatted="false">No matches in sight.</string>
+    <string name="catalog_no_matching_friends_or_channels_fd0c1248" formatted="false">No matching mateys or channels</string>
+    <string name="catalog_no_one_41c06c15" formatted="false">No one</string>
+    <string name="catalog_no_passkeys_yet_6dc4fe0f" formatted="false">No passkeys yet, matey.</string>
+    <string name="catalog_no_pending_requests_aeedf949" formatted="false">No requests waiting.</string>
+    <string name="catalog_no_profile_themes_match_1_s_a67c627c" formatted="true">No profile themes match “%1$s”.</string>
+    <string name="catalog_no_saved_gifs_yet_tap_the_bookmark_75705898" formatted="false">No saved GIFs yet - tap th’ bookmark on any GIF t’ keep it here.</string>
+    <string name="catalog_no_server_is_currently_restricting_you_061000ea" formatted="false">No server be currently restricting ye.</string>
+    <string name="catalog_no_sounds_yet_someone_with_manage_expressions_011117e4" formatted="false">No sounds yet. Some soul wit’ Manage Expressions can add ’em in server settings. Arrr.</string>
+    <string name="catalog_nobody_can_send_you_requests_5279aaea" formatted="false">Nobody can send you requests.</string>
+    <string name="catalog_nobody_new_can_message_you_d72cdf15" formatted="false">Nobody new can message you.</string>
+    <string name="catalog_none_set_4bf72e7e" formatted="false">Nothing set</string>
+    <string name="catalog_not_in_call_32010878" formatted="false">Not on a hail</string>
+    <string name="catalog_not_in_the_same_room_you_will_d53e345b" formatted="false">Not in th’ same room? Ye shall each see th’ same short row o’ numbers, called a safety code. Have ’em read it out on a phone call, or send it over another app ye already trust, an’ type it into th’ box under th’ code - th’ app compares all sixty digits, which be more than anyone manages by eye. If it matches, nobody be in th’ middle. Th’ one thing that doesn’t count be an OrangChat voice call - that audio goes through th’ same servers this check exists t’ test.</string>
+    <string name="catalog_not_me_1ad9a1eb" formatted="false">Weren’t me</string>
+    <string name="catalog_not_now_e4571490" formatted="false">Not now, matey</string>
+    <string name="catalog_not_sent_587c501e" formatted="false">Never sent</string>
+    <string name="catalog_nothing_can_sign_in_and_no_new_e0c687ac" formatted="false">Nothing can sign in, an’ no new DMs or friend requests reach ye. </string>
+    <string name="catalog_nothing_has_been_logged_yet_e4080778" formatted="false">Nothing be in th’ log yet.</string>
+    <string name="catalog_nothing_is_sent_until_you_have_checked_6db8aee8" formatted="false">Nothing be sent until ye have checked their code in person or on a call. Until then yer messages wait here, locked, an’ go nowhere. Arrr.</string>
+    <string name="catalog_notifications_753a22b2" formatted="false">Notifications</string>
+    <string name="catalog_notifications_are_turned_off_e638becc" formatted="false">Notifications be turned off</string>
+    <string name="catalog_now_playing_586fa7a8" formatted="false">NOW PLAYING, ARRR</string>
+    <string name="catalog_oc_pf_name_color_ff6a1a_9442cf4e" formatted="false">.oc-pf-name { color: #ff6a1a; }</string>
+    <string name="catalog_off_the_shade_and_lock_screen_show_29ea09db" formatted="false">Off, th’ shade an’ lock screen show who wrote an’ nothing more. Encrypted messages be then never unlocked t’ make a notification at all. This phone only. Arrr.</string>
+    <string name="catalog_offline_e01fa717" formatted="false">Offline</string>
+    <string name="catalog_on_call_fdd219b2" formatted="false">On a hail</string>
+    <string name="catalog_on_e0049a66" formatted="false">On</string>
+    <string name="catalog_on_your_pc_open_settings_encryption_add_5a070e42" formatted="false">On yer PC, open Settings → Encryption → Add another device. Yer PC shall show a one-time QR code. Arrr.</string>
+    <string name="catalog_ongoing_call_5ae739b8" formatted="false">Hail underway</string>
+    <string name="catalog_online_c3e839df" formatted="false">Online</string>
+    <string name="catalog_only_continue_if_you_started_this_transfer_d563e585" formatted="false">Only continue if ye started this transfer an’ can see both devices.</string>
+    <string name="catalog_only_people_on_your_friends_list_a0690c48" formatted="false">Only people on your friends list.</string>
+    <string name="catalog_only_people_you_share_a_friend_with_dd960ba7" formatted="false">Only people you share a friend with.</string>
+    <string name="catalog_only_the_owner_can_rename_this_server_3db192cb" formatted="false">Only th’ owner can rename this server</string>
+    <string name="catalog_only_the_people_in_the_conversation_can_ae492280" formatted="false">Only th’ folk in th’ conversation can open ’em. Not OrangChat, not some soul who steals our database, not some soul who turns up wit’ a court order - we don’t hold a key we could hand over. This be on fer every direct message an’ there be no way t’ switch it off.</string>
+    <string name="catalog_open_app_permissions_893246fb" formatted="false">Open app leave-passes</string>
+    <string name="catalog_open_call_1c47457b" formatted="false">Open hail</string>
+    <string name="catalog_orangchat_can_let_you_know_when_someone_13d0aac2" formatted="false">OrangChat can let ye know when some soul messages or calls ye </string>
+    <string name="catalog_orangchat_desktop_app_ffb92600" formatted="false">OrangChat desktop app</string>
+    <string name="catalog_orangchat_device_transfer_9d5395e9" formatted="false">orangchat://device-transfer?…</string>
+    <string name="catalog_orangchat_for_android_3f20ca31" formatted="false">OrangChat for Android</string>
+    <string name="catalog_orangchat_only_opens_your_camera_and_microphone_16da857f" formatted="false">OrangChat only opens yer camera an’ microphone during a call. Android asks </string>
+    <string name="catalog_other_device_blocks_new_sign_ins_and_6199dab7" formatted="false">other device, blocks new sign-ins, and closes new DMs and friend requests until you lift it.</string>
+    <string name="catalog_otherwise_only_members_with_mention_everyone_can_a0476dcf" formatted="false">Otherwise only members wit’ Mention Everyone can.</string>
+    <string name="catalog_package_7431e3df" formatted="false">Package</string>
+    <string name="catalog_parchment_4761c103" formatted="false">Parchment</string>
+    <string name="catalog_passkey_e35828da" formatted="false">Passkey</string>
+    <string name="catalog_passkey_settings_too_or_it_will_keep_26130742" formatted="false">passkey settings too, or it will keep showing up there.</string>
+    <string name="catalog_passkeys_caab7827" formatted="false">Passkeys</string>
+    <string name="catalog_password_changed_1_s_other_session_was_10fc8ee3" formatted="true">Password changed. %1$s other session was signed out.</string>
+    <string name="catalog_password_changed_1_s_other_sessions_were_64e22cd3" formatted="true">Password changed. %1$s other sessions were signed out.</string>
+    <string name="catalog_password_changed_47fa5289" formatted="false">Password changed.</string>
+    <string name="catalog_permanently_delete_2eea1fa8" formatted="false">Scuttle forever</string>
+    <string name="catalog_personal_phone_a154b2eb" formatted="false">Personal phone, matey</string>
+    <string name="catalog_phone_connected_ac1141af" formatted="false">Phone be connected</string>
+    <string name="catalog_pick_at_least_one_more_friend_for_1cd89bd0" formatted="false">Pick at least one more friend fer a group.</string>
+    <string name="catalog_point_this_phone_at_the_qr_code_cea07275" formatted="false">Point this phone at th’ QR code shown in OrangChat on yer PC.</string>
+    <string name="catalog_point_this_phone_at_the_transfer_code_d6baae81" formatted="false">Point this phone at th’ transfer code shown on th’ new device.</string>
+    <string name="catalog_preview_f1fbb2b4" formatted="false">Preview</string>
+    <string name="catalog_privacy_cf01481f" formatted="false">Privacy</string>
+    <string name="catalog_privacy_security_9bb6e9c0" formatted="false">Secrets &amp; safety</string>
+    <string name="catalog_profile_ff4fc027" formatted="false">Profile</string>
+    <string name="catalog_profile_themes_3d7fccd2" formatted="false">Profile finery</string>
+    <string name="catalog_profile_themes_style_your_public_profile_card_7965d778" formatted="false">Profile themes style yer public profile card. Every entry be reviewed through a pull request, bundled wit’ th’ app, an’ sanitized before it renders. Arrr.</string>
+    <string name="catalog_qr_code_abba02fc" formatted="false">QR code</string>
+    <string name="catalog_ready_made_styles_for_your_profile_card_83af5cba" formatted="false">Ready-made styles fer yer profile card</string>
+    <string name="catalog_realtime_5973df61" formatted="false">Realtime</string>
+    <string name="catalog_reason_1_s_bce5b2c7" formatted="true">Reason: %1$s</string>
+    <string name="catalog_recording_locked_32fe3a05" formatted="false">Recording be locked</string>
+    <string name="catalog_recovery_codes_b3f5f8ca" formatted="false">Recovery codes, matey</string>
+    <string name="catalog_reduce_motion_25a5aef5" formatted="false">Less motion</string>
+    <string name="catalog_release_d41f56ce" formatted="false">Release</string>
+    <string name="catalog_release_to_cancel_29bd6c29" formatted="false">Release t’ belay</string>
+    <string name="catalog_remove_background_for_everyone_275dc99e" formatted="false">Cast off background fer all hands</string>
+    <string name="catalog_remove_e963907d" formatted="false">Remove</string>
+    <string name="catalog_remove_friend_b16fc7ff" formatted="false">Cast off matey</string>
+    <string name="catalog_remove_from_favourites_624f82c1" formatted="false">Cast off from favourites</string>
+    <string name="catalog_remove_group_icon_5869f3b2" formatted="false">Cast off group icon</string>
+    <string name="catalog_remove_passkey_988b1b7e" formatted="false">Cast off passkey</string>
+    <string name="catalog_removes_every_message_you_ve_sent_in_f63902f1" formatted="false">Removes every message ye\'ve sent, in every server an’ group - including </string>
+    <string name="catalog_removing_this_only_affects_orangchat_delete_it_28979691" formatted="false">Removing this only affects OrangChat. Delete it from th’ device\'s own </string>
+    <string name="catalog_rename_d3f4cb89" formatted="false">Rename</string>
+    <string name="catalog_rename_passkey_cb9298c9" formatted="false">Rename passkey, matey</string>
+    <string name="catalog_renewing_it_loses_access_within_a_few_1d7c7abe" formatted="false">renewing; it loses access within a few minutes.</string>
+    <string name="catalog_replaces_the_key_used_from_now_on_c57ccaed" formatted="false">Replaces th’ key used from now on, so a device that has since been removed can’t read anything new. Messages already here stay readable, an’ nobody be locked out. Arrr.</string>
+    <string name="catalog_replaces_the_orangchat_mark_for_you_everywhere_109fab70" formatted="false">Replaces th’ OrangChat mark fer ye everywhere ye be signed in. </string>
+    <string name="catalog_report_message_babfeaf5" formatted="false">Report this missive</string>
+    <string name="catalog_report_received_2568a541" formatted="false">Report received, arrr</string>
+    <string name="catalog_reporting_reveals_this_one_decrypted_message_and_1e7d77a7" formatted="false">Reporting reveals this one decrypted message an’ a one-message key. It doesn’t reveal th’ conversation key or any other message. Arrr.</string>
+    <string name="catalog_request_sent_168996e3" formatted="false">Request sent, arrr</string>
+    <string name="catalog_resend_email_code_9a8ba727" formatted="false">Send email code again</string>
+    <string name="catalog_reset_44c57abd" formatted="false">Reset</string>
+    <string name="catalog_reset_to_defaults_ddefe47d" formatted="false">Reset t’ defaults</string>
+    <string name="catalog_resolving_invite_62cce3b8" formatted="false">Finding invite…</string>
+    <string name="catalog_revoke_0be72075" formatted="false">Revoke</string>
+    <string name="catalog_revoke_1_s_357dcc1d" formatted="true">Revoke %1$s?</string>
+    <string name="catalog_revoke_device_66468c17" formatted="false">Cast off device</string>
+    <string name="catalog_revoked_d8230020" formatted="false">  ·  revoked</string>
+    <string name="catalog_revoking_2c8a0ed4" formatted="false">Casting off…</string>
+    <string name="catalog_ringing_417814b1" formatted="false">Hailing…</string>
+    <string name="catalog_role_name_4204d818" formatted="false">Role’s name</string>
+    <string name="catalog_roles_grant_permissions_and_a_colour_members_51c7e585" formatted="false">Roles grant permissions an’ a colour. Members take th’ colour o’ their highest role. Arrr.</string>
+    <string name="catalog_save_changes_179359b3" formatted="false">Stow changes</string>
+    <string name="catalog_save_nickname_51ddb3ea" formatted="false">Stow nickname</string>
+    <string name="catalog_save_profile_f597c0e8" formatted="false">Stow profile</string>
+    <string name="catalog_save_these_now_each_works_once_if_2a1aad82" formatted="false">Save these now - each works once if ye lose yer phone, an’ they\'re shown only this once. Arrr.</string>
+    <string name="catalog_scan_28cba55d" formatted="false">Scan</string>
+    <string name="catalog_scan_code_from_pc_6c59b0aa" formatted="false">Scan code from PC, matey</string>
+    <string name="catalog_scan_device_code_45e4e1cb" formatted="false">Scan device code, matey</string>
+    <string name="catalog_scan_the_code_shown_by_the_new_953d3dac" formatted="false">Scan th’ code shown by th’ new device, or paste th’ complete orangchat://device-transfer code here. Arrr.</string>
+    <string name="catalog_scan_their_code_b273ef3b" formatted="false">Scan their code, matey</string>
+    <string name="catalog_scan_verification_code_9569a83c" formatted="false">Scan proof code</string>
+    <string name="catalog_search_bce06414" formatted="false">Search</string>
+    <string name="catalog_search_by_name_or_username_9c923df6" formatted="false">Seek by name or username</string>
+    <string name="catalog_search_friends_and_channels_57990af1" formatted="false">Seek mateys and channels</string>
+    <string name="catalog_search_klipy_9e867d1a" formatted="false">Seek KLIPY</string>
+    <string name="catalog_search_messages_abea65ae" formatted="false">Seek messages</string>
+    <string name="catalog_search_profile_themes_99f3d314" formatted="false">Seek profile themes</string>
+    <string name="catalog_searched_on_this_device_messages_not_opened_4abe22a1" formatted="false">Searched on this device. Missives unopened here may be missing.</string>
+    <string name="catalog_security_f25ce1b8" formatted="false">Security</string>
+    <string name="catalog_send_a_new_code_91904a28" formatted="false">Send a fresh code</string>
+    <string name="catalog_send_anyway_911263fe" formatted="false">Send anyway, arrr</string>
+    <string name="catalog_send_friend_request_c3ed810d" formatted="false">Send matey request</string>
+    <string name="catalog_send_report_a5b32af9" formatted="false">Send th’ report</string>
+    <string name="catalog_send_straight_away_19f3932b" formatted="false">Send without delay</string>
+    <string name="catalog_send_straight_away_a_swap_gets_caught_2e19b55a" formatted="false">Send straight away - a swap gets caught. Every lock anyone publishes be written into a logbook that can only be added t’, never edited or erased. Yer own devices read th’ page about yer account every time they start. If a lock be ever published in yer name that yer devices did not make, they tell ye, an’ th’ entry stays in th’ book where anyone can point at it. A swap can be attempted; it can’t be attempted quietly. Arrr.</string>
+    <string name="catalog_send_typing_indicators_6ca26372" formatted="false">Send typing signals</string>
+    <string name="catalog_sending_cf765512" formatted="false">Sending, arrr…</string>
+    <string name="catalog_sending_encrypted_history_and_signing_the_new_6bfd242c" formatted="false">Sending encrypted history and signing the new device into your device log…</string>
+    <string name="catalog_sending_straight_away_is_what_every_conversation_68012f61" formatted="false">Sending straight away be what every conversation gets. Checking first be th’ extra step, an’ it be only worth turning on fer folk ye can realistically meet or ring. Arrr.</string>
+    <string name="catalog_sending_voice_message_a48b5648" formatted="false">Sending voice missive…</string>
+    <string name="catalog_server_cb0cb170" formatted="false">Server</string>
+    <string name="catalog_server_channels_those_have_shared_history_moderation_c68bcd1b" formatted="false">• Server channels. Those have shared history, moderation an’ search, all o’ which need th’ server t’ read ’em. Only direct messages an’ group DMs be encrypted this way. Arrr.</string>
+    <string name="catalog_server_icon_8bf2f95a" formatted="false">Server badge</string>
+    <string name="catalog_server_name_738825fc" formatted="false">Server’s name</string>
+    <string name="catalog_server_settings_28af3cc7" formatted="false">Server’s settings</string>
+    <string name="catalog_set_a_password_f5c8f412" formatted="false">Set a secret word</string>
+    <string name="catalog_set_chat_background_d07e7165" formatted="false">Set chat backdrop</string>
+    <string name="catalog_set_group_icon_48042fd7" formatted="false">Set crew badge</string>
+    <string name="catalog_set_password_94408e41" formatted="false">Set secret word</string>
+    <string name="catalog_set_up_this_phone_again_6f53f3fd" formatted="false">Rig this phone again</string>
+    <string name="catalog_set_up_two_factor_a6722c51" formatted="false">Rig two-factor</string>
+    <string name="catalog_setting_up_cef9b69d" formatted="false">Rigging…</string>
+    <string name="catalog_settings_c7f73bb5" formatted="false">Settings</string>
+    <string name="catalog_share_to_orangchat_8cb49ef7" formatted="false">Share t’ OrangChat</string>
+    <string name="catalog_shared_text_4517f1e8" formatted="false">Shared words</string>
+    <string name="catalog_sharing_ad005909" formatted="false">Sharing, arrr…</string>
+    <string name="catalog_show_fallback_code_on_this_phone_90acc27c" formatted="false">Show backup code on this phone</string>
+    <string name="catalog_show_members_with_this_role_in_their_f0fb058c" formatted="false">Show members wit’ this role in their own group.</string>
+    <string name="catalog_show_message_text_66bf26b1" formatted="false">Show missive text</string>
+    <string name="catalog_show_my_code_342b7a4e" formatted="false">Show me code</string>
+    <string name="catalog_show_password_044b852f" formatted="false">Show secret word</string>
+    <string name="catalog_shown_on_the_invite_page_28e6606d" formatted="false">Shown on th’ invite page.</string>
+    <string name="catalog_sign_in_ada2e9e9" formatted="false">Sign aboard</string>
+    <string name="catalog_sign_in_before_adding_this_device_8327420f" formatted="false">Sign in before adding this device.</string>
+    <string name="catalog_sign_in_on_the_web_94061c18" formatted="false">Sign aboard on th’ web?</string>
+    <string name="catalog_sign_in_with_a_passkey_cf1c7263" formatted="false">Sign aboard wit’ a passkey</string>
+    <string name="catalog_sign_in_with_your_fingerprint_face_or_ec24e91a" formatted="false">Sign in wit’ yer fingerprint, face or device PIN instead o’ a password. Arrr. </string>
+    <string name="catalog_sign_out_1_s_other_device_24648e43" formatted="true">Sign out %1$s other device</string>
+    <string name="catalog_sign_out_1_s_other_devices_5bd5b0ba" formatted="true">Sign out %1$s other devices</string>
+    <string name="catalog_sign_out_dc1649a1" formatted="false">Sign off</string>
+    <string name="catalog_signed_in_1_s_3b0f6db2" formatted="true">Signed in %1$s</string>
+    <string name="catalog_signed_in_as_1_s_21660e7d" formatted="true">Signed in as %1$s.</string>
+    <string name="catalog_skip_the_scroll_and_swipe_animations_3bb4a091" formatted="false">Skip th’ scroll an’ swipe animations.</string>
+    <string name="catalog_slide_to_cancel_8f64a698" formatted="false">Slide t’ belay →</string>
+    <string name="catalog_slide_to_cancel_9c411f6d" formatted="false">‹ Slide t’ belay</string>
+    <string name="catalog_slide_up_to_lock_recording_52127830" formatted="false">Slide up t’ lock recording</string>
+    <string name="catalog_so_you_can_tell_it_apart_from_5878d69c" formatted="false">So ye can tell it apart from yer other devices later.</string>
+    <string name="catalog_someone_here_f47623b5" formatted="false">Some soul here</string>
+    <string name="catalog_someone_scanned_this_account_s_code_to_cd6f3892" formatted="false">Some soul scanned this account\'s code t’ sign in t’ OrangChat in a browser. Approve only if that was ye.</string>
+    <string name="catalog_standing_together_scan_each_other_s_codes_faf20092" formatted="false">Standing together? Scan each other\'s codes - one scan proves one direction, so do both. Arrr.</string>
+    <string name="catalog_start_a_call_d7f39160" formatted="false">Start a hail</string>
+    <string name="catalog_start_a_fresh_key_here_11c5421d" formatted="false">Forge a fresh key here</string>
+    <string name="catalog_start_calls_with_video_already_publishing_04f2d03f" formatted="false">Start calls wit’ video already publishing.</string>
+    <string name="catalog_start_every_call_with_your_microphone_off_087b5564" formatted="false">Start every call wit’ yer microphone off.</string>
+    <string name="catalog_start_over_with_new_keys_328f6a4a" formatted="false">Start over wit’ new keys</string>
+    <string name="catalog_start_video_call_dac036c6" formatted="false">Start video hail</string>
+    <string name="catalog_start_voice_call_f5e80dd9" formatted="false">Start voice hail</string>
+    <string name="catalog_status_bae7d5be" formatted="false">Status</string>
+    <string name="catalog_still_yours_1_s_42da6dc4" formatted="true"> Still yours: %1$s.</string>
+    <string name="catalog_stop_9e253470" formatted="false">Stop</string>
+    <string name="catalog_stored_on_this_device_only_never_uploaded_1373e7ad" formatted="false">Stowed on this device alone — never sent ashore.</string>
+    <string name="catalog_style_your_card_for_everyone_who_views_08c9bf5c" formatted="false">Style yer card fer all hands who views it. Every part has a hook: </string>
+    <string name="catalog_synced_to_your_device_s_keychain_4f237bce" formatted="false">Synced t’ yer device\'s keychain.</string>
+    <string name="catalog_system_bc0792d8" formatted="false">System</string>
+    <string name="catalog_take_a_picture_6d76bc64" formatted="false">Take a likeness</string>
+    <string name="catalog_tap_the_key_to_copy_it_1965f6e7" formatted="false">Tap th’ key t’ copy it.</string>
+    <string name="catalog_terminal_a1f52cdc" formatted="false">Terminal</string>
+    <string name="catalog_text_size_3cc6e124" formatted="false">Letter size</string>
+    <string name="catalog_text_size_motion_density_a9cc0369" formatted="false">Letter size, motion, spacing</string>
+    <string name="catalog_that_code_isn_t_right_e78cef5d" formatted="false">That code isn\'t right</string>
+    <string name="catalog_that_didn_t_work_try_again_9ae914fa" formatted="false">That didn\'t work. Try again.</string>
+    <string name="catalog_that_invite_is_expired_revoked_or_never_752c9ac3" formatted="false">That invite be expired, revoked, or never existed.</string>
+    <string name="catalog_that_is_also_why_adding_a_second_4bac217f" formatted="false">That be also why adding a second device be a small ceremony instead o’ a copy an’ paste. Yer old device has t’ see th’ new one - a code on th’ screen, a camera pointed at it - before anything moves. Arrr.</string>
+    <string name="catalog_that_was_cancelled_b8e83864" formatted="false">That was cancelled.</string>
+    <string name="catalog_the_camera_could_not_start_you_can_a181859b" formatted="false">Th’ camera could not start. Ye can retry or use th’ system Camera app. Arrr.</string>
+    <string name="catalog_the_device_could_not_be_revoked_8f71eb6b" formatted="false">The device could not be revoked.</string>
+    <string name="catalog_the_device_transfer_failed_7a70c4fe" formatted="false">The device transfer failed.</string>
+    <string name="catalog_the_digits_match_809c13bc" formatted="false">Th’ digits match</string>
+    <string name="catalog_the_email_code_could_not_be_sent_7bee875a" formatted="false">The email code could not be sent.</string>
+    <string name="catalog_the_encryption_device_was_revoked_5d4569c7" formatted="false">The encryption device was revoked.</string>
+    <string name="catalog_the_keys_could_not_be_erased_fc80d5dd" formatted="false">The keys could not be erased.</string>
+    <string name="catalog_the_logbook_0b3e99f4" formatted="false">Th’ logbook</string>
+    <string name="catalog_the_messages_only_that_device_could_open_dd92a9bc" formatted="false">Th’ messages only that device could open stay locked, permanently. We can’t recover ’em fer ye - if we could, none o’ th’ above would be true. Arrr.</string>
+    <string name="catalog_the_new_device_s_code_was_recognized_7c702591" formatted="false">The new device’s code was recognized. It is not authorized yet.</string>
+    <string name="catalog_the_new_device_was_authorized_8ec267ba" formatted="false">Th’ new device was authorized.</string>
+    <string name="catalog_the_one_time_code_from_your_pc_15a1fb2d" formatted="false">The one-time code from your PC was recognized. Nothing has been transferred yet.</string>
+    <string name="catalog_the_ones_you_ve_left_attachments_you_87419c2e" formatted="false">the ones you\'ve left. Attachments you uploaded aren\'t removed from storage. This can\'t be undone.</string>
+    <string name="catalog_the_pc_sends_encrypted_history_keys_and_e368a88b" formatted="false">The PC sends encrypted history keys and records this phone as authorized.</string>
+    <string name="catalog_the_quick_brown_fox_jumps_over_the_408d9438" formatted="false">Th’ quick brown fox jumps over th’ lazy dog.</string>
+    <string name="catalog_the_right_person_3860646e" formatted="false">th’ right person</string>
+    <string name="catalog_theme_a797e309" formatted="false">Theme</string>
+    <string name="catalog_there_is_no_code_to_compare_yet_5ce7929c" formatted="false">There be no code t’ compare yet.</string>
+    <string name="catalog_these_choices_are_stored_on_this_device_ac326393" formatted="false">These choices be stored on this device only.</string>
+    <string name="catalog_these_do_not_match_most_often_that_0139df50" formatted="false">These don’t match. Most often that be a digit misheard or mistyped, so check it once more. If it still differs, some soul be standing between ye - don’t send anything here until ye know which. Arrr.</string>
+    <string name="catalog_these_numbers_appear_once_both_accounts_have_288c556c" formatted="false">These numbers appear once both accounts have set up encryption on a device. Arrr.</string>
+    <string name="catalog_they_all_open_8a0f4e5d" formatted="false">they all unlock</string>
+    <string name="catalog_they_cannot_send_messages_react_or_speak_7fcf8d0c" formatted="false">They can’t send messages, react or speak until it expires.</string>
+    <string name="catalog_they_do_not_match_a5d86ddf" formatted="false">They don’t match</string>
+    <string name="catalog_they_open_371267bf" formatted="false">they unlock</string>
+    <string name="catalog_this_account_has_no_authenticator_app_set_3f1e6f47" formatted="false">This account has no authenticator app set up, so OrangChat shall email a one-time code t’ approve th’ new device.</string>
+    <string name="catalog_this_code_holds_nothing_secret_it_is_373de7f3" formatted="false">This code holds nothing secret. It be safe fer anyone t’ see; being in th’ room be what makes scanning it mean something. Arrr.</string>
+    <string name="catalog_this_conversation_is_not_encrypted_yet_00080602" formatted="false">This conversation be not encrypted yet</string>
+    <string name="catalog_this_device_82229094" formatted="false">  ·  This very device</string>
+    <string name="catalog_this_device_fa5a6dd9" formatted="false">This very device</string>
+    <string name="catalog_this_device_stays_signed_in_795f19a1" formatted="false">This device stays signed in.</string>
+    <string name="catalog_this_device_will_stop_receiving_new_conversation_45e9c7a1" formatted="false">This device shall stop receiving new conversation keys. It remains in th’ append-only device log as revoked, so th’ change can’t be hidden. Arrr.</string>
+    <string name="catalog_this_happens_the_moment_you_confirm_there_62922ade" formatted="false">This happens th’ moment ye confirm - there be no waiting period an’ nothing t’ cancel, because this phone signs fer it wit’ th’ key itself. Every encrypted message on this account becomes unreadable t’ all hands, forever. Arrr.</string>
+    <string name="catalog_this_is_your_code_they_can_scan_f71a20fe" formatted="false">This be yer code. They can scan it from th’ lock at th’ top o’ yer conversation, or from this screen on their own phone. Arrr.</string>
+    <string name="catalog_this_media_is_unavailable_1ed2c88e" formatted="false">This media be unavailable</string>
+    <string name="catalog_this_phone_7bcf6179" formatted="false">  ·  this phone</string>
+    <string name="catalog_this_phone_cannot_revoke_itself_4f680a33" formatted="false">This phone cannot revoke itself.</string>
+    <string name="catalog_this_phone_connects_to_the_new_device_9c190e97" formatted="false">This phone connects to the new device without authorizing it yet.</string>
+    <string name="catalog_this_phone_could_not_be_set_up_ee589c92" formatted="false">This phone could not be set up again.</string>
+    <string name="catalog_this_phone_creates_a_protected_encryption_identity_c2865640" formatted="false">This phone creates a protected encryption identity in Android Keystore.</string>
+    <string name="catalog_this_phone_creates_its_own_non_copyable_e6604888" formatted="false">This phone creates its own non-copyable identity. Only encrypted conversation-history keys move from th’ PC. Arrr.</string>
+    <string name="catalog_this_phone_has_not_made_its_encryption_0af536c0" formatted="false">This phone has not forged its encryption key yet.</string>
+    <string name="catalog_this_phone_is_not_authorized_yet_finish_1ca6df93" formatted="false">This phone be not authorized yet. Finish “Add this phone” before it can read encrypted history or revoke another encryption device. Arrr.</string>
+    <string name="catalog_this_phone_is_now_an_authorized_encryption_65fc8f05" formatted="false">This phone be now an authorized encryption device.</string>
+    <string name="catalog_this_phone_was_removed_from_your_account_a066cfb1" formatted="false">This phone was removed from yer account from another device. Its key no longer opens anything here, an’ it can’t read new encrypted messages until ye add it again. Arrr.</string>
+    <string name="catalog_this_replaces_all_of_your_existing_recovery_1ee473c2" formatted="false">This replaces all o’ yer existing recovery codes.</string>
+    <string name="catalog_this_version_of_orangchat_is_no_longer_91b823d1" formatted="false">This version o’ OrangChat be no longer supported an’ can no longer connect.</string>
+    <string name="catalog_those_don_t_match_5820ec54" formatted="false">Those don\'t tally.</string>
+    <string name="catalog_throw_away_the_encryption_identity_on_this_e4c09f9c" formatted="false">Throw away th’ encryption identity on this account an’ make a fresh one here. Every other device be removed an’ has t’ be added again. Arrr.</string>
+    <string name="catalog_tighter_spacing_between_messages_58e3bf31" formatted="false">Tighter gaps between missives.</string>
+    <string name="catalog_time_out_71ed8fda" formatted="false">Put on time-out</string>
+    <string name="catalog_timed_out_edcd3630" formatted="false">Put on time-out</string>
+    <string name="catalog_timed_out_in_64510a0d" formatted="false">Time-out in</string>
+    <string name="catalog_to_lock_a_box_for_someone_your_a0458be1" formatted="false">T’ lock a box fer some soul, yer phone needs their lock, an’ it asks our servers fer it. So th’ fair question be: what if we handed ye a lock we had made ourselves, kept th’ key, an’ passed yer messages along afterwards? Arrr.</string>
+    <string name="catalog_too_many_attempts_wait_a_moment_and_585a4cea" formatted="false">Too many attempts. Wait a moment and try again.</string>
+    <string name="catalog_transfer_code_scanned_fdb95e51" formatted="false">Transfer code scanned, arrr</string>
+    <string name="catalog_turn_camera_off_97e661ba" formatted="false">Douse camera</string>
+    <string name="catalog_turn_camera_on_98c78a9e" formatted="false">Light camera</string>
+    <string name="catalog_turn_off_8807c2b3" formatted="false">Douse it</string>
+    <string name="catalog_turn_off_two_factor_ec64c330" formatted="false">Douse two-factor</string>
+    <string name="catalog_turn_on_two_factor_2d7b5797" formatted="false">Light two-factor</string>
+    <string name="catalog_turning_off_two_factor_leaves_your_password_7c7e274a" formatted="false">Turning off two-factor leaves yer password as th’ only protection.</string>
+    <string name="catalog_two_answers_and_you_pick_how_much_c95f5a5c" formatted="false">Two answers, an’ ye pick how much ye want.</string>
+    <string name="catalog_two_factor_authentication_edfd617a" formatted="false">Two-factor guard</string>
+    <string name="catalog_two_factor_is_on_65e04e1d" formatted="false">Two-factor be on</string>
+    <string name="catalog_type_1_s_to_confirm_700d64a1" formatted="true">Type %1$s to confirm</string>
+    <string name="catalog_type_to_search_this_server_s_messages_43fff226" formatted="false">Type t’ search this server\'s messages.</string>
+    <string name="catalog_type_to_search_your_cached_direct_messages_12182460" formatted="false">Type t’ search yer cached direct messages.</string>
+    <string name="catalog_unknown_bc7819b3" formatted="false">Unknown</string>
+    <string name="catalog_unknown_device_7af13b29" formatted="false">Unknown device</string>
+    <string name="catalog_unknown_ip_70fef55a" formatted="false">mysterious IP</string>
+    <string name="catalog_until_1_s_5ec80ce8" formatted="true">Until %1$s</string>
+    <string name="catalog_update_now_c4cbac00" formatted="false">Update now, matey</string>
+    <string name="catalog_update_required_f440d880" formatted="false">Update be required</string>
+    <string name="catalog_update_to_continue_27e65968" formatted="false"> Update t’ continue.</string>
+    <string name="catalog_updates_c76d1807" formatted="false">Updates</string>
+    <string name="catalog_upload_failed_ad0d0603" formatted="false">Upload went awry</string>
+    <string name="catalog_uploading_d921a79a" formatted="false">Hauling aboard…</string>
+    <string name="catalog_use_passkey_a93f1827" formatted="false">Use yer passkey</string>
+    <string name="catalog_used_to_sign_in_there_s_no_51a10c36" formatted="false">Used t’ sign in. There\'s no confirmation email, so double-check it.</string>
+    <string name="catalog_user_settings_f2b85332" formatted="false">Yer settings</string>
+    <string name="catalog_v_1_s_2682e065" formatted="true">v%1$s</string>
+    <string name="catalog_verify_this_contact_ee09ef5c" formatted="false">Check this contact</string>
+    <string name="catalog_version_1_s_build_2_s_e3646b68" formatted="true">Version %1$s (build %2$s)</string>
+    <string name="catalog_version_1_s_d2f210e6" formatted="true">Version %1$s</string>
+    <string name="catalog_version_1_s_is_available_e41095b0" formatted="true">Version %1$s is available</string>
+    <string name="catalog_version_2da600bf" formatted="false">Version</string>
+    <string name="catalog_version_and_build_3da1c1d8" formatted="false">Version an’ build</string>
+    <string name="catalog_video_call_12d8c530" formatted="false">video hail</string>
+    <string name="catalog_video_call_ad60f43c" formatted="false">Video hail</string>
+    <string name="catalog_voice_call_329f832a" formatted="false">voice hail</string>
+    <string name="catalog_voice_connected_538f3e5c" formatted="false">Voice be connected</string>
+    <string name="catalog_waiting_for_the_pc_to_calculate_the_a6606f84" formatted="false">Waiting fer th’ PC t’ calculate th’ comparison digits…</string>
+    <string name="catalog_waiting_for_your_pc_b7329350" formatted="false">Waiting fer yer PC…</string>
+    <string name="catalog_we_can_still_see_the_outside_of_c8bd071e" formatted="false">We can still see th’ outside o’ it: who sent it, who it went t’, how big it was an’ when. We can’t see what be inside. Arrr.</string>
+    <string name="catalog_we_emailed_you_a_sign_in_code_e283ce1e" formatted="false">We emailed ye a sign-in code. It expires in 10 minutes.</string>
+    <string name="catalog_welcome_back_b807833e" formatted="false">Welcome back, matey</string>
+    <string name="catalog_what_happened_optional_9a81bdcf" formatted="false">What happened, matey? (if ye fancy)</string>
+    <string name="catalog_what_happens_next_51ecc5b2" formatted="false">What comes next</string>
+    <string name="catalog_what_incoming_calls_sound_like_5a0f66a3" formatted="false">How incoming hails sound</string>
+    <string name="catalog_what_you_share_6998553a" formatted="false">What ye share</string>
+    <string name="catalog_whatever_the_other_person_does_with_the_2d44e6c7" formatted="false">• Whatever th’ other person does wit’ th’ message. They can screenshot it, save it, or show some soul. Encryption stops strangers, not recipients. Arrr.</string>
+    <string name="catalog_when_joining_a_call_9f17cb1a" formatted="false">When boarding a hail</string>
+    <string name="catalog_where_you_re_signed_in_af00ae96" formatted="false">Where ye\'re signed in</string>
+    <string name="catalog_who_can_add_you_07e171de" formatted="false">Who can add ye</string>
+    <string name="catalog_who_can_message_you_e9356e11" formatted="false">Who can message ye</string>
+    <string name="catalog_who_you_talk_to_when_and_how_96d03db2" formatted="false">• Who ye talk t’, when, an’ how often. Locked boxes still have t’ be addressed t’ some soul. Arrr.</string>
+    <string name="catalog_with_someone_new_your_messages_wait_on_376112de" formatted="false">Wit’ some soul new, yer messages wait on this phone - locked, sent nowhere - until ye have seen their code in person or read th’ numbers t’ each other on a call. Arrr.</string>
+    <string name="catalog_yes_leave_them_all_8520c6e8" formatted="false">Aye, leave ’em all</string>
+    <string name="catalog_yes_that_s_them_03f398c0" formatted="false">Yes, that\'s ’em</string>
+    <string name="catalog_you_can_also_scan_with_the_system_35d7d733" formatted="false">Ye can also scan wit’ th’ system Camera app an’ tap “Open OrangChat”.</string>
+    <string name="catalog_you_do_not_have_this_permission_d4f08a3c" formatted="false">Ye don’t have this permission.</string>
+    <string name="catalog_you_enter_a_fresh_2fa_code_on_2c858a05" formatted="false">You enter a fresh 2FA code on this authorized phone.</string>
+    <string name="catalog_you_example_com_50e2b46e" formatted="false">you@example.com</string>
+    <string name="catalog_you_ll_need_an_authenticator_app_such_60b7dd86" formatted="false">Ye\'ll need an authenticator app such as Google Authenticator, 1Password, or Aegis. Arrr.</string>
+    <string name="catalog_you_re_on_the_latest_version_182b7c69" formatted="false">Ye\'re on th’ latest version</string>
+    <string name="catalog_you_ve_been_invited_to_join_3a282347" formatted="false">Ye\'ve been invited t’ join</string>
+    <string name="catalog_you_ve_reached_the_limit_of_1_e25f813b" formatted="true">You\'ve reached the limit of %1$s passkeys. Remove one to add another.</string>
+    <string name="catalog_your_account_is_in_good_standing_1806a501" formatted="false">Yer account be in good standing</string>
+    <string name="catalog_your_account_is_locked_down_d129bf10" formatted="false">Yer account be locked down</string>
+    <string name="catalog_your_current_password_6658f206" formatted="false">Yer current password</string>
+    <string name="catalog_your_direct_messages_are_locked_on_this_0bc36ae0" formatted="false">Yer direct messages be locked on this phone before they be sent. Th’ key was made here, lives in th’ phone\'s secure hardware, an’ can’t be copied off it - not by OrangChat, an’ not by anyone holding a database backup.</string>
+    <string name="catalog_your_messages_are_locked_before_they_leave_a431b93a" formatted="false">Yer messages be locked before they leave this phone</string>
+    <string name="catalog_your_messages_stay_in_the_conversations_they_34246f3c" formatted="false">Yer messages stay in th’ conversations they\'re part o’, shown as from a </string>
+    <string name="catalog_your_old_keys_are_gone_this_phone_be322585" formatted="false">Your old keys are gone. This phone has fresh ones.</string>
+    <string name="catalog_your_password_26d745d4" formatted="false">Yer password</string>
+    <string name="catalog_your_phone_and_pc_show_six_digits_07bd977d" formatted="false">Your phone and PC show six digits. Compare them and cancel if they differ.</string>
+    <string name="catalog_your_phone_and_your_computer_each_make_ade9350c" formatted="false">Yer phone an’ yer computer each make their own key, on th’ device itself, th’ first time ye use encryption there. It goes into th’ part o’ th’ device built t’ guard keys, an’ it be made so that it can’t be read back out - not by OrangChat, not by another app, not by ye. There be nothing t’ leak an’ nothing t’ hand over.</string>
+    <string name="catalog_your_phone_puts_the_message_in_a_10625561" formatted="false">Yer phone puts th’ message in a box an’ locks it. Every device in th’ conversation, an’ only those, holds a key t’ that box. Our servers store an’ pass along th’ locked box. Arrr.</string>
+</resources>
+
+

@@ -18,6 +18,7 @@ import { MessageContextMenu } from "./MessageContextMenu";
 import { ForwardDialog } from "./ForwardDialog";
 import { ReportMessageDialog } from "./ReportMessageDialog";
 import { BotTag } from "../../components/BotTag";
+import { t } from "../../lib/i18n";
 
 export interface MessageItemProps {
   message: Message;
@@ -118,7 +119,7 @@ function EditForm({ message, onDone }: { message: Message; onDone: () => void })
       />
       <div className="mt-1 flex items-center justify-between gap-2 text-xs text-ink-muted">
         <span>
-          Enter to save · Esc to cancel
+          {t("messageItem.enterToSaveEscToCancel")}
           {error && <span className="ml-2 text-danger">{error}</span>}
         </span>
         <span className="flex shrink-0 gap-1">
@@ -128,7 +129,7 @@ function EditForm({ message, onDone }: { message: Message; onDone: () => void })
             onClick={onDone}
             className="rounded-md px-2 py-1 text-ink-secondary transition-colors hover:bg-surface-3 hover:text-ink disabled:opacity-50"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             type="button"
@@ -218,7 +219,7 @@ export function MessageItem({
             {message.pinned && (
               <p className="mb-0.5 flex items-center gap-1.5 pl-12 text-xs text-ink-muted">
                 <Pin aria-hidden className="size-3.5" />
-                Pinned
+                {t("messageItem.pinned")}
               </p>
             )}
 
@@ -227,7 +228,7 @@ export function MessageItem({
               <button
                 type="button"
                 onClick={() => onJumpTo?.(message.replyToId!)}
-                title="Jump to the replied message"
+                title={t("messageItem.jumpToTheRepliedMessage")}
                 className="mb-0.5 flex w-full items-center gap-1.5 pl-12 pr-2 text-left text-xs text-ink-muted transition-colors hover:text-ink"
               >
                 <Reply aria-hidden className="size-3.5 shrink-0 -scale-x-100" />
@@ -239,7 +240,7 @@ export function MessageItem({
                     <span className="truncate">{replyTo.content}</span>
                   </>
                 ) : (
-                  <span className="italic">Original message</span>
+                  <span className="italic">{t("messageItem.originalMessage")}</span>
                 )}
               </button>
             )}
@@ -311,7 +312,7 @@ export function MessageItem({
                         title={formatFullTime(message.editedAt)}
                         className="ml-1.5 text-[10px] text-ink-muted"
                       >
-                        (edited)
+                        {t("messageItem.edited")}
                       </span>
                     )}
                   </div>
@@ -346,14 +347,14 @@ export function MessageItem({
                       onClick={onRetry}
                       className="font-semibold text-primary transition-colors hover:text-primary-hover"
                     >
-                      Retry
+                      {t("common.retry")}
                     </button>
                     <button
                       type="button"
                       onClick={onDiscard}
                       className="font-semibold text-danger transition-colors hover:text-danger/80"
                     >
-                      Delete
+                      {t("common.delete")}
                     </button>
                   </div>
                 )}
@@ -373,7 +374,7 @@ export function MessageItem({
                 <ReactionPicker message={message} />
                 <button
                   type="button"
-                  aria-label="Reply"
+                  aria-label={t("messageItem.reply")}
                   onClick={() => onReply(message)}
                   className="rounded p-1.5 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink md:p-1"
                 >
@@ -382,7 +383,7 @@ export function MessageItem({
                 {isOwn && (
                   <button
                     type="button"
-                    aria-label="Edit message"
+                    aria-label={t("messageItem.editMessage")}
                     onClick={() => setEditing(true)}
                     className="rounded p-1.5 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink md:p-1"
                   >
@@ -392,7 +393,7 @@ export function MessageItem({
                 {(isOwn || canManage) && (
                   <button
                     type="button"
-                    aria-label="Delete message"
+                    aria-label={t("messageItem.deleteMessage")}
                     onClick={() =>
                       void deleteMessage({
                         channelId: message.channelId,

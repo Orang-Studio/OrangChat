@@ -4,6 +4,7 @@ import type { User } from '@orangchat/shared';
 import { Button } from '../../components/ui/Button';
 import { useBlockedByVerification } from '../chat/outbox';
 import { VerifyDialog } from './VerifyDialog';
+import { t, tCount } from "../../lib/i18n";
 
 /**
  * What the blocked state of strict mode looks like from inside the conversation
@@ -26,15 +27,13 @@ export function VerificationNotice({ channelId, peers }: { channelId: string; pe
       <div className="mx-4 mb-2 flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2">
         <ShieldAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium">Your message is waiting, not lost</p>
+          <p className="text-xs font-medium">{t("verificationNotice.yourMessageIsWaitingNotLost")}</p>
           <p className="text-xs leading-relaxed text-ink-secondary">
-            You asked to check people before messaging them, and you have not checked {who} yet. The
-            message is sitting on this device, locked - it has not been sent anywhere. Scan their
-            code, or compare numbers on a call, and it goes.
+            {t("verificationNotice.notCheckedYet", { who })}
           </p>
         </div>
         <Button type="button" size="sm" className="shrink-0" onClick={() => setOpen(true)}>
-          Check {peers.length === 1 ? 'them' : 'people'}
+          {tCount("verificationNotice.check", peers.length)}
         </Button>
       </div>
       {open && <VerifyDialog open onOpenChange={setOpen} peers={peers} channelId={channelId} />}

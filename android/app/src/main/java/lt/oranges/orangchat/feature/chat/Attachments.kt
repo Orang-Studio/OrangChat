@@ -1,5 +1,6 @@
 package lt.oranges.orangchat.feature.chat
 
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -55,6 +56,7 @@ import lt.oranges.orangchat.ui.components.ButtonSize
 import lt.oranges.orangchat.ui.components.OrangButton
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
+import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.absoluteUrl
 import java.time.Instant
 import java.time.format.DateTimeParseException
@@ -134,6 +136,7 @@ private fun UploadChip(
     upload: AttachmentDraftViewModel.PendingUpload,
     onRemove: () -> Unit,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val shape = RoundedCornerShape(OrangRadius.xl)
 
@@ -208,7 +211,7 @@ private fun UploadChip(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Schedule, null, tint = c.warning, modifier = Modifier.size(11.dp))
                 Spacer(Modifier.width(3.dp))
-                Text("Expires in 1 hour", color = c.warning, fontSize = 11.sp)
+                Text(AppStrings.get(context, R.string.catalog_expires_in_1_hour_26e2eae7), color = c.warning, fontSize = 11.sp)
             }
         }
     }
@@ -245,6 +248,7 @@ fun MessageAttachments(attachments: List<Attachment>, modifier: Modifier = Modif
 /** Keep moderated pixels unloaded until this viewer explicitly opts in. */
 @Composable
 private fun FlaggedAttachment(attachment: Attachment, expiresAt: Instant?, now: Instant) {
+        val context = LocalContext.current
     var revealed by remember(attachment.id) { mutableStateOf(false) }
     if (revealed) {
         ImagePreview(attachment, expiresAt, now)
@@ -264,7 +268,7 @@ private fun FlaggedAttachment(attachment: Attachment, expiresAt: Instant?, now: 
         Icon(Icons.Default.Warning, null, tint = c.danger, modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
-            Text("Inappropriate content", color = c.ink, fontSize = 12.sp)
+            Text(AppStrings.get(context, R.string.catalog_inappropriate_content_62db8957), color = c.ink, fontSize = 12.sp)
             Text(
                 "Hidden by automatic moderation · ${attachment.filename}",
                 color = c.inkMuted,
@@ -280,6 +284,7 @@ private fun FlaggedAttachment(attachment: Attachment, expiresAt: Instant?, now: 
 
 @Composable
 private fun ExpiredCard(attachment: Attachment) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val shape = RoundedCornerShape(OrangRadius.lg)
     Row(
@@ -301,7 +306,7 @@ private fun ExpiredCard(attachment: Attachment) {
                 overflow = TextOverflow.Ellipsis,
                 textDecoration = TextDecoration.LineThrough,
             )
-            Text("Expired - large files are only kept for an hour", color = c.inkMuted, fontSize = 11.sp)
+            Text(AppStrings.get(context, R.string.catalog_expired_large_files_are_only_kept_for_a9b2c12d), color = c.inkMuted, fontSize = 11.sp)
         }
     }
 }

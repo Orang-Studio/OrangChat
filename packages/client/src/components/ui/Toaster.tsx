@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { CircleAlert, CircleCheck, Info, X, type LucideIcon } from "lucide-react";
 import { toastActions, useToastsStore, type ToastType } from "../../stores/toasts";
+import { t } from "../../lib/i18n";
 
 const ICONS: Record<ToastType, LucideIcon> = {
   info: Info,
@@ -38,7 +39,7 @@ function ToastItem({ id, message, type }: { id: number; message: string; type: T
       <button
         type="button"
         onClick={() => toastActions.dismiss(id)}
-        aria-label="Dismiss notification"
+        aria-label={t("toaster.dismissNotification")}
         className="rounded-lg p-2 text-ink-muted transition-colors hover:text-ink"
       >
         <X aria-hidden className="size-4" />

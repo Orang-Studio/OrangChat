@@ -48,6 +48,7 @@ import { ConnectionBanner } from "./ConnectionBanner";
 import { Tooltip } from "../../components/ui/Tooltip";
 import { Composer } from "./Composer";
 import { TypingIndicator } from "./TypingIndicator";
+import { t } from "../../lib/i18n";
 
 /** A header action that lives in the overflow menu rather than as its own icon. */
 export interface HeaderMenuItem {
@@ -189,7 +190,7 @@ export function ChatView({
         <button
           type="button"
           onClick={panelActions.openLeft}
-          aria-label="Open navigation"
+          aria-label={t("chatView.openNavigation")}
           className="-ml-1 rounded-lg p-2 text-ink-secondary transition-colors hover:bg-surface-3 hover:text-ink md:hidden"
         >
           <Menu aria-hidden className="size-5" />
@@ -225,10 +226,10 @@ export function ChatView({
             (encryptionBadge ?? (
               // The word "Encrypted" is dropped below sm to save room; the
               // tooltip keeps the meaning reachable there (touch = long press).
-              <Tooltip label="Messages in this conversation are end-to-end encrypted">
+              <Tooltip label={t("chatView.messagesInThisConversationAreEnd")}>
                 <span className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-ink-muted">
                   <Lock aria-hidden className="size-4" />
-                  <span className="hidden sm:inline">Encrypted</span>
+                  <span className="hidden sm:inline">{t("chatView.encrypted")}</span>
                 </span>
               </Tooltip>
             ))}
@@ -239,7 +240,7 @@ export function ChatView({
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              aria-label="Search messages"
+              aria-label={t("chatView.searchMessages")}
               className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink"
             >
               <Search aria-hidden className="size-5" />
@@ -247,8 +248,8 @@ export function ChatView({
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger
-                aria-label="More"
-                title="More"
+                aria-label={t("chatView.more")}
+                title={t("chatView.more")}
                 className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink"
               >
                 <MoreVertical aria-hidden className="size-5" />
@@ -272,7 +273,7 @@ export function ChatView({
             <button
               type="button"
               onClick={panelActions.toggleRight}
-              aria-label="Toggle member list"
+              aria-label={t("chatView.toggleMemberList")}
               className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink lg:hidden"
             >
               <Users aria-hidden className="size-5" />
@@ -297,7 +298,7 @@ export function ChatView({
       />
 
       <Dialog open={topicOpen} onOpenChange={setTopicOpen}>
-        <DialogContent title="Channel topic">
+        <DialogContent title={t("chatView.channelTopic")}>
           <p className="text-sm leading-relaxed text-ink-secondary">{channel.topic}</p>
         </DialogContent>
       </Dialog>
@@ -308,14 +309,14 @@ export function ChatView({
         <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
           <TriangleAlert aria-hidden className="size-6 text-danger" />
           <p className="text-sm text-ink-secondary">
-            Couldn't load messages. Check your connection and try again.
+            {t("chatView.couldntLoadMessagesCheckYourConnection")}
           </p>
           <button
             type="button"
             onClick={() => void refetch()}
             className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-ink-on-primary transition-colors hover:bg-primary-hover"
           >
-            Try again
+            {t("chatView.tryAgain")}
           </button>
         </div>
       ) : isLoading && messages.length === 0 ? (

@@ -3,6 +3,7 @@ import { PhoneOff, VideoOff, X, type LucideIcon } from "lucide-react";
 import { useConversations } from "../dms/queries";
 import { callActions, useCallStore, type CallNotice } from "./callStore";
 import { useVoiceStore, voiceActions } from "./store";
+import { t } from "../../lib/i18n";
 
 function Toast({
   message,
@@ -23,7 +24,7 @@ function Toast({
       <button
         type="button"
         onClick={onDismiss}
-        aria-label="Dismiss"
+        aria-label={t("callErrorToast.dismiss")}
         className="rounded-lg p-2 text-ink-muted transition-colors hover:text-ink"
       >
         <X aria-hidden className="size-4" />

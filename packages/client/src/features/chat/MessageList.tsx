@@ -11,6 +11,7 @@ import {
 import { withinGroupWindow } from '../../lib/time';
 import { CallCard } from '../voice/CallCard';
 import { MessageItem } from './MessageItem';
+import { t } from "../../lib/i18n";
 
 interface MessageListProps {
   messages: Message[];
@@ -462,7 +463,7 @@ export function MessageList({
           role="status"
           className="absolute inset-x-0 top-2 z-10 mx-auto w-fit rounded-lg border border-border bg-surface-4 px-3 py-1.5 text-xs text-ink-secondary shadow-lg"
         >
-          Couldn't find that message - it may have been deleted.
+          {t("messageList.couldntFindThatMessageItMay")}
         </p>
       )}
       <div
@@ -485,7 +486,7 @@ export function MessageList({
             onClick={expandHistory}
             className="mx-auto my-3 block rounded-md border border-border bg-surface-2 px-3 py-1.5 text-xs font-medium text-ink-secondary transition-colors hover:bg-surface-3 hover:text-ink"
           >
-            Load earlier messages
+            {t("messageList.loadEarlierMessages")}
           </button>
         ) : hasOlder ? (
           <div ref={topSentinel} className="flex justify-center py-4">
@@ -496,9 +497,11 @@ export function MessageList({
         ) : (
           (intro ?? (
             <div className="px-4 pb-2 pt-6">
-              <h2 className="text-xl font-bold">Welcome to #{channelName}</h2>
+              <h2 className="text-xl font-bold">
+                {t("messageList.welcomeToChannel", { channel: channelName })}
+              </h2>
               <p className="text-sm text-ink-secondary">
-                This is the start of the channel. Say something!
+                {t("messageList.thisIsTheStartOfThe")}
               </p>
             </div>
           ))
@@ -510,12 +513,12 @@ export function MessageList({
             {band.start === dividerIndex && (
               <div
                 role="separator"
-                aria-label="New messages start here"
+                aria-label={t("messageList.newMessagesStartHere")}
                 className="flex items-center gap-3 px-4 py-2"
               >
                 <span aria-hidden className="h-px flex-1 bg-border" />
                 <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                  New messages
+                  {t("messageList.newMessages")}
                 </span>
                 <span aria-hidden className="h-px flex-1 bg-border" />
               </div>

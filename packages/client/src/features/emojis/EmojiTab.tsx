@@ -4,6 +4,7 @@ import { Trash2, Upload } from "lucide-react";
 import type { Emoji, Server } from "@orangchat/shared";
 import { MAX_EMOJI_BYTES, deleteEmoji, renameEmoji, uploadEmoji } from "./api";
 import { emojiKeys, useServerEmojis } from "./queries";
+import { t } from "../../lib/i18n";
 
 /**
  * A filename is the best guess at a name, and usually a good one: `blob_wave.png`
@@ -76,7 +77,7 @@ function EmojiRow({ server, emoji }: { server: Server; emoji: Emoji }) {
       </div>
       {emoji.animated && (
         <span className="shrink-0 rounded border border-border px-1 text-[10px] font-semibold uppercase text-ink-muted">
-          GIF
+          {t("emojiTab.gif")}
         </span>
       )}
       <button
@@ -126,9 +127,9 @@ export function EmojiTab({ server }: { server: Server }) {
       <div>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h3 className="text-sm font-semibold">Custom emoji</h3>
+            <h3 className="text-sm font-semibold">{t("emojiTab.customEmoji")}</h3>
             <p className="text-xs text-ink-muted">
-              PNG, JPEG or GIF up to 256 kB. Resized to 128px; GIFs keep their animation.
+              {t("emojiTab.pngJpegOrGifUpTo")}
             </p>
           </div>
           <button
@@ -160,7 +161,7 @@ export function EmojiTab({ server }: { server: Server }) {
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-ink-muted">Loading…</p>
+        <p className="text-sm text-ink-muted">{t("common.loading")}</p>
       ) : emojis && emojis.length > 0 ? (
         <ul className="max-h-80 space-y-2 overflow-y-auto">
           {emojis.map((emoji) => (
@@ -169,7 +170,7 @@ export function EmojiTab({ server }: { server: Server }) {
         </ul>
       ) : (
         <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-ink-muted">
-          No custom emoji yet. Upload one to use it anywhere in this server.
+          {t("emojiTab.noCustomEmojiYetUploadOne")}
         </p>
       )}
     </div>

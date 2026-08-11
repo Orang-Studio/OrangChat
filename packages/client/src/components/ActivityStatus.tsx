@@ -1,6 +1,7 @@
 import { Gamepad2, Music2 } from "lucide-react";
 import type { UserActivity } from "@orangchat/shared";
 import { cn } from "../lib/cn";
+import { t } from "../lib/i18n";
 import { useNow } from "../lib/useNow";
 
 function formatElapsed(startedAt: string, now: number): string | null {
@@ -19,10 +20,11 @@ function ElapsedTime({ startedAt, compact }: { startedAt: string; compact: boole
   const now = useNow();
   const elapsed = formatElapsed(startedAt, now);
   if (!elapsed) return null;
+  const label = t("activityStatus.forDuration", { duration: elapsed });
   return compact ? (
-    <span className="oc-pf-activity-elapsed"> · for {elapsed}</span>
+    <span className="oc-pf-activity-elapsed"> · {label}</span>
   ) : (
-    <span className="oc-pf-activity-elapsed block text-xs">for {elapsed}</span>
+    <span className="oc-pf-activity-elapsed block text-xs">{label}</span>
   );
 }
 

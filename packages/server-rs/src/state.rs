@@ -5,6 +5,7 @@ use socketioxide::SocketIo;
 use sqlx::PgPool;
 
 use crate::config::Config;
+use crate::http::i18n::I18nStore;
 use crate::services::attachment_crypto::AttachmentCipher;
 use crate::services::cloudinary::Cloudinary;
 use crate::services::image_moderation::ImageModeration;
@@ -25,6 +26,8 @@ pub struct AppState {
     pub image_moderation: Option<Arc<ImageModeration>>,
     /// None when neither Web Push nor FCM credentials are configured.
     pub push: Option<Arc<Push>>,
+    /// Server-served string catalogs, loaded at boot from `config.i18n_dir`.
+    pub i18n: Arc<I18nStore>,
     io: Arc<OnceLock<SocketIo>>,
 }
 
@@ -34,6 +37,7 @@ impl AppState {
         let attachment_cipher = AttachmentCipher::from_config(&config).map(Arc::new);
         let image_moderation = ImageModeration::from_config(&config).map(Arc::new);
         let push = Push::from_config(&config).map(Arc::new);
+        let i18n = Arc::new(I18nStore::load(&config.i18n_dir));
         AppState {
             pool,
             redis,
@@ -42,6 +46,7 @@ impl AppState {
             attachment_cipher,
             image_moderation,
             push,
+            i18n,
             io: Arc::new(OnceLock::new()),
         }
     }

@@ -21,23 +21,27 @@ import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import lt.oranges.orangchat.R
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
+import lt.oranges.orangchat.util.AppStrings
 
 /** Shared top bar with a back arrow for every settings sub-screen. */
 @Composable
 fun SettingsTopBar(title: String, onBack: () -> Unit) {
     val c = OrangTheme.colors
+    val context = LocalContext.current
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
             Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "Back",
+            contentDescription = AppStrings.get(context, R.string.catalog_back_b52b36b7),
             tint = c.inkSecondary,
             modifier = Modifier.clickable(onClick = onBack).padding(4.dp),
         )

@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.qrlogin
-
+import lt.oranges.orangchat.util.AppStrings
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,14 +32,15 @@ fun QrLoginConfirmDialog(
     token: String,
     appViewModel: AppViewModel = hiltViewModel(),
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val busy by appViewModel.qrApproving.collectAsStateWithLifecycle()
     val error by appViewModel.qrError.collectAsStateWithLifecycle()
 
     OrangDialog(
         onDismiss = { if (!busy) appViewModel.clearPendingQrLogin() },
-        title = "Sign in on the web?",
-        description = "Someone scanned this account's code to sign in to OrangChat in a browser. Approve only if that was you.",
+        title = AppStrings.get(context, R.string.catalog_sign_in_on_the_web_94061c18),
+        description = AppStrings.get(context, R.string.catalog_someone_scanned_this_account_s_code_to_cd6f3892),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             error?.let {
@@ -48,7 +51,7 @@ fun QrLoginConfirmDialog(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 OrangButton(
-                    text = "Not me",
+                    text = AppStrings.get(context, R.string.catalog_not_me_1ad9a1eb),
                     onClick = { appViewModel.clearPendingQrLogin() },
                     variant = ButtonVariant.Ghost,
                     modifier = Modifier.weight(1f),

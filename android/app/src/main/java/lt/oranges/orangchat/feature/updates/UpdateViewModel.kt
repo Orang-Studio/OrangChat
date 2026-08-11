@@ -1,13 +1,17 @@
 package lt.oranges.orangchat.feature.updates
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import lt.oranges.orangchat.R
+import lt.oranges.orangchat.util.AppStrings
 import javax.inject.Inject
 
 /** Where the About screen's update row is in its little lifecycle. */
@@ -25,6 +29,7 @@ sealed interface UpdateUiState {
 
 @HiltViewModel
 class UpdateViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val updateManager: UpdateManager,
 ) : ViewModel() {
 
@@ -48,7 +53,7 @@ class UpdateViewModel @Inject constructor(
                     },
                     onFailure = { e ->
                         Log.w(TAG, "update check failed", e)
-                        UpdateUiState.Failed(e.message ?: "Could not reach the update server")
+                        UpdateUiState.Failed(e.message ?: AppStrings.get(context, R.string.catalog_could_not_reach_the_update_server_58cd6971))
                     },
                 )
         }
@@ -70,12 +75,12 @@ class UpdateViewModel @Inject constructor(
                     // The system still shows its own confirmation.
                     runCatching { updateManager.install(apk) }.onFailure { e ->
                         Log.w(TAG, "install failed", e)
-                        _state.value = UpdateUiState.Failed(e.message ?: "Could not open the installer")
+                        _state.value = UpdateUiState.Failed(e.message ?: AppStrings.get(context, R.string.catalog_could_not_open_the_installer_a59d8717))
                     }
                 },
                 onFailure = { e ->
                     Log.w(TAG, "update download failed", e)
-                    _state.value = UpdateUiState.Failed(e.message ?: "Download failed")
+                    _state.value = UpdateUiState.Failed(e.message ?: AppStrings.get(context, R.string.catalog_download_failed_01125e1b))
                 },
             )
         }

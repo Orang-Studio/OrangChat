@@ -32,6 +32,7 @@ import {
   setLockdown,
   startTwoFactorSetup,
 } from "./api";
+import { t, tCount } from "../../lib/i18n";
 
 /**
  * Rendered client-side so the secret never rides in an image URL. qrcode is
@@ -56,7 +57,7 @@ function QrCode({ text }: { text: string }) {
   }
   return (
     <div
-      aria-label="Two-factor QR code"
+      aria-label={t("securityTab.twoFactorQrCode")}
       className="size-48 rounded-lg bg-white p-2 [&>svg]:size-full"
       dangerouslySetInnerHTML={{ __html: svg }}
     />
@@ -83,10 +84,9 @@ function BackupCodeList({ codes, onDone }: { codes: string[]; onDone: () => void
 
   return (
     <div className="space-y-3">
-      <SectionTitle>Recovery codes</SectionTitle>
+      <SectionTitle>{t("securityTab.recoveryCodes")}</SectionTitle>
       <p className="text-sm text-ink-secondary">
-        Save these now - each works once if you lose your phone, and this is the only time
-        they're shown.
+        {t("securityTab.saveTheseNowEachWorksOnce")}
       </p>
       <ul className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-surface-1 p-3 font-mono text-sm">
         {codes.map((code) => (
@@ -96,14 +96,14 @@ function BackupCodeList({ codes, onDone }: { codes: string[]; onDone: () => void
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="secondary" size="sm" onClick={() => void copy()}>
           {copied ? <Check aria-hidden className="size-4" /> : <Copy aria-hidden className="size-4" />}
-          {copied ? "Copied" : "Copy"}
+          {copied ? t("securityTab.copied") : t("securityTab.copy")}
         </Button>
         <Button type="button" variant="secondary" size="sm" onClick={download}>
           <Download aria-hidden className="size-4" />
-          Download
+          {t("common.download")}
         </Button>
         <Button type="button" size="sm" onClick={onDone}>
-          I've saved them
+          {t("securityTab.iveSavedThem")}
         </Button>
       </div>
     </div>
@@ -134,12 +134,11 @@ function EnrollFlow({ onDone }: { onDone: () => void }) {
         }}
       >
         <p className="text-sm text-ink-secondary">
-          You'll need an authenticator app - Google Authenticator, 1Password, Aegis, or any
-          other TOTP app.
+          {t("securityTab.youllNeedAnAuthenticatorAppGoogle")}
         </p>
         {hasPassword && (
           <PasswordField
-            label="Confirm your password"
+            label={t("securityTab.confirmYourPassword")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
@@ -147,7 +146,7 @@ function EnrollFlow({ onDone }: { onDone: () => void }) {
         )}
         {setup.isError && <p className="text-sm text-danger">{setup.error.message}</p>}
         <Button type="submit" loading={setup.isPending}>
-          Continue
+          {t("securityTab.continue")}
         </Button>
       </form>
     );
@@ -162,20 +161,20 @@ function EnrollFlow({ onDone }: { onDone: () => void }) {
       }}
     >
       <div>
-        <SectionTitle>1. Scan this code</SectionTitle>
+        <SectionTitle>{t("securityTab.1ScanThisCode")}</SectionTitle>
         <QrCode text={setup.data.otpauthUrl} />
       </div>
       <div>
-        <SectionTitle>Can't scan?</SectionTitle>
-        <p className="text-xs text-ink-secondary">Enter this key manually:</p>
+        <SectionTitle>{t("securityTab.cantScan")}</SectionTitle>
+        <p className="text-xs text-ink-secondary">{t("securityTab.enterThisKeyManually")}</p>
         <code className="mt-1 block break-all rounded-lg border border-border bg-surface-1 px-3 py-2 font-mono text-xs">
           {setup.data.secret}
         </code>
       </div>
       <div>
-        <SectionTitle>2. Enter the 6-digit code</SectionTitle>
+        <SectionTitle>{t("securityTab.2EnterThe6DigitCode")}</SectionTitle>
         <TextField
-          label="Code from your app"
+          label={t("securityTab.codeFromYourApp")}
           value={code}
           onChange={(e) => setCode(e.target.value)}
           inputMode="numeric"
@@ -186,7 +185,7 @@ function EnrollFlow({ onDone }: { onDone: () => void }) {
       </div>
       {enable.isError && <p className="text-sm text-danger">{enable.error.message}</p>}
       <Button type="submit" loading={enable.isPending} disabled={code.length !== 6}>
-        Turn on two-factor
+        {t("securityTab.turnOnTwoFactor")}
       </Button>
     </form>
   );
@@ -237,10 +236,10 @@ function ManageEnabled({ backupCodesRemaining }: { backupCodesRemaining: number 
       <div className="flex items-start gap-3 rounded-lg border border-success/40 bg-success/10 px-3 py-2.5">
         <ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />
         <div>
-          <p className="text-sm font-medium">Two-factor authentication is on</p>
+          <p className="text-sm font-medium">{t("securityTab.twoFactorAuthenticationIsOn")}</p>
           <p className="text-xs text-ink-secondary">
-            {backupCodesRemaining} recovery code{backupCodesRemaining === 1 ? "" : "s"} left.
-            {backupCodesRemaining <= 2 && " Consider generating a new set."}
+            {tCount("securityTab.recoveryCodesLeft", backupCodesRemaining)}
+            {backupCodesRemaining <= 2 && ` ${t("securityTab.considerGeneratingANewSet")}`}
           </p>
         </div>
       </div>
@@ -248,7 +247,7 @@ function ManageEnabled({ backupCodesRemaining }: { backupCodesRemaining: number 
       {mode === "idle" ? (
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="secondary" size="sm" onClick={() => setMode("regen")}>
-            New recovery codes
+            {t("securityTab.newRecoveryCodes")}
           </Button>
           <Button
             type="button"
@@ -258,7 +257,7 @@ function ManageEnabled({ backupCodesRemaining }: { backupCodesRemaining: number 
             onClick={() => setMode("disable")}
           >
             <ShieldOff aria-hidden className="size-4" />
-            Turn off
+            {t("securityTab.turnOff")}
           </Button>
         </div>
       ) : (
@@ -271,19 +270,19 @@ function ManageEnabled({ backupCodesRemaining }: { backupCodesRemaining: number 
         >
           <p className="text-sm text-ink-secondary">
             {mode === "disable"
-              ? "Turning off two-factor makes your password the only thing protecting your account."
-              : "This replaces every existing recovery code."}
+              ? t("securityTab.turningOffTwoFactorMakes")
+              : t("securityTab.thisReplacesEveryExistingRecovery")}
           </p>
           {hasPassword && (
             <PasswordField
-              label="Your password"
+              label={t("securityTab.yourPassword")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
             />
           )}
           <TextField
-            label={mode === "disable" ? "Code from your app (or a recovery code)" : "Code from your app"}
+            label={mode === "disable" ? t("securityTab.codeFromYourAppOrA") : t("securityTab.codeFromYourApp")}
             value={code}
             onChange={(e) => setCode(e.target.value)}
             autoComplete="one-time-code"
@@ -298,10 +297,10 @@ function ManageEnabled({ backupCodesRemaining }: { backupCodesRemaining: number 
               loading={active.isPending}
               disabled={!code}
             >
-              {mode === "disable" ? "Turn off two-factor" : "Generate codes"}
+              {mode === "disable" ? t("securityTab.turnOffTwoFactor") : t("securityTab.generateCodes")}
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={reset}>
-              Cancel
+              {t("common.cancel")}
             </Button>
           </div>
         </form>
@@ -341,7 +340,7 @@ function CredentialsSection() {
     mutationFn: () => changeEmail(password, email, code),
     onSuccess: (res) => {
       authStoreActions.patchUser({ email: res.email });
-      setDone(`Email changed to ${res.email}.`);
+      setDone(t("securityTab.emailChangedTo", { email: res.email }));
       reset();
     },
   });
@@ -352,10 +351,8 @@ function CredentialsSection() {
       authStoreActions.patchUser({ hasPassword: true });
       setDone(
         res.sessionsRevoked > 0
-          ? `Password changed. ${res.sessionsRevoked} other session${
-              res.sessionsRevoked === 1 ? " was" : "s were"
-            } signed out.`
-          : "Password changed.",
+          ? tCount("securityTab.passwordChangedSessionsRevoked", res.sessionsRevoked)
+          : t("securityTab.passwordChanged"),
       );
       reset();
     },
@@ -371,9 +368,9 @@ function CredentialsSection() {
   return (
     <div className="space-y-4">
       <div>
-        <SectionTitle>Email &amp; password</SectionTitle>
+        <SectionTitle>{t("securityTab.emailAndPassword")}</SectionTitle>
         <p className="text-sm text-ink-secondary">
-          Signed in as <span className="text-ink">{user?.email}</span>.
+          {t("securityTab.signedInAs")} <span className="text-ink">{user?.email}</span>.
         </p>
       </div>
 
@@ -394,7 +391,7 @@ function CredentialsSection() {
               setMode("email");
             }}
           >
-            Change email
+            {t("securityTab.changeEmail")}
           </Button>
           <Button
             type="button"
@@ -405,7 +402,7 @@ function CredentialsSection() {
               setMode("password");
             }}
           >
-            {hasPassword ? "Change password" : "Set a password"}
+            {hasPassword ? t("securityTab.changePassword") : t("securityTab.setAPassword")}
           </Button>
         </div>
       ) : (
@@ -418,37 +415,37 @@ function CredentialsSection() {
         >
           {mode === "email" ? (
             <TextField
-              label="New email"
+              label={t("securityTab.newEmail")}
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
               // No mail transport in this deployment, so nothing confirms the
               // address afterwards - say so rather than implying a check email.
-              hint="Used to sign in. There's no confirmation email, so double-check it."
+              hint={t("securityTab.usedToSignInTheresNo")}
             />
           ) : (
             <>
               <PasswordField
-                label="New password"
+                label={t("securityTab.newPassword")}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 autoComplete="new-password"
-                hint="At least 8 characters."
+                hint={t("securityTab.atLeast8Characters")}
               />
               <PasswordField
-                label="Confirm new password"
+                label={t("securityTab.confirmNewPassword")}
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 autoComplete="new-password"
               />
-              {mismatch && <p className="text-sm text-danger">Those don't match.</p>}
+              {mismatch && <p className="text-sm text-danger">{t("securityTab.thoseDontMatch")}</p>}
             </>
           )}
 
           {hasPassword && (
             <PasswordField
-              label="Your current password"
+              label={t("securityTab.yourCurrentPassword")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
@@ -456,7 +453,7 @@ function CredentialsSection() {
           )}
           {twoFactor && (
             <TextField
-              label="Code from your app (or a recovery code)"
+              label={t("securityTab.codeFromYourAppOrA")}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               autoComplete="one-time-code"
@@ -466,17 +463,21 @@ function CredentialsSection() {
 
           {mode === "password" && (
             <p className="text-xs text-ink-muted">
-              Changing your password signs out every other session.
+              {t("securityTab.changingYourPasswordSignsOutEvery")}
             </p>
           )}
           {active.isError && <p className="text-sm text-danger">{active.error.message}</p>}
 
           <div className="flex gap-2">
             <Button type="submit" size="sm" loading={active.isPending} disabled={!canSubmit}>
-              {mode === "email" ? "Change email" : hasPassword ? "Change password" : "Set password"}
+              {mode === "email"
+                ? t("securityTab.changeEmail")
+                : hasPassword
+                  ? t("securityTab.changePassword")
+                  : t("securityTab.setPassword")}
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={reset}>
-              Cancel
+              {t("common.cancel")}
             </Button>
           </div>
         </form>
@@ -498,7 +499,7 @@ function AccountStandingSection() {
 
   return (
     <div className="space-y-3">
-      <SectionTitle>Account standing</SectionTitle>
+      <SectionTitle>{t("securityTab.accountStanding")}</SectionTitle>
 
       {isPending ? (
         <div className="h-14 animate-pulse rounded-lg bg-surface-3" />
@@ -506,9 +507,9 @@ function AccountStandingSection() {
         <div className="flex items-start gap-3 rounded-lg border border-success/40 bg-success/10 px-3 py-2.5">
           <ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />
           <div>
-            <p className="text-sm font-medium">Your account is in good standing</p>
+            <p className="text-sm font-medium">{t("securityTab.yourAccountIsInGoodStanding")}</p>
             <p className="text-xs text-ink-secondary">
-              No server is currently restricting you.
+              {t("securityTab.noServerIsCurrentlyRestrictingYou")}
             </p>
           </div>
         </div>
@@ -520,14 +521,18 @@ function AccountStandingSection() {
               className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2.5"
             >
               <p className="text-sm font-medium">
-                {entry.kind === "ban" ? "Banned from" : "Timed out in"} {entry.serverName}
+                {entry.kind === "ban"
+                  ? t("securityTab.bannedFromServer", { server: entry.serverName })
+                  : t("securityTab.timedOutInServer", { server: entry.serverName })}
               </p>
               {entry.reason && (
-                <p className="text-xs text-ink-secondary">Reason: {entry.reason}</p>
+                <p className="text-xs text-ink-secondary">
+                  {t("securityTab.reasonColon", { reason: entry.reason })}
+                </p>
               )}
               {entry.expiresAt && (
                 <p className="text-xs text-ink-secondary">
-                  Until {formatFullTime(entry.expiresAt)}
+                  {t("securityTab.untilTime", { time: formatFullTime(entry.expiresAt) })}
                 </p>
               )}
               {entry.kind === "ban" && entry.createdAt && (
@@ -561,17 +566,16 @@ function LeaveAllServersSection() {
 
   return (
     <div className="space-y-3">
-      <SectionTitle>Leave all servers</SectionTitle>
+      <SectionTitle>{t("securityTab.leaveAllServers")}</SectionTitle>
       <p className="text-sm text-ink-secondary">
-        Leaves every server you're in except the ones you own. You'll need a new
-        invite to get back into any of them.
+        {t("securityTab.leavesEveryServerYoureInExcept")}
       </p>
 
       {result && (
         <p role="status" className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
-          Left {result.left} server{result.left === 1 ? "" : "s"}.
+          {tCount("securityTab.leftServers", result.left)}
           {result.keptOwned.length > 0 &&
-            ` Still yours: ${result.keptOwned.join(", ")}.`}
+            ` ${t("securityTab.stillYours", { names: result.keptOwned.join(", ") })}`}
         </p>
       )}
       {mutation.isError && <p className="text-sm text-danger">{mutation.error.message}</p>}
@@ -585,10 +589,10 @@ function LeaveAllServersSection() {
             loading={mutation.isPending}
             onClick={() => mutation.mutate()}
           >
-            Yes, leave them all
+            {t("securityTab.yesLeaveThemAll")}
           </Button>
           <Button type="button" variant="ghost" size="sm" onClick={() => setConfirming(false)}>
-            Cancel
+            {t("common.cancel")}
           </Button>
         </div>
       ) : (
@@ -602,7 +606,7 @@ function LeaveAllServersSection() {
           }}
         >
           <DoorOpen aria-hidden className="size-4" />
-          Leave all servers
+          {t("securityTab.leaveAllServers")}
         </Button>
       )}
     </div>
@@ -635,30 +639,27 @@ function LockdownSection() {
 
   return (
     <div className="space-y-3">
-      <SectionTitle>Lockdown</SectionTitle>
+      <SectionTitle>{t("securityTab.lockdown")}</SectionTitle>
 
       {locked ? (
         <div className="flex items-start gap-3 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2.5">
           <Lock aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
           <div>
-            <p className="text-sm font-medium">Your account is locked down</p>
+            <p className="text-sm font-medium">{t("securityTab.yourAccountIsLockedDown")}</p>
             <p className="text-xs text-ink-secondary">
-              Nothing can sign in, and no new DMs or friend requests reach you.
-              This device stays signed in.
+              {t("securityTab.nothingCanSignInAndNo")}
             </p>
           </div>
         </div>
       ) : (
         <p className="text-sm text-ink-secondary">
-          Freezes the account if you think someone else is in it: signs out every
-          other device, blocks new sign-ins, and closes new DMs and friend
-          requests until you lift it.
+          {t("securityTab.freezesTheAccountIfYouThink")}
         </p>
       )}
 
       {revoked !== null && revoked > 0 && (
         <p role="status" className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
-          Signed out {revoked} other session{revoked === 1 ? "" : "s"}.
+          {tCount("securityTab.signedOutOtherSessions", revoked)}
         </p>
       )}
       {mutation.isError && <p className="text-sm text-danger">{mutation.error.message}</p>}
@@ -675,7 +676,7 @@ function LockdownSection() {
               nothing slows you down in the moment you actually need it. */}
           {locked && hasPassword && (
             <PasswordField
-              label="Your password"
+              label={t("securityTab.yourPassword")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
@@ -688,7 +689,7 @@ function LockdownSection() {
               variant={locked ? "primary" : "danger"}
               loading={mutation.isPending}
             >
-              {locked ? "Lift lockdown" : "Lock down my account"}
+              {locked ? t("securityTab.liftLockdown") : t("securityTab.lockDownMyAccount")}
             </Button>
             <Button
               type="button"
@@ -699,7 +700,7 @@ function LockdownSection() {
                 setPassword("");
               }}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
           </div>
         </form>
@@ -748,16 +749,14 @@ function DeleteAllMessagesSection() {
 
   return (
     <div className="space-y-3">
-      <SectionTitle>Delete all your messages</SectionTitle>
+      <SectionTitle>{t("securityTab.deleteAllYourMessages")}</SectionTitle>
       <p className="text-sm text-ink-secondary">
-        Removes every message you've sent, in every server and group - including
-        the ones you've left. Attachments you uploaded aren't removed from
-        storage. This can't be undone.
+        {t("securityTab.removesEveryMessageYouveSentIn")}
       </p>
 
       {deleted !== null && (
         <p role="status" className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
-          Deleted {deleted} message{deleted === 1 ? "" : "s"}.
+          {tCount("securityTab.deletedMessages", deleted)}
         </p>
       )}
 
@@ -773,7 +772,7 @@ function DeleteAllMessagesSection() {
           }}
         >
           <Eraser aria-hidden className="size-4" />
-          Delete all my messages
+          {t("securityTab.deleteAllMyMessages")}
         </Button>
       ) : (
         <form
@@ -785,7 +784,7 @@ function DeleteAllMessagesSection() {
         >
           {hasPassword && (
             <PasswordField
-              label="Your password"
+              label={t("securityTab.yourPassword")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
@@ -793,7 +792,7 @@ function DeleteAllMessagesSection() {
           )}
           {twoFactor && (
             <TextField
-              label="Code from your app (or a recovery code)"
+              label={t("securityTab.codeFromYourAppOrA")}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               autoComplete="one-time-code"
@@ -803,7 +802,7 @@ function DeleteAllMessagesSection() {
           {mutation.isError && <p className="text-sm text-danger">{mutation.error.message}</p>}
           <div className="flex gap-2">
             <Button type="submit" size="sm" variant="danger" loading={mutation.isPending}>
-              Delete them all
+              {t("securityTab.deleteThemAll")}
             </Button>
             <Button
               type="button"
@@ -815,7 +814,7 @@ function DeleteAllMessagesSection() {
                 setCode("");
               }}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
           </div>
         </form>
@@ -851,11 +850,9 @@ function DeleteAccountSection() {
 
   return (
     <div className="space-y-3">
-      <SectionTitle>Delete account</SectionTitle>
+      <SectionTitle>{t("securityTab.deleteAccount")}</SectionTitle>
       <p className="text-sm text-ink-secondary">
-        Your messages stay in the conversations they're part of, shown as from a
-        deleted user. Everything else - profile, connections, friends, server
-        memberships - is erased. This can't be undone.
+        {t("securityTab.yourMessagesStayInTheConversations")}
       </p>
 
       {!open ? (
@@ -867,7 +864,7 @@ function DeleteAccountSection() {
           onClick={() => setOpen(true)}
         >
           <Trash2 aria-hidden className="size-4" />
-          Delete my account
+          {t("securityTab.deleteMyAccount")}
         </Button>
       ) : (
         <form
@@ -878,14 +875,14 @@ function DeleteAccountSection() {
           }}
         >
           <TextField
-            label={`Type ${user?.username} to confirm`}
+            label={t("securityTab.typeUsernameToConfirm", { username: user?.username ?? "" })}
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="off"
           />
           {hasPassword && (
             <PasswordField
-              label="Your password"
+              label={t("securityTab.yourPassword")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
@@ -893,7 +890,7 @@ function DeleteAccountSection() {
           )}
           {twoFactor && (
             <TextField
-              label="Code from your app (or a recovery code)"
+              label={t("securityTab.codeFromYourAppOrA")}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               autoComplete="one-time-code"
@@ -909,7 +906,7 @@ function DeleteAccountSection() {
               loading={mutation.isPending}
               disabled={!confirmed}
             >
-              Permanently delete
+              {t("securityTab.permanentlyDelete")}
             </Button>
             <Button
               type="button"
@@ -922,7 +919,7 @@ function DeleteAccountSection() {
                 setCode("");
               }}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
           </div>
         </form>
@@ -956,9 +953,9 @@ export function SecurityTab() {
       </div>
 
       <div className="border-t border-border pt-5">
-        <SectionTitle>Two-factor authentication</SectionTitle>
+        <SectionTitle>{t("securityTab.twoFactorAuthentication")}</SectionTitle>
         <p className="mb-4 text-sm text-ink-secondary">
-          Ask for a code from your phone in addition to your password when you sign in.
+          {t("securityTab.askForACodeFromYour")}
         </p>
         {isPending ? (
           <div className="h-20 animate-pulse rounded-lg bg-surface-3" />

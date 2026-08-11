@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.ui.components
 
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -40,6 +42,7 @@ import kotlinx.coroutines.isActive
 import lt.oranges.orangchat.data.model.UserActivity
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
+import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.absoluteUrl
 
 private val activityClock = flow {
@@ -75,6 +78,7 @@ fun ActivityStatus(
     modifier: Modifier = Modifier,
     compact: Boolean = true,
 ) {
+        val context = LocalContext.current
     val activity = activities.firstOrNull { it.kind == "spotify" } ?: activities.firstOrNull() ?: return
     val spotify = activity.kind == "spotify"
     val elapsed = elapsedTime(activity.startedAt)
@@ -120,7 +124,7 @@ fun ActivityStatus(
         if (compact) {
             Text(
                 text = buildString {
-                    append(if (spotify) "Listening to " else "Playing ")
+                    append(if (spotify) AppStrings.get(context, R.string.catalog_listening_to_b35b0e8e) else "Playing ")
                     append(activity.name)
                     activity.details?.let { append(" - "); append(it) }
                     elapsed?.let { append(" · for "); append(it) }
@@ -135,7 +139,7 @@ fun ActivityStatus(
         } else {
             Column(modifier = Modifier.weight(1f, fill = false)) {
                 Text(
-                    text = if (spotify) "LISTENING TO" else "NOW PLAYING",
+                    text = if (spotify) AppStrings.get(context, R.string.catalog_listening_to_aad82f87) else AppStrings.get(context, R.string.catalog_now_playing_586fa7a8),
                     color = OrangTheme.colors.inkMuted,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 10.sp,

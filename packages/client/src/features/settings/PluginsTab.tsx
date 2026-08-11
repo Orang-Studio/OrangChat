@@ -4,6 +4,7 @@ import { Button } from "../../components/ui/Button";
 import { PLUGINS } from "../plugins/registry";
 import { usePlugins } from "../plugins/store";
 import type { Plugin, PluginSetting } from "../plugins/types";
+import { t, tNodes } from "../../lib/i18n";
 
 function SettingControl({ plugin, setting }: { plugin: Plugin; setting: PluginSetting }) {
   const value = usePlugins((s) => s.getSetting(plugin.id, setting.key));
@@ -74,7 +75,7 @@ function PluginCard({ plugin }: { plugin: Plugin }) {
           variant={enabled ? "primary" : "secondary"}
           onClick={() => setEnabled(plugin.id, !enabled)}
         >
-          {enabled ? "Enabled" : "Enable"}
+          {enabled ? t("pluginsTab.enabled") : t("pluginsTab.enable")}
         </Button>
       </div>
       <p className="mt-2 text-sm text-ink-secondary">{plugin.description}</p>
@@ -113,18 +114,22 @@ export function PluginsTab() {
       <div className="flex items-start gap-3 rounded-lg border border-border bg-surface-1 px-3 py-2.5">
         <Puzzle aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-secondary" />
         <p className="text-xs text-ink-secondary">
-          Built-in plugins tweak how this browser shows OrangChat. They ship with the app - nothing
-          is downloaded or run from elsewhere - and each choice is stored on this device only.{" "}
-          {enabledCount} enabled. Want to contribute?{" "}
-          <a
-            href="https://github.com/Orang-Studio/orangchat-marketplace"
-            target="_blank"
-            rel="noreferrer"
-            className="oc-link"
-          >
-            See the marketplace repo
-          </a>
-          .
+          {tNodes(
+            "pluginsTab.intro",
+            {
+              repo: (
+                <a
+                  href="https://github.com/Orang-Studio/orangchat-marketplace"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="oc-link"
+                >
+                  {t("pluginsTab.seeTheMarketplaceRepo")}
+                </a>
+              ),
+            },
+            { count: enabledCount },
+          )}
         </p>
       </div>
 
@@ -134,8 +139,8 @@ export function PluginsTab() {
           className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted"
         />
         <input
-          aria-label="Search plugins"
-          placeholder="Search plugins"
+          aria-label={t("pluginsTab.searchPlugins")}
+          placeholder={t("pluginsTab.searchPlugins")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="h-10 w-full rounded-lg border border-border bg-surface-1 pl-9 pr-3 text-sm outline-none focus:border-primary"
@@ -143,7 +148,9 @@ export function PluginsTab() {
       </div>
 
       {filtered.length === 0 ? (
-        <p className="py-8 text-center text-sm text-ink-muted">No plugins match “{query}”.</p>
+        <p className="py-8 text-center text-sm text-ink-muted">
+          {t("pluginsTab.noPluginsMatch", { query })}
+        </p>
       ) : (
         <ul className="space-y-2">
           {filtered.map((plugin) => (

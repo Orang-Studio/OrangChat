@@ -6,6 +6,7 @@ import { cn } from "../../lib/cn";
 import { formatBytes } from "./attachments";
 import { MediaSenderBar, type MediaContext } from "./MediaSenderBar";
 import { useMediaZoom, type MediaOrigin } from "./useMediaZoom";
+import { t } from "../../lib/i18n";
 
 /** Full-screen player for a video attachment, with downloading kept explicit. */
 export function VideoLightbox({
@@ -71,10 +72,10 @@ export function VideoLightbox({
               className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-white/15"
             >
               <Download aria-hidden className="size-4" />
-              Download
+              {t("common.download")}
             </a>
             <RadixDialog.Close
-              aria-label="Close"
+              aria-label={t("common.close")}
               className="rounded-lg p-1.5 transition-colors hover:bg-white/15"
             >
               <X aria-hidden className="size-4" />
@@ -137,7 +138,7 @@ export function VideoLightbox({
                  if (videoRef.current) videoRef.current.currentTime = time;
                  setCurrentTime(time);
                }}
-               aria-label="Seek video"
+               aria-label={t("videoLightbox.seekVideo")}
                className="min-w-0 flex-1 accent-[var(--oc-primary)]"
              />
              <span className="shrink-0 text-[11px] text-white/75">

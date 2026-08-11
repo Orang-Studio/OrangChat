@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Download, Smartphone, X } from "lucide-react";
+import { t } from "../lib/i18n";
 
 interface AndroidRelease {
   versionName: string;
@@ -77,16 +78,19 @@ export function AndroidAppBanner() {
 
   return (
     <aside
-      aria-label="OrangChat Android app"
+      aria-label={t("androidAppBanner.orangchatAndroidApp")}
       className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-50 mx-auto flex max-w-md items-center gap-3 rounded-xl border border-border-strong bg-surface-3 p-3 shadow-2xl"
     >
       <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
         <Smartphone aria-hidden className="size-5" />
       </span>
       <span className="min-w-0 flex-1">
-        <strong className="block text-sm">Get OrangChat for Android</strong>
+        <strong className="block text-sm">{t("androidAppBanner.getOrangchatForAndroid")}</strong>
         <span className="block truncate text-xs text-ink-secondary">
-          Version {release.versionName} · {formatSize(release.size)}
+          {t("androidAppBanner.versionAndSize", {
+            version: release.versionName,
+            size: formatSize(release.size),
+          })}
         </span>
       </span>
       <a
@@ -95,12 +99,12 @@ export function AndroidAppBanner() {
         className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-ink-on-primary transition-colors hover:bg-primary-hover"
       >
         <Download aria-hidden className="size-4" />
-        Download
+        {t("common.download")}
       </a>
       <button
         type="button"
         onClick={dismiss}
-        aria-label="Dismiss Android app download"
+        aria-label={t("androidAppBanner.dismissAndroidAppDownload")}
         className="shrink-0 rounded-lg p-2.5 text-ink-muted transition-colors hover:bg-surface-4 hover:text-ink"
       >
         <X aria-hidden className="size-5" />

@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.members
 
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -50,6 +52,7 @@ import lt.oranges.orangchat.ui.components.OrangDialog
 import lt.oranges.orangchat.ui.components.OrangTextField
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
+import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.formatDateTime
 
 /** Discord's timeout ladder. The server caps anything above 28 days. */
@@ -79,6 +82,7 @@ fun MembersScreen(
     onBan: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     var selectedId by remember(detail.server.id) { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
@@ -105,7 +109,7 @@ fun MembersScreen(
                 value = query,
                 onValueChange = { query = it },
                 label = "Search",
-                placeholder = "Find a member",
+                placeholder = AppStrings.get(context, R.string.catalog_find_a_member_036dc8dd),
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -156,6 +160,7 @@ private fun MemberRow(
     isOwner: Boolean,
     onClick: () -> Unit,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val topRole = detail.roles
         .filter { it.id in member.roleIds && it.color != 0 }
@@ -190,7 +195,7 @@ private fun MemberRow(
                 }
                 if (timedOut) {
                     Spacer(Modifier.width(6.dp))
-                    Text("Timed out", color = c.danger, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                    Text(AppStrings.get(context, R.string.catalog_timed_out_edcd3630), color = c.danger, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -221,6 +226,7 @@ private fun MemberSheet(
     onKick: () -> Unit,
     onBan: () -> Unit,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     var nickname by remember(member.id) { mutableStateOf(member.nickname ?: "") }
     var confirmKick by remember { mutableStateOf(false) }
@@ -265,7 +271,7 @@ private fun MemberSheet(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     OrangButton(
-                        text = "Save nickname",
+                        text = AppStrings.get(context, R.string.catalog_save_nickname_51ddb3ea),
                         onClick = { onSetNickname(member.userId, nickname.trim().ifBlank { null }) },
                         enabled = nickname.trim() != (member.nickname ?: ""),
                         variant = ButtonVariant.Secondary,
@@ -297,7 +303,7 @@ private fun MemberSheet(
                 Section("Moderation") {
                     if (timedOut) {
                         OrangButton(
-                            text = "Lift timeout",
+                            text = AppStrings.get(context, R.string.catalog_lift_timeout_560ca50c),
                             onClick = { onLiftTimeout(member.userId) },
                             variant = ButtonVariant.Secondary,
                             modifier = Modifier.fillMaxWidth(),
@@ -305,7 +311,7 @@ private fun MemberSheet(
                     }
                     if (canTimeout) {
                         OrangButton(
-                            text = "Time out",
+                            text = AppStrings.get(context, R.string.catalog_time_out_71ed8fda),
                             onClick = { timeoutOpen = true },
                             variant = ButtonVariant.Secondary,
                             modifier = Modifier.fillMaxWidth(),
@@ -315,7 +321,7 @@ private fun MemberSheet(
             }
 
             if (canKick || canBan) {
-                Section("Danger zone") {
+                Section(AppStrings.get(context, R.string.catalog_danger_zone_963a652e)) {
                     if (canKick) {
                         OrangButton(
                             text = "Kick",
@@ -407,11 +413,12 @@ private fun RoleToggle(role: Role, assigned: Boolean, enabled: Boolean, onToggle
 
 @Composable
 private fun TimeoutDialog(name: String, onDismiss: () -> Unit, onPick: (Long) -> Unit) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     OrangDialog(
         onDismiss = onDismiss,
         title = "Time out $name",
-        description = "They cannot send messages, react or speak until it expires.",
+        description = AppStrings.get(context, R.string.catalog_they_cannot_send_messages_react_or_speak_7fcf8d0c),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             TIMEOUT_CHOICES.forEach { (label, seconds) ->

@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { retryBlockedMessages } from '../chat/outbox';
 import { dismissSecurityAlert, useSecurityAlerts, type SecurityAlert } from './alerts';
 import { acceptIdentityChange } from './identity';
+import { t } from "../../lib/i18n";
 
 /**
  * The escalation moment from §6.6, and the only loud one in the product. An
@@ -75,7 +76,9 @@ export function SecurityAlertOverlay() {
         </h1>
         <p className="text-sm text-ink-secondary">{alert.detail}</p>
         <p className="text-sm text-ink-secondary">{WHAT_NOW[alert.kind]}</p>
-        <p className="font-mono text-xs text-ink-muted">Account {alert.subject}</p>
+        <p className="font-mono text-xs text-ink-muted">
+          {t("securityAlertOverlay.account", { subject: alert.subject })}
+        </p>
 
         {failure && (
           <p role="alert" className="text-sm text-danger">
@@ -89,7 +92,7 @@ export function SecurityAlertOverlay() {
             variant="secondary"
             onClick={() => dismissSecurityAlert(alert.userId, alert.kind)}
           >
-            I understand
+            {t("securityAlertOverlay.iUnderstand")}
           </Button>
 
           {alert.kind === 'identity-changed' && (
@@ -106,9 +109,7 @@ export function SecurityAlertOverlay() {
 
         {alert.kind === 'identity-changed' && (
           <p className="text-xs leading-relaxed text-ink-muted">
-            Accepting starts this contact over as unverified and lets messages flow again. Anything
-            they sent before they started over stays unreadable, and it does not confirm who they
-            are - compare safety numbers once you can.
+            {t("securityAlertOverlay.acceptingStartsThisContactOverAs")}
           </p>
         )}
       </div>

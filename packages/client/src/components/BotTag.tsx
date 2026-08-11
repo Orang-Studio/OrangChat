@@ -1,4 +1,5 @@
-/**
+
+import { t } from "../lib/i18n";/**
  * The `BOT` label shown beside an automated account's name.
  *
  * A rendered element rather than text appended to the display name: the flag
@@ -9,10 +10,10 @@
 export function BotTag({ className = "" }: { className?: string }) {
   return (
     <span
-      aria-label="Bot account"
+      aria-label={t("botTag.botAccount")}
       className={`shrink-0 rounded bg-primary/15 px-1 py-px text-[10px] font-semibold uppercase leading-tight tracking-wide text-primary ${className}`}
     >
-      Bot
+      {t("botTag.bot")}
     </span>
   );
 }

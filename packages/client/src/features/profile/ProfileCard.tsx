@@ -8,6 +8,7 @@ import { formatFullTime } from "../../lib/time";
 import { sanitizeProfileCss } from "../../lib/profileCss";
 import { ConnectionCards } from "../connections/ConnectionCards";
 import { ProfileBadges } from "./ProfileBadges";
+import { t } from "../../lib/i18n";
 
 export interface ProfileCardData {
   displayName: string;
@@ -75,7 +76,12 @@ export function ProfileCard({ data }: { data: ProfileCardData }) {
         <div className="oc-pf-avatar -mt-9 mb-2">
           <span className="oc-pf-avatar-frame inline-block rounded-md bg-surface-2 p-1.5">
             <Avatar
-              user={{ displayName: data.displayName, avatarUrl: data.avatarUrl }}
+              user={{
+                displayName: data.displayName,
+                avatarUrl: data.avatarUrl,
+                devices: data.devices,
+              }}
+              status={data.status}
               className="size-14"
               imgClassName="oc-pf-avatar-img rounded-md"
               fallbackClassName="oc-pf-avatar-fallback rounded-md"
@@ -116,7 +122,7 @@ export function ProfileCard({ data }: { data: ProfileCardData }) {
           {data.bio && (
             <div className="oc-pf-bio oc-pf-section mt-2.5 border-t border-border pt-2.5">
               <h3 className="oc-pf-heading mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                About me
+                {t("profileCard.aboutMe")}
               </h3>
               <p className="oc-pf-bio-text whitespace-pre-wrap break-words text-sm">
                 {data.bio}
@@ -129,7 +135,7 @@ export function ProfileCard({ data }: { data: ProfileCardData }) {
           {data.createdAt && (
             <div className="oc-pf-member oc-pf-section mt-2.5 border-t border-border pt-2.5">
               <h3 className="oc-pf-heading mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                Member since
+                {t("profileCard.memberSince")}
               </h3>
               <p className="oc-pf-member-text text-sm">{formatFullTime(data.createdAt)}</p>
             </div>

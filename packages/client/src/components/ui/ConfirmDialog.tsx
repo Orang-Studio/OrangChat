@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Button } from "./Button";
 import { Dialog, DialogContent } from "./Dialog";
+import { t } from "../../lib/i18n";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -41,7 +42,7 @@ export function ConfirmDialog({
           )}
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button
               variant={danger ? "danger" : "primary"}

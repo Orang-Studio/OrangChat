@@ -5,6 +5,7 @@ import { normalizeSafetyNumber, safetyNumbersMatch, type User } from '@orangchat
 import { Button } from '../../components/ui/Button';
 import { retryBlockedMessages } from '../chat/outbox';
 import { markVerified } from './identity';
+import { t } from "../../lib/i18n";
 
 type Result =
   | { kind: 'match' }
@@ -100,7 +101,7 @@ export function SafetyNumberCheck({
     <div className="rounded-xl border border-border px-3 py-2.5">
       <p className="flex items-center gap-2 text-sm font-medium">
         <Phone aria-hidden className="size-4 shrink-0 text-ink-muted" />
-        Not in the same room?
+        {t("safetyNumberCheck.notInTheSameRoom")}
       </p>
       <p className="mt-1 text-xs leading-relaxed text-ink-muted">
         {isGroup
@@ -108,7 +109,7 @@ export function SafetyNumberCheck({
           : 'Read these numbers to each other on a phone call, or send them over another app you already trust. If they match, nobody is in the middle. An OrangChat call does not count - its audio goes through the servers this check is testing.'}
       </p>
 
-      {loading && <p className="mt-2 text-xs text-ink-muted">Working it out…</p>}
+      {loading && <p className="mt-2 text-xs text-ink-muted">{t("safetyNumberCheck.workingItOut")}</p>}
 
       {number && (
         <>
@@ -137,8 +138,7 @@ export function SafetyNumberCheck({
               {isGroup ? 'Type the numbers somebody read out' : `Type the numbers ${who} read out`}
             </label>
             <p className="text-xs leading-relaxed text-ink-muted">
-              Checking them here is safer than reading along - sixty digits is more than anyone
-              actually compares by eye.
+              {t("safetyNumberCheck.checkingThemHereIsSaferThan")}
             </p>
             <input
               id="safety-number-typed"
@@ -163,8 +163,7 @@ export function SafetyNumberCheck({
 
           {result?.kind === 'incomplete' && (
             <p role="alert" className="mt-2 text-xs leading-relaxed text-ink-muted">
-              That is {result.digits} of 60 digits. Nothing is compared until the whole code is
-              there, so a partial one is never called a mismatch.
+              {t("safetyNumberCheck.digitsOf60", { digits: result.digits })}
             </p>
           )}
 
@@ -175,9 +174,7 @@ export function SafetyNumberCheck({
             >
               <ShieldAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-danger" />
               <span>
-                These do not match. Most often that is a digit misheard or mistyped, so check it
-                once more. If it still differs, somebody is standing between you - do not send
-                anything here until you know which.
+                {t("safetyNumberCheck.theseDoNotMatchMostOften")}
               </span>
             </p>
           )}
@@ -203,7 +200,7 @@ export function SafetyNumberCheck({
 
       {number === null && (
         <p className="mt-2 text-xs text-ink-muted">
-          These numbers appear once both accounts have set up encryption on a device.
+          {t("safetyNumberCheck.theseNumbersAppearOnceBothAccounts")}
         </p>
       )}
     </div>

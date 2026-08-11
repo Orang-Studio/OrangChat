@@ -1,7 +1,6 @@
 package lt.oranges.orangchat.feature.chat
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -18,6 +17,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import lt.oranges.orangchat.LocalizedActivity
 import lt.oranges.orangchat.feature.settings.SettingsViewModel
 import lt.oranges.orangchat.feature.settings.ThemeViewModel
 import lt.oranges.orangchat.navigation.OrangChatNavHost
@@ -41,7 +41,7 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
  * whatever the user was reading there.
  */
 @AndroidEntryPoint
-class BubbleActivity : ComponentActivity() {
+class BubbleActivity : LocalizedActivity() {
     @Inject lateinit var notificationHelper: NotificationHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {

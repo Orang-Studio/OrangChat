@@ -2,6 +2,7 @@ import { Unlock } from 'lucide-react';
 import type { User } from '@orangchat/shared';
 import { HowEncryptionWorksLink } from './HowEncryptionWorks';
 import { useE2eeStore } from './store';
+import { t, tCount } from "../../lib/i18n";
 
 /**
  * The banner docs/E2EE.md §10.1 asks for: a conversation that is still plaintext
@@ -34,13 +35,9 @@ export function PlaintextNotice({ channelId, peers }: { channelId: string; peers
     <div className="mx-4 mb-2 flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2">
       <Unlock aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium">This conversation is not encrypted yet</p>
+        <p className="text-xs font-medium">{t("plaintextNotice.thisConversationIsNotEncryptedYet")}</p>
         <p className="text-xs leading-relaxed text-ink-secondary">
-          {who} {waitingOn.length === 1 ? 'has' : 'have'} not set up encryption on any device, and a
-          locked message needs a key on {waitingOn.length === 1 ? 'their' : 'each of their'} side to
-          open it. Messages here are stored the ordinary way until then - it switches on by itself
-          the moment {waitingOn.length === 1 ? 'they open' : 'they all open'} OrangChat on a phone
-          or computer.
+          {tCount("plaintextNotice.waitingOn", waitingOn.length, { who })}
         </p>
         <HowEncryptionWorksLink className="mt-1" />
       </div>

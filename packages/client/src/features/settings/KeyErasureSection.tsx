@@ -6,6 +6,7 @@ import { formatFullTime } from '../../lib/time';
 import { cancelKeyDeletion, getKeyDeletion, requestKeyDeletion } from '../e2ee/api';
 import { eraseKeysNow } from '../e2ee/identity';
 import { SectionTitle } from './controls';
+import { t } from "../../lib/i18n";
 
 /**
  * The way out for somebody locked out of their own encryption: every device that
@@ -89,8 +90,7 @@ export function KeyErasureSection({ stuck, keyed }: { stuck: boolean; keyed: boo
 
       {justCancelled && (
         <p className="mt-1 rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-sm leading-relaxed">
-          Stopped. Your encryption keys are staying where they are. If you did not ask for the
-          erasure in the first place, change your password now - somebody else was signed in.
+          {t("keyErasureSection.stoppedYourEncryptionKeysAreStaying")}
         </p>
       )}
 
@@ -99,13 +99,14 @@ export function KeyErasureSection({ stuck, keyed }: { stuck: boolean; keyed: boo
           <div className="mt-1 flex items-start gap-3">
             <TriangleAlert aria-hidden className="mt-0.5 size-5 shrink-0 text-danger" />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium">Your encryption keys are scheduled to be erased</p>
+              <p className="text-sm font-medium">{t("keyErasureSection.yourEncryptionKeysAreScheduledTo")}</p>
               <p className="mt-1 text-xs leading-relaxed text-ink-muted">
                 {status.data?.executeAfter
-                  ? `This happens after ${formatFullTime(status.data.executeAfter)}, unless a device that still holds your keys opens OrangChat before then.`
-                  : 'It has not happened yet.'}{' '}
-                If you did not ask for this, cancel it now and change your password - somebody else
-                is signed in to your account.
+                  ? t("keyErasureSection.happensAfter", {
+                      time: formatFullTime(status.data.executeAfter),
+                    })
+                  : t("keyErasureSection.hasNotHappenedYet")}{" "}
+                {t("keyErasureSection.ifYouDidNotAskForThis")}
               </p>
             </div>
           </div>
@@ -126,8 +127,7 @@ export function KeyErasureSection({ stuck, keyed }: { stuck: boolean; keyed: boo
               : 'If every device you were signed in on is gone, nothing left can authorize a new one and this account is stuck. Erasing the keys clears that, and the next device you sign in on starts fresh.'}
           </p>
           <p className="mt-2 text-sm leading-relaxed text-danger">
-            Every message already in your encrypted conversations becomes permanently unreadable -
-            by you, by us, by anyone. Nothing brings them back.
+            {t("keyErasureSection.everyMessageAlreadyInYourEncrypted")}
           </p>
 
           {!confirming ? (
@@ -138,7 +138,7 @@ export function KeyErasureSection({ stuck, keyed }: { stuck: boolean; keyed: boo
               onClick={() => setConfirming(true)}
             >
               <Trash2 aria-hidden className="size-4" />
-              Erase my encryption keys
+              {t("keyErasureSection.eraseMyEncryptionKeys")}
             </Button>
           ) : (
             <form
@@ -157,11 +157,10 @@ export function KeyErasureSection({ stuck, keyed }: { stuck: boolean; keyed: boo
               {!keyed && (
                 <>
                   <label htmlFor="key-erasure-code" className="block text-sm font-medium">
-                    Two-factor code
+                    {t("keyErasureSection.twoFactorCode")}
                   </label>
                   <p className="text-xs leading-relaxed text-ink-muted">
-                    Leave this empty if you do not have two-factor turned on. It just makes the wait
-                    shorter - three hours instead of a day.
+                    {t("keyErasureSection.leaveThisEmptyIfYouDo")}
                   </p>
                   <input
                     id="key-erasure-code"
@@ -198,7 +197,7 @@ export function KeyErasureSection({ stuck, keyed }: { stuck: boolean; keyed: boo
                     setError(null);
                   }}
                 >
-                  Never mind
+                  {t("keyErasureSection.neverMind")}
                 </Button>
               </div>
             </form>

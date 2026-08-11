@@ -28,6 +28,7 @@ import {
   useFriendRequests,
   useFriends,
 } from "./queries";
+import { t } from "../../lib/i18n";
 
 function useMessageAction(onDone?: () => void) {
   const client = useQueryClient();
@@ -111,17 +112,17 @@ function FriendsList({ onOpenProfile }: { onOpenProfile: (u: User) => void }) {
 
   if (!friends) return null;
   if (friends.length === 0) {
-    return <p className="px-2 py-8 text-center text-sm text-ink-muted">No friends yet.</p>;
+    return <p className="px-2 py-8 text-center text-sm text-ink-muted">{t("friendsPage.noFriendsYet")}</p>;
   }
 
   return (
     <ul>
       {friends.map((f: Friend) => (
         <RowShell key={f.id} user={f.user} onOpenProfile={() => onOpenProfile(f.user)}>
-          <IconBtn label="Message" onClick={() => message.mutate(f.user.id)}>
+          <IconBtn label={t("friendsPage.message")} onClick={() => message.mutate(f.user.id)}>
             <MessageSquare aria-hidden className="size-4" />
           </IconBtn>
-          <IconBtn label="Remove friend" danger onClick={() => remove.mutate(f.user.id)}>
+          <IconBtn label={t("friendsPage.removeFriend")} danger onClick={() => remove.mutate(f.user.id)}>
             <UserX aria-hidden className="size-4" />
           </IconBtn>
         </RowShell>
@@ -149,7 +150,7 @@ function PendingList({ onOpenProfile }: { onOpenProfile: (u: User) => void }) {
   if (!requests) return null;
   const { incoming, outgoing } = requests;
   if (incoming.length === 0 && outgoing.length === 0) {
-    return <p className="px-2 py-8 text-center text-sm text-ink-muted">No pending requests.</p>;
+    return <p className="px-2 py-8 text-center text-sm text-ink-muted">{t("friendsPage.noPendingRequests")}</p>;
   }
 
   return (
@@ -157,15 +158,15 @@ function PendingList({ onOpenProfile }: { onOpenProfile: (u: User) => void }) {
       {incoming.length > 0 && (
         <>
           <h3 className="px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Incoming - {incoming.length}
+            {t("friendsPage.incomingCount", { count: incoming.length })}
           </h3>
           <ul>
             {incoming.map((r) => (
               <RowShell key={r.id} user={r.user} onOpenProfile={() => onOpenProfile(r.user)}>
-                <IconBtn label="Accept" onClick={() => accept.mutate(r)}>
+                <IconBtn label={t("friendsPage.accept")} onClick={() => accept.mutate(r)}>
                   <Check aria-hidden className="size-4" />
                 </IconBtn>
-                <IconBtn label="Decline" danger onClick={() => decline.mutate(r.id)}>
+                <IconBtn label={t("friendsPage.decline")} danger onClick={() => decline.mutate(r.id)}>
                   <X aria-hidden className="size-4" />
                 </IconBtn>
               </RowShell>
@@ -176,12 +177,12 @@ function PendingList({ onOpenProfile }: { onOpenProfile: (u: User) => void }) {
       {outgoing.length > 0 && (
         <>
           <h3 className="px-2 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Outgoing - {outgoing.length}
+            {t("friendsPage.outgoingCount", { count: outgoing.length })}
           </h3>
           <ul>
             {outgoing.map((r) => (
               <RowShell key={r.id} user={r.user} onOpenProfile={() => onOpenProfile(r.user)}>
-                <IconBtn label="Cancel request" danger onClick={() => decline.mutate(r.id)}>
+                <IconBtn label={t("friendsPage.cancelRequest")} danger onClick={() => decline.mutate(r.id)}>
                   <X aria-hidden className="size-4" />
                 </IconBtn>
               </RowShell>
@@ -222,12 +223,12 @@ function AddFriend() {
       className="space-y-3"
     >
       <p className="text-sm text-ink-secondary">
-        Add a friend by their username.
+        {t("friendsPage.addAFriendByTheirUsername")}
       </p>
       <div className="flex items-end gap-2">
         <div className="flex-1">
           <TextField
-            label="Username"
+            label={t("friendsPage.username")}
             value={username}
             onChange={(e) => {
               setUsername(e.target.value);
@@ -239,7 +240,7 @@ function AddFriend() {
         </div>
         <Button type="submit" loading={send.isPending} disabled={!username.trim()}>
           <UserPlus aria-hidden className="size-4" />
-          Send
+          {t("friendsPage.send")}
         </Button>
       </div>
       {send.isError && (
@@ -266,20 +267,20 @@ export function FriendsPage() {
         <button
           type="button"
           onClick={panelActions.openLeft}
-          aria-label="Open navigation"
+          aria-label={t("friendsPage.openNavigation")}
           className="rounded-lg p-1.5 text-ink-secondary transition-colors hover:bg-surface-3 hover:text-ink md:hidden"
         >
           <Menu aria-hidden className="size-5" />
         </button>
-        <span className="font-semibold">Friends</span>
+        <span className="font-semibold">{t("friendsPage.friends")}</span>
       </header>
 
       <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto p-4">
         <Tabs defaultValue="all">
           <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="pending">Pending</TabsTrigger>
-            <TabsTrigger value="add">Add Friend</TabsTrigger>
+            <TabsTrigger value="all">{t("friendsPage.all")}</TabsTrigger>
+            <TabsTrigger value="pending">{t("friendsPage.pending")}</TabsTrigger>
+            <TabsTrigger value="add">{t("friendsPage.addFriend")}</TabsTrigger>
           </TabsList>
           <TabsContent value="all">
             <FriendsList onOpenProfile={setProfileUser} />

@@ -18,6 +18,7 @@ import { ComposerAttachments, isSettled, type PendingUpload } from './ComposerAt
 import { ExpressionPicker } from './ExpressionPicker';
 import { normalizeCustomEmojiNames, useEmojiMap } from '../emojis/queries';
 import { clearDraft, loadDraft, saveDraft, saveDraftNow } from './drafts';
+import { t } from "../../lib/i18n";
 
 /**
  * One packet per window while the user is actually typing, and none at all in a
@@ -629,11 +630,11 @@ export function Composer({
       {replyTo && (
         <div className="flex items-center justify-between rounded-t-xl border border-b-0 border-border bg-surface-1 px-3 py-1.5 text-xs text-ink-secondary">
           <span className="truncate">
-            Replying to <span className="font-semibold text-ink">{replyTo.author.displayName}</span>
+            {t("composer.replyingTo")} <span className="font-semibold text-ink">{replyTo.author.displayName}</span>
           </span>
           <button
             type="button"
-            aria-label="Cancel reply"
+            aria-label={t("composer.cancelReply")}
             onClick={onClearReply}
             className="rounded-lg p-2.5 text-ink-muted transition-colors hover:text-ink"
           >
@@ -647,7 +648,7 @@ export function Composer({
           <ul
             id="oc-mention-listbox"
             role="listbox"
-            aria-label="Mention suggestions"
+            aria-label={t("composer.mentionSuggestions")}
             className="absolute bottom-full z-20 mb-2 max-h-64 w-full overflow-y-auto rounded-xl border border-border bg-surface-4 p-1 shadow-2xl"
           >
             {matches.map((m, i) => (
@@ -708,7 +709,7 @@ export function Composer({
             <>
               <button
                 type="button"
-                aria-label="Attach files"
+                aria-label={t("composer.attachFiles")}
                 onClick={() => fileInput.current?.click()}
                 className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-1 hover:text-ink"
               >
@@ -716,7 +717,7 @@ export function Composer({
               </button>
               <button
                 type="button"
-                aria-label="Take a picture"
+                aria-label={t("composer.takeAPicture")}
                 onClick={() => cameraInput.current?.click()}
                 className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-1 hover:text-ink"
               >
@@ -733,7 +734,7 @@ export function Composer({
                   still down: a swipe with no label is a gesture nobody finds.
                   Each half lights up as its own threshold comes into reach. */}
               {recordingLocked ? (
-                <span className="text-xs text-ink-muted">Locked - send when you're done</span>
+                <span className="text-xs text-ink-muted">{t("composer.lockedSendWhenYoureDone")}</span>
               ) : (
                 <span className="flex items-center gap-3 text-xs">
                   <span
@@ -782,7 +783,7 @@ export function Composer({
             <>
               <button
                 type="button"
-                aria-label="Delete recording"
+                aria-label={t("composer.deleteRecording")}
                 onClick={() => finishRecording(true)}
                 className="rounded-lg p-2 text-danger transition-colors hover:bg-danger/10"
               >
@@ -790,7 +791,7 @@ export function Composer({
               </button>
               <button
                 type="button"
-                aria-label="Send voice message"
+                aria-label={t("composer.sendVoiceMessage")}
                 onClick={() => finishRecording(false)}
                 className="rounded-lg p-2 text-primary transition-colors hover:bg-primary-soft"
               >
@@ -801,7 +802,7 @@ export function Composer({
             <>
               <button
                 type="button"
-                aria-label="Hold to record a voice message"
+                aria-label={t("composer.holdToRecordAVoiceMessage")}
                 // Keyboard has no hold, so it starts the locked form outright -
                 // the same one the stop and delete buttons already drive.
                 onKeyDown={(e) => {
@@ -830,7 +831,7 @@ export function Composer({
               {!recording && (
                 <button
                   type="button"
-                  aria-label="Send message"
+                  aria-label={t("composer.sendMessage")}
                   disabled={!canSend}
                   onClick={() => void send()}
                   className="rounded-lg p-2 text-primary transition-colors hover:bg-primary-soft disabled:opacity-40 disabled:hover:bg-transparent"
@@ -845,7 +846,7 @@ export function Composer({
               polite live region would read out every single keystroke. */}
           {truncatedNotice && (
             <p role="status" className="shrink-0 text-[10px] font-medium text-warning">
-              Paste cut off — {MAX_LENGTH.toLocaleString()} characters max
+              {t("composer.pasteCutOff", { max: MAX_LENGTH.toLocaleString() })}
             </p>
           )}
           {!truncatedNotice && draft.length >= LENGTH_WARNING_THRESHOLD && (
@@ -882,21 +883,18 @@ export function Composer({
               <p className="text-sm text-ink-secondary">
                 {tokenWarning.kind === 'login' ? (
                   <>
-                    A login token lets anyone who has it sign into an OrangChat account. Pasting it
-                    here would hand that account to everyone who can read this conversation.
+                    {t("composer.aLoginTokenLetsAnyoneWho")}
                   </>
                 ) : (
                   <>
-                    A bot token is the password for a bot account: anyone with it can sign in as the
-                    bot, post in its servers and read its conversations. Pasting it here would hand
-                    that control to everyone who can read this conversation.
+                    {t("composer.aBotTokenIsThePassword")}
                   </>
                 )}
               </p>
             </div>
             <div className="mt-5 flex justify-end gap-2">
               <Button type="button" variant="ghost" onClick={() => setTokenWarning(null)}>
-                Don't paste
+                {t("composer.dontPaste")}
               </Button>
               <Button
                 type="button"
@@ -905,7 +903,7 @@ export function Composer({
                   setTokenWarning(null);
                 }}
               >
-                Paste it anyway
+                {t("composer.pasteItAnyway")}
               </Button>
             </div>
           </DialogContent>

@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.home
-
+import lt.oranges.orangchat.util.AppStrings
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -74,6 +76,7 @@ fun ChannelListPane(
     memberNames: Map<String, String> = emptyMap(),
     onMarkRead: (Channel) -> Unit = {},
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val categories = detail.channels.filter { it.type == ChannelType.CATEGORY }.sortedBy { it.position }
     val uncategorized = detail.channels
@@ -102,19 +105,19 @@ fun ChannelListPane(
             )
             Icon(
                 Icons.Default.Search,
-                contentDescription = "Search messages",
+                contentDescription = AppStrings.get(context, R.string.catalog_search_messages_abea65ae),
                 tint = c.inkSecondary,
                 modifier = Modifier.minimumInteractiveComponentSize().size(20.dp).clickable(onClick = onSearch),
             )
             Icon(
                 Icons.Default.Settings,
-                contentDescription = "Server settings",
+                contentDescription = AppStrings.get(context, R.string.catalog_server_settings_28af3cc7),
                 tint = c.inkSecondary,
                 modifier = Modifier.minimumInteractiveComponentSize().size(20.dp).clickable(onClick = onServerSettings),
             )
             Icon(
                 Icons.Default.Add,
-                contentDescription = "Add channel",
+                contentDescription = AppStrings.get(context, R.string.catalog_add_channel_901e4868),
                 tint = c.inkSecondary,
                 modifier = Modifier.minimumInteractiveComponentSize().size(20.dp).clickable(onClick = onAddChannel),
             )
@@ -182,6 +185,7 @@ private fun ChannelRow(
     onClick: (Channel) -> Unit,
     onMarkRead: (Channel) -> Unit,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val icon = if (channel.type == ChannelType.VOICE) Icons.Default.VolumeUp else Icons.Default.Tag
     val haptics = LocalHapticFeedback.current
@@ -227,7 +231,7 @@ private fun ChannelRow(
                 expanded = menuOpen,
                 onDismiss = { menuOpen = false },
                 items = listOf(
-                    MenuItem("Mark as read", Icons.Default.Check, enabled = unread) {
+                    MenuItem(AppStrings.get(context, R.string.catalog_mark_as_read_c1ee860b), Icons.Default.Check, enabled = unread) {
                         onMarkRead(channel)
                     },
                 ),

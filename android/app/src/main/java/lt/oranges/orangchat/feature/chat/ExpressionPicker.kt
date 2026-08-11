@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.chat
 
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -55,6 +57,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import coil.compose.AsyncImage
+import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.EmojiRef
 import lt.oranges.orangchat.util.absoluteUrl
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -128,7 +131,7 @@ class KlipyGifViewModel @Inject constructor(
             } catch (_: Exception) {
                 mutableState.value = KlipyGifState(
                     error = if (BuildConfig.KLIPY_API_KEY.isBlank()) "GIF search is not configured"
-                    else "Couldn't load GIFs",
+                    else AppStrings.get(context, R.string.catalog_couldn_t_load_gifs_e47c284a),
                 )
             }
         }
@@ -245,6 +248,7 @@ fun ExpressionPickerDialog(
     customEmojis: List<EmojiRef> = emptyList(),
     viewModel: KlipyGifViewModel = hiltViewModel(),
 ) {
+        val context = LocalContext.current
     if (!expanded) return
     val c = OrangTheme.colors
     var tab by remember { mutableStateOf(PickerTabId.EMOJI) }
@@ -329,7 +333,7 @@ fun ExpressionPickerDialog(
                     Box(Modifier.weight(1f).fillMaxWidth()) {
                         if (favorites.isEmpty()) {
                             Text(
-                                "No saved GIFs yet - tap the bookmark on any GIF to keep it here.",
+                                AppStrings.get(context, R.string.catalog_no_saved_gifs_yet_tap_the_bookmark_75705898),
                                 color = c.inkMuted,
                                 fontSize = 12.sp,
                                 modifier = Modifier.align(Alignment.Center).padding(24.dp),
@@ -350,7 +354,7 @@ fun ExpressionPickerDialog(
                     TextField(
                         value = query,
                         onValueChange = { query = it },
-                        placeholder = { Text("Search KLIPY", fontSize = 13.sp) },
+                        placeholder = { Text(AppStrings.get(context, R.string.catalog_search_klipy_9e867d1a), fontSize = 13.sp) },
                         singleLine = true,
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = c.surface1,
@@ -376,7 +380,7 @@ fun ExpressionPickerDialog(
                                 modifier = Modifier.align(Alignment.Center),
                             )
                             gifState.gifs.isEmpty() -> Text(
-                                "No GIFs found",
+                                AppStrings.get(context, R.string.catalog_no_gifs_found_0d358df4),
                                 color = c.inkMuted,
                                 fontSize = 12.sp,
                                 modifier = Modifier.align(Alignment.Center),

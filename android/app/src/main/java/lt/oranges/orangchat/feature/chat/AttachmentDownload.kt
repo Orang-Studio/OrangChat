@@ -1,5 +1,6 @@
 package lt.oranges.orangchat.feature.chat
 
+import lt.oranges.orangchat.R
 import android.Manifest
 import android.app.DownloadManager
 import android.content.Context
@@ -36,6 +37,7 @@ import lt.oranges.orangchat.data.model.Attachment
 import lt.oranges.orangchat.crypto.E2ee
 import lt.oranges.orangchat.crypto.E2eeKeystore
 import lt.oranges.orangchat.crypto.SealedAttachmentRef
+import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.absoluteUrl
 import lt.oranges.orangchat.util.inlineUrl
 import java.io.File
@@ -499,7 +501,7 @@ fun rememberAttachmentDownloader(): (Attachment) -> Unit {
                     withContext(Dispatchers.Main) {
                         Toast.makeText(
                             app,
-                            if (saved) "Saved ${attachment.filename}" else "Couldn't decrypt this file",
+                            if (saved) "Saved ${attachment.filename}" else AppStrings.get(context, R.string.catalog_couldn_t_decrypt_this_file_08287a15),
                             Toast.LENGTH_SHORT,
                         ).show()
                     }

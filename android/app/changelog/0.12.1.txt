@@ -1,0 +1,21 @@
+Settings in every language
+
+New
+- Every settings screen is now fully translatable - encryption, profile
+  themes, ringtone, update checks, the profile card and more. All UI text in
+  the app routes through the translation layer.
+- Android bundles full catalogues for English, Lithuanian, Mandarin Chinese,
+  Hindi, Spanish, Modern Standard Arabic, French, Bengali, Portuguese, Russian
+  and Urdu; anything missing is completed by the server on launch and hourly.
+- Translations are served by the chat server: a mistranslation can be fixed
+  and reach every phone without releasing an APK, and new languages appear in
+  the picker on the next poll.
+
+Changed
+- The language picker now covers the whole app, not just the launcher.
+- String lookups fall back to bundled resources whenever the server is
+  unreachable.
+
+Fixed
+- Hard-coded English text removed from profile themes, ringtones, voice
+  recording and the QR login flow.

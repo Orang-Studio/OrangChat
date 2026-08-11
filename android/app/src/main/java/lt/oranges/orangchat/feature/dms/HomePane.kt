@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.dms
-
+import lt.oranges.orangchat.util.AppStrings
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -90,16 +92,17 @@ fun HomePane(
     /** channelId → user ids seen typing there, self already filtered out. */
     typing: Map<String, Set<String>> = emptyMap(),
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     Column(modifier = modifier.fillMaxSize().background(c.surface1)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Direct Messages", color = c.ink, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.weight(1f))
+            Text(AppStrings.get(context, R.string.catalog_direct_messages_f1b1f5c2), color = c.ink, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.weight(1f))
             Icon(
                 Icons.Default.Search,
-                contentDescription = "Search messages",
+                contentDescription = AppStrings.get(context, R.string.catalog_search_messages_abea65ae),
                 tint = c.inkSecondary,
                 modifier = Modifier
                     .clip(RoundedCornerShape(OrangRadius.md))
@@ -110,7 +113,7 @@ fun HomePane(
             Spacer(Modifier.width(8.dp))
             Icon(
                 Icons.Default.GroupAdd,
-                contentDescription = "New group",
+                contentDescription = AppStrings.get(context, R.string.catalog_new_group_f9850c0b),
                 tint = c.inkSecondary,
                 modifier = Modifier
                     .clip(RoundedCornerShape(OrangRadius.md))
@@ -211,6 +214,7 @@ private fun ConversationRow(
     onRemoveFriend: (String) -> Unit,
     onLeaveConversation: (Conversation) -> Unit,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val others = convo.participants.filter { it.id != selfId }
     val title = convo.name ?: others.joinToString(", ") { it.displayName }.ifBlank { "Direct Message" }
@@ -317,30 +321,30 @@ private fun ConversationRow(
                 onDismiss = { menuOpen = false },
                 items = buildList {
                     add(
-                        MenuItem("Mark as read", Icons.Default.Check, enabled = unread) {
+                        MenuItem(AppStrings.get(context, R.string.catalog_mark_as_read_c1ee860b), Icons.Default.Check, enabled = unread) {
                             onMarkRead(convo.id)
                         },
                     )
                     other?.let { user ->
                         add(MenuItem("Profile", Icons.Default.Person) { onOpenProfile(user) })
                     }
-                    add(MenuItem("Start a call", Icons.Default.Call) { onStartCall(convo) })
+                    add(MenuItem(AppStrings.get(context, R.string.catalog_start_a_call_d7f39160), Icons.Default.Call) { onStartCall(convo) })
                     if (other != null && other.id in friendIds) {
                         add(
-                            MenuItem("Remove friend", Icons.Default.PersonRemove, destructive = true) {
+                            MenuItem(AppStrings.get(context, R.string.catalog_remove_friend_b16fc7ff), Icons.Default.PersonRemove, destructive = true) {
                                 onRemoveFriend(other.id)
                             },
                         )
                     }
                     other?.let { user ->
                         add(
-                            MenuItem("Copy user ID", Icons.Default.ContentCopy) {
+                            MenuItem(AppStrings.get(context, R.string.catalog_copy_user_id_6fff306b), Icons.Default.ContentCopy) {
                                 clipboard.setText(AnnotatedString(user.id))
                             },
                         )
                     }
                     add(
-                        MenuItem("Copy channel ID", Icons.Default.ContentCopy) {
+                        MenuItem(AppStrings.get(context, R.string.catalog_copy_channel_id_c32cdc5d), Icons.Default.ContentCopy) {
                             clipboard.setText(AnnotatedString(convo.id))
                         },
                     )
@@ -350,7 +354,7 @@ private fun ConversationRow(
                     val isGroup = convo.type == ChannelType.GROUP_DM
                     add(
                         MenuItem(
-                            if (isGroup) "Leave group" else "Close DM",
+                            if (isGroup) AppStrings.get(context, R.string.catalog_leave_group_92578912) else AppStrings.get(context, R.string.catalog_close_dm_43823b56),
                             if (isGroup) Icons.AutoMirrored.Filled.Logout else Icons.Default.Close,
                             destructive = true,
                         ) { onLeaveConversation(convo) },

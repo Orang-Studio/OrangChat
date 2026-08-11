@@ -3,6 +3,7 @@ import { Upload } from "lucide-react";
 import { Button } from "./ui/Button";
 import { cn } from "../lib/cn";
 import { uploadImage, type UploadKind } from "../features/uploads/api";
+import { t } from "../lib/i18n";
 
 /**
  * Pick a file, upload it, hand back the stored url plus a local blob url. The
@@ -117,13 +118,13 @@ export function ImageField({
         <div className="flex flex-wrap items-center gap-2">
           <ImageUploadButton
             kind={kind}
-            label="Upload"
+            label={t("common.upload")}
             disabled={disabled}
             onUploaded={onChange}
           />
           {value && !disabled && (
             <Button type="button" variant="ghost" size="sm" onClick={() => onChange("", "")}>
-              Remove
+              {t("common.remove")}
             </Button>
           )}
         </div>

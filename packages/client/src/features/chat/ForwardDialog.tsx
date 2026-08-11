@@ -9,6 +9,7 @@ import { useAuthStore } from "../../stores/auth";
 import { conversationName, otherParticipants, useConversations } from "../dms/queries";
 import { useServerDetail } from "../servers/queries";
 import { sendMessage } from "./socket-actions";
+import { t } from "../../lib/i18n";
 
 interface ForwardDialogProps {
   message: Message;
@@ -96,7 +97,7 @@ export function ForwardDialog({ message, open, onOpenChange }: ForwardDialogProp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Forward message" className="max-w-md">
+      <DialogContent title={t("forwardDialog.forwardMessage")} className="max-w-md">
         <p className="mt-2 line-clamp-3 rounded-lg border border-border bg-surface-1 px-3 py-2 text-sm text-ink-secondary">
           {message.content || "(attachment only)"}
         </p>
@@ -104,8 +105,8 @@ export function ForwardDialog({ message, open, onOpenChange }: ForwardDialogProp
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search channels and DMs"
-          aria-label="Search forward targets"
+          placeholder={t("forwardDialog.searchChannelsAndDms")}
+          aria-label={t("forwardDialog.searchForwardTargets")}
           className="mt-3 h-10 w-full rounded-lg border border-border bg-surface-1 px-3 text-sm outline-none focus:border-primary"
         />
 
@@ -132,7 +133,7 @@ export function ForwardDialog({ message, open, onOpenChange }: ForwardDialogProp
           {dms.length > 0 && (
             <>
               <p className="px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                Direct messages
+                {t("forwardDialog.directMessages")}
               </p>
               <ul>
                 {dms.map((conversation) => {
@@ -160,7 +161,7 @@ export function ForwardDialog({ message, open, onOpenChange }: ForwardDialogProp
 
           {channels.length === 0 && dms.length === 0 && (
             <p className="py-8 text-center text-sm text-ink-muted">
-              Nowhere to forward this to yet.
+              {t("forwardDialog.nowhereToForwardThisToYet")}
             </p>
           )}
         </div>

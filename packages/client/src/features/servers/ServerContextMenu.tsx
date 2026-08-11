@@ -33,6 +33,7 @@ import {
   useServerNotificationPrefs,
   type NotificationLevel,
 } from "./notificationPrefs";
+import { t } from "../../lib/i18n";
 
 export interface ServerContextMenuProps {
   server: Server;
@@ -94,14 +95,14 @@ export function ServerContextMenu({
     <ContextMenuContent className="w-60">
       <ContextMenuItem disabled={unreadChannelIds.length === 0} onSelect={() => markRead.mutate()}>
         <Check aria-hidden className="size-4" />
-        Mark As Read
+        {t("serverContextMenu.markAsRead")}
       </ContextMenuItem>
 
       <ContextMenuSeparator />
 
       <ContextMenuItem disabled={!can(Permissions.MANAGE_INVITES)} onSelect={onInvite}>
         <UserPlus aria-hidden className="size-4" />
-        Invite to Server
+        {t("serverContextMenu.inviteToServer")}
       </ContextMenuItem>
 
       <ContextMenuSeparator />
@@ -109,13 +110,13 @@ export function ServerContextMenu({
       {muted ? (
         <ContextMenuItem onSelect={() => serverNotificationActions.unmute(server.id)}>
           <BellRing aria-hidden className="size-4" />
-          Unmute Server
+          {t("serverContextMenu.unmuteServer")}
         </ContextMenuItem>
       ) : (
         <ContextMenuSub>
           <ContextMenuSubTrigger>
             <BellOff aria-hidden className="size-4" />
-            Mute Server
+            {t("serverContextMenu.muteServer")}
           </ContextMenuSubTrigger>
           <ContextMenuSubContent>
             {MUTE_DURATIONS.map(({ label, ms }) => (
@@ -133,7 +134,7 @@ export function ServerContextMenu({
       <ContextMenuSub>
         <ContextMenuSubTrigger>
           <span className="flex flex-col">
-            Notification Settings
+            {t("serverContextMenu.notificationSettings")}
             <span className="text-xs font-normal text-ink-muted">{LEVEL_LABEL[prefs.level]}</span>
           </span>
         </ContextMenuSubTrigger>
@@ -156,26 +157,26 @@ export function ServerContextMenu({
 
       <ContextMenuItem disabled={!showSettings} onSelect={onSettings}>
         <Settings aria-hidden className="size-4" />
-        Server Settings
+        {t("serverContextMenu.serverSettings")}
       </ContextMenuItem>
       <ContextMenuItem onSelect={onPrivacy}>
         <Sliders aria-hidden className="size-4" />
-        Privacy Settings
+        {t("serverContextMenu.privacySettings")}
       </ContextMenuItem>
       <ContextMenuItem onSelect={onEditProfile}>
         <IdCard aria-hidden className="size-4" />
-        Edit Per-server Profile
+        {t("serverContextMenu.editPerServerProfile")}
       </ContextMenuItem>
 
       <ContextMenuSeparator />
 
       <ContextMenuItem disabled={!can(Permissions.MANAGE_CHANNELS)} onSelect={onCreateChannel}>
         <Plus aria-hidden className="size-4" />
-        Create Channel
+        {t("serverContextMenu.createChannel")}
       </ContextMenuItem>
       <ContextMenuItem disabled={!can(Permissions.MANAGE_CHANNELS)} onSelect={onCreateCategory}>
         <FolderPlus aria-hidden className="size-4" />
-        Create Category
+        {t("serverContextMenu.createCategory")}
       </ContextMenuItem>
       <ContextMenuItem onSelect={onCreateEvent}>
         <CalendarPlus aria-hidden className="size-4" />
@@ -186,14 +187,14 @@ export function ServerContextMenu({
 
       <ContextMenuItem danger onSelect={onLeave}>
         <LogOut aria-hidden className="size-4" />
-        Leave Server
+        {t("serverContextMenu.leaveServer")}
       </ContextMenuItem>
 
       <ContextMenuSeparator />
 
       <ContextMenuItem onSelect={() => void navigator.clipboard?.writeText(server.id)}>
         <Copy aria-hidden className="size-4" />
-        Copy Server ID
+        {t("serverContextMenu.copyServerId")}
       </ContextMenuItem>
     </ContextMenuContent>
   );

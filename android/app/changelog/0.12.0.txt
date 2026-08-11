@@ -1,0 +1,13 @@
+Translation fixes without app updates
+
+New
+- Translations are now served by the chat server and refreshed on launch and
+  hourly: a mistranslation or typo can be fixed and reach every phone without
+  releasing an APK.
+- New languages can be added server-side - they appear in the language
+  picker on the next poll, no app update needed. The bundled languages stay
+  as the offline fallback.
+
+Changed
+- String lookups route through a server-override layer that falls back to
+  the bundled resources whenever the server is unreachable.

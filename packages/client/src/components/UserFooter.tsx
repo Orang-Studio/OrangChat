@@ -6,6 +6,7 @@ import { Avatar } from './Avatar';
 import { DeviceIndicators } from './DeviceIndicators';
 import { ActivityStatus } from './ActivityStatus';
 import { clientDevice } from '../features/auth/session';
+import { t } from "../lib/i18n";
 
 /** A connection callback bounces the browser back to `/?connection=…`; reopen
  * settings where the user left off. Read once at mount - ConnectionsTab strips
@@ -40,8 +41,8 @@ export function UserFooter() {
       <button
         type="button"
         onClick={() => setSettingsOpen(true)}
-        aria-label="User settings"
-        title="User settings"
+        aria-label={t("userFooter.userSettings")}
+        title={t("userFooter.userSettings")}
         className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
       >
         <Settings aria-hidden className="size-4" />

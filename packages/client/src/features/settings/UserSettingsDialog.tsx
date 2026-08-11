@@ -30,6 +30,7 @@ import { ImageField } from "../../components/ImageField";
 import { Dialog, DialogClose, DialogFullScreenContent } from "../../components/ui/Dialog";
 import { TextField } from "../../components/ui/TextField";
 import { cn } from "../../lib/cn";
+import { LANGUAGES, endonymOf, setLanguage, t, useLanguage } from "../../lib/i18n";
 import { getTheme, setTheme, type Theme } from "../../lib/theme";
 import { useInstalledTheme } from "../plugins/themes";
 import { socket } from "../../lib/socket";
@@ -272,7 +273,7 @@ function ProfileTab() {
       className="space-y-5"
     >
       <div>
-        <SectionTitle>Preview</SectionTitle>
+        <SectionTitle>{t("userSettingsDialog.preview")}</SectionTitle>
         <ProfileCard
           data={{
             displayName: displayName || user.displayName,
@@ -292,7 +293,7 @@ function ProfileTab() {
       </div>
 
       <div>
-        <SectionTitle>Status</SectionTitle>
+        <SectionTitle>{t("userSettingsDialog.status")}</SectionTitle>
         <div className="flex gap-2">
           {STATUS_OPTIONS.map((option) => (
             <button
@@ -315,22 +316,22 @@ function ProfileTab() {
       </div>
 
       <div className="space-y-4">
-        <SectionTitle>Identity</SectionTitle>
+        <SectionTitle>{t("userSettingsDialog.identity")}</SectionTitle>
         <TextField
-          label="Display name"
+          label={t("userSettingsDialog.displayName")}
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           maxLength={64}
         />
         <TextField
-          label="Username"
+          label={t("userSettingsDialog.username")}
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           maxLength={32}
-          hint="Lowercase letters, numbers, underscores, and dots."
+          hint={t("userSettingsDialog.lowercaseLettersNumbersUnderscoresAndDots")}
         />
         <ImageField
-          label="Avatar"
+          label={t("userSettingsDialog.avatar")}
           kind="avatar"
           value={avatarUrl}
           preview={avatarPreview}
@@ -338,32 +339,32 @@ function ProfileTab() {
             setAvatarUrl(url);
             setAvatarPreview(preview);
           }}
-          hint="PNG, JPEG, WebP, or animated GIF."
+          hint={t("userSettingsDialog.pngJpegWebpOrAnimatedGif")}
         />
       </div>
 
       <div className="space-y-4">
-        <SectionTitle>About</SectionTitle>
+        <SectionTitle>{t("userSettingsDialog.about")}</SectionTitle>
         <TextField
-          label="Pronouns"
+          label={t("userSettingsDialog.pronouns")}
           value={pronouns}
           onChange={(e) => setPronouns(e.target.value)}
           maxLength={40}
-          placeholder="they/them"
+          placeholder={t("userSettingsDialog.theyThem")}
         />
         <div>
-          <label className="mb-1 block text-sm font-medium text-ink-secondary">About me</label>
+          <label className="mb-1 block text-sm font-medium text-ink-secondary">{t("userSettingsDialog.aboutMe")}</label>
           <textarea
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             maxLength={4000}
             rows={4}
-            placeholder="Tell people about yourself…"
+            placeholder={t("userSettingsDialog.tellPeopleAboutYourself")}
             className="w-full resize-none rounded-lg border border-border bg-surface-1 px-3 py-2 text-sm"
           />
         </div>
         <ImageField
-          label="Banner"
+          label={t("userSettingsDialog.banner")}
           kind="banner"
           value={bannerUrl}
           preview={bannerPreview}
@@ -372,14 +373,14 @@ function ProfileTab() {
             setBannerPreview(preview);
           }}
           rounded="md"
-          hint="Leave empty to use your accent color."
+          hint={t("userSettingsDialog.leaveEmptyToUseYourAccent")}
         />
         <div>
-          <label className="mb-1 block text-sm font-medium text-ink-secondary">Accent color</label>
+          <label className="mb-1 block text-sm font-medium text-ink-secondary">{t("userSettingsDialog.accentColor")}</label>
           <div className="flex items-center gap-3">
             <input
               type="color"
-              aria-label="Accent color"
+              aria-label={t("userSettingsDialog.accentColor")}
               value={intToHex(accentColor)}
               onChange={(e) => setAccentColor(hexToInt(e.target.value))}
               className="h-9 w-14 cursor-pointer rounded-md border border-border bg-surface-1"
@@ -390,7 +391,7 @@ function ProfileTab() {
                 onClick={() => setAccentColor(null)}
                 className="text-sm text-ink-muted transition-colors hover:text-ink"
               >
-                Clear
+                {t("userSettingsDialog.clear")}
               </button>
             )}
           </div>
@@ -398,11 +399,9 @@ function ProfileTab() {
       </div>
 
       <div className="space-y-2">
-        <SectionTitle>Profile theme (CSS)</SectionTitle>
+        <SectionTitle>{t("userSettingsDialog.profileThemeCss")}</SectionTitle>
         <p className="text-xs text-ink-muted">
-          Style your profile card however you like - everyone sees it. It's sandboxed: scoped to
-          your card only, no external URLs, and it can't cover or escape the card. The preview above
-          updates live.
+          {t("userSettingsDialog.styleYourProfileCardHoweverYou")}
         </p>
         <textarea
           value={profileCss}
@@ -410,7 +409,7 @@ function ProfileTab() {
           maxLength={100_000}
           rows={6}
           spellCheck={false}
-          placeholder=".oc-pf-body { background: #1a1030; }"
+          placeholder={t("userSettingsDialog.ocPfBodyBackground1a1030")}
           className="w-full resize-y rounded-lg border border-border bg-surface-1 px-3 py-2 font-mono text-xs"
         />
         <div className="flex flex-wrap gap-2">
@@ -420,7 +419,7 @@ function ProfileTab() {
             size="sm"
             onClick={() => setProfileCss(PROFILE_CSS_TEMPLATE)}
           >
-            Load starter
+            {t("userSettingsDialog.loadStarter")}
           </Button>
           <Button
             type="button"
@@ -429,7 +428,7 @@ function ProfileTab() {
             onClick={() => downloadText("orangchat-profile-template.css", PROFILE_CSS_TEMPLATE)}
           >
             <Download aria-hidden className="size-4" />
-            Download template
+            {t("userSettingsDialog.downloadTemplate")}
           </Button>
           {profileCss.length > 0 && (
             <Button
@@ -439,14 +438,14 @@ function ProfileTab() {
               className="text-danger hover:text-danger"
               onClick={() => setProfileCss("")}
             >
-              Clear
+              {t("userSettingsDialog.clear")}
             </Button>
           )}
         </div>
       </div>
 
       <p className="text-xs text-ink-muted">
-        Signed in as <span className="text-ink-secondary">{user.email}</span>
+        {t("userSettingsDialog.signedInAs")} <span className="text-ink-secondary">{user.email}</span>
       </p>
 
       {mutation.isError && (
@@ -455,7 +454,7 @@ function ProfileTab() {
         </p>
       )}
       <Button type="submit" loading={mutation.isPending} disabled={!dirty} className="w-full">
-        {saved ? "Saved!" : "Save profile"}
+        {saved ? t("userSettingsDialog.savedExclamation") : t("userSettingsDialog.saveProfile")}
       </Button>
     </form>
   );
@@ -492,7 +491,7 @@ function CustomCssSection() {
     setError(null);
     if (!file) return;
     if (file.size > 100_000) {
-      setError("CSS file is too large (max 100 KB).");
+      setError(t("userSettingsDialog.cssFileIsTooLarge"));
       return;
     }
     const text = await file.text();
@@ -505,12 +504,9 @@ function CustomCssSection() {
 
   return (
     <div className="space-y-3">
-      <SectionTitle>Custom CSS theme</SectionTitle>
+      <SectionTitle>{t("userSettingsDialog.customCssTheme")}</SectionTitle>
       <p className="text-xs text-ink-muted">
-        Restyle the app for yourself - paste CSS below or upload a .css file. It applies the moment
-        you save, and it outranks the built-in theme, so overriding a design token (the --oc-*
-        variables) is enough to recolour everything. Download the default stylesheet to see the full
-        list.
+        {t("userSettingsDialog.restyleTheAppForYourselfPaste")}
       </p>
       <textarea
         value={draft}
@@ -518,8 +514,8 @@ function CustomCssSection() {
         maxLength={100_000}
         rows={6}
         spellCheck={false}
-        aria-label="Custom CSS"
-        placeholder=":root { --oc-primary: #22c55e; }"
+        aria-label={t("userSettingsDialog.customCss")}
+        placeholder={t("userSettingsDialog.rootOcPrimary22c55e")}
         className="w-full resize-y rounded-lg border border-border bg-surface-1 px-3 py-2 font-mono text-xs"
       />
       <input
@@ -536,14 +532,14 @@ function CustomCssSection() {
           loading={mutation.isPending}
           onClick={() => mutation.mutate(draft.trim() ? draft : null)}
         >
-          {dirty ? "Apply CSS" : "Applied"}
+          {dirty ? t("userSettingsDialog.applyCss") : t("userSettingsDialog.applied")}
         </Button>
         <Button variant="secondary" size="sm" onClick={() => fileRef.current?.click()}>
           <Upload aria-hidden className="size-4" />
-          Upload CSS
+          {t("userSettingsDialog.uploadCss")}
         </Button>
         <Button variant="secondary" size="sm" onClick={() => setDraft(CUSTOM_CSS_EXAMPLE)}>
-          Load example
+          {t("userSettingsDialog.loadExample")}
         </Button>
         <Button
           variant="secondary"
@@ -551,7 +547,7 @@ function CustomCssSection() {
           onClick={() => downloadText("orangchat-default.css", defaultCss)}
         >
           <Download aria-hidden className="size-4" />
-          Download default
+          {t("userSettingsDialog.downloadDefault")}
         </Button>
         {hasCss && (
           <Button
@@ -561,11 +557,11 @@ function CustomCssSection() {
             loading={mutation.isPending}
             onClick={() => mutation.mutate(null)}
           >
-            Remove
+            {t("common.remove")}
           </Button>
         )}
       </div>
-      {hasCss && !dirty && <p className="text-xs text-success">Custom CSS is active.</p>}
+      {hasCss && !dirty && <p className="text-xs text-success">{t("userSettingsDialog.customCssIsActive")}</p>}
       {error && <p className="text-xs text-danger">{error}</p>}
       {mutation.isError && <p className="text-xs text-danger">{mutation.error.message}</p>}
     </div>
@@ -585,12 +581,12 @@ function AppearanceTab({ onNavigate }: { onNavigate: (to: SettingsSection) => vo
   return (
     <div className="space-y-6">
       <div>
-        <SectionTitle>Theme</SectionTitle>
+        <SectionTitle>{t("userSettingsDialog.theme")}</SectionTitle>
         <div className="flex gap-2">
           {(
             [
-              ["dark", Moon, "Dark"],
-              ["light", Sun, "Light"],
+              ["dark", Moon, t("userSettingsDialog.dark")],
+              ["light", Sun, t("userSettingsDialog.light")],
             ] as const
           ).map(([value, Icon, label]) => (
             <button
@@ -611,23 +607,27 @@ function AppearanceTab({ onNavigate }: { onNavigate: (to: SettingsSection) => vo
           ))}
         </div>
       </div>
+      <div className="border-t border-border pt-5">
+        <LanguageSection />
+      </div>
       <div className="space-y-3 border-t border-border pt-5">
-        <SectionTitle>Community themes</SectionTitle>
+        <SectionTitle>{t("userSettingsDialog.communityThemes")}</SectionTitle>
         <p className="text-xs text-ink-muted">
-          Prebuilt colour themes and profile-card themes, reviewed and bundled with the app.
-          Installing one recolours everything without writing any CSS.
+          {t("userSettingsDialog.prebuiltColourThemesAndProfileCard")}
         </p>
         {installedTheme && (
-          <p className="text-xs text-success">“{installedTheme.name}” is installed.</p>
+          <p className="text-xs text-success">
+            {t("userSettingsDialog.themeNameIsInstalled", { name: installedTheme.name })}
+          </p>
         )}
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" size="sm" onClick={() => onNavigate("themes")}>
             <Palette aria-hidden className="size-4" />
-            Browse app themes
+            {t("userSettingsDialog.browseAppThemes")}
           </Button>
           <Button variant="secondary" size="sm" onClick={() => onNavigate("profile_themes")}>
             <Paintbrush aria-hidden className="size-4" />
-            Browse profile themes
+            {t("userSettingsDialog.browseProfileThemes")}
           </Button>
         </div>
       </div>
@@ -662,27 +662,70 @@ function AppIconSection() {
       setPreview("");
     } catch (e) {
       setPreview("");
-      setError(e instanceof Error ? e.message : "Could not save the icon");
+      setError(e instanceof Error ? e.message : t("userSettingsDialog.couldNotSaveTheIcon"));
     }
   };
 
   return (
     <div className="space-y-3">
-      <SectionTitle>App icon</SectionTitle>
+      <SectionTitle>{t("userSettingsDialog.appIcon")}</SectionTitle>
       <p className="text-xs text-ink-muted">
-        Replaces the OrangChat mark for you everywhere you are signed in - browser tab, in-app
-        branding, and the desktop window and tray. Nobody else sees it.
+        {t("userSettingsDialog.replacesTheOrangchatMarkForYou")}
       </p>
       <ImageField
-        label="Icon"
+        label={t("userSettingsDialog.icon")}
         kind="app-icon"
         rounded="md"
         value={user?.appIconUrl ?? ""}
         preview={preview}
         onChange={(url, blob) => void save(url, blob)}
-        hint="Square images work best. Leave empty for the OrangChat mark."
+        hint={t("userSettingsDialog.squareImagesWorkBestLeaveEmpty")}
       />
       {error && <p className="text-xs text-danger">{error}</p>}
+    </div>
+  );
+}
+
+/**
+ * The interface language. Device-local, like the theme above it: the account
+ * has no language, so signing in somewhere else does not carry this along.
+ */
+function LanguageSection() {
+  const pref = useLanguage((s) => s.pref);
+  const language = useLanguage((s) => s.language);
+
+  const option = (value: typeof pref, label: string) => (
+    <button
+      key={value}
+      type="button"
+      aria-pressed={pref === value}
+      onClick={() => setLanguage(value)}
+      className={cn(
+        "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
+        pref === value ? "border-primary bg-primary-soft" : "border-border hover:border-border-strong",
+      )}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="space-y-3">
+      <SectionTitle>{t("language.title")}</SectionTitle>
+      <p className="text-xs text-ink-muted">{t("language.description")}</p>
+      <div className="flex flex-wrap gap-2">
+        {option("system", t("language.system"))}
+        {LANGUAGES.map(({ code, endonym }) => option(code, endonym))}
+      </div>
+      {pref === "system" && (
+        <p className="text-xs text-ink-muted">
+          {t("language.systemHint", { language: endonymOf(language) })}
+        </p>
+      )}
+      {/* Said plainly rather than hidden: a reader who meets an English
+          sentence in a Lithuanian menu should know it is unfinished work and
+          not a bug in their own reading. */}
+      {language !== "en" && <p className="text-xs text-warning">{t("language.incomplete")}</p>}
     </div>
   );
 }
@@ -712,65 +755,74 @@ interface SettingsNavItem {
   icon: typeof UserIcon;
 }
 
-const NAV_GROUPS: { title: string; items: SettingsNavItem[] }[] = [
-  {
-    title: "Account",
-    items: [
-      { id: "profile", label: "Profile", icon: UserIcon },
-      { id: "connections", label: "Connections", icon: Link2 },
-      { id: "activity", label: "Activity", icon: Gamepad2 },
-    ],
-  },
-  {
-    title: "Privacy & Security",
-    items: [
-      { id: "privacy", label: "Privacy", icon: Sliders },
-      { id: "security", label: "Security", icon: ShieldCheck },
-      { id: "encryption", label: "Encryption", icon: Lock },
-      { id: "devices", label: "Devices", icon: Monitor },
-      { id: "qr_sign_in", label: "Scan sign-in QR", icon: ScanLine },
-    ],
-  },
-  {
-    title: "Appearance",
-    items: [
-      { id: "themes", label: "Theme", icon: Palette },
-      { id: "profile_themes", label: "Profile theme", icon: Paintbrush },
-      { id: "appearance", label: "Appearance", icon: Paintbrush },
-      { id: "accessibility", label: "Accessibility", icon: Accessibility },
-      { id: "plugins", label: "Plugins", icon: Puzzle },
-    ],
-  },
-  {
-    title: "App",
-    items: [
-      { id: "sharing", label: "Camera & Mic", icon: Video },
-      { id: "system", label: "System", icon: Monitor },
-      { id: "download", label: "Download app", icon: Download },
-      { id: "about", label: "About", icon: Info },
-    ],
-  },
-];
+// Functions, not module-level consts: `t()` reads the currently active
+// language, and this module is only ever evaluated once. A plain const here
+// would freeze these strings in whichever language was active on first
+// import, and never update when the user switches languages.
+function navGroups(): { title: string; items: SettingsNavItem[] }[] {
+  return [
+    {
+      title: t("userSettingsDialog.navGroupAccount"),
+      items: [
+        { id: "profile", label: t("userSettingsDialog.navProfile"), icon: UserIcon },
+        { id: "connections", label: t("userSettingsDialog.navConnections"), icon: Link2 },
+        { id: "activity", label: t("userSettingsDialog.navActivity"), icon: Gamepad2 },
+      ],
+    },
+    {
+      title: t("userSettingsDialog.navGroupPrivacySecurity"),
+      items: [
+        { id: "privacy", label: t("userSettingsDialog.navPrivacy"), icon: Sliders },
+        { id: "security", label: t("userSettingsDialog.navSecurity"), icon: ShieldCheck },
+        { id: "encryption", label: t("userSettingsDialog.navEncryption"), icon: Lock },
+        { id: "devices", label: t("userSettingsDialog.navDevices"), icon: Monitor },
+        { id: "qr_sign_in", label: t("userSettingsDialog.navScanSignInQr"), icon: ScanLine },
+      ],
+    },
+    {
+      title: t("userSettingsDialog.navGroupAppearance"),
+      items: [
+        { id: "themes", label: t("userSettingsDialog.navTheme"), icon: Palette },
+        { id: "profile_themes", label: t("userSettingsDialog.navProfileTheme"), icon: Paintbrush },
+        { id: "appearance", label: t("userSettingsDialog.navAppearance"), icon: Paintbrush },
+        { id: "accessibility", label: t("userSettingsDialog.navAccessibility"), icon: Accessibility },
+        { id: "plugins", label: t("userSettingsDialog.navPlugins"), icon: Puzzle },
+      ],
+    },
+    {
+      title: t("userSettingsDialog.navGroupApp"),
+      items: [
+        { id: "sharing", label: t("userSettingsDialog.navCameraMic"), icon: Video },
+        { id: "system", label: t("userSettingsDialog.navSystem"), icon: Monitor },
+        { id: "download", label: t("userSettingsDialog.navDownloadApp"), icon: Download },
+        { id: "about", label: t("userSettingsDialog.navAbout"), icon: Info },
+      ],
+    },
+  ];
+}
 
-const SECTION_TITLE: Record<SettingsSection, string> = {
-  profile: "Profile",
-  connections: "Connections",
-  activity: "Activity",
-  privacy: "Privacy",
-  sharing: "Camera & Microphone",
-  security: "Security",
-  qr_sign_in: "Scan sign-in QR",
-  devices: "Devices",
-  encryption: "Encryption",
-  plugins: "Plugins",
-  themes: "Theme",
-  profile_themes: "Profile theme",
-  accessibility: "Accessibility",
-  appearance: "Appearance",
-  system: "System",
-  download: "Download app",
-  about: "About",
-};
+function sectionTitle(section: SettingsSection): string {
+  const titles: Record<SettingsSection, string> = {
+    profile: t("userSettingsDialog.sectionTitleProfile"),
+    connections: t("userSettingsDialog.sectionTitleConnections"),
+    activity: t("userSettingsDialog.sectionTitleActivity"),
+    privacy: t("userSettingsDialog.sectionTitlePrivacy"),
+    sharing: t("userSettingsDialog.sectionTitleCameraMicrophone"),
+    security: t("userSettingsDialog.sectionTitleSecurity"),
+    qr_sign_in: t("userSettingsDialog.sectionTitleScanSignInQr"),
+    devices: t("userSettingsDialog.sectionTitleDevices"),
+    encryption: t("userSettingsDialog.sectionTitleEncryption"),
+    plugins: t("userSettingsDialog.sectionTitlePlugins"),
+    themes: t("userSettingsDialog.sectionTitleTheme"),
+    profile_themes: t("userSettingsDialog.sectionTitleProfileTheme"),
+    accessibility: t("userSettingsDialog.sectionTitleAccessibility"),
+    appearance: t("userSettingsDialog.sectionTitleAppearance"),
+    system: t("userSettingsDialog.sectionTitleSystem"),
+    download: t("userSettingsDialog.sectionTitleDownloadApp"),
+    about: t("userSettingsDialog.sectionTitleAbout"),
+  };
+  return titles[section];
+}
 
 function SectionBody({
   section,
@@ -827,13 +879,13 @@ export function UserSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogFullScreenContent title={SECTION_TITLE[section]}>
+      <DialogFullScreenContent title={sectionTitle(section)}>
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
           <nav
-            aria-label="Settings sections"
+            aria-label={t("userSettingsDialog.settingsSections")}
             className="flex shrink-0 gap-1 overflow-x-auto border-b border-border bg-surface-0/40 p-2 md:w-60 md:flex-col md:overflow-y-auto md:border-b-0 md:border-r md:p-3"
           >
-            {NAV_GROUPS.map((group) => (
+            {navGroups().map((group) => (
               <div key={group.title} className="shrink-0 md:shrink">
                 <p
                   aria-hidden
@@ -869,16 +921,16 @@ export function UserSettingsDialog({
                 className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
               >
                 <LogOut aria-hidden className="size-4 shrink-0" />
-                Sign out
+                {t("userSettingsDialog.signOut")}
               </button>
             </div>
           </nav>
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border px-4 py-3 md:px-8">
-              <h1 className="truncate text-lg font-semibold">{SECTION_TITLE[section]}</h1>
+              <h1 className="truncate text-lg font-semibold">{sectionTitle(section)}</h1>
               <DialogClose
-                aria-label="Close settings"
+                aria-label={t("userSettingsDialog.closeSettings")}
                 className="flex shrink-0 items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink"
               >
                 <X aria-hidden className="size-4" />
@@ -897,7 +949,7 @@ export function UserSettingsDialog({
                     onClick={() => logoutMutation.mutate()}
                   >
                     <LogOut aria-hidden className="size-4" />
-                    Sign out
+                    {t("userSettingsDialog.signOut")}
                   </Button>
                 </div>
               </div>

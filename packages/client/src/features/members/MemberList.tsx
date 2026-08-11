@@ -40,6 +40,7 @@ import {
   setNickname,
   unassignRole,
 } from "../roles/api";
+import { t } from "../../lib/i18n";
 
 interface MemberListProps {
   server: Server;
@@ -136,7 +137,7 @@ function MemberRow({
           </span>
           {isOwner && (
             <Crown
-              aria-label="Server owner"
+              aria-label={t("memberList.serverOwner")}
               className="size-3.5 shrink-0 text-warning"
             />
           )}
@@ -145,23 +146,23 @@ function MemberRow({
           <DropdownMenuLabel>@{member.user.username}</DropdownMenuLabel>
           <DropdownMenuItem onSelect={() => setProfileOpen(true)}>
             <UserRound aria-hidden className="size-4" />
-            View profile
+            {t("memberList.viewProfile")}
           </DropdownMenuItem>
           {!isSelf && (
             <DropdownMenuItem onSelect={() => dmMutation.mutate()}>
               <MessageSquare aria-hidden className="size-4" />
-              Message
+              {t("memberList.message")}
             </DropdownMenuItem>
           )}
           {canNickname && (
             <DropdownMenuItem onSelect={() => onAction({ kind: "nickname", member })}>
               <Pencil aria-hidden className="size-4" />
-              Change nickname
+              {t("memberList.changeNickname")}
             </DropdownMenuItem>
           )}
           {canRoles && assignableRoles.length > 0 && (
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger>Roles</DropdownMenuSubTrigger>
+              <DropdownMenuSubTrigger>{t("memberList.roles")}</DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
                 {assignableRoles.map((role) => (
                   <DropdownMenuCheckboxItem
@@ -190,13 +191,13 @@ function MemberRow({
           {canKick && (
             <DropdownMenuItem danger onSelect={() => onAction({ kind: "kick", member })}>
               <UserX aria-hidden className="size-4" />
-              Kick {name}
+              {t("memberList.kickName", { name })}
             </DropdownMenuItem>
           )}
           {canBan && (
             <DropdownMenuItem danger onSelect={() => onAction({ kind: "ban", member })}>
               <Gavel aria-hidden className="size-4" />
-              Ban {name}
+              {t("memberList.banName", { name })}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
@@ -270,8 +271,8 @@ function MemberActionDialogs({
         open={action.kind === "kick"}
         onOpenChange={(open) => !open && onClose()}
         title={`Kick ${displayName}?`}
-        description="They can rejoin with a new invite."
-        confirmLabel="Kick"
+        description={t("memberList.theyCanRejoinWithANew")}
+        confirmLabel={t("memberList.kick")}
         danger
         loading={kickMutation.isPending}
         error={kickMutation.error?.message}
@@ -281,15 +282,15 @@ function MemberActionDialogs({
         open={action.kind === "ban"}
         onOpenChange={(open) => !open && onClose()}
         title={`Ban ${displayName}?`}
-        description="They won't be able to rejoin unless unbanned."
-        confirmLabel="Ban"
+        description={t("memberList.theyWontBeAbleToRejoin")}
+        confirmLabel={t("memberList.ban")}
         danger
         loading={banMutation.isPending}
         error={banMutation.error?.message}
         onConfirm={() => banMutation.mutate(action.member.userId)}
       >
         <TextField
-          label="Reason (optional)"
+          label={t("memberList.reasonOptional")}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           maxLength={512}
@@ -300,13 +301,13 @@ function MemberActionDialogs({
         onOpenChange={(open) => !open && onClose()}
         title={`Change nickname`}
         description={`New server nickname for ${action.member.user.displayName}. Leave empty to clear.`}
-        confirmLabel="Save"
+        confirmLabel={t("common.save")}
         loading={nicknameMutation.isPending}
         error={nicknameMutation.error?.message}
         onConfirm={() => nicknameMutation.mutate(action.member.userId)}
       >
         <TextField
-          label="Nickname"
+          label={t("memberList.nickname")}
           value={nickname}
           onChange={(e) => setNicknameValue(e.target.value)}
           placeholder={action.member.nickname ?? ""}
@@ -342,13 +343,13 @@ export function MemberList({ server, roles, members }: MemberListProps) {
 
   return (
     <aside
-      aria-label="Members"
+      aria-label={t("memberList.members")}
       className="w-60 shrink-0 overflow-y-auto bg-surface-1 p-3 lg:w-56"
     >
       {online.length > 0 && (
         <>
           <h3 className="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Online - {online.length}
+            {t("memberList.onlineCount", { count: online.length })}
           </h3>
           <ul>{group(online)}</ul>
         </>
@@ -356,7 +357,7 @@ export function MemberList({ server, roles, members }: MemberListProps) {
       {offline.length > 0 && (
         <>
           <h3 className="px-2 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Offline - {offline.length}
+            {t("memberList.offlineCount", { count: offline.length })}
           </h3>
           <ul>{group(offline)}</ul>
         </>

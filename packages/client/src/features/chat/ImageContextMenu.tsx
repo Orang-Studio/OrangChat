@@ -8,6 +8,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "../../components/ui/ContextMenu";
+import { t } from "../../lib/i18n";
 
 function absoluteUrl(url: string): string {
   return new URL(url, window.location.origin).toString();
@@ -82,16 +83,16 @@ export function ImageContextMenu({
       <ContextMenuContent>
         <ContextMenuItem onSelect={() => void copyImage(attachment.url).catch(() => {})}>
           <Copy aria-hidden className="size-4" />
-          Copy image
+          {t("imageContextMenu.copyImage")}
         </ContextMenuItem>
         <ContextMenuItem onSelect={() => copyAddress(attachment.url)}>
           <LinkIcon aria-hidden className="size-4" />
-          Copy image address
+          {t("imageContextMenu.copyImageAddress")}
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem onSelect={() => void saveImage(attachment).catch(() => {})}>
           <Download aria-hidden className="size-4" />
-          Save image as…
+          {t("imageContextMenu.saveImageAs")}
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

@@ -6,6 +6,7 @@ import { PasswordField } from '../../components/ui/PasswordField';
 import { TextField } from '../../components/ui/TextField';
 import { useAuthStore } from '../../stores/auth';
 import { confirmIdentity } from '../settings/api';
+import { t } from "../../lib/i18n";
 
 /**
  * The local re-authentication §6.5 requires before strict mode can be relaxed.
@@ -60,7 +61,7 @@ export function ConfirmIdentityDialog({
           <p className="text-sm text-ink-secondary">{explanation}</p>
           {needsPassword && (
             <PasswordField
-              label="Password"
+              label={t("confirmIdentityDialog.password")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
@@ -68,7 +69,7 @@ export function ConfirmIdentityDialog({
           )}
           {needsCode && (
             <TextField
-              label="Authentication code"
+              label={t("confirmIdentityDialog.authenticationCode")}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               inputMode="numeric"
@@ -86,7 +87,7 @@ export function ConfirmIdentityDialog({
             loading={confirm.isPending}
             disabled={needsPassword && password.length === 0}
           >
-            Confirm
+            {t("common.confirm")}
           </Button>
         </form>
       </DialogContent>

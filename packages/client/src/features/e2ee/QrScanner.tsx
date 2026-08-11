@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Camera, ClipboardPaste } from 'lucide-react';
 import { qrKindOf, type QrKind } from '@orangchat/shared';
 import { Button } from '../../components/ui/Button';
+import { t } from "../../lib/i18n";
 
 /**
  * Reads one of the three OrangChat QR codes. They are visually identical and one
@@ -129,7 +130,7 @@ export function QrScanner({
             ref={video}
             muted
             playsInline
-            aria-label="Camera preview for scanning a code"
+            aria-label={t("qrScanner.cameraPreviewForScanningACode")}
             className="aspect-square w-full object-cover"
           />
         </div>
@@ -138,7 +139,7 @@ export function QrScanner({
       {manual && (
         <div className="space-y-2">
           <label htmlFor="qr-manual" className="block text-sm text-ink-secondary">
-            Paste the code text instead. It starts with <code>orangchat://</code>.
+            {t("qrScanner.pasteTheCodeTextInsteadIt")} <code>orangchat://</code>.
           </label>
           <textarea
             id="qr-manual"
@@ -152,7 +153,7 @@ export function QrScanner({
           />
           <Button type="button" size="sm" onClick={submitManual} disabled={pasted.trim() === ''}>
             <ClipboardPaste aria-hidden className="size-4" />
-            Use this code
+            {t("qrScanner.useThisCode")}
           </Button>
         </div>
       )}
@@ -167,7 +168,7 @@ export function QrScanner({
         {!manual && (
           <Button type="button" size="sm" variant="ghost" onClick={() => setManual(true)}>
             <ClipboardPaste aria-hidden className="size-4" />
-            Paste instead
+            {t("qrScanner.pasteInstead")}
           </Button>
         )}
         {manual && detectorCtor() && (
@@ -181,12 +182,12 @@ export function QrScanner({
             }}
           >
             <Camera aria-hidden className="size-4" />
-            Use the camera
+            {t("qrScanner.useTheCamera")}
           </Button>
         )}
         {onCancel && (
           <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
-            Cancel
+            {t("common.cancel")}
           </Button>
         )}
       </div>

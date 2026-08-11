@@ -1,6 +1,7 @@
 import { Eye, EyeOff, FileWarning, Paperclip, X } from "lucide-react";
 import type { Attachment, SealedAttachmentRef } from "@orangchat/shared";
 import { formatBytes } from "./attachments";
+import { t } from "../../lib/i18n";
 
 /** A file the user picked, from selection through to a finished upload. */
 export interface PendingUpload {
@@ -122,7 +123,7 @@ function Chip({
       {!upload.error && upload.ephemeral && (
         <p className="flex items-center gap-1 text-[11px] leading-tight text-warning">
           <FileWarning aria-hidden className="size-3 shrink-0" />
-          Expires in 1 hour
+          {t("composerAttachments.expiresIn1Hour")}
         </p>
       )}
     </li>

@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.verify
-
+import lt.oranges.orangchat.util.AppStrings
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
@@ -26,13 +28,14 @@ import lt.oranges.orangchat.feature.home.AppViewModel
  */
 @Composable
 fun VerifyContactDialog(raw: String, appViewModel: AppViewModel) {
+        val context = LocalContext.current
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var done by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = { if (!busy) appViewModel.clearPendingVerify() },
-        title = { Text(if (done) "Verified" else "Verify this contact") },
+        title = { Text(if (done) "Verified" else AppStrings.get(context, R.string.catalog_verify_this_contact_ee09ef5c)) },
         text = {
             Column {
                 Text(
@@ -78,7 +81,7 @@ fun VerifyContactDialog(raw: String, appViewModel: AppViewModel) {
                 TextButton(
                     enabled = !busy,
                     onClick = { appViewModel.clearPendingVerify() },
-                ) { Text("Not now") }
+                ) { Text(AppStrings.get(context, R.string.catalog_not_now_e4571490)) }
             }
         },
     )

@@ -3,6 +3,7 @@ import { Camera, Mic, Video } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { setPref, usePrefs } from "../../lib/prefs";
 import { SectionTitle, SelectField, Toggle } from "./controls";
+import { t } from "../../lib/i18n";
 
 type PermissionState = "granted" | "denied" | "prompt" | "unknown";
 
@@ -83,7 +84,7 @@ function MicLevelMeter({ deviceId }: { deviceId: string }) {
 
       cleanup.current = () => {
         cancelAnimationFrame(raf);
-        stream.getTracks().forEach((t) => t.stop());
+        stream.getTracks().forEach((track) => track.stop());
         void ctx.close();
       };
     } catch (e) {
@@ -120,7 +121,7 @@ function CameraPreview({ deviceId }: { deviceId: string }) {
   const [error, setError] = useState<string | null>(null);
 
   const stop = () => {
-    stream.current?.getTracks().forEach((t) => t.stop());
+    stream.current?.getTracks().forEach((track) => track.stop());
     stream.current = null;
     setOn(false);
   };
@@ -191,7 +192,7 @@ export function SharingTab() {
   const requestAccess = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-      stream.getTracks().forEach((t) => t.stop());
+      stream.getTracks().forEach((track) => track.stop());
       setPermission("granted");
     } catch {
       setPermission("denied");
@@ -204,7 +205,7 @@ export function SharingTab() {
   if (!supported) {
     return (
       <p className="text-sm text-ink-muted">
-        This browser doesn't expose camera or microphone controls.
+        {t("sharingTab.thisBrowserDoesntExposeCameraOr")}
       </p>
     );
   }
@@ -212,41 +213,39 @@ export function SharingTab() {
   return (
     <div className="space-y-6">
       <div>
-        <SectionTitle>Permissions</SectionTitle>
+        <SectionTitle>{t("sharingTab.permissions")}</SectionTitle>
         <p className="mb-3 text-sm text-ink-secondary">
-          OrangChat only opens your camera and microphone during a call, and while you're
-          testing them here.
+          {t("sharingTab.orangchatOnlyOpensYourCameraAnd")}
         </p>
         {permission === "denied" ? (
           <p className="text-sm text-danger">
-            Camera and microphone are blocked. Re-allow them for this site in your browser's
-            address bar, then reload.
+            {t("sharingTab.cameraAndMicrophoneAreBlockedRe")}
           </p>
         ) : labelsHidden || permission !== "granted" ? (
           <Button type="button" variant="secondary" size="sm" onClick={() => void requestAccess()}>
-            Allow camera & microphone
+            {t("sharingTab.allowCameraMicrophone")}
           </Button>
         ) : (
-          <p className="text-sm text-success">Camera and microphone access is granted.</p>
+          <p className="text-sm text-success">{t("sharingTab.cameraAndMicrophoneAccessIsGranted")}</p>
         )}
       </div>
 
       <div className="space-y-4 border-t border-border pt-5">
-        <SectionTitle>Microphone</SectionTitle>
+        <SectionTitle>{t("sharingTab.microphone")}</SectionTitle>
         <SelectField
-          label="Input device"
+          label={t("sharingTab.inputDevice")}
           value={prefs.micDeviceId}
           onChange={(v) => setPref("micDeviceId", v)}
           options={optionsFor(devices, "audioinput", "System default")}
-          hint="Applies the next time you join a call."
+          hint={t("sharingTab.appliesTheNextTimeYouJoin")}
         />
         <MicLevelMeter deviceId={prefs.micDeviceId} />
       </div>
 
       <div className="space-y-4 border-t border-border pt-5">
-        <SectionTitle>Camera</SectionTitle>
+        <SectionTitle>{t("sharingTab.camera")}</SectionTitle>
         <SelectField
-          label="Video device"
+          label={t("sharingTab.videoDevice")}
           value={prefs.cameraDeviceId}
           onChange={(v) => setPref("cameraDeviceId", v)}
           options={optionsFor(devices, "videoinput", "System default")}
@@ -255,34 +254,34 @@ export function SharingTab() {
       </div>
 
       <div className="space-y-4 border-t border-border pt-5">
-        <SectionTitle>Output</SectionTitle>
+        <SectionTitle>{t("sharingTab.output")}</SectionTitle>
         <SelectField
-          label="Speaker"
+          label={t("sharingTab.speaker")}
           value={prefs.speakerDeviceId}
           onChange={(v) => setPref("speakerDeviceId", v)}
           options={optionsFor(devices, "audiooutput", "System default")}
-          hint="Chrome and Edge only - other browsers always use the system default."
+          hint={t("sharingTab.chromeAndEdgeOnlyOtherBrowsers")}
         />
       </div>
 
       <div className="space-y-3 border-t border-border pt-5">
-        <SectionTitle>When joining a call</SectionTitle>
+        <SectionTitle>{t("sharingTab.whenJoiningACall")}</SectionTitle>
         <Toggle
           checked={prefs.joinMuted}
           onChange={(v) => setPref("joinMuted", v)}
-          label="Join muted"
-          hint="Start every call with your microphone off."
+          label={t("sharingTab.joinMuted")}
+          hint={t("sharingTab.startEveryCallWithYourMicrophone")}
         />
         <Toggle
           checked={prefs.joinWithVideo}
           onChange={(v) => setPref("joinWithVideo", v)}
-          label="Join with camera on"
-          hint="Start voice channels with video already publishing."
+          label={t("sharingTab.joinWithCameraOn")}
+          hint={t("sharingTab.startVoiceChannelsWithVideoAlready")}
         />
       </div>
 
       <p className="text-xs text-ink-muted">
-        These choices are stored on this device only - they're never sent to the server.
+        {t("sharingTab.theseChoicesAreStoredOnThis")}
       </p>
     </div>
   );

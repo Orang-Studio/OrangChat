@@ -1,5 +1,6 @@
 import { Check, Lock, ShieldCheck, Users } from 'lucide-react';
 import { cn } from '../../lib/cn';
+import { t } from "../../lib/i18n";
 
 /**
  * The two modes of docs/E2EE.md §6, presented as the choice they actually are.
@@ -71,15 +72,14 @@ export function EncryptionModeChoice({
   return (
     <div className="space-y-2">
       <div className="space-y-1">
-        <p className="text-sm font-medium">Before a message leaves this device</p>
+        <p className="text-sm font-medium">{t("encryptionModeChoice.beforeAMessageLeavesThisDevice")}</p>
         <p className="text-xs leading-relaxed text-ink-muted">
-          Both options encrypt everything. The difference is whether a swapped lock is stopped
-          before it can be used, or caught afterwards.
+          {t("encryptionModeChoice.bothOptionsEncryptEverythingTheDifference")}
         </p>
       </div>
       <div
         role="radiogroup"
-        aria-label="Encryption mode for this conversation"
+        aria-label={t("encryptionModeChoice.encryptionModeForThisConversation")}
         className="space-y-2"
       >
         <ModeCard
@@ -110,11 +110,9 @@ export function GroupModeNote() {
     <div className="flex gap-3 rounded-xl border border-border px-3 py-3">
       <Users aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
       <div className="min-w-0 flex-1 space-y-1">
-        <p className="text-sm font-medium">Group conversations send straight away</p>
+        <p className="text-sm font-medium">{t("encryptionModeChoice.groupConversationsSendStraightAway")}</p>
         <p className="text-xs leading-relaxed text-ink-secondary">
-          Checking someone's code is a one-to-one thing, so it happens in your direct message with
-          them - and anyone you have checked there shows as checked here too. Waiting on everyone in
-          a group to be checked would hold up people who never asked for it.
+          {t("encryptionModeChoice.checkingSomeonesCodeIsAOne")}
         </p>
       </div>
     </div>

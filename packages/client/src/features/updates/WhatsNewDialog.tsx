@@ -7,6 +7,7 @@ import {
   shouldShowReleaseNotes,
   type ReleaseNotes,
 } from "./releaseNotes";
+import { t } from "../../lib/i18n";
 
 interface VisibleReleaseNotes extends ReleaseNotes {
   text: string;
@@ -51,7 +52,7 @@ export function WhatsNewDialog() {
 
   return (
     <Dialog open={notes !== null} onOpenChange={(open) => !open && close()}>
-      <DialogContent title="What's new" description={notes ? `OrangChat ${notes.version}` : undefined}>
+      <DialogContent title={t("whatsNewDialog.whatsNew")} description={notes ? `OrangChat ${notes.version}` : undefined}>
         <div className="max-h-[50dvh] overflow-y-auto rounded-lg bg-surface-1 p-3">
           <p className="whitespace-pre-wrap break-words text-sm leading-6 text-ink-secondary">
             {notes?.text}
@@ -63,7 +64,7 @@ export function WhatsNewDialog() {
             onClick={close}
             className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-ink-on-primary transition-colors hover:bg-primary-hover"
           >
-            Got it
+            {t("whatsNewDialog.gotIt")}
           </button>
         </div>
       </DialogContent>

@@ -19,6 +19,7 @@ import { loadIdentity } from "../e2ee/keystore";
 import { TransferDialog } from "../e2ee/TransferDialog";
 import { SectionTitle } from "./controls";
 import { KeyErasureSection } from "./KeyErasureSection";
+import { t, tCount } from "../../lib/i18n";
 
 const ICONS = {
   web: Monitor,
@@ -48,23 +49,25 @@ function DeviceRow({
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">
           {device.name}
-          {isThisDevice && <span className="ml-2 text-xs text-primary">This device</span>}
-          {revoked && <span className="ml-2 text-xs text-ink-muted">Revoked</span>}
+          {isThisDevice && <span className="ml-2 text-xs text-primary">{t("encryptionTab.thisDevice")}</span>}
+          {revoked && <span className="ml-2 text-xs text-ink-muted">{t("encryptionTab.revoked")}</span>}
         </p>
         <p className="text-xs text-ink-muted">
           {device.authorizedBy === null
-            ? "First device on this account"
-            : "Added by another of your devices"}
+            ? t("encryptionTab.firstDeviceOnThisAccount")
+            : t("encryptionTab.addedByAnotherOfYourDevices")}
           {" · "}
-          Added {formatFullTime(device.createdAt)}
+          {t("encryptionTab.addedAt", { time: formatFullTime(device.createdAt) })}
         </p>
         {!revoked && (
-          <p className="text-xs text-ink-muted">Last seen {formatFullTime(device.lastSeenAt)}</p>
+          <p className="text-xs text-ink-muted">
+            {t("encryptionTab.lastSeenAt", { time: formatFullTime(device.lastSeenAt) })}
+          </p>
         )}
       </div>
       {!revoked && !isThisDevice && canRevoke && (
         <Button size="sm" variant="ghost" onClick={onRevoke} disabled={revoking}>
-          Revoke
+          {t("encryptionTab.revoke")}
         </Button>
       )}
     </li>
@@ -139,11 +142,9 @@ export function EncryptionTab() {
   return (
     <div className="space-y-6">
       <section className="space-y-2">
-        <SectionTitle>End-to-end encryption</SectionTitle>
+        <SectionTitle>{t("encryptionTab.endToEndEncryption")}</SectionTitle>
         <p className="text-sm leading-relaxed text-ink-secondary">
-          Your direct messages are locked on your own devices before they are sent. The key is made
-          here and cannot be copied off this device, so nobody running OrangChat - and nobody who
-          gets hold of our database - can read them.
+          {t("encryptionTab.yourDirectMessagesAreLockedOn")}
         </p>
         <HowEncryptionWorksLink />
       </section>
@@ -160,7 +161,7 @@ export function EncryptionTab() {
           <div className="flex items-start gap-3">
             <Lock aria-hidden className="mt-0.5 size-5 shrink-0 text-ink-secondary" />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium">This device has no encryption identity yet</p>
+              <p className="text-sm font-medium">{t("encryptionTab.thisDeviceHasNoEncryptionIdentity")}</p>
               <p className="text-xs text-ink-muted">
                 {hasOtherDevices
                   ? "Your account already has devices. This one has to be added from one of them, in person - keys are never copied over the internet."
@@ -171,7 +172,7 @@ export function EncryptionTab() {
           {hasOtherDevices ? (
             <Button className="mt-3" size="sm" onClick={() => setTransferOpen(true)}>
               <QrCodeIcon aria-hidden className="size-4" />
-              Add this device
+              {t("encryptionTab.addThisDevice")}
             </Button>
           ) : (
             <Button
@@ -191,12 +192,9 @@ export function EncryptionTab() {
           <div className="flex items-start gap-3">
             <Smartphone aria-hidden className="mt-0.5 size-5 shrink-0 text-ink-secondary" />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium">Add another device</p>
+              <p className="text-sm font-medium">{t("encryptionTab.addAnotherDevice")}</p>
               <p className="text-xs text-ink-muted">
-                Show a one-time code on this PC, then use OrangChat’s scanner on the phone. The
-                phone makes its own protected identity; this device authorizes it and sends the
-                encrypted history keys after you compare six digits and enter a fresh security
-                code. The system Camera app remains a fallback.
+                {t("encryptionTab.showAOneTimeCodeOn")}
               </p>
             </div>
           </div>
@@ -207,7 +205,7 @@ export function EncryptionTab() {
             onClick={() => setTransferOpen(true)}
           >
             <QrCodeIcon aria-hidden className="size-4" />
-            Show code for my phone
+            {t("encryptionTab.showCodeForMyPhone")}
           </Button>
         </section>
       )}
@@ -224,10 +222,10 @@ export function EncryptionTab() {
       )}
 
       <section>
-        <SectionTitle>Devices with your keys</SectionTitle>
-        {devices.isLoading && <p className="text-sm text-ink-muted">Loading…</p>}
+        <SectionTitle>{t("encryptionTab.devicesWithYourKeys")}</SectionTitle>
+        {devices.isLoading && <p className="text-sm text-ink-muted">{t("common.loading")}</p>}
         {list && list.devices.length === 0 && (
-          <p className="text-sm text-ink-muted">No devices are enrolled on this account.</p>
+          <p className="text-sm text-ink-muted">{t("encryptionTab.noDevicesAreEnrolledOnThis")}</p>
         )}
         {list && list.devices.length > 0 && (
           <ul className="space-y-2">
@@ -248,16 +246,15 @@ export function EncryptionTab() {
       <KeyErasureSection stuck={hasOtherDevices && !identity} keyed={identity !== null} />
 
       <section>
-        <SectionTitle>The logbook</SectionTitle>
+        <SectionTitle>{t("encryptionTab.theLogbook")}</SectionTitle>
         <p className="text-sm leading-relaxed text-ink-secondary">
-          Every device added or removed is written into a logbook that can only be added to, never
-          edited or erased. Your devices read it on every start, so a device you did not add cannot
-          appear here quietly - you get told, and the entry stays in the book.
+          {t("encryptionTab.everyDeviceAddedOrRemovedIs")}
         </p>
         {list?.head && (
           <p className="mt-2 font-mono text-xs text-ink-muted">
-            {list.head.seq + 1} {list.head.seq === 0 ? "entry" : "entries"} · head{" "}
-            {list.head.entryHash.slice(0, 16)}…
+            {tCount("encryptionTab.entriesHead", list.head.seq + 1, {
+              hash: list.head.entryHash.slice(0, 16),
+            })}
           </p>
         )}
         <Button

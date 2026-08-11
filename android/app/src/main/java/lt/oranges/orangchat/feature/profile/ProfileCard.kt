@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.profile
 
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +40,7 @@ import lt.oranges.orangchat.ui.components.OrangButton
 import lt.oranges.orangchat.ui.components.OrangDialog
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
+import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.absoluteUrl
 import lt.oranges.orangchat.util.formatFullTime
 
@@ -192,6 +195,7 @@ fun ProfileDialog(
     onAddFriend: () -> Unit,
     onRemoveFriend: () -> Unit,
 ) {
+        val context = LocalContext.current
     OrangDialog(onDismiss = onDismiss, title = "${user.displayName}'s profile") {
         Column {
             ProfileCard(user = user, presence = presence)
@@ -214,11 +218,11 @@ fun ProfileDialog(
                             variant = ButtonVariant.Ghost,
                         )
                         ProfileRelation.STRANGER -> OrangButton(
-                            text = "Add friend",
+                            text = AppStrings.get(context, R.string.catalog_add_friend_e0a731d8),
                             onClick = onAddFriend,
                         )
                         ProfileRelation.PENDING -> OrangButton(
-                            text = "Request sent",
+                            text = AppStrings.get(context, R.string.catalog_request_sent_168996e3),
                             onClick = {},
                             enabled = false,
                         )

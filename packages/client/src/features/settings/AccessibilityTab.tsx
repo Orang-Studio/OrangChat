@@ -5,6 +5,7 @@ import { Button } from "../../components/ui/Button";
 import { cn } from "../../lib/cn";
 import { useAuthStore } from "../../stores/auth";
 import { SectionTitle, SegmentedControl, Toggle } from "./controls";
+import { t, tNodes } from "../../lib/i18n";
 
 const SAMPLE_AUTHOR = { displayName: "Rasa", avatarUrl: null };
 
@@ -56,7 +57,7 @@ function ChatPreview() {
 
   return (
     <div
-      aria-label="Chat preview"
+      aria-label={t("accessibilityTab.chatPreview")}
       className="overflow-hidden rounded-lg border border-border bg-surface-2 pb-2"
     >
       <div className="flex h-9 items-center gap-2 border-b border-border px-3 text-sm font-semibold">
@@ -67,32 +68,37 @@ function ChatPreview() {
       </div>
 
       <Row author={SAMPLE_AUTHOR} time="Today at 14:02">
-        The quick brown fox jumps over the lazy dog.
+        {t("accessibilityTab.theQuickBrownFoxJumpsOver")}
       </Row>
       <Row author={SAMPLE_AUTHOR} time="Today at 14:02" lead={false}>
-        This second line is grouped under the same author - it's the gap here that Cozy and Compact
-        change.
+        {t("accessibilityTab.thisSecondLineIsGroupedUnder")}
       </Row>
 
       <div className="oc-message oc-message-lead mt-3 px-3 py-0.5">
         <div className="mb-0.5 flex items-center gap-1.5 pl-[3.25rem] text-xs text-ink-muted">
           <Reply aria-hidden className="size-3.5 -scale-x-100" />
           <span className="font-medium text-ink-secondary">{SAMPLE_AUTHOR.displayName}</span>
-          <span className="truncate">The quick brown fox jumps over the lazy dog.</span>
+          <span className="truncate">{t("accessibilityTab.theQuickBrownFoxJumpsOver")}</span>
         </div>
         <div className="flex gap-3">
           <Avatar user={self} className="mt-0.5 size-10 shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="flex items-baseline gap-2">
               <span className="font-semibold">{self.displayName}</span>
-              <span className="text-xs text-ink-muted">Today at 14:03</span>
+              <span className="text-xs text-ink-muted">{t("accessibilityTab.todayAt1403")}</span>
             </p>
             <div className="break-words text-sm leading-relaxed">
-              Looks readable at this size.{" "}
-              <a href="#preview" onClick={(e) => e.preventDefault()} className="oc-link text-info">
-                A link
-              </a>{" "}
-              shows the underline setting.
+              {tNodes("accessibilityTab.readablePreview", {
+                link: (
+                  <a
+                    href="#preview"
+                    onClick={(e) => e.preventDefault()}
+                    className="oc-link text-info"
+                  >
+                    {t("accessibilityTab.aLink")}
+                  </a>
+                ),
+              })}
             </div>
             <div className="mt-1 flex flex-wrap gap-1">
               <span className="flex items-center gap-1 rounded-md border border-primary bg-primary-soft px-2 py-0.5 text-sm">
@@ -112,9 +118,9 @@ export function AccessibilityTab() {
   return (
     <div className="space-y-6">
       <div>
-        <SectionTitle>Text size</SectionTitle>
+        <SectionTitle>{t("accessibilityTab.textSize")}</SectionTitle>
         <p className="mb-3 text-sm text-ink-secondary">
-          Scales the entire interface. The sample below updates as you drag.
+          {t("accessibilityTab.scalesTheEntireInterfaceTheSample")}
         </p>
         <input
           type="range"
@@ -123,13 +129,13 @@ export function AccessibilityTab() {
           step={0.05}
           value={prefs.fontScale}
           onChange={(e) => setPref("fontScale", Number(e.target.value))}
-          aria-label="Text size"
+          aria-label={t("accessibilityTab.textSize")}
           className="w-full accent-[var(--oc-primary)]"
         />
         <div className="mt-2 flex items-center justify-between text-xs text-ink-muted">
-          <span>Smaller</span>
+          <span>{t("accessibilityTab.smaller")}</span>
           <span>{Math.round(prefs.fontScale * 100)}%</span>
-          <span>Larger</span>
+          <span>{t("accessibilityTab.larger")}</span>
         </div>
         <div className="mt-3">
           <ChatPreview />
@@ -137,9 +143,9 @@ export function AccessibilityTab() {
       </div>
 
       <div className="border-t border-border pt-5">
-        <SectionTitle>Message density</SectionTitle>
+        <SectionTitle>{t("accessibilityTab.messageDensity")}</SectionTitle>
         <p className="mb-3 text-sm text-ink-secondary">
-          Compact tightens the spacing between messages. The preview above follows it.
+          {t("accessibilityTab.compactTightensTheSpacingBetweenMessages")}
         </p>
         <SegmentedControl
           value={prefs.messageDensity}
@@ -152,33 +158,33 @@ export function AccessibilityTab() {
       </div>
 
       <div className="space-y-3 border-t border-border pt-5">
-        <SectionTitle>Motion & contrast</SectionTitle>
+        <SectionTitle>{t("accessibilityTab.motionContrast")}</SectionTitle>
         <Toggle
           checked={prefs.reducedMotion}
           onChange={(v) => setPref("reducedMotion", v)}
-          label="Reduce motion"
-          hint="Minimize animations and transitions across the app."
+          label={t("accessibilityTab.reduceMotion")}
+          hint={t("accessibilityTab.minimizeAnimationsAndTransitionsAcrossThe")}
         />
         <Toggle
           checked={prefs.highContrast}
           onChange={(v) => setPref("highContrast", v)}
-          label="Increase contrast"
-          hint="Stronger borders and higher-contrast text."
+          label={t("accessibilityTab.increaseContrast")}
+          hint={t("accessibilityTab.strongerBordersAndHigherContrastText")}
         />
         <Toggle
           checked={prefs.underlineLinks}
           onChange={(v) => setPref("underlineLinks", v)}
-          label="Underline links"
-          hint="Always underline links, not just on hover."
+          label={t("accessibilityTab.underlineLinks")}
+          hint={t("accessibilityTab.alwaysUnderlineLinksNotJustOn")}
         />
       </div>
 
       <div className="space-y-3 border-t border-border pt-5">
-        <SectionTitle>Chat input</SectionTitle>
+        <SectionTitle>{t("accessibilityTab.chatInput")}</SectionTitle>
         <Toggle
           checked={prefs.sendOnEnter}
           onChange={(v) => setPref("sendOnEnter", v)}
-          label="Send messages with Enter"
+          label={t("accessibilityTab.sendMessagesWithEnter")}
           hint={
             prefs.sendOnEnter
               ? "Enter sends, Shift+Enter adds a line break."
@@ -208,7 +214,7 @@ export function AccessibilityTab() {
             setPref("iHateAdas", DEFAULT_PREFS.iHateAdas);
           }}
         >
-          Reset to defaults
+          {t("accessibilityTab.resetToDefaults")}
         </Button>
       </div>
     </div>

@@ -1,5 +1,6 @@
 package lt.oranges.orangchat.feature.share
-
+import lt.oranges.orangchat.util.AppStrings
+import lt.oranges.orangchat.R
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -38,6 +39,7 @@ fun ShareScreen(
     onDismiss: () -> Unit,
     viewModel: ShareViewModel = hiltViewModel(),
 ) {
+        val context = LocalContext.current
     val state by viewModel.state.collectAsStateWithLifecycle()
     var query by remember { mutableStateOf("") }
     var note by remember(share) { mutableStateOf(share.text) }
@@ -81,7 +83,7 @@ fun ShareScreen(
             IconButton(onClick = { onDismiss(); activity?.finish() }) {
                 Icon(Icons.Default.Close, "Close", tint = colors.ink)
             }
-            Text("Share to OrangChat", color = colors.ink, fontWeight = FontWeight.Bold, fontSize = 19.sp)
+            Text(AppStrings.get(context, R.string.catalog_share_to_orangchat_8cb49ef7), color = colors.ink, fontWeight = FontWeight.Bold, fontSize = 19.sp)
         }
         HorizontalDivider(color = colors.border)
 
@@ -91,7 +93,7 @@ fun ShareScreen(
                 onValueChange = { query = it },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                placeholder = { Text("Search friends and channels") },
+                placeholder = { Text(AppStrings.get(context, R.string.catalog_search_friends_and_channels_57990af1)) },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 shape = RoundedCornerShape(OrangRadius.lg),
             )
@@ -101,7 +103,7 @@ fun ShareScreen(
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
                 maxLines = 4,
-                label = { Text(if (share.text.isBlank()) "Add a message" else "Shared text") },
+                label = { Text(if (share.text.isBlank()) "Add a message" else AppStrings.get(context, R.string.catalog_shared_text_4517f1e8)) },
                 shape = RoundedCornerShape(OrangRadius.lg),
             )
             if (share.uris.isNotEmpty()) {
@@ -109,7 +111,7 @@ fun ShareScreen(
                     Icon(Icons.Default.AttachFile, null, tint = colors.primary, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        if (share.uris.size == 1) "1 attachment" else "${share.uris.size} attachments",
+                        if (share.uris.size == 1) AppStrings.get(context, R.string.catalog_1_attachment_82c9f82a) else "${share.uris.size} attachments",
                         color = colors.inkSecondary,
                         fontSize = 14.sp,
                     )
@@ -148,7 +150,7 @@ fun ShareScreen(
                     }
                 }
                 if (channels.isEmpty() && friends.isEmpty()) {
-                    item { Text("No matching friends or channels", color = colors.inkMuted, modifier = Modifier.padding(24.dp)) }
+                    item { Text(AppStrings.get(context, R.string.catalog_no_matching_friends_or_channels_fd0c1248), color = colors.inkMuted, modifier = Modifier.padding(24.dp)) }
                 }
             }
         }
@@ -161,7 +163,7 @@ fun ShareScreen(
         }
         Surface(color = colors.surface2, tonalElevation = 3.dp) {
             OrangButton(
-                text = if (state.sending) "Sharing…" else "Share",
+                text = if (state.sending) AppStrings.get(context, R.string.catalog_sharing_ad005909) else "Share",
                 onClick = { selected?.let { viewModel.send(it, note, share.uris) } },
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                 enabled = selected != null && (note.isNotBlank() || share.uris.isNotEmpty()),

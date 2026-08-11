@@ -7,6 +7,7 @@ import { sendFriendRequestById } from '../friends/api';
 import { acceptScannedContact, myContactQr } from './identity';
 import { QrCode } from './QrCode';
 import { QrScanner } from './QrScanner';
+import { t } from "../../lib/i18n";
 
 /**
  * Adding someone in person by scanning their code (§6.6, item 1). This is the
@@ -63,8 +64,7 @@ export function AddByCode() {
   return (
     <div className="space-y-3 border-t border-border pt-4">
       <p className="text-sm text-ink-secondary">
-        Together in person? Scanning their code adds them and confirms their encryption keys in one
-        go.
+        {t("addByCode.togetherInPersonScanningTheirCode")}
       </p>
 
       {mode === 'idle' && (
@@ -79,11 +79,11 @@ export function AddByCode() {
             }}
           >
             <ScanLine aria-hidden className="size-4" />
-            Scan their code
+            {t("addByCode.scanTheirCode")}
           </Button>
           <Button type="button" variant="secondary" onClick={() => void showMine()}>
             <QrCodeIcon aria-hidden className="size-4" />
-            Show my code
+            {t("addByCode.showMyCode")}
           </Button>
         </div>
       )}
@@ -98,17 +98,17 @@ export function AddByCode() {
 
       {mode === 'show' && code && (
         <div className="space-y-2">
-          <QrCode value={code} label="My contact code" />
+          <QrCode value={code} label={t("addByCode.myContactCode")} />
           <p className="text-center text-xs text-ink-muted">
-            Public information only. Being in the room is what makes it mean anything.
+            {t("addByCode.publicInformationOnlyBeingInThe")}
           </p>
           <Button type="button" variant="ghost" className="w-full" onClick={() => setMode('idle')}>
-            Done
+            {t("common.done")}
           </Button>
         </div>
       )}
 
-      {add.isPending && <p className="text-sm text-ink-muted">Checking their identity…</p>}
+      {add.isPending && <p className="text-sm text-ink-muted">{t("addByCode.checkingTheirIdentity")}</p>}
       {error && (
         <p role="alert" className="rounded-lg bg-primary-soft px-3 py-2 text-sm text-danger">
           {error}

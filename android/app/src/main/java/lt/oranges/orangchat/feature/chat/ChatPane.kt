@@ -1,5 +1,6 @@
 package lt.oranges.orangchat.feature.chat
 
+import lt.oranges.orangchat.R
 import android.Manifest
 import android.app.Activity
 import android.app.KeyguardManager
@@ -136,6 +137,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
+import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.absoluteUrl
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -708,7 +710,7 @@ fun ChatPane(
             if (onStartCall != null) {
                 Icon(
                     Icons.Default.Call,
-                    contentDescription = if (onCall) "Already on this call" else "Start voice call",
+                    contentDescription = if (onCall) AppStrings.get(context, R.string.catalog_already_on_this_call_abb9cae6) else AppStrings.get(context, R.string.catalog_start_voice_call_f5e80dd9),
                     tint = if (onCall) c.inkMuted.copy(alpha = 0.4f) else c.inkSecondary,
                     modifier = Modifier
                         .clickable(enabled = !onCall) { onStartCall(false) }
@@ -717,7 +719,7 @@ fun ChatPane(
                 )
                 Icon(
                     Icons.Default.Videocam,
-                    contentDescription = if (onCall) "Already on this call" else "Start video call",
+                    contentDescription = if (onCall) AppStrings.get(context, R.string.catalog_already_on_this_call_abb9cae6) else AppStrings.get(context, R.string.catalog_start_video_call_dac036c6),
                     tint = if (onCall) c.inkMuted.copy(alpha = 0.4f) else c.inkSecondary,
                     modifier = Modifier
                         .clickable(enabled = !onCall) { onStartCall(true) }
@@ -731,15 +733,15 @@ fun ChatPane(
             // the background" among them - is not readable at any width.
             val overflow = buildList {
                 if (onSearch != null) {
-                    add(MenuItem("Search messages", Icons.Default.Search, onClick = onSearch))
+                    add(MenuItem(AppStrings.get(context, R.string.catalog_search_messages_abea65ae), Icons.Default.Search, onClick = onSearch))
                 }
                 if (onAddPeople != null) {
-                    add(MenuItem("Add people", Icons.Default.GroupAdd, onClick = onAddPeople))
+                    add(MenuItem(AppStrings.get(context, R.string.catalog_add_people_b9c735ea), Icons.Default.GroupAdd, onClick = onAddPeople))
                 }
                 if (onSetBackground != null) {
                     add(
                         MenuItem(
-                            if (backgroundUrl != null) "Change background" else "Set chat background",
+                            if (backgroundUrl != null) AppStrings.get(context, R.string.catalog_change_background_0c868243) else AppStrings.get(context, R.string.catalog_set_chat_background_d07e7165),
                             Icons.Default.Photo,
                         ) {
                             backgroundPicker.launch(
@@ -752,7 +754,7 @@ fun ChatPane(
                     if (backgroundUrl != null && onRemoveBackground != null) {
                         add(
                             MenuItem(
-                                "Remove background for everyone",
+                                AppStrings.get(context, R.string.catalog_remove_background_for_everyone_275dc99e),
                                 Icons.Default.Delete,
                                 destructive = true,
                                 onClick = onRemoveBackground,
@@ -763,7 +765,7 @@ fun ChatPane(
                 if (onSetIcon != null) {
                     add(
                         MenuItem(
-                            if (iconUrl != null) "Change group icon" else "Set group icon",
+                            if (iconUrl != null) AppStrings.get(context, R.string.catalog_change_group_icon_715ac3cf) else AppStrings.get(context, R.string.catalog_set_group_icon_48042fd7),
                             Icons.Default.Group,
                         ) {
                             iconPicker.launch(
@@ -776,7 +778,7 @@ fun ChatPane(
                     if (iconUrl != null && onRemoveIcon != null) {
                         add(
                             MenuItem(
-                                "Remove group icon",
+                                AppStrings.get(context, R.string.catalog_remove_group_icon_5869f3b2),
                                 Icons.Default.Delete,
                                 destructive = true,
                                 onClick = onRemoveIcon,
@@ -824,7 +826,7 @@ fun ChatPane(
         // tap having been ignored, which is exactly how this read before.
         if (jumpMissing) {
             Text(
-                text = "Couldn't reach that message - it may be too far back or deleted.",
+                text = AppStrings.get(context, R.string.catalog_couldn_t_reach_that_message_it_may_896fe39d),
                 color = c.inkMuted,
                 fontSize = 12.sp,
                 modifier = Modifier
@@ -928,7 +930,7 @@ fun ChatPane(
                 }
             }
 
-            val latestLabel = if (hasNewMessages) "New messages" else "Jump to latest"
+            val latestLabel = if (hasNewMessages) AppStrings.get(context, R.string.catalog_new_messages_6d867124) else AppStrings.get(context, R.string.catalog_jump_to_latest_5aa2e089)
             androidx.compose.animation.AnimatedVisibility(
                 visible = awayFromBottom,
                 modifier = Modifier
@@ -971,7 +973,7 @@ fun ChatPane(
         encryptionInfo?.waitingOn?.takeIf { it.isNotEmpty() }?.let { waiting ->
             val names = waiting.mapNotNull(nameOf)
             val who = when (names.size) {
-                0 -> "Someone here"
+                0 -> AppStrings.get(context, R.string.catalog_someone_here_f47623b5)
                 1 -> names[0]
                 2 -> "${names[0]} and ${names[1]}"
                 else -> "${names.dropLast(1).joinToString(", ")} and ${names.last()}"
@@ -993,7 +995,7 @@ fun ChatPane(
                 )
                 Column(Modifier.weight(1f)) {
                     Text(
-                        "This conversation is not encrypted yet",
+                        AppStrings.get(context, R.string.catalog_this_conversation_is_not_encrypted_yet_00080602),
                         color = c.ink,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
@@ -1002,7 +1004,7 @@ fun ChatPane(
                         "$who ${if (one) "has" else "have"} not set up encryption on any device, " +
                             "and a locked message needs a key on their side to open it. " +
                             "Messages here are stored the ordinary way until then - it switches on by itself " +
-                            "the moment ${if (one) "they open" else "they all open"} OrangChat on a phone or computer.",
+                            "the moment ${if (one) AppStrings.get(context, R.string.catalog_they_open_371267bf) else AppStrings.get(context, R.string.catalog_they_all_open_8a0f4e5d)} OrangChat on a phone or computer.",
                         color = c.inkSecondary,
                         fontSize = 11.sp,
                     )
@@ -1052,7 +1054,7 @@ fun ChatPane(
                 )
                 Icon(
                     Icons.Default.Close,
-                    contentDescription = "Cancel reply",
+                    contentDescription = AppStrings.get(context, R.string.catalog_cancel_reply_bd62d2dd),
                     tint = c.inkMuted,
                     modifier = Modifier
                         .minimumInteractiveComponentSize()
@@ -1109,7 +1111,7 @@ fun ChatPane(
             },
             title = {
                 Text(
-                    if (reportSent) "Report received" else "Report message",
+                    if (reportSent) AppStrings.get(context, R.string.catalog_report_received_2568a541) else AppStrings.get(context, R.string.catalog_report_message_babfeaf5),
                     color = c.ink,
                 )
             },
@@ -1142,7 +1144,7 @@ fun ChatPane(
                         )
                         if (target.ciphertext != null) {
                             Text(
-                                "Reporting reveals this one decrypted message and a one-message key. It does not reveal the conversation key or any other message.",
+                                AppStrings.get(context, R.string.catalog_reporting_reveals_this_one_decrypted_message_and_1e7d77a7),
                                 color = c.inkMuted,
                                 fontSize = 12.sp,
                             )
@@ -1150,8 +1152,8 @@ fun ChatPane(
                         OrangTextField(
                             value = reportReason,
                             onValueChange = { reportReason = it.take(1000) },
-                            label = "What happened? (optional)",
-                            placeholder = "Add context for the reviewer",
+                            label = AppStrings.get(context, R.string.catalog_what_happened_optional_9a81bdcf),
+                            placeholder = AppStrings.get(context, R.string.catalog_add_context_for_the_reviewer_e44f9147),
                         )
                         Text(
                             "${reportReason.length}/1000",
@@ -1189,7 +1191,7 @@ fun ChatPane(
                             color = c.danger,
                         )
                     } else {
-                        Text(if (reportSent) "Done" else "Send report", color = if (reportSent) c.primary else c.danger)
+                        Text(if (reportSent) "Done" else AppStrings.get(context, R.string.catalog_send_report_a5b32af9), color = if (reportSent) c.primary else c.danger)
                     }
                 }
             },
@@ -1211,7 +1213,7 @@ fun ChatPane(
     if (contactScannerOpen) {
         OrangDialog(
             onDismiss = { contactScannerOpen = false },
-            title = "Scan verification code",
+            title = AppStrings.get(context, R.string.catalog_scan_verification_code_9569a83c),
         ) {
             ContactQrScanner(
                 onScanned = {
@@ -1240,7 +1242,7 @@ fun ChatPane(
                     if (contactVerified) {
                         "Checked"
                     } else {
-                        "Is this ${contact?.displayName ?: "the right person"}?"
+                        "Is this ${contact?.displayName ?: AppStrings.get(context, R.string.catalog_the_right_person_3860646e)}?"
                     },
                     color = c.ink,
                 )
@@ -1284,7 +1286,7 @@ fun ChatPane(
                             color = c.primary,
                         )
                     } else {
-                        Text(if (contactVerified) "Done" else "Yes, that's them", color = c.primary)
+                        Text(if (contactVerified) "Done" else AppStrings.get(context, R.string.catalog_yes_that_s_them_03f398c0), color = c.primary)
                     }
                 }
             },
@@ -1372,6 +1374,7 @@ private fun MessageRow(
     onOpenProfile: (User) -> Unit,
     emojis: Map<String, EmojiRef>,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val renderEmojis = remember(emojis, message.emojis) {
         emojis + message.emojis.associate {
@@ -1627,7 +1630,7 @@ private fun MessageRow(
                     Text(formatTime(message.createdAt), color = c.inkMuted, fontSize = 11.sp)
                     if (message.editedAt != null) {
                         Spacer(Modifier.width(4.dp))
-                        Text("(edited)", color = c.inkMuted, fontSize = 10.sp)
+                        Text(AppStrings.get(context, R.string.catalog_edited_b6da09e0), color = c.inkMuted, fontSize = 10.sp)
                     }
                 }
             }
@@ -1715,7 +1718,7 @@ private fun MessageRow(
                             .background(c.surface3)
                             .border(1.dp, c.border, chipShape)
                             .clickable { emojiOpen = true }
-                            .semantics { contentDescription = "Add reaction" },
+                            .semantics { contentDescription = AppStrings.get(context, R.string.catalog_add_reaction_cf05eca8) },
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
@@ -1739,7 +1742,7 @@ private fun MessageRow(
                         modifier = Modifier.size(14.dp),
                     )
                     Spacer(Modifier.width(4.dp))
-                    Text("Not sent", color = c.danger, fontSize = 11.sp)
+                    Text(AppStrings.get(context, R.string.catalog_not_sent_587c501e), color = c.danger, fontSize = 11.sp)
                     Spacer(Modifier.width(4.dp))
                     FailedMessageAction("Retry", c.primary, onRetry)
                     FailedMessageAction("Delete", c.danger, onDiscard)
@@ -1755,7 +1758,7 @@ private fun MessageRow(
                     add(MenuItem("React", Icons.Default.AddReaction) { emojiOpen = true })
                     if (message.content.isNotBlank()) {
                         add(
-                            MenuItem("Copy message", Icons.Default.ContentCopy) {
+                            MenuItem(AppStrings.get(context, R.string.catalog_copy_message_26902efd), Icons.Default.ContentCopy) {
                                 clipboard.setText(AnnotatedString(message.content))
                             },
                         )
@@ -1769,7 +1772,7 @@ private fun MessageRow(
                         add(MenuItem("Delete", Icons.Default.Delete, destructive = true) { onDelete(message.id) })
                     } else {
                         add(
-                            MenuItem("Report message", Icons.Default.Flag, destructive = true) {
+                            MenuItem(AppStrings.get(context, R.string.catalog_report_message_babfeaf5), Icons.Default.Flag, destructive = true) {
                                 onReport(message)
                             },
                         )
@@ -1809,6 +1812,7 @@ private fun MessageEditForm(
     onCancel: () -> Unit,
     onSave: (String) -> Unit,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val textState = rememberTextFieldState(initial)
     val focusRequester = remember { FocusRequester() }
@@ -1821,7 +1825,7 @@ private fun MessageEditForm(
     val content = textState.text.toString().trim()
     val canSave = !saving && (content.isNotEmpty() || allowEmpty)
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("Edit message", color = c.inkSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+        Text(AppStrings.get(context, R.string.catalog_edit_message_96116a52), color = c.inkSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1860,7 +1864,7 @@ private fun MessageEditForm(
         ) {
             error?.let {
                 Text(it, color = c.danger, fontSize = 11.sp, modifier = Modifier.weight(1f))
-            } ?: Text("Enter to save · Shift+Enter for a new line", color = c.inkMuted, fontSize = 11.sp, modifier = Modifier.weight(1f))
+            } ?: Text(AppStrings.get(context, R.string.catalog_enter_to_save_shift_enter_for_a_74c26ca9), color = c.inkMuted, fontSize = 11.sp, modifier = Modifier.weight(1f))
             OrangButton(
                 text = "Cancel",
                 onClick = onCancel,
@@ -2032,7 +2036,7 @@ private fun Composer(
             onStart = { openMic() },
             onCancel = { voiceRecorder.cancel() },
             onSend = { duration -> sendVoice(duration) },
-            onTooShort = { recordingHint = "Hold the mic to record, then let go to send" },
+            onTooShort = { recordingHint = AppStrings.get(context, R.string.catalog_hold_the_mic_to_record_then_let_48d81b83) },
         )
     }
 
@@ -2046,7 +2050,7 @@ private fun Composer(
             voiceState.start()
             voiceState.lock()
         } else {
-            recordingError = "Microphone access is needed to record a voice message"
+            recordingError = AppStrings.get(context, R.string.catalog_microphone_access_is_needed_to_record_a_9afc8aaa)
         }
     }
 
@@ -2284,7 +2288,7 @@ private fun Composer(
                             modifier = Modifier.width(64.dp).height(3.dp),
                         )
                         Spacer(Modifier.width(8.dp))
-                        Text("Sending voice message…", color = c.inkSecondary, fontSize = 12.sp)
+                        Text(AppStrings.get(context, R.string.catalog_sending_voice_message_a48b5648), color = c.inkSecondary, fontSize = 12.sp)
                     }
                 }
             }
@@ -2385,7 +2389,7 @@ private fun Composer(
         Box {
             Icon(
                 Icons.Default.EmojiEmotions,
-                contentDescription = "Add emoji or GIF",
+                contentDescription = AppStrings.get(context, R.string.catalog_add_emoji_or_gif_1d91d61d),
                 tint = c.inkMuted,
                 modifier = Modifier
                     .size(38.dp)
@@ -2410,7 +2414,7 @@ private fun Composer(
             Box {
                 Icon(
                     Icons.Default.AttachFile,
-                    contentDescription = "Attach files",
+                    contentDescription = AppStrings.get(context, R.string.catalog_attach_files_137135db),
                     tint = c.inkMuted,
                     modifier = Modifier
                         .size(38.dp)
@@ -2421,8 +2425,8 @@ private fun Composer(
                     expanded = attachmentMenuOpen,
                     onDismiss = { attachmentMenuOpen = false },
                     items = listOf(
-                        MenuItem("Choose files", Icons.Default.AttachFile) { picker.launch("*/*") },
-                        MenuItem("Take a picture", Icons.Default.CameraAlt) { launchCamera() },
+                        MenuItem(AppStrings.get(context, R.string.catalog_choose_files_5910acf0), Icons.Default.AttachFile) { picker.launch("*/*") },
+                        MenuItem(AppStrings.get(context, R.string.catalog_take_a_picture_6d76bc64), Icons.Default.CameraAlt) { launchCamera() },
                     ),
                 )
             }
@@ -2483,7 +2487,7 @@ private fun Composer(
                 VoiceMicButton(
                     state = voiceState,
                     canStart = canStartMic,
-                    onTapTooShort = { recordingHint = "Hold the mic to record, then let go to send" },
+                    onTapTooShort = { recordingHint = AppStrings.get(context, R.string.catalog_hold_the_mic_to_record_then_let_48d81b83) },
                     colors = voiceColors,
                 )
             }
@@ -2554,7 +2558,7 @@ private fun Composer(
                         sendDraft()
                     },
                 ) {
-                    Text("Send anyway", color = c.danger)
+                    Text(AppStrings.get(context, R.string.catalog_send_anyway_911263fe), color = c.danger)
                 }
             }
         }

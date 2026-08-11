@@ -9,6 +9,7 @@ pub mod e2ee;
 pub mod emojis;
 pub mod events;
 pub mod friends;
+pub mod i18n;
 pub mod link_previews;
 pub mod media_proxy;
 pub mod push;
@@ -323,6 +324,7 @@ pub fn router(state: AppState) -> Router {
             require_supported_client,
         ))
         .merge(updates::routes())
+        .merge(i18n::routes())
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
             api_rate_limit,

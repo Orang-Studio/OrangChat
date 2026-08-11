@@ -2,6 +2,7 @@ import * as RadixDialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "../../lib/cn";
+import { t } from "../../lib/i18n";
 
 export const Dialog = RadixDialog.Root;
 export const DialogClose = RadixDialog.Close;
@@ -79,7 +80,7 @@ export function DialogContent({
         )}
         <div className="mt-4">{children}</div>
         <RadixDialog.Close
-          aria-label="Close"
+          aria-label={t("common.close")}
           className="absolute right-2 top-2 rounded-lg p-3 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink"
         >
           <X aria-hidden className="size-5" />

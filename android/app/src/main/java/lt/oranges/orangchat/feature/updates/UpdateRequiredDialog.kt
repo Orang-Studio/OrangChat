@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.updates
-
+import lt.oranges.orangchat.util.AppStrings
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
@@ -23,6 +25,7 @@ fun UpdateRequiredDialog(
     latestVersion: String?,
     onUpdate: () -> Unit,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     AlertDialog(
         onDismissRequest = {},
@@ -30,12 +33,12 @@ fun UpdateRequiredDialog(
             dismissOnBackPress = false,
             dismissOnClickOutside = false,
         ),
-        title = { Text("Update required", color = c.ink) },
+        title = { Text(AppStrings.get(context, R.string.catalog_update_required_f440d880), color = c.ink) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    "This version of OrangChat is no longer supported and can no longer connect." +
-                        (latestVersion?.let { " Update to $it to continue." } ?: " Update to continue."),
+                    AppStrings.get(context, R.string.catalog_this_version_of_orangchat_is_no_longer_91b823d1) +
+                        (latestVersion?.let { " Update to $it to continue." } ?: AppStrings.get(context, R.string.catalog_update_to_continue_27e65968)),
                     color = c.inkSecondary,
                 )
             }

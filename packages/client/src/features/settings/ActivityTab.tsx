@@ -6,6 +6,7 @@ import { desktop, type GameOverride } from "../../lib/desktop";
 import { authStoreActions, useAuthStore } from "../../stores/auth";
 import { updateProfile } from "../auth/api";
 import { SectionTitle, Toggle } from "./controls";
+import { t } from "../../lib/i18n";
 
 function GameOverrides({ enabled }: { enabled: boolean }) {
   const listProcesses = desktop?.listGameProcesses;
@@ -37,7 +38,7 @@ function GameOverrides({ enabled }: { enabled: boolean }) {
   if (!listProcesses || !getOverrides || !setOverrides) {
     return (
       <p className="text-xs text-ink-muted">
-        Custom game detection is available in the desktop app.
+        {t("activityTab.customGameDetectionIsAvailableIn")}
       </p>
     );
   }
@@ -79,9 +80,9 @@ function GameOverrides({ enabled }: { enabled: boolean }) {
     <div className="space-y-3 rounded-lg border border-border p-3">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-medium">Game not detected?</p>
+          <p className="text-sm font-medium">{t("activityTab.gameNotDetected")}</p>
           <p className="text-xs text-ink-muted">
-            Allow a running process and choose the game name shown to others.
+            {t("activityTab.allowARunningProcessAndChoose")}
           </p>
         </div>
         <Button
@@ -98,7 +99,7 @@ function GameOverrides({ enabled }: { enabled: boolean }) {
 
       {!enabled && (
         <p className="text-xs text-ink-muted">
-          Turn activity sharing on to inspect running processes.
+          {t("activityTab.turnActivitySharingOnToInspect")}
         </p>
       )}
 
@@ -107,7 +108,7 @@ function GameOverrides({ enabled }: { enabled: boolean }) {
           {processes.length > 0 ? (
             <>
               <label className="block text-sm font-medium text-ink-secondary">
-                Running process
+                {t("activityTab.runningProcess")}
                 <select
                   value={selectedProcess}
                   onChange={(event) => setSelectedProcess(event.target.value)}
@@ -121,11 +122,11 @@ function GameOverrides({ enabled }: { enabled: boolean }) {
                 </select>
               </label>
               <label className="block text-sm font-medium text-ink-secondary">
-                Game name
+                {t("activityTab.gameName")}
                 <input
                   value={gameName}
                   maxLength={128}
-                  placeholder="What should friends see?"
+                  placeholder={t("activityTab.whatShouldFriendsSee")}
                   onChange={(event) => setGameName(event.target.value)}
                   className="mt-1.5 h-10 w-full rounded-lg border border-border bg-surface-1 px-3 text-sm text-ink placeholder:text-ink-muted"
                 />
@@ -136,11 +137,11 @@ function GameOverrides({ enabled }: { enabled: boolean }) {
                 disabled={!selectedProcess || !gameName.trim()}
                 onClick={() => void addOverride()}
               >
-                Add game
+                {t("activityTab.addGame")}
               </Button>
             </>
           ) : (
-            !loading && <p className="text-xs text-ink-muted">No running processes were found.</p>
+            !loading && <p className="text-xs text-ink-muted">{t("activityTab.noRunningProcessesWereFound")}</p>
           )}
         </div>
       )}
@@ -161,7 +162,7 @@ function GameOverrides({ enabled }: { enabled: boolean }) {
                   void save(overrides.filter((item) => item.process !== override.process))
                 }
               >
-                Remove
+                {t("common.remove")}
               </Button>
             </div>
           ))}
@@ -190,15 +191,15 @@ export function ActivityTab() {
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <SectionTitle>Activity</SectionTitle>
+        <SectionTitle>{t("activityTab.activity")}</SectionTitle>
         <p className="text-sm leading-relaxed text-ink-secondary">
-          The desktop app detects the games you're playing and shares them with your friends.
+          {t("activityTab.theDesktopAppDetectsTheGames")}
         </p>
         <Toggle
           checked={user.gameActivity}
           onChange={(gameActivity) => mutation.mutate({ gameActivity })}
-          label="Display the game you're playing"
-          hint="The desktop app checks running process names and shares a match with your friends. This is off by default."
+          label={t("activityTab.displayTheGameYourePlaying")}
+          hint={t("activityTab.theDesktopAppChecksRunningProcess")}
         />
         <GameOverrides enabled={user.gameActivity} />
       </div>

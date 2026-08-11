@@ -5,6 +5,7 @@ import type { Message } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
 import { QUICK_EMOJIS } from "./emoji-data";
 import { toggleReaction } from "./socket-actions";
+import { t } from "../../lib/i18n";
 
 /**
  * Shared geometry for everything on a message's reactions strip. The fixed
@@ -52,7 +53,7 @@ export function ReactionPicker({
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger
-        aria-label="Add reaction"
+        aria-label={t("reactions.addReaction")}
         className={
           className ??
           "rounded p-1.5 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink md:p-1"

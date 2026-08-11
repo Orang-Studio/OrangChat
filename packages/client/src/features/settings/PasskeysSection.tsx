@@ -16,6 +16,7 @@ import {
   startPasskeyRegistration,
   type Passkey,
 } from './api';
+import { t } from "../../lib/i18n";
 
 /**
  * Passkeys on the account: what they are, and adding or removing one.
@@ -82,24 +83,21 @@ export function PasskeysSection() {
 
   return (
     <div className="space-y-3">
-      <SectionTitle>Passkeys</SectionTitle>
+      <SectionTitle>{t("passkeysSection.passkeys")}</SectionTitle>
       <p className="text-sm text-ink-secondary">
-        Sign in with your fingerprint, face or device PIN instead of a password. A passkey only
-        works on the site that created it, so it can't be phished - which is why we ask for one
-        instead of an emailed code when your account has one.
+        {t("passkeysSection.signInWithYourFingerprintFace")}
       </p>
 
       {!supported && (
         <p className="rounded-lg bg-surface-2 px-3 py-2 text-sm text-ink-secondary">
-          This browser doesn't support passkeys. Passkeys you add elsewhere will still work on your
-          other devices.
+          {t("passkeysSection.thisBrowserDoesntSupportPasskeysPasskeys")}
         </p>
       )}
 
       {isPending ? (
         <div className="h-16 animate-pulse rounded-lg bg-surface-3" />
       ) : passkeys.length === 0 ? (
-        <p className="text-sm text-ink-secondary">No passkeys yet.</p>
+        <p className="text-sm text-ink-secondary">{t("passkeysSection.noPasskeysYet")}</p>
       ) : (
         <ul className="space-y-2">
           {passkeys.map((passkey) => (
@@ -131,21 +129,21 @@ export function PasskeysSection() {
           }}
         >
           <TextField
-            label="Name"
-            placeholder="Personal laptop"
-            hint="So you can tell it apart from your other devices later."
+            label={t("passkeysSection.name")}
+            placeholder={t("passkeysSection.personalLaptop")}
+            hint={t("passkeysSection.soYouCanTellItApart")}
             value={name}
             onChange={(event) => setName(event.target.value.slice(0, 60))}
           />
           <PasswordField
-            label="Current password"
+            label={t("passkeysSection.currentPassword")}
             autoComplete="current-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
           {needsCode && (
             <TextField
-              label="Authenticator code"
+              label={t("passkeysSection.authenticatorCode")}
               inputMode="numeric"
               autoComplete="one-time-code"
               placeholder="123456"
@@ -156,10 +154,10 @@ export function PasskeysSection() {
           {error && <p className="text-sm text-danger">{error}</p>}
           <div className="flex gap-2">
             <Button type="submit" size="sm" loading={addMutation.isPending} disabled={!password}>
-              Create passkey
+              {t("passkeysSection.createPasskey")}
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={closeAdd}>
-              Cancel
+              {t("common.cancel")}
             </Button>
           </div>
         </form>
@@ -172,12 +170,12 @@ export function PasskeysSection() {
           onClick={() => setAdding(true)}
         >
           <KeyRound aria-hidden className="size-4" />
-          Add a passkey
+          {t("passkeysSection.addAPasskey")}
         </Button>
       )}
       {full && (
         <p className="text-sm text-ink-secondary">
-          You've reached the limit of {data?.max} passkeys. Remove one to add another.
+          {t("passkeysSection.reachedTheLimit", { max: data?.max ?? 0 })}
         </p>
       )}
     </div>
@@ -217,7 +215,7 @@ function PasskeyRow({
           {editing ? (
             <div className="flex items-center gap-2">
               <TextField
-                label="Name"
+                label={t("passkeysSection.name")}
                 value={draft}
                 onChange={(event) => setDraft(event.target.value.slice(0, 60))}
               />
@@ -236,13 +234,15 @@ function PasskeyRow({
             <p className="truncate font-medium">{passkey.name}</p>
           )}
           <p className="text-xs text-ink-secondary">
-            Added {formatFullTime(passkey.createdAt)}
             {passkey.lastUsedAt
-              ? ` · last used ${formatFullTime(passkey.lastUsedAt)}`
-              : ' · never used'}
+              ? t("passkeysSection.addedLastUsed", {
+                  added: formatFullTime(passkey.createdAt),
+                  lastUsed: formatFullTime(passkey.lastUsedAt),
+                })
+              : t("passkeysSection.addedNeverUsed", { added: formatFullTime(passkey.createdAt) })}
           </p>
           {passkey.backedUp && (
-            <p className="text-xs text-ink-secondary">Synced to your device's keychain.</p>
+            <p className="text-xs text-ink-secondary">{t("passkeysSection.syncedToYourDevicesKeychain")}</p>
           )}
         </div>
         <div className="flex shrink-0 gap-1">
@@ -251,7 +251,7 @@ function PasskeyRow({
               type="button"
               variant="ghost"
               size="sm"
-              aria-label={`Rename ${passkey.name}`}
+              aria-label={t("passkeysSection.renameName", { name: passkey.name })}
               onClick={() => {
                 setDraft(passkey.name);
                 setEditing(true);
@@ -264,7 +264,7 @@ function PasskeyRow({
             type="button"
             variant="ghost"
             size="sm"
-            aria-label={`Remove ${passkey.name}`}
+            aria-label={t("passkeysSection.removeName", { name: passkey.name })}
             onClick={onRemoveOpen}
           >
             <Trash2 aria-hidden className="size-4" />
@@ -281,18 +281,17 @@ function PasskeyRow({
           }}
         >
           <p className="text-sm text-ink-secondary">
-            Removing this only affects OrangChat. Delete it from the device's own passkey settings
-            too, or it will keep showing up there.
+            {t("passkeysSection.removingThisOnlyAffectsOrangchatDelete")}
           </p>
           <PasswordField
-            label="Current password"
+            label={t("passkeysSection.currentPassword")}
             autoComplete="current-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
           {needsCode && (
             <TextField
-              label="Authenticator code"
+              label={t("passkeysSection.authenticatorCode")}
               inputMode="numeric"
               autoComplete="one-time-code"
               placeholder="123456"
@@ -309,10 +308,10 @@ function PasskeyRow({
               loading={removePending}
               disabled={!password}
             >
-              Remove passkey
+              {t("passkeysSection.removePasskey")}
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={onRemoveCancel}>
-              Cancel
+              {t("common.cancel")}
             </Button>
           </div>
         </form>

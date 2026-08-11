@@ -1,5 +1,6 @@
 package lt.oranges.orangchat.feature.chat
-
+import lt.oranges.orangchat.util.AppStrings
+import lt.oranges.orangchat.R
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -160,7 +161,7 @@ class AttachmentDraftViewModel @Inject constructor(
                         val shown = if (cause is kotlinx.serialization.SerializationException) {
                             "Upload failed"
                         } else {
-                            cause.message?.takeIf { it.isNotBlank() } ?: "Upload failed"
+                            cause.message?.takeIf { it.isNotBlank() } ?: AppStrings.get(context, R.string.catalog_upload_failed_ad0d0603)
                         }
                         patch(key) { it.copy(error = shown) }
                     }

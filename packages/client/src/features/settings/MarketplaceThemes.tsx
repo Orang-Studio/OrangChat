@@ -3,6 +3,7 @@ import { Check, Download, Palette, Search } from "lucide-react";
 import { THEMES, type Theme } from "@orangchat/marketplace";
 import { Button } from "../../components/ui/Button";
 import { useInstalledTheme } from "../plugins/themes";
+import { t, tNodes } from "../../lib/i18n";
 
 function Swatches({ vars }: { vars: Record<string, string> }) {
   return (
@@ -42,12 +43,12 @@ function ThemeCard({ theme }: { theme: Theme }) {
           {active ? (
             <>
               <Check aria-hidden className="size-4" />
-              Installed
+              {t("marketplaceThemes.installed")}
             </>
           ) : (
             <>
               <Download aria-hidden className="size-4" />
-              Install
+              {t("marketplaceThemes.install")}
             </>
           )}
         </Button>
@@ -79,17 +80,18 @@ export function MarketplaceThemes() {
       <div className="flex items-start gap-3 rounded-lg border border-border bg-surface-1 px-3 py-2.5">
         <Palette aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-secondary" />
         <p className="text-xs text-ink-secondary">
-          App themes override OrangChat color variables. Every entry is reviewed through a pull
-          request and bundled with the client. Want to contribute?{" "}
-          <a
-            href="https://github.com/Orang-Studio/orangchat-marketplace"
-            target="_blank"
-            rel="noreferrer"
-            className="oc-link"
-          >
-            See the marketplace repo
-          </a>
-          .
+          {tNodes("marketplaceThemes.intro", {
+            repo: (
+              <a
+                href="https://github.com/Orang-Studio/orangchat-marketplace"
+                target="_blank"
+                rel="noreferrer"
+                className="oc-link"
+              >
+                {t("marketplaceThemes.seeTheMarketplaceRepo")}
+              </a>
+            ),
+          })}
         </p>
       </div>
 
@@ -99,8 +101,8 @@ export function MarketplaceThemes() {
           className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted"
         />
         <input
-          aria-label="Search themes"
-          placeholder="Search themes"
+          aria-label={t("marketplaceThemes.searchThemes")}
+          placeholder={t("marketplaceThemes.searchThemes")}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           className="h-10 w-full rounded-lg border border-border bg-surface-1 pl-9 pr-3 text-sm outline-none focus:border-primary"
@@ -108,7 +110,9 @@ export function MarketplaceThemes() {
       </div>
 
       {filtered.length === 0 ? (
-        <p className="py-8 text-center text-sm text-ink-muted">No themes match “{query}”.</p>
+        <p className="py-8 text-center text-sm text-ink-muted">
+          {t("marketplaceThemes.noThemesMatch", { query })}
+        </p>
       ) : (
         <ul className="space-y-2">
           {filtered.map((theme) => (

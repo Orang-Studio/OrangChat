@@ -15,6 +15,7 @@ import {
 } from "../connections/api";
 import { PROVIDER_LABEL, ProviderIcon } from "../connections/icons";
 import { SectionTitle } from "./controls";
+import { t } from "../../lib/i18n";
 
 /** Outcome of an OAuth round trip, reported back via the callback redirect. */
 const RESULT_MESSAGE: Record<string, string> = {
@@ -66,7 +67,7 @@ function ConnectionRow({ connection }: { connection: Connection }) {
         <div className="flex items-center gap-1">
           <span className="truncate text-sm font-medium">{connection.name}</span>
           {connection.verified && (
-            <BadgeCheck aria-label="Verified" className="size-3.5 shrink-0 text-primary" />
+            <BadgeCheck aria-label={t("connectionsTab.verified")} className="size-3.5 shrink-0 text-primary" />
           )}
         </div>
         <p className="truncate text-xs text-ink-muted">
@@ -95,8 +96,8 @@ function ConnectionRow({ connection }: { connection: Connection }) {
         size="sm"
         className="text-danger hover:text-danger"
         onClick={() => setConfirming(true)}
-        aria-label="Disconnect"
-        title="Disconnect"
+        aria-label={t("connectionsTab.disconnect")}
+        title={t("connectionsTab.disconnect")}
       >
         <Trash2 aria-hidden className="size-4" />
       </Button>
@@ -104,8 +105,8 @@ function ConnectionRow({ connection }: { connection: Connection }) {
         open={confirming}
         onOpenChange={setConfirming}
         title={`Disconnect ${connection.name}?`}
-        description="It will be removed from your profile. You can link it again at any time."
-        confirmLabel="Disconnect"
+        description={t("connectionsTab.itWillBeRemovedFromYour")}
+        confirmLabel={t("connectionsTab.disconnect")}
         danger
         loading={disconnect.isPending}
         error={disconnect.error instanceof Error ? disconnect.error.message : null}
@@ -143,16 +144,16 @@ function AddCustomLink() {
           live on a wrapper or the fields won't share the row. */}
       <div className="min-w-32 flex-1">
         <TextField
-          label="Label"
+          label={t("connectionsTab.label")}
           value={name}
           maxLength={40}
-          placeholder="My website"
+          placeholder={t("connectionsTab.myWebsite")}
           onChange={(e) => setName(e.target.value)}
         />
       </div>
       <div className="min-w-48 flex-[2]">
         <TextField
-          label="Link"
+          label={t("connectionsTab.link")}
           type="url"
           value={url}
           maxLength={500}
@@ -162,7 +163,7 @@ function AddCustomLink() {
       </div>
       <Button type="submit" variant="secondary" disabled={!ready} loading={add.isPending}>
         <Plus aria-hidden className="size-4" />
-        Add
+        {t("common.add")}
       </Button>
       {add.error && (
         <p className="w-full text-xs text-danger">
@@ -215,10 +216,9 @@ export function ConnectionsTab() {
       )}
 
       <section>
-        <SectionTitle>Connect an account</SectionTitle>
+        <SectionTitle>{t("connectionsTab.connectAnAccount")}</SectionTitle>
         <p className="mb-2 text-xs text-ink-muted">
-          Linked accounts appear on your profile with a verified check. OrangChat only reads
-          your username - it can never post as you.
+          {t("connectionsTab.linkedAccountsAppearOnYourProfile")}
         </p>
         <div className="flex flex-wrap gap-2">
           {providers?.map((p) => (
@@ -236,24 +236,24 @@ export function ConnectionsTab() {
         </div>
         {providers?.length === 0 && (
           <p className="text-sm text-ink-muted">
-            No providers are configured on this server yet.
+            {t("connectionsTab.noProvidersAreConfiguredOnThis")}
           </p>
         )}
         {linkError && <p className="mt-2 text-xs text-danger">{linkError}</p>}
       </section>
 
       <section>
-        <SectionTitle>Add any website</SectionTitle>
+        <SectionTitle>{t("connectionsTab.addAnyWebsite")}</SectionTitle>
         <p className="text-xs text-ink-muted">
-          Links you add by hand show without a verified check, since anyone could enter them.
+          {t("connectionsTab.linksYouAddByHandShow")}
         </p>
         <AddCustomLink />
       </section>
 
       <section>
-        <SectionTitle>Your connections</SectionTitle>
+        <SectionTitle>{t("connectionsTab.yourConnections")}</SectionTitle>
         {isLoading ? (
-          <p className="text-sm text-ink-muted">Loading…</p>
+          <p className="text-sm text-ink-muted">{t("common.loading")}</p>
         ) : connections && connections.length > 0 ? (
           <ul className="space-y-1.5">
             {connections.map((c) => (
@@ -263,7 +263,7 @@ export function ConnectionsTab() {
         ) : (
           <p className="flex items-center gap-2 text-sm text-ink-muted">
             <Link2 aria-hidden className="size-4" />
-            Nothing linked yet.
+            {t("connectionsTab.nothingLinkedYet")}
           </p>
         )}
       </section>

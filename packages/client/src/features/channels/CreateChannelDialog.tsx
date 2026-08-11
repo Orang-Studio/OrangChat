@@ -9,6 +9,7 @@ import { Dialog, DialogContent } from "../../components/ui/Dialog";
 import type { Channel } from "@orangchat/shared";
 import { createChannel } from "../servers/api";
 import { serverKeys } from "../servers/queries";
+import { t } from "../../lib/i18n";
 
 interface CreateChannelDialogProps {
   serverId: string;
@@ -74,7 +75,7 @@ export function CreateChannelDialog({
           {!only && (
             <div
               role="radiogroup"
-              aria-label="Channel type"
+              aria-label={t("createChannelDialog.channelType")}
               className="grid grid-cols-3 gap-1 rounded-lg bg-surface-1 p-1"
             >
               {(
@@ -106,14 +107,14 @@ export function CreateChannelDialog({
           {kind !== "category" && categories.length > 0 && (
             <div>
               <label className="mb-1.5 block text-sm font-medium text-ink-secondary">
-                Category
+                {t("createChannelDialog.category")}
               </label>
               <select
                 value={parentCategoryId}
                 onChange={(e) => setParentCategoryId(e.target.value)}
                 className="h-10 w-full rounded-lg border border-border bg-surface-1 px-2 text-sm"
               >
-                <option value="">No category</option>
+                <option value="">{t("createChannelDialog.noCategory")}</option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}

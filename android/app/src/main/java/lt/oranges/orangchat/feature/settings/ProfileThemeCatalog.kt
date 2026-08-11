@@ -1,5 +1,9 @@
 package lt.oranges.orangchat.feature.settings
 
+import android.content.Context
+import lt.oranges.orangchat.R
+import lt.oranges.orangchat.util.AppStrings
+
 /**
  * A profile theme: freeform CSS a user applies to their own profile card. The
  * "Install" action stores the CSS in the user's profileCss; the card renderer
@@ -83,3 +87,21 @@ val PROFILE_THEMES: List<ProfileTheme> = listOf(
 """.trim(),
     ),
 )
+
+/**
+ * The built-in names/descriptions are catalogue strings so the community can
+ * translate them; the raw fields above stay English for the search filter.
+ */
+fun ProfileTheme.displayName(context: Context): String = when (id) {
+    "neon" -> AppStrings.get(context, R.string.catalog_neon_00706b5e)
+    "parchment" -> AppStrings.get(context, R.string.catalog_parchment_4761c103)
+    "terminal" -> AppStrings.get(context, R.string.catalog_terminal_a1f52cdc)
+    else -> name
+}
+
+fun ProfileTheme.displayDescription(context: Context): String = when (id) {
+    "neon" -> AppStrings.get(context, R.string.catalog_a_dark_card_with_a_glowing_purple_1407c4d4)
+    "parchment" -> AppStrings.get(context, R.string.catalog_a_warm_paper_toned_card_with_a_3ae147be)
+    "terminal" -> AppStrings.get(context, R.string.catalog_a_green_on_black_monospace_card_for_9a798bea)
+    else -> description
+}

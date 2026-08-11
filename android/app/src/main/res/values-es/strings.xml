@@ -1,0 +1,684 @@
+<resources>
+    <string name="app_name">OrangChat</string>
+    <string name="language_arabic">Árabe</string>
+    <string name="language_bengali">Bengalí</string>
+    <string name="language_chinese">Chino</string>
+    <string name="language_english">Inglés</string>
+    <string name="language_french">Francés</string>
+    <string name="language_hindi">Hindi</string>
+    <string name="language_hint">Al reiniciar la aplicación, el idioma se aplicará en todas partes.</string>
+    <string name="language_lithuanian">Lituano</string>
+    <string name="language_portuguese">Portugués</string>
+    <string name="language_russian">Ruso</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_subtitle">Elige el idioma de la aplicación</string>
+    <string name="language_system">Usar idioma del sistema</string>
+    <string name="language_title">Idioma</string>
+    <string name="language_urdu">Urdu</string>
+    <string name="catalog_1_add_this_key_to_your_app_c5c6bb28" formatted="false">1. Añade esta clave a tu aplicación</string>
+    <string name="catalog_1_attachment_82c9f82a" formatted="false">1 archivo adjunto</string>
+    <string name="catalog_1_s_2_s_78c505fe" formatted="true">%1$s %2$s</string>
+    <string name="catalog_1_s_entries_head_2_s_f1d9bc39" formatted="true">%1$s entries · head %2$s…</string>
+    <string name="catalog_1_s_entry_head_2_s_8bef329a" formatted="true">%1$s entry · head %2$s…</string>
+    <string name="catalog_1_s_may_not_survive_a_restart_c2a049ce" formatted="true">%1$s (may not survive a restart)</string>
+    <string name="catalog_1_s_on_2_s_105d6e4b" formatted="true">%1$s on %2$s</string>
+    <string name="catalog_1_s_recovery_code_left_fb553535" formatted="true">%1$s recovery code left.</string>
+    <string name="catalog_1_s_recovery_codes_left_da20cfb2" formatted="true">%1$s recovery codes left.</string>
+    <string name="catalog_2026_oranges_lt_made_with_c3b7fea5" formatted="false">© 2026 Oranges.LT · Hecho con 🍊</string>
+    <string name="catalog_2_enter_the_6_digit_code_183ee7cb" formatted="false">2. Introduce el código de 6 dígitos</string>
+    <string name="catalog_2fa_e8442a3a" formatted="false">2FA</string>
+    <string name="catalog_a_dark_card_with_a_glowing_purple_1407c4d4" formatted="false">A dark card with a glowing purple name and a striped banner.</string>
+    <string name="catalog_a_deleted_account_b1c40a9e" formatted="false">Una cuenta eliminada</string>
+    <string name="catalog_a_fast_self_hosted_chat_for_servers_fa05634c" formatted="false">Un chat rápido y autohospedado para servidores, mensajes directos y voz, parte de la familia Oranges.LT.</string>
+    <string name="catalog_a_green_on_black_monospace_card_for_9a798bea" formatted="false">A green-on-black monospace card for the command-line at heart.</string>
+    <string name="catalog_a_one_time_code_is_on_its_395743b6" formatted="false">Te hemos enviado un código de un solo uso por correo - caduca en 10 minutos.</string>
+    <string name="catalog_a_passkey_only_works_on_the_site_ca725d27" formatted="false">A passkey only works on the site that created it, so it can\'t be phished - which is why we ask for one instead of an emailed code when your account has one.</string>
+    <string name="catalog_a_warm_paper_toned_card_with_a_3ae147be" formatted="false">A warm, paper-toned card with a serif name.</string>
+    <string name="catalog_about_6b21fb79" formatted="false">Acerca de</string>
+    <string name="catalog_about_me_e3ba4ef3" formatted="false">Sobre mí</string>
+    <string name="catalog_accent_color_e49578ed" formatted="false">Color de acento</string>
+    <string name="catalog_accessibility_d660049b" formatted="false">Accesibilidad</string>
+    <string name="catalog_account_85dfa32c" formatted="false">Cuenta</string>
+    <string name="catalog_account_created_check_your_email_for_a_7d4a9ecd" formatted="false">Cuenta creada. Busca en tu correo el enlace de verificación - </string>
+    <string name="catalog_account_standing_2b18a30b" formatted="false">Estado de la cuenta</string>
+    <string name="catalog_add_a_friend_by_their_username_c1584607" formatted="false">Añade a un amigo por su nombre de usuario.</string>
+    <string name="catalog_add_a_passkey_0daca495" formatted="false">Añadir una clave de acceso</string>
+    <string name="catalog_add_a_server_5ee1e413" formatted="false">Añadir servidor</string>
+    <string name="catalog_add_another_device_67696610" formatted="false">Añadir otro dispositivo</string>
+    <string name="catalog_add_channel_901e4868" formatted="false">Añadir canal</string>
+    <string name="catalog_add_context_for_the_reviewer_e44f9147" formatted="false">Añade contexto para quien revise</string>
+    <string name="catalog_add_device_2d2367c4" formatted="false">Añadir dispositivo</string>
+    <string name="catalog_add_emoji_or_gif_1d91d61d" formatted="false">Añadir emoji o GIF</string>
+    <string name="catalog_add_friend_e0a731d8" formatted="false">Añadir amigo</string>
+    <string name="catalog_add_friends_2dcf4e38" formatted="false">Añadir amigos</string>
+    <string name="catalog_add_people_b9c735ea" formatted="false">Añadir personas</string>
+    <string name="catalog_add_reaction_cf05eca8" formatted="false">Añadir reacción</string>
+    <string name="catalog_add_this_phone_94a65dcf" formatted="false">Añadir este teléfono</string>
+    <string name="catalog_added_1_s_76044af1" formatted="true">Added %1$s</string>
+    <string name="catalog_added_by_another_authorized_device_bab74dd1" formatted="false">Added by another authorized device</string>
+    <string name="catalog_adding_a_second_device_before_you_need_1f6a418c" formatted="false">Añadir un segundo dispositivo antes de necesitarlo es la solución. Por eso la autenticación en dos pasos debe activarse primero: un dispositivo de repuesto es un juego de claves de repuesto, y para crear uno debería hacer falta algo más que una contraseña.</string>
+    <string name="catalog_all_your_friends_are_already_here_45cf3604" formatted="false">Todos tus amigos ya están aquí.</string>
+    <string name="catalog_allow_anyone_to_mention_c6fe8761" formatted="false">Permitir que cualquiera te @mencione</string>
+    <string name="catalog_allow_camera_1dfb1b87" formatted="false">Permitir cámara</string>
+    <string name="catalog_allow_camera_access_to_scan_without_leaving_ca7cd21f" formatted="false">Permite el acceso a la cámara para escanear sin salir de OrangChat.</string>
+    <string name="catalog_allow_installs_first_a339d45d" formatted="false">Primero permite las instalaciones</string>
+    <string name="catalog_already_have_an_account_log_in_b3a34236" formatted="false">¿Ya tienes una cuenta? Inicia sesión</string>
+    <string name="catalog_already_on_this_call_abb9cae6" formatted="false">Ya estás en esta llamada</string>
+    <string name="catalog_android_browser_05f5cb3d" formatted="false">Android browser</string>
+    <string name="catalog_android_cannot_repoint_its_own_launcher_icon_cdbe2f10" formatted="false">Android no puede cambiar el icono de su propio lanzador, por lo que en este dispositivo el cambio se muestra en la aplicación web y en la de escritorio.</string>
+    <string name="catalog_android_is_not_letting_orangchat_notify_you_eb9878eb" formatted="false">Android no permite que OrangChat te notifique sobre mensajes o llamadas. Actívalas en los ajustes del sistema.</string>
+    <string name="catalog_android_native_a2dee752" formatted="false">Android (native)</string>
+    <string name="catalog_answer_without_camera_979e59f8" formatted="false">Responder sin cámara</string>
+    <string name="catalog_anyone_can_start_a_conversation_fa59af86" formatted="false">Anyone can start a conversation.</string>
+    <string name="catalog_anyone_who_knows_your_username_b7505a81" formatted="false">Anyone who knows your username.</string>
+    <string name="catalog_anything_on_a_phone_that_is_already_7e329eae" formatted="false">• Cualquier cosa de un teléfono que ya esté desbloqueado y en manos de otra persona. En ese momento la están leyendo igual que tú.</string>
+    <string name="catalog_api_d93d10ff" formatted="false">API</string>
+    <string name="catalog_app_icon_abde7a74" formatted="false">Icono de la aplicación</string>
+    <string name="catalog_appearance_41def7a0" formatted="false">Apariencia</string>
+    <string name="catalog_as_the_owner_you_cannot_leave_delete_030b7d7e" formatted="false">Como propietario no puedes salir - elimina el servidor en su lugar.</string>
+    <string name="catalog_ask_for_a_code_from_your_phone_b6d62586" formatted="false">Pide un código de tu teléfono además de la contraseña al iniciar sesión.</string>
+    <string name="catalog_ask_them_to_show_their_verification_qr_630e919c" formatted="false">Pídeles que muestren su QR de verificación y encájalo en el marco.</string>
+    <string name="catalog_at_least_8_characters_1fe494b2" formatted="false">Al menos 8 caracteres</string>
+    <string name="catalog_at_least_8_characters_6089e5f3" formatted="false">Al menos 8 caracteres.</string>
+    <string name="catalog_attach_files_137135db" formatted="false">Adjuntar archivos</string>
+    <string name="catalog_audio_call_fb04a1a1" formatted="false">Llamada de audio</string>
+    <string name="catalog_audit_log_3cfc5f1c" formatted="false">Registro de auditoría</string>
+    <string name="catalog_authentication_code_b4f3ff1d" formatted="false">Código de autenticación</string>
+    <string name="catalog_authenticator_code_2908b4e9" formatted="false">Código del autenticador</string>
+    <string name="catalog_authorized_encryption_devices_1f60a639" formatted="false">Dispositivos de cifrado autorizados</string>
+    <string name="catalog_authorizing_the_new_device_7d6e30db" formatted="false">Autorizando el nuevo dispositivo</string>
+    <string name="catalog_back_b52b36b7" formatted="false">Atrás</string>
+    <string name="catalog_backend_e758ca64" formatted="false">Backend</string>
+    <string name="catalog_banned_from_b1b7bda2" formatted="false">Expulsado de</string>
+    <string name="catalog_before_a_message_leaves_this_phone_74f6bb9b" formatted="false">Antes de que un mensaje salga de este teléfono</string>
+    <string name="catalog_bot_account_a78d875e" formatted="false">Cuenta de bot</string>
+    <string name="catalog_both_devices_show_six_digits_compare_them_4427b9f0" formatted="false">Both devices show six digits. Compare them and cancel if they differ.</string>
+    <string name="catalog_both_of_you_open_the_conversation_tap_bbf94671" formatted="false">Abrid la conversación, tocad el candado de arriba y uno de los dos escanea el código del otro. Luego cambiad y hacedlo al revés - un escaneo solo prueba una dirección. Tarda unos diez segundos mientras estáis juntos.</string>
+    <string name="catalog_both_options_encrypt_everything_the_difference_is_098d8758" formatted="false">Ambas opciones cifran todo. La diferencia es si un candado sustituido se detiene antes de poder usarse o se detecta después.</string>
+    <string name="catalog_both_screens_must_show_the_same_six_a112273d" formatted="false">Las dos pantallas deben mostrar los mismos seis dígitos. Si son distintos, cancela.</string>
+    <string name="catalog_browser_54a2cf5e" formatted="false">Browser</string>
+    <string name="catalog_build_bbd80cf7" formatted="false">Build</string>
+    <string name="catalog_by_1_s_7930f2dd" formatted="true">by %1$s</string>
+    <string name="catalog_call_connected_78e88c19" formatted="false">LLAMADA CONECTADA</string>
+    <string name="catalog_call_connected_dce17207" formatted="false">Llamada conectada</string>
+    <string name="catalog_call_ringtone_0618e939" formatted="false">Tono de llamada</string>
+    <string name="catalog_call_sharing_defaults_c39b7d94" formatted="false">Valores predeterminados para compartir llamadas</string>
+    <string name="catalog_calling_acd4a67d" formatted="false">Llamando…</string>
+    <string name="catalog_camera_access_is_needed_to_scan_the_dcfe064f" formatted="false">Hace falta acceso a la cámara para escanear el código en tu PC.</string>
+    <string name="catalog_camera_microphone_abf47618" formatted="false">Cámara &amp; micrófono</string>
+    <string name="catalog_cancel_77dfd213" formatted="false">Cancel</string>
+    <string name="catalog_cancel_reply_bd62d2dd" formatted="false">Cancelar respuesta</string>
+    <string name="catalog_cancel_scanning_f1f3d169" formatted="false">Cancelar escaneo</string>
+    <string name="catalog_change_audio_output_ccb8eada" formatted="false">Cambiar salida de audio</string>
+    <string name="catalog_change_background_0c868243" formatted="false">Cambiar fondo</string>
+    <string name="catalog_change_email_8f1514b5" formatted="false">Cambiar correo electrónico</string>
+    <string name="catalog_change_group_icon_715ac3cf" formatted="false">Cambiar icono del grupo</string>
+    <string name="catalog_change_password_8c684290" formatted="false">Cambiar contraseña</string>
+    <string name="catalog_changing_your_password_signs_out_every_other_062a10ab" formatted="false">Al cambiar tu contraseña se cerrará el resto de sesiones.</string>
+    <string name="catalog_channel_name_3be87bdd" formatted="false">Nombre del canal</string>
+    <string name="catalog_check_for_updates_736b9062" formatted="false">Buscar actualizaciones</string>
+    <string name="catalog_check_people_before_messaging_them_986118e4" formatted="false">Verifica a las personas antes de escribirles</string>
+    <string name="catalog_check_them_again_feb54286" formatted="false">Compruébalos de nuevo</string>
+    <string name="catalog_check_them_first_27eeb4a8" formatted="false">Compruébalos primero</string>
+    <string name="catalog_check_them_first_a_swap_cannot_happen_82229615" formatted="false">Compruébalos primero - no puede haber una sustitución. Tú mismo compruebas el candado de la otra persona, en persona o durante una llamada, antes de enviarle nada. Hasta entonces, los mensajes que escribas se quedan en este teléfono, aún cerrados, y no van a ninguna parte. No hay nada que un candado sustituido pueda abrir.</string>
+    <string name="catalog_checking_820d6004" formatted="false">Comprobando…</string>
+    <string name="catalog_checking_someone_in_person_437f86fe" formatted="false">Comprobar a alguien en persona</string>
+    <string name="catalog_checking_someone_s_code_is_a_one_b6951560" formatted="false">Comprobar el código de alguien es algo de tú a tú, así que ocurre en el mensaje directo con esa persona; si ya la has comprobado ahí, también aparecerá comprobada aquí. Esperar a comprobar a todos en un grupo retrasaría a gente que nunca lo pidió.</string>
+    <string name="catalog_checking_them_here_is_safer_than_reading_faa9c2e1" formatted="false">Comprobarlos aquí es más seguro que leerlos en voz alta - nadie compara realmente sesenta dígitos a simple vista.</string>
+    <string name="catalog_choose_78b7c9f6" formatted="false">Elegir</string>
+    <string name="catalog_choose_files_5910acf0" formatted="false">Elegir archivos</string>
+    <string name="catalog_clear_css_6a933bda" formatted="false">Borrar CSS</string>
+    <string name="catalog_client_1bdd79b1" formatted="false">Client</string>
+    <string name="catalog_close_dm_43823b56" formatted="false">Cerrar mensaje directo</string>
+    <string name="catalog_code_from_your_app_2e089607" formatted="false">Código de tu aplicación</string>
+    <string name="catalog_code_from_your_app_or_a_recovery_c6308bc3" formatted="false">Código de tu aplicación (o un código de recuperación)</string>
+    <string name="catalog_communication_ade0d50c" formatted="false">Comunicación</string>
+    <string name="catalog_compact_messages_8efe5e6b" formatted="false">Mensajes compactos</string>
+    <string name="catalog_compare_8d105cf4" formatted="false">Compare</string>
+    <string name="catalog_comparing_ad916050" formatted="false">Comparando…</string>
+    <string name="catalog_confirm_2fa_on_the_authorized_pc_7bc4ca9d" formatted="false">Confirm 2FA on the authorized PC.</string>
+    <string name="catalog_confirm_new_password_f85039fd" formatted="false">Confirmar nueva contraseña</string>
+    <string name="catalog_confirm_the_digits_and_enter_the_security_cd1b28db" formatted="false">Confirm the digits and enter the security code on the authorized device. This phone is waiting for the encrypted history and its signed authorization…</string>
+    <string name="catalog_confirm_with_your_passkey_to_finish_signing_a7480f38" formatted="false">Confirma con tu clave de acceso para terminar de iniciar sesión.</string>
+    <string name="catalog_confirm_your_password_198b73ff" formatted="false">Confirma tu contraseña</string>
+    <string name="catalog_connect_b65463cb" formatted="false">Connect</string>
+    <string name="catalog_connected_c2f9b7b4" formatted="false">Connected</string>
+    <string name="catalog_connecting_fd3e7969" formatted="false">Conectando…</string>
+    <string name="catalog_connection_6512ee15" formatted="false">Connection</string>
+    <string name="catalog_connection_and_server_info_b1f3ef22" formatted="false">Información de conexión y del servidor</string>
+    <string name="catalog_continue_transfer_8ea86ccd" formatted="false">Continuar transferencia</string>
+    <string name="catalog_copy_af74f7c5" formatted="false">Copy</string>
+    <string name="catalog_copy_channel_id_c32cdc5d" formatted="false">Copiar ID del canal</string>
+    <string name="catalog_copy_message_26902efd" formatted="false">Copiar mensaje</string>
+    <string name="catalog_copy_user_id_6fff306b" formatted="false">Copiar ID de usuario</string>
+    <string name="catalog_could_not_change_email_0f20cf3a" formatted="false">Could not change email</string>
+    <string name="catalog_could_not_change_lockdown_fec83d39" formatted="false">Could not change lockdown</string>
+    <string name="catalog_could_not_change_password_ccfd53b0" formatted="false">Could not change password</string>
+    <string name="catalog_could_not_connect_to_the_call_a713db79" formatted="false">No se pudo conectar a la llamada</string>
+    <string name="catalog_could_not_delete_account_b721f0dc" formatted="false">Could not delete account</string>
+    <string name="catalog_could_not_delete_messages_6af8eeaf" formatted="false">Could not delete messages</string>
+    <string name="catalog_could_not_join_the_call_a95443d4" formatted="false">No se pudo entrar en la llamada</string>
+    <string name="catalog_could_not_leave_servers_eb0a0647" formatted="false">Could not leave servers</string>
+    <string name="catalog_could_not_load_devices_6cf850e0" formatted="false">Could not load devices</string>
+    <string name="catalog_could_not_load_passkeys_dd561090" formatted="false">Could not load passkeys</string>
+    <string name="catalog_could_not_load_standing_51712f13" formatted="false">Could not load standing</string>
+    <string name="catalog_could_not_open_the_installer_a59d8717" formatted="false">Could not open the installer</string>
+    <string name="catalog_could_not_open_this_image_cb0d1e2e" formatted="false">No se pudo abrir esta imagen</string>
+    <string name="catalog_could_not_play_that_sound_5f4f3c4c" formatted="false">No se pudo reproducir ese sonido</string>
+    <string name="catalog_could_not_play_this_video_8540287d" formatted="false">No se pudo reproducir este vídeo</string>
+    <string name="catalog_could_not_reach_the_update_server_58cd6971" formatted="false">Could not reach the update server</string>
+    <string name="catalog_could_not_remove_the_icon_fdb51d9b" formatted="false">Could not remove the icon</string>
+    <string name="catalog_could_not_remove_the_image_a332686e" formatted="false">No se pudo eliminar la imagen</string>
+    <string name="catalog_could_not_remove_the_passkey_5245ad98" formatted="false">Could not remove the passkey</string>
+    <string name="catalog_could_not_rename_deb92092" formatted="false">Could not rename</string>
+    <string name="catalog_could_not_revoke_361c2e4b" formatted="false">Could not revoke</string>
+    <string name="catalog_could_not_save_your_privacy_settings_fddd2cf0" formatted="false">Could not save your privacy settings</string>
+    <string name="catalog_could_not_save_your_profile_e13d9374" formatted="false">No se pudo guardar tu perfil</string>
+    <string name="catalog_could_not_start_setup_0c01e9d7" formatted="false">Could not start setup</string>
+    <string name="catalog_could_not_start_the_call_925e1fa3" formatted="false">No se pudo iniciar la llamada</string>
+    <string name="catalog_couldn_t_decrypt_this_file_08287a15" formatted="false">No se pudo descifrar este archivo</string>
+    <string name="catalog_couldn_t_load_gifs_e47c284a" formatted="false">No se pudieron cargar los GIF</string>
+    <string name="catalog_couldn_t_reach_that_message_it_may_896fe39d" formatted="false">No se pudo encontrar ese mensaje; quizá esté muy atrás o se haya eliminado.</string>
+    <string name="catalog_create_a_channel_3ac48642" formatted="false">Crear canal</string>
+    <string name="catalog_create_a_server_3a0ab422" formatted="false">Crear servidor</string>
+    <string name="catalog_create_account_aaf37447" formatted="false">Crear cuenta</string>
+    <string name="catalog_create_another_8b69f57c" formatted="false">Crear otro</string>
+    <string name="catalog_create_group_5a0b1c17" formatted="false">Crear grupo</string>
+    <string name="catalog_create_invite_a8404622" formatted="false">Crear invitación</string>
+    <string name="catalog_create_passkey_500022b0" formatted="false">Crear clave de acceso</string>
+    <string name="catalog_create_role_db859bad" formatted="false">Crear rol</string>
+    <string name="catalog_create_your_account_4046b581" formatted="false">Crea tu cuenta</string>
+    <string name="catalog_creating_this_phone_s_protected_encryption_identity_f14e4807" formatted="false">Creando la identidad de cifrado protegida de este teléfono…</string>
+    <string name="catalog_current_password_19dff4da" formatted="false">Contraseña actual</string>
+    <string name="catalog_custom_ringtone_fd009ada" formatted="false">Tono personalizado</string>
+    <string name="catalog_danger_zone_963a652e" formatted="false">Zona de peligro</string>
+    <string name="catalog_dark_ae1ef014" formatted="false">Oscuro</string>
+    <string name="catalog_debug_bd604d99" formatted="false">Debug</string>
+    <string name="catalog_delete_account_1753c206" formatted="false">Eliminar cuenta</string>
+    <string name="catalog_delete_all_my_messages_3549d600" formatted="false">Eliminar todos mis mensajes</string>
+    <string name="catalog_delete_all_your_messages_f9463fad" formatted="false">Eliminar todos tus mensajes</string>
+    <string name="catalog_delete_my_account_2ae3a019" formatted="false">Eliminar mi cuenta</string>
+    <string name="catalog_delete_recording_8b58ce23" formatted="false">Eliminar grabación</string>
+    <string name="catalog_delete_role_fbf0667e" formatted="false">Eliminar rol</string>
+    <string name="catalog_delete_server_fb695fc6" formatted="false">Eliminar servidor</string>
+    <string name="catalog_delete_them_all_a3132ab8" formatted="false">Eliminarlos todos</string>
+    <string name="catalog_deleted_1_s_message_8ffc45b2" formatted="true">Deleted %1$s message.</string>
+    <string name="catalog_deleted_1_s_messages_9ec1f966" formatted="true">Deleted %1$s messages.</string>
+    <string name="catalog_deleted_user_everything_else_profile_connections_friends_6e1c6e09" formatted="false">deleted user. Everything else - profile, connections, friends, server memberships - is erased. This can\'t be undone.</string>
+    <string name="catalog_desktop_app_f7a44c6b" formatted="false">Aplicación de escritorio</string>
+    <string name="catalog_device_1_s_91ca155d" formatted="true">Device %1$s</string>
+    <string name="catalog_device_default_f9aac6c5" formatted="false">Predeterminado del dispositivo</string>
+    <string name="catalog_device_transfer_code_10d0a8b9" formatted="false">Código de transferencia del dispositivo</string>
+    <string name="catalog_device_transfer_qr_code_d3864e5b" formatted="false">Device transfer QR code</string>
+    <string name="catalog_devices_df485c87" formatted="false">Dispositivos</string>
+    <string name="catalog_digits_confirmed_4ecb4c0f" formatted="false">Dígitos confirmados</string>
+    <string name="catalog_direct_messages_e7596a09" formatted="false">Mensajes directos</string>
+    <string name="catalog_direct_messages_f1b1f5c2" formatted="false">Mensajes directos</string>
+    <string name="catalog_disconnected_771e05f2" formatted="false">Disconnected</string>
+    <string name="catalog_display_574ff9b0" formatted="false">Display</string>
+    <string name="catalog_display_name_avatar_bio_accent_css_e2684739" formatted="false">Nombre visible, avatar, biografía, acento, CSS</string>
+    <string name="catalog_display_name_c7874aaa" formatted="false">Nombre visible</string>
+    <string name="catalog_display_name_optional_23d1974a" formatted="false">Nombre visible (opcional)</string>
+    <string name="catalog_display_separately_ecf9d1a7" formatted="false">Mostrar por separado</string>
+    <string name="catalog_do_not_disturb_875ba794" formatted="false">No molestar</string>
+    <string name="catalog_done_e9b450d1" formatted="false">Done</string>
+    <string name="catalog_download_failed_01125e1b" formatted="false">Download failed</string>
+    <string name="catalog_download_install_7db0bddc" formatted="false">Download &amp; install</string>
+    <string name="catalog_downloading_1_s_66b84142" formatted="true">Downloading %1$s…</string>
+    <string name="catalog_each_entry_is_a_device_with_a_8778c193" formatted="false">Cada entrada es un dispositivo con una sesión activa. Revocar uno evita que se </string>
+    <string name="catalog_edit_message_96116a52" formatted="false">Editar mensaje</string>
+    <string name="catalog_edit_role_61dd63e9" formatted="false">Editar rol</string>
+    <string name="catalog_edited_b6da09e0" formatted="false">(editado)</string>
+    <string name="catalog_email_changed_to_1_s_2755e486" formatted="true">Email changed to %1$s.</string>
+    <string name="catalog_email_code_5cb76e8c" formatted="false">Código enviado por correo</string>
+    <string name="catalog_email_me_a_code_cc025d42" formatted="false">Envíame un código por correo</string>
+    <string name="catalog_email_me_a_code_instead_44cc1833" formatted="false">Envíame un código por correo en su lugar</string>
+    <string name="catalog_email_password_8973dcae" formatted="false">Correo electrónico &amp; contraseña</string>
+    <string name="catalog_encrypted_history_keys_are_sent_and_the_aa611cee" formatted="false">Encrypted history keys are sent and the new device is recorded as authorized.</string>
+    <string name="catalog_encryption_0af149c2" formatted="false">Cifrado</string>
+    <string name="catalog_encryption_security_alert_7b6e7671" formatted="false">Alerta de seguridad del cifrado</string>
+    <string name="catalog_enter_a_fresh_two_factor_authentication_code_9784e1c2" formatted="false">Introduce un código nuevo de autenticación en dos pasos. El nuevo dispositivo iniciará sesión en tu registro de dispositivos de solo anexado.</string>
+    <string name="catalog_enter_the_6_digit_code_from_your_0a98bcca" formatted="false">Introduce el código de 6 dígitos de tu aplicación o un código de recuperación.</string>
+    <string name="catalog_enter_to_save_shift_enter_for_a_74c26ca9" formatted="false">Enter para guardar · Mayús+Enter para una línea nueva</string>
+    <string name="catalog_erase_my_encryption_keys_65f08bd6" formatted="false">Borrar mis claves de cifrado</string>
+    <string name="catalog_erase_them_now_9964fd63" formatted="false">Borrarlas ahora</string>
+    <string name="catalog_erase_your_encryption_keys_e1ad1aa2" formatted="false">¿Borrar tus claves de cifrado?</string>
+    <string name="catalog_erasing_fd30764f" formatted="false">Borrando…</string>
+    <string name="catalog_every_device_added_or_removed_is_written_ec8b50d8" formatted="false">Cada dispositivo añadido o eliminado queda escrito en un libro de registro al que solo se puede añadir: nunca editar ni borrar. Tus dispositivos lo leen cada vez que se inician, así que un dispositivo que no añadiste no puede aparecer aquí sin avisar: se te informa y la entrada queda en el libro.</string>
+    <string name="catalog_every_direct_message_is_encrypted_always_and_bacae7ec" formatted="false">Cada mensaje directo está cifrado siempre, y eso no se puede desactivar. Este ajuste trata de cuánto se comprueba el candado de la otra persona antes de enviarle tus mensajes.</string>
+    <string name="catalog_every_message_already_in_your_encrypted_conversations_ae9912e3" formatted="false">Cada mensaje que ya está en tus conversaciones cifradas quedará ilegible para siempre: para ti, para nosotros y para cualquiera. Nada los recuperará.</string>
+    <string name="catalog_everyone_930575f5" formatted="false">@everyone</string>
+    <string name="catalog_everyone_applies_to_every_member_it_has_12e47659" formatted="false">@everyone se aplica a todos los miembros. No tiene color y no se puede asignar ni eliminar.</string>
+    <string name="catalog_everyone_c756f6af" formatted="false">Everyone</string>
+    <string name="catalog_everyone_here_02cadf2a" formatted="false">todos aquí</string>
+    <string name="catalog_everyone_in_this_voice_channel_hears_it_df8e9c42" formatted="false">Todos en este canal de voz lo oyen.</string>
+    <string name="catalog_everything_sent_from_now_on_uses_a_4d8b70ec" formatted="false">Todo lo que envíes a partir de ahora usará una clave nueva. Los mensajes existentes seguirán siendo legibles y todos los que sigan en la conversación conservarán el acceso.</string>
+    <string name="catalog_expired_large_files_are_only_kept_for_a9b2c12d" formatted="false">Caducado - los archivos grandes solo se guardan una hora</string>
+    <string name="catalog_expires_in_1_hour_26e2eae7" formatted="false">Caduca en 1 hora</string>
+    <string name="catalog_fallback_mode_scan_this_code_from_an_45193b95" formatted="false">Modo alternativo: escanea este código desde un teléfono ya autorizado o pégalo en un ordenador autorizado.</string>
+    <string name="catalog_favourite_this_gif_a9fd24af" formatted="false">Marcar este GIF como favorito</string>
+    <string name="catalog_find_a_member_036dc8dd" formatted="false">Buscar miembro</string>
+    <string name="catalog_find_friends_2fd354c9" formatted="false">Buscar amigos</string>
+    <string name="catalog_finish_b74bdee9" formatted="false">Finish</string>
+    <string name="catalog_first_device_on_this_account_452cc989" formatted="false">First device on this account</string>
+    <string name="catalog_flip_camera_ed114d76" formatted="false">Girar cámara</string>
+    <string name="catalog_follow_the_installer_to_finish_updating_2742868e" formatted="false">Sigue el instalador para terminar la actualización</string>
+    <string name="catalog_for_permission_the_first_time_you_join_1cbeb90e" formatted="false">for permission the first time you join one.</string>
+    <string name="catalog_freezes_the_account_if_you_think_someone_09f45852" formatted="false">Congela la cuenta si crees que hay alguien más dentro: cierra cada </string>
+    <string name="catalog_friends_of_friends_9abdf2fe" formatted="false">Friends of friends</string>
+    <string name="catalog_friends_only_0b2d5f25" formatted="false">Friends only</string>
+    <string name="catalog_generate_fc45f9b7" formatted="false">Generate</string>
+    <string name="catalog_get_notified_about_messages_d4bc1f2e" formatted="false">¿Recibir notificaciones de mensajes?</string>
+    <string name="catalog_hang_up_66be99b5" formatted="false">Colgar</string>
+    <string name="catalog_have_them_open_their_code_in_orangchat_9428c129" formatted="false">Pídeles que abran su código en OrangChat y apunta la cámara de este teléfono hacia él. Entonces tu teléfono recuerda el candado que realmente viste, así que uno sustituido ya no coincide. Un escaneo prueba una dirección; muéstrales también el tuyo.</string>
+    <string name="catalog_hide_my_code_835d9e98" formatted="false">Ocultar mi código</string>
+    <string name="catalog_hide_password_e40123b4" formatted="false">Ocultar contraseña</string>
+    <string name="catalog_hold_steady_scanning_happens_automatically_ae832ed2" formatted="false">Manténlo quieto - el escaneo se hace solo</string>
+    <string name="catalog_hold_the_mic_to_record_then_let_48d81b83" formatted="false">Mantén pulsado el micrófono para grabar y suéltalo para enviar</string>
+    <string name="catalog_hold_to_record_a_voice_message_06b1b5f5" formatted="false">Mantén pulsado para grabar un mensaje de voz</string>
+    <string name="catalog_how_does_this_work_1ae14530" formatted="false">¿Cómo funciona esto?</string>
+    <string name="catalog_how_your_messages_are_protected_bb07e15c" formatted="false">Cómo se protegen tus mensajes</string>
+    <string name="catalog_i_understand_842a9bdd" formatted="false">Entiendo</string>
+    <string name="catalog_i_ve_saved_them_d4c0b9ed" formatted="false">Los he guardado</string>
+    <string name="catalog_icon_716f63b9" formatted="false">Icono</string>
+    <string name="catalog_idle_cc1ebdd0" formatted="false">Inactivo</string>
+    <string name="catalog_if_a_safety_code_changes_or_a_fdad80c2" formatted="false">Si cambia un código de seguridad o aparece en tu cuenta un dispositivo que no añadiste, OrangChat se detiene y te lo avisa claramente, en vez de mostrar una notificación que podrías descartar.</string>
+    <string name="catalog_in_call_07d16f43" formatted="false">En llamada</string>
+    <string name="catalog_in_plain_language_with_no_jargon_to_b56795a6" formatted="false">En lenguaje sencillo, sin jerga que descifrar antes.</string>
+    <string name="catalog_inappropriate_content_62db8957" formatted="false">Contenido inapropiado</string>
+    <string name="catalog_incorrect_password_b68db3d0" formatted="false">Incorrect password.</string>
+    <string name="catalog_install_fd6c3ebf" formatted="false">Install</string>
+    <string name="catalog_installed_7bb4405c" formatted="false">Installed</string>
+    <string name="catalog_invite_link_601e9d6c" formatted="false">Enlace de invitación</string>
+    <string name="catalog_invite_people_e1eb97af" formatted="false">Invitar a personas</string>
+    <string name="catalog_invite_to_get_back_into_any_of_016b015f" formatted="false">invite to get back into any of them.</string>
+    <string name="catalog_ios_browser_1da182c5" formatted="false">iOS browser</string>
+    <string name="catalog_it_is_not_always_an_attack_it_c9d44cb1" formatted="false">No siempre es un ataque: también ocurre cuando alguien pierde todos sus dispositivos y tiene que empezar de cero. Desde la aplicación no hay forma de distinguirlo, por eso te pide comprobarlo directamente con esa persona antes de enviar nada más.</string>
+    <string name="catalog_join_a_server_d59b6aba" formatted="false">Unirse a un servidor</string>
+    <string name="catalog_join_muted_8ccaf5fe" formatted="false">Entrar silenciado</string>
+    <string name="catalog_join_with_camera_on_c39f4e79" formatted="false">Entrar con la cámara activada</string>
+    <string name="catalog_jump_to_latest_5aa2e089" formatted="false">Ir al último</string>
+    <string name="catalog_keys_device_log_verifying_people_0828f752" formatted="false">Claves, registro de dispositivos, verificación de personas</string>
+    <string name="catalog_last_active_1_s_df09e3bb" formatted="true"> · last active %1$s</string>
+    <string name="catalog_last_used_1_s_c8f76185" formatted="true"> · last used %1$s</string>
+    <string name="catalog_leave_all_servers_65e7741b" formatted="false">Salir de todos los servidores</string>
+    <string name="catalog_leave_group_92578912" formatted="false">Salir del grupo</string>
+    <string name="catalog_leave_server_da6fea13" formatted="false">Salir del servidor</string>
+    <string name="catalog_leaves_every_server_you_re_in_except_bcbf7a17" formatted="false">Sale de todos los servidores en los que estás salvo los que te pertenecen. Necesitarás una </string>
+    <string name="catalog_leaving_it_off_is_not_unprotected_every_94d76940" formatted="false">Dejarlo apagado no es \"sin protección\". Cada candado sigue comparándose con un libro de registro al que solo se puede añadir y que tus propios dispositivos leen al iniciarse. La diferencia es si un candado sustituido se detiene antes de poder usarse o se detecta justo después. Las conversaciones de grupo siempre se envían de inmediato, de cualquier modo.</string>
+    <string name="catalog_left_1_s_server_2619a08f" formatted="true">Left %1$s server.</string>
+    <string name="catalog_left_1_s_servers_8833549c" formatted="true">Left %1$s servers.</string>
+    <string name="catalog_let_people_see_when_you_re_typing_eb96518c" formatted="false">Permite que otros vean cuándo estás escribiendo.</string>
+    <string name="catalog_lift_lockdown_4131d82c" formatted="false">Quitar bloqueo</string>
+    <string name="catalog_lift_timeout_560ca50c" formatted="false">Quitar restricción temporal</string>
+    <string name="catalog_light_a36ef8ab" formatted="false">Claro</string>
+    <string name="catalog_linked_image_96960966" formatted="false">Imagen vinculada</string>
+    <string name="catalog_listening_to_aad82f87" formatted="false">ESCUCHANDO</string>
+    <string name="catalog_listening_to_b35b0e8e" formatted="false">Escuchando </string>
+    <string name="catalog_load_more_dfe60ca9" formatted="false">Cargar más</string>
+    <string name="catalog_loading_33ce4174" formatted="false">Cargando…</string>
+    <string name="catalog_lock_down_my_account_c7b52afc" formatted="false">Bloquear mi cuenta</string>
+    <string name="catalog_lockdown_8ba04349" formatted="false">Lockdown</string>
+    <string name="catalog_lockdown_lifted_f4f1b05c" formatted="false">Lockdown lifted.</string>
+    <string name="catalog_locked_down_1dc1036e" formatted="false">Locked down.</string>
+    <string name="catalog_locked_down_signed_out_1_s_other_d382c238" formatted="true">Locked down. Signed out %1$s other session.</string>
+    <string name="catalog_locked_down_signed_out_1_s_other_ecca9d9f" formatted="true">Locked down. Signed out %1$s other sessions.</string>
+    <string name="catalog_log_in_f7c400ed" formatted="false">Iniciar sesión</string>
+    <string name="catalog_log_out_6e78c91f" formatted="false">Cerrar sesión</string>
+    <string name="catalog_lost_your_authenticator_af902070" formatted="false">¿Has perdido tu autenticador?</string>
+    <string name="catalog_lowercase_letters_digits_and_2_to_32_7bec3c28" formatted="false">Letras minúsculas, dígitos, _ y . - de 2 a 32 caracteres</string>
+    <string name="catalog_lowercase_letters_numbers_underscores_and_dots_57155ecc" formatted="false">Letras minúsculas, números, guiones bajos y puntos.</string>
+    <string name="catalog_make_a_new_key_cde9afba" formatted="false">Crear una clave nueva</string>
+    <string name="catalog_mark_as_read_c1ee860b" formatted="false">Marcar como leído</string>
+    <string name="catalog_messages_friend_requests_typing_notifications_17b64746" formatted="false">Mensajes, solicitudes de amistad, escritura, notificaciones</string>
+    <string name="catalog_messages_go_as_soon_as_you_send_e76569f5" formatted="false">Los mensajes salen en cuanto los envías. Si alguien sustituye alguna vez el candado de esta persona, tus dispositivos lo notan y te avisan.</string>
+    <string name="catalog_microphone_access_is_needed_to_record_a_9afc8aaa" formatted="false">Hace falta acceso al micrófono para grabar un mensaje de voz</string>
+    <string name="catalog_minimize_call_6cb0f0f8" formatted="false">Minimizar llamada</string>
+    <string name="catalog_missed_call_0200c293" formatted="false">Llamada perdida</string>
+    <string name="catalog_my_contact_verification_qr_code_44a80ea4" formatted="false">My contact verification QR code</string>
+    <string name="catalog_my_orange_grove_c6cfda8f" formatted="false">Mi naranjal</string>
+    <string name="catalog_name_709a2322" formatted="false">Name</string>
+    <string name="catalog_need_an_account_sign_up_77472065" formatted="false">¿Necesitas una cuenta? Regístrate</string>
+    <string name="catalog_neon_00706b5e" formatted="false">Neon</string>
+    <string name="catalog_never_used_8c1c3645" formatted="false"> · sin usar</string>
+    <string name="catalog_new_email_b07e22b0" formatted="false">Correo nuevo</string>
+    <string name="catalog_new_group_f9850c0b" formatted="false">Grupo nuevo</string>
+    <string name="catalog_new_key_for_this_conversation_651d7e16" formatted="false">Clave nueva para esta conversación</string>
+    <string name="catalog_new_messages_6d867124" formatted="false">Mensajes nuevos</string>
+    <string name="catalog_new_password_d850ee18" formatted="false">Contraseña nueva</string>
+    <string name="catalog_new_recovery_codes_90b8afc8" formatted="false">Códigos de recuperación nuevos</string>
+    <string name="catalog_new_roles_start_just_above_everyone_so_700d0555" formatted="false">Los roles nuevos empiezan justo por encima de @everyone, así que nunca superan a quien los crea.</string>
+    <string name="catalog_new_update_available_b0be29b0" formatted="false">Nueva actualización disponible</string>
+    <string name="catalog_no_answer_a9c16dd0" formatted="false">Sin respuesta</string>
+    <string name="catalog_no_devices_are_enrolled_on_this_account_025829c1" formatted="false">No hay dispositivos registrados en esta cuenta.</string>
+    <string name="catalog_no_friends_yet_add_someone_first_a7ccf9a9" formatted="false">Aún no tienes amigos. Añade a alguien primero.</string>
+    <string name="catalog_no_friends_yet_add_someone_from_the_7d7f43ab" formatted="false">Aún no tienes amigos. Añade a alguien desde la pestaña Añadir.</string>
+    <string name="catalog_no_gifs_found_0d358df4" formatted="false">No se encontraron GIF</string>
+    <string name="catalog_no_matches_0be6a257" formatted="false">Sin coincidencias.</string>
+    <string name="catalog_no_matching_friends_or_channels_fd0c1248" formatted="false">No hay amigos ni canales que coincidan</string>
+    <string name="catalog_no_one_41c06c15" formatted="false">No one</string>
+    <string name="catalog_no_passkeys_yet_6dc4fe0f" formatted="false">Aún no hay claves de acceso.</string>
+    <string name="catalog_no_pending_requests_aeedf949" formatted="false">No hay solicitudes pendientes.</string>
+    <string name="catalog_no_profile_themes_match_1_s_a67c627c" formatted="true">No profile themes match “%1$s”.</string>
+    <string name="catalog_no_saved_gifs_yet_tap_the_bookmark_75705898" formatted="false">Aún no hay GIF guardados - toca el marcador de cualquier GIF para conservarlo aquí.</string>
+    <string name="catalog_no_server_is_currently_restricting_you_061000ea" formatted="false">Ningún servidor te está restringiendo actualmente.</string>
+    <string name="catalog_no_sounds_yet_someone_with_manage_expressions_011117e4" formatted="false">Aún no hay sonidos. Alguien con Gestionar expresiones puede añadirlos en los ajustes del servidor.</string>
+    <string name="catalog_nobody_can_send_you_requests_5279aaea" formatted="false">Nobody can send you requests.</string>
+    <string name="catalog_nobody_new_can_message_you_d72cdf15" formatted="false">Nobody new can message you.</string>
+    <string name="catalog_none_set_4bf72e7e" formatted="false">Ninguno configurado</string>
+    <string name="catalog_not_in_call_32010878" formatted="false">No estás en llamada</string>
+    <string name="catalog_not_in_the_same_room_you_will_d53e345b" formatted="false">¿No estáis en la misma habitación? Los dos veréis la misma fila corta de números, llamada código de seguridad. Pídele que la lea en una llamada telefónica o que la envíe por otra aplicación en la que ya confíes, y escríbela en la casilla bajo el código: la aplicación compara los sesenta dígitos, más de lo que nadie consigue revisar a simple vista. Si coincide, no hay nadie en medio. Lo único que no sirve es una llamada de voz de OrangChat: ese audio pasa por los mismos servidores que esta comprobación pretende verificar.</string>
+    <string name="catalog_not_me_1ad9a1eb" formatted="false">No he sido yo</string>
+    <string name="catalog_not_now_e4571490" formatted="false">Ahora no</string>
+    <string name="catalog_not_sent_587c501e" formatted="false">No enviado</string>
+    <string name="catalog_nothing_can_sign_in_and_no_new_e0c687ac" formatted="false">Nada puede iniciar sesión y no te llegarán mensajes directos ni solicitudes de amistad nuevas. </string>
+    <string name="catalog_nothing_has_been_logged_yet_e4080778" formatted="false">Aún no se ha registrado nada.</string>
+    <string name="catalog_nothing_is_sent_until_you_have_checked_6db8aee8" formatted="false">No se envía nada hasta que hayas comprobado su código en persona o durante una llamada. Hasta entonces, tus mensajes esperan aquí, cerrados, y no van a ninguna parte.</string>
+    <string name="catalog_notifications_753a22b2" formatted="false">Notifications</string>
+    <string name="catalog_notifications_are_turned_off_e638becc" formatted="false">Las notificaciones están desactivadas</string>
+    <string name="catalog_now_playing_586fa7a8" formatted="false">SONANDO AHORA</string>
+    <string name="catalog_oc_pf_name_color_ff6a1a_9442cf4e" formatted="false">.oc-pf-name { color: #ff6a1a; }</string>
+    <string name="catalog_off_the_shade_and_lock_screen_show_29ea09db" formatted="false">Desactivado: la cortina de notificaciones y la pantalla de bloqueo muestran quién escribió y nada más. Los mensajes cifrados no se desbloquean nunca para crear una notificación. Solo en este teléfono.</string>
+    <string name="catalog_offline_e01fa717" formatted="false">Sin conexión</string>
+    <string name="catalog_on_call_fdd219b2" formatted="false">En llamada</string>
+    <string name="catalog_on_e0049a66" formatted="false">Activado</string>
+    <string name="catalog_on_your_pc_open_settings_encryption_add_5a070e42" formatted="false">En tu PC, abre Ajustes → Cifrado → Añadir otro dispositivo. Tu PC mostrará un código QR de un solo uso.</string>
+    <string name="catalog_ongoing_call_5ae739b8" formatted="false">Llamada en curso</string>
+    <string name="catalog_online_c3e839df" formatted="false">En línea</string>
+    <string name="catalog_only_continue_if_you_started_this_transfer_d563e585" formatted="false">Continúa solo si iniciaste esta transferencia y puedes ver los dos dispositivos.</string>
+    <string name="catalog_only_people_on_your_friends_list_a0690c48" formatted="false">Only people on your friends list.</string>
+    <string name="catalog_only_people_you_share_a_friend_with_dd960ba7" formatted="false">Only people you share a friend with.</string>
+    <string name="catalog_only_the_owner_can_rename_this_server_3db192cb" formatted="false">Solo el propietario puede cambiar el nombre de este servidor</string>
+    <string name="catalog_only_the_people_in_the_conversation_can_ae492280" formatted="false">Solo las personas de la conversación pueden abrirlos. Ni OrangChat, ni quien robe nuestra base de datos, ni quien llegue con una orden judicial: no tenemos una clave que podamos entregar. Esto está activo para todos los mensajes directos y no se puede desactivar.</string>
+    <string name="catalog_open_app_permissions_893246fb" formatted="false">Abrir permisos de la aplicación</string>
+    <string name="catalog_open_call_1c47457b" formatted="false">Abrir llamada</string>
+    <string name="catalog_orangchat_can_let_you_know_when_someone_13d0aac2" formatted="false">OrangChat puede avisarte cuando alguien te escriba o te llame </string>
+    <string name="catalog_orangchat_desktop_app_ffb92600" formatted="false">OrangChat desktop app</string>
+    <string name="catalog_orangchat_device_transfer_9d5395e9" formatted="false">orangchat://device-transfer?…</string>
+    <string name="catalog_orangchat_for_android_3f20ca31" formatted="false">OrangChat for Android</string>
+    <string name="catalog_orangchat_only_opens_your_camera_and_microphone_16da857f" formatted="false">OrangChat solo abre la cámara y el micrófono durante una llamada. Android pide </string>
+    <string name="catalog_other_device_blocks_new_sign_ins_and_6199dab7" formatted="false">other device, blocks new sign-ins, and closes new DMs and friend requests until you lift it.</string>
+    <string name="catalog_otherwise_only_members_with_mention_everyone_can_a0476dcf" formatted="false">De otro modo, solo pueden hacerlo los miembros con Mencionar a todos.</string>
+    <string name="catalog_package_7431e3df" formatted="false">Package</string>
+    <string name="catalog_parchment_4761c103" formatted="false">Parchment</string>
+    <string name="catalog_passkey_e35828da" formatted="false">Passkey</string>
+    <string name="catalog_passkey_settings_too_or_it_will_keep_26130742" formatted="false">passkey settings too, or it will keep showing up there.</string>
+    <string name="catalog_passkeys_caab7827" formatted="false">Passkeys</string>
+    <string name="catalog_password_changed_1_s_other_session_was_10fc8ee3" formatted="true">Password changed. %1$s other session was signed out.</string>
+    <string name="catalog_password_changed_1_s_other_sessions_were_64e22cd3" formatted="true">Password changed. %1$s other sessions were signed out.</string>
+    <string name="catalog_password_changed_47fa5289" formatted="false">Password changed.</string>
+    <string name="catalog_permanently_delete_2eea1fa8" formatted="false">Eliminar permanentemente</string>
+    <string name="catalog_personal_phone_a154b2eb" formatted="false">Teléfono personal</string>
+    <string name="catalog_phone_connected_ac1141af" formatted="false">Teléfono conectado</string>
+    <string name="catalog_pick_at_least_one_more_friend_for_1cd89bd0" formatted="false">Elige al menos a un amigo más para el grupo.</string>
+    <string name="catalog_point_this_phone_at_the_qr_code_cea07275" formatted="false">Apunta este teléfono al código QR que muestra OrangChat en tu PC.</string>
+    <string name="catalog_point_this_phone_at_the_transfer_code_d6baae81" formatted="false">Apunta este teléfono al código de transferencia que muestra el dispositivo nuevo.</string>
+    <string name="catalog_preview_f1fbb2b4" formatted="false">Vista previa</string>
+    <string name="catalog_privacy_cf01481f" formatted="false">Privacidad</string>
+    <string name="catalog_privacy_security_9bb6e9c0" formatted="false">Privacidad &amp; seguridad</string>
+    <string name="catalog_profile_ff4fc027" formatted="false">Perfil</string>
+    <string name="catalog_profile_themes_3d7fccd2" formatted="false">Temas de perfil</string>
+    <string name="catalog_profile_themes_style_your_public_profile_card_7965d778" formatted="false">Los temas de perfil dan estilo a tu tarjeta de perfil pública. Cada entrada se revisa mediante una solicitud de cambios, se incluye con la aplicación y se sanea antes de mostrarse.</string>
+    <string name="catalog_qr_code_abba02fc" formatted="false">QR code</string>
+    <string name="catalog_ready_made_styles_for_your_profile_card_83af5cba" formatted="false">Estilos listos para tu tarjeta de perfil</string>
+    <string name="catalog_realtime_5973df61" formatted="false">Realtime</string>
+    <string name="catalog_reason_1_s_bce5b2c7" formatted="true">Reason: %1$s</string>
+    <string name="catalog_recording_locked_32fe3a05" formatted="false">Grabación bloqueada</string>
+    <string name="catalog_recovery_codes_b3f5f8ca" formatted="false">Códigos de recuperación</string>
+    <string name="catalog_reduce_motion_25a5aef5" formatted="false">Reducir movimiento</string>
+    <string name="catalog_release_d41f56ce" formatted="false">Release</string>
+    <string name="catalog_release_to_cancel_29bd6c29" formatted="false">Suelta para cancelar</string>
+    <string name="catalog_remove_background_for_everyone_275dc99e" formatted="false">Quitar el fondo para todos</string>
+    <string name="catalog_remove_e963907d" formatted="false">Remove</string>
+    <string name="catalog_remove_friend_b16fc7ff" formatted="false">Eliminar amigo</string>
+    <string name="catalog_remove_from_favourites_624f82c1" formatted="false">Quitar de favoritos</string>
+    <string name="catalog_remove_group_icon_5869f3b2" formatted="false">Quitar icono del grupo</string>
+    <string name="catalog_remove_passkey_988b1b7e" formatted="false">Eliminar clave de acceso</string>
+    <string name="catalog_removes_every_message_you_ve_sent_in_f63902f1" formatted="false">Elimina todos los mensajes que has enviado, en todos los servidores y grupos, incluidos </string>
+    <string name="catalog_removing_this_only_affects_orangchat_delete_it_28979691" formatted="false">Eliminar esto solo afecta a OrangChat. Elimínalo de los propios </string>
+    <string name="catalog_rename_d3f4cb89" formatted="false">Rename</string>
+    <string name="catalog_rename_passkey_cb9298c9" formatted="false">Cambiar nombre de clave de acceso</string>
+    <string name="catalog_renewing_it_loses_access_within_a_few_1d7c7abe" formatted="false">renewing; it loses access within a few minutes.</string>
+    <string name="catalog_replaces_the_key_used_from_now_on_c57ccaed" formatted="false">Reemplaza la clave usada a partir de ahora, para que un dispositivo eliminado desde entonces no pueda leer nada nuevo. Los mensajes que ya están aquí siguen siendo legibles y nadie queda fuera.</string>
+    <string name="catalog_replaces_the_orangchat_mark_for_you_everywhere_109fab70" formatted="false">Reemplaza la marca de OrangChat para ti en todos los lugares donde has iniciado sesión. </string>
+    <string name="catalog_report_message_babfeaf5" formatted="false">Denunciar mensaje</string>
+    <string name="catalog_report_received_2568a541" formatted="false">Denuncia recibida</string>
+    <string name="catalog_reporting_reveals_this_one_decrypted_message_and_1e7d77a7" formatted="false">Al denunciar se revela este único mensaje descifrado y una clave de un solo mensaje. No revela la clave de la conversación ni ningún otro mensaje.</string>
+    <string name="catalog_request_sent_168996e3" formatted="false">Solicitud enviada</string>
+    <string name="catalog_resend_email_code_9a8ba727" formatted="false">Reenviar código por correo</string>
+    <string name="catalog_reset_44c57abd" formatted="false">Restablecer</string>
+    <string name="catalog_reset_to_defaults_ddefe47d" formatted="false">Restablecer valores predeterminados</string>
+    <string name="catalog_resolving_invite_62cce3b8" formatted="false">Comprobando invitación…</string>
+    <string name="catalog_revoke_0be72075" formatted="false">Revoke</string>
+    <string name="catalog_revoke_1_s_357dcc1d" formatted="true">Revoke %1$s?</string>
+    <string name="catalog_revoke_device_66468c17" formatted="false">Revocar dispositivo</string>
+    <string name="catalog_revoked_d8230020" formatted="false">  ·  revoked</string>
+    <string name="catalog_revoking_2c8a0ed4" formatted="false">Revocando…</string>
+    <string name="catalog_ringing_417814b1" formatted="false">Sonando…</string>
+    <string name="catalog_role_name_4204d818" formatted="false">Nombre del rol</string>
+    <string name="catalog_roles_grant_permissions_and_a_colour_members_51c7e585" formatted="false">Los roles conceden permisos y un color. Los miembros usan el color de su rol más alto.</string>
+    <string name="catalog_save_changes_179359b3" formatted="false">Guardar cambios</string>
+    <string name="catalog_save_nickname_51ddb3ea" formatted="false">Guardar apodo</string>
+    <string name="catalog_save_profile_f597c0e8" formatted="false">Guardar perfil</string>
+    <string name="catalog_save_these_now_each_works_once_if_2a1aad82" formatted="false">Guárdalos ahora: cada uno sirve una vez si pierdes el teléfono y solo se muestran esta vez.</string>
+    <string name="catalog_scan_28cba55d" formatted="false">Scan</string>
+    <string name="catalog_scan_code_from_pc_6c59b0aa" formatted="false">Escanear código desde PC</string>
+    <string name="catalog_scan_device_code_45e4e1cb" formatted="false">Escanear código del dispositivo</string>
+    <string name="catalog_scan_the_code_shown_by_the_new_953d3dac" formatted="false">Escanea el código que muestra el dispositivo nuevo o pega aquí el código completo orangchat://device-transfer.</string>
+    <string name="catalog_scan_their_code_b273ef3b" formatted="false">Escanear su código</string>
+    <string name="catalog_scan_verification_code_9569a83c" formatted="false">Escanear código de verificación</string>
+    <string name="catalog_search_bce06414" formatted="false">Search</string>
+    <string name="catalog_search_by_name_or_username_9c923df6" formatted="false">Buscar por nombre o usuario</string>
+    <string name="catalog_search_friends_and_channels_57990af1" formatted="false">Buscar amigos y canales</string>
+    <string name="catalog_search_klipy_9e867d1a" formatted="false">Buscar en KLIPY</string>
+    <string name="catalog_search_messages_abea65ae" formatted="false">Buscar mensajes</string>
+    <string name="catalog_search_profile_themes_99f3d314" formatted="false">Buscar temas de perfil</string>
+    <string name="catalog_searched_on_this_device_messages_not_opened_4abe22a1" formatted="false">Buscado en este dispositivo. Los mensajes que no se abrieron aquí pueden faltar.</string>
+    <string name="catalog_security_f25ce1b8" formatted="false">Seguridad</string>
+    <string name="catalog_send_a_new_code_91904a28" formatted="false">Enviar un código nuevo</string>
+    <string name="catalog_send_anyway_911263fe" formatted="false">Enviar de todos modos</string>
+    <string name="catalog_send_friend_request_c3ed810d" formatted="false">Enviar solicitud de amistad</string>
+    <string name="catalog_send_report_a5b32af9" formatted="false">Enviar denuncia</string>
+    <string name="catalog_send_straight_away_19f3932b" formatted="false">Enviar de inmediato</string>
+    <string name="catalog_send_straight_away_a_swap_gets_caught_2e19b55a" formatted="false">Envía de inmediato: una sustitución se detecta. Cada candado que publica alguien se escribe en un libro de registro al que solo se puede añadir, nunca editar ni borrar. Tus propios dispositivos leen la página de tu cuenta cada vez que se inician. Si alguna vez se publica a tu nombre un candado que tus dispositivos no crearon, te avisan y la entrada queda en el libro, donde cualquiera puede señalarla. Se puede intentar una sustitución; no se puede intentar en silencio.</string>
+    <string name="catalog_send_typing_indicators_6ca26372" formatted="false">Enviar indicadores de escritura</string>
+    <string name="catalog_sending_cf765512" formatted="false">Enviando…</string>
+    <string name="catalog_sending_encrypted_history_and_signing_the_new_6bfd242c" formatted="false">Sending encrypted history and signing the new device into your device log…</string>
+    <string name="catalog_sending_straight_away_is_what_every_conversation_68012f61" formatted="false">Enviar de inmediato es lo que recibe cada conversación. Comprobar primero es el paso adicional, y solo merece la pena activarlo para personas con las que realmente puedes quedar o hablar por teléfono.</string>
+    <string name="catalog_sending_voice_message_a48b5648" formatted="false">Enviando mensaje de voz…</string>
+    <string name="catalog_server_cb0cb170" formatted="false">Server</string>
+    <string name="catalog_server_channels_those_have_shared_history_moderation_c68bcd1b" formatted="false">• Canales de servidor. Tienen historial compartido, moderación y búsqueda; para todo eso el servidor debe poder leerlos. Solo los mensajes directos y los grupos de mensajes directos se cifran de esta manera.</string>
+    <string name="catalog_server_icon_8bf2f95a" formatted="false">Icono del servidor</string>
+    <string name="catalog_server_name_738825fc" formatted="false">Nombre del servidor</string>
+    <string name="catalog_server_settings_28af3cc7" formatted="false">Ajustes del servidor</string>
+    <string name="catalog_set_a_password_f5c8f412" formatted="false">Establecer una contraseña</string>
+    <string name="catalog_set_chat_background_d07e7165" formatted="false">Establecer fondo del chat</string>
+    <string name="catalog_set_group_icon_48042fd7" formatted="false">Establecer icono del grupo</string>
+    <string name="catalog_set_password_94408e41" formatted="false">Establecer contraseña</string>
+    <string name="catalog_set_up_this_phone_again_6f53f3fd" formatted="false">Configurar este teléfono de nuevo</string>
+    <string name="catalog_set_up_two_factor_a6722c51" formatted="false">Configurar autenticación en dos pasos</string>
+    <string name="catalog_setting_up_cef9b69d" formatted="false">Configurando…</string>
+    <string name="catalog_settings_c7f73bb5" formatted="false">Ajustes</string>
+    <string name="catalog_share_to_orangchat_8cb49ef7" formatted="false">Compartir en OrangChat</string>
+    <string name="catalog_shared_text_4517f1e8" formatted="false">Texto compartido</string>
+    <string name="catalog_sharing_ad005909" formatted="false">Compartiendo…</string>
+    <string name="catalog_show_fallback_code_on_this_phone_90acc27c" formatted="false">Mostrar código alternativo en este teléfono</string>
+    <string name="catalog_show_members_with_this_role_in_their_f0fb058c" formatted="false">Mostrar a los miembros con este rol en su propio grupo.</string>
+    <string name="catalog_show_message_text_66bf26b1" formatted="false">Mostrar texto del mensaje</string>
+    <string name="catalog_show_my_code_342b7a4e" formatted="false">Mostrar mi código</string>
+    <string name="catalog_show_password_044b852f" formatted="false">Mostrar contraseña</string>
+    <string name="catalog_shown_on_the_invite_page_28e6606d" formatted="false">Se muestra en la página de invitación.</string>
+    <string name="catalog_sign_in_ada2e9e9" formatted="false">Iniciar sesión</string>
+    <string name="catalog_sign_in_before_adding_this_device_8327420f" formatted="false">Sign in before adding this device.</string>
+    <string name="catalog_sign_in_on_the_web_94061c18" formatted="false">¿Iniciar sesión en la web?</string>
+    <string name="catalog_sign_in_with_a_passkey_cf1c7263" formatted="false">Iniciar sesión con una clave de acceso</string>
+    <string name="catalog_sign_in_with_your_fingerprint_face_or_ec24e91a" formatted="false">Inicia sesión con tu huella, rostro o PIN del dispositivo en vez de una contraseña. </string>
+    <string name="catalog_sign_out_1_s_other_device_24648e43" formatted="true">Sign out %1$s other device</string>
+    <string name="catalog_sign_out_1_s_other_devices_5bd5b0ba" formatted="true">Sign out %1$s other devices</string>
+    <string name="catalog_sign_out_dc1649a1" formatted="false">Cerrar sesión</string>
+    <string name="catalog_signed_in_1_s_3b0f6db2" formatted="true">Signed in %1$s</string>
+    <string name="catalog_signed_in_as_1_s_21660e7d" formatted="true">Signed in as %1$s.</string>
+    <string name="catalog_skip_the_scroll_and_swipe_animations_3bb4a091" formatted="false">Omitir las animaciones de desplazamiento y deslizamiento.</string>
+    <string name="catalog_slide_to_cancel_8f64a698" formatted="false">Desliza para cancelar →</string>
+    <string name="catalog_slide_to_cancel_9c411f6d" formatted="false">‹ Desliza para cancelar</string>
+    <string name="catalog_slide_up_to_lock_recording_52127830" formatted="false">Desliza hacia arriba para bloquear la grabación</string>
+    <string name="catalog_so_you_can_tell_it_apart_from_5878d69c" formatted="false">Para que puedas distinguirlo de tus otros dispositivos más tarde.</string>
+    <string name="catalog_someone_here_f47623b5" formatted="false">Alguien aquí</string>
+    <string name="catalog_someone_scanned_this_account_s_code_to_cd6f3892" formatted="false">Alguien escaneó el código de esta cuenta para iniciar sesión en OrangChat desde un navegador. Aprueba solo si fuiste tú.</string>
+    <string name="catalog_standing_together_scan_each_other_s_codes_faf20092" formatted="false">¿Estáis juntos? Escanead los códigos del otro: un escaneo prueba una dirección, así que haced los dos.</string>
+    <string name="catalog_start_a_call_d7f39160" formatted="false">Iniciar llamada</string>
+    <string name="catalog_start_a_fresh_key_here_11c5421d" formatted="false">Crear una clave nueva aquí</string>
+    <string name="catalog_start_calls_with_video_already_publishing_04f2d03f" formatted="false">Iniciar llamadas con el vídeo ya activo.</string>
+    <string name="catalog_start_every_call_with_your_microphone_off_087b5564" formatted="false">Iniciar todas las llamadas con el micrófono apagado.</string>
+    <string name="catalog_start_over_with_new_keys_328f6a4a" formatted="false">Empezar de nuevo con claves nuevas</string>
+    <string name="catalog_start_video_call_dac036c6" formatted="false">Iniciar videollamada</string>
+    <string name="catalog_start_voice_call_f5e80dd9" formatted="false">Iniciar llamada de voz</string>
+    <string name="catalog_status_bae7d5be" formatted="false">Estado</string>
+    <string name="catalog_still_yours_1_s_42da6dc4" formatted="true"> Still yours: %1$s.</string>
+    <string name="catalog_stop_9e253470" formatted="false">Detener</string>
+    <string name="catalog_stored_on_this_device_only_never_uploaded_1373e7ad" formatted="false">Guardado solo en este dispositivo; nunca se sube.</string>
+    <string name="catalog_style_your_card_for_everyone_who_views_08c9bf5c" formatted="false">Dale estilo a tu tarjeta para todos los que la vean. Cada parte tiene un selector: </string>
+    <string name="catalog_synced_to_your_device_s_keychain_4f237bce" formatted="false">Sincronizado con el llavero de tu dispositivo.</string>
+    <string name="catalog_system_bc0792d8" formatted="false">Sistema</string>
+    <string name="catalog_take_a_picture_6d76bc64" formatted="false">Hacer una foto</string>
+    <string name="catalog_tap_the_key_to_copy_it_1965f6e7" formatted="false">Toca la clave para copiarla.</string>
+    <string name="catalog_terminal_a1f52cdc" formatted="false">Terminal</string>
+    <string name="catalog_text_size_3cc6e124" formatted="false">Tamaño del texto</string>
+    <string name="catalog_text_size_motion_density_a9cc0369" formatted="false">Tamaño del texto, movimiento, densidad</string>
+    <string name="catalog_that_code_isn_t_right_e78cef5d" formatted="false">That code isn\'t right</string>
+    <string name="catalog_that_didn_t_work_try_again_9ae914fa" formatted="false">That didn\'t work. Try again.</string>
+    <string name="catalog_that_invite_is_expired_revoked_or_never_752c9ac3" formatted="false">Esa invitación ha caducado, fue revocada o nunca existió.</string>
+    <string name="catalog_that_is_also_why_adding_a_second_4bac217f" formatted="false">Por eso añadir un segundo dispositivo es una pequeña ceremonia y no copiar y pegar. Antes de mover nada, tu dispositivo antiguo tiene que ver al nuevo: un código en la pantalla y una cámara apuntándolo.</string>
+    <string name="catalog_that_was_cancelled_b8e83864" formatted="false">That was cancelled.</string>
+    <string name="catalog_the_camera_could_not_start_you_can_a181859b" formatted="false">No se pudo iniciar la cámara. Puedes reintentarlo o usar la aplicación Cámara del sistema.</string>
+    <string name="catalog_the_device_could_not_be_revoked_8f71eb6b" formatted="false">The device could not be revoked.</string>
+    <string name="catalog_the_device_transfer_failed_7a70c4fe" formatted="false">The device transfer failed.</string>
+    <string name="catalog_the_digits_match_809c13bc" formatted="false">Los dígitos coinciden</string>
+    <string name="catalog_the_email_code_could_not_be_sent_7bee875a" formatted="false">The email code could not be sent.</string>
+    <string name="catalog_the_encryption_device_was_revoked_5d4569c7" formatted="false">The encryption device was revoked.</string>
+    <string name="catalog_the_keys_could_not_be_erased_fc80d5dd" formatted="false">The keys could not be erased.</string>
+    <string name="catalog_the_logbook_0b3e99f4" formatted="false">El libro de registro</string>
+    <string name="catalog_the_messages_only_that_device_could_open_dd92a9bc" formatted="false">Los mensajes que solo ese dispositivo podía abrir permanecen cerrados para siempre. No podemos recuperarlos por ti: si pudiéramos, nada de lo anterior sería cierto.</string>
+    <string name="catalog_the_new_device_s_code_was_recognized_7c702591" formatted="false">The new device’s code was recognized. It is not authorized yet.</string>
+    <string name="catalog_the_new_device_was_authorized_8ec267ba" formatted="false">El dispositivo nuevo fue autorizado.</string>
+    <string name="catalog_the_one_time_code_from_your_pc_15a1fb2d" formatted="false">The one-time code from your PC was recognized. Nothing has been transferred yet.</string>
+    <string name="catalog_the_ones_you_ve_left_attachments_you_87419c2e" formatted="false">the ones you\'ve left. Attachments you uploaded aren\'t removed from storage. This can\'t be undone.</string>
+    <string name="catalog_the_pc_sends_encrypted_history_keys_and_e368a88b" formatted="false">The PC sends encrypted history keys and records this phone as authorized.</string>
+    <string name="catalog_the_quick_brown_fox_jumps_over_the_408d9438" formatted="false">El rápido zorro marrón salta sobre el perro perezoso.</string>
+    <string name="catalog_the_right_person_3860646e" formatted="false">la persona correcta</string>
+    <string name="catalog_theme_a797e309" formatted="false">Tema</string>
+    <string name="catalog_there_is_no_code_to_compare_yet_5ce7929c" formatted="false">Aún no hay código para comparar.</string>
+    <string name="catalog_these_choices_are_stored_on_this_device_ac326393" formatted="false">Estas opciones solo se guardan en este dispositivo.</string>
+    <string name="catalog_these_do_not_match_most_often_that_0139df50" formatted="false">No coinciden. Lo más habitual es que se haya oído o escrito mal un dígito, así que revísalo una vez más. Si sigue siendo distinto, hay alguien entre ambos: no envíes nada aquí hasta saber quién.</string>
+    <string name="catalog_these_numbers_appear_once_both_accounts_have_288c556c" formatted="false">Estos números aparecen cuando ambas cuentas han configurado el cifrado en un dispositivo.</string>
+    <string name="catalog_they_all_open_8a0f4e5d" formatted="false">se abren todos</string>
+    <string name="catalog_they_cannot_send_messages_react_or_speak_7fcf8d0c" formatted="false">No pueden enviar mensajes, reaccionar ni hablar hasta que termine la restricción temporal.</string>
+    <string name="catalog_they_do_not_match_a5d86ddf" formatted="false">No coinciden</string>
+    <string name="catalog_they_open_371267bf" formatted="false">se abren</string>
+    <string name="catalog_this_account_has_no_authenticator_app_set_3f1e6f47" formatted="false">Esta cuenta no tiene configurada una aplicación de autenticación, así que OrangChat enviará por correo un código de un solo uso para aprobar el dispositivo nuevo.</string>
+    <string name="catalog_this_code_holds_nothing_secret_it_is_373de7f3" formatted="false">Este código no contiene nada secreto. Cualquiera puede verlo sin riesgo; estar en la misma habitación es lo que hace que escanearlo tenga sentido.</string>
+    <string name="catalog_this_conversation_is_not_encrypted_yet_00080602" formatted="false">Esta conversación aún no está cifrada</string>
+    <string name="catalog_this_device_82229094" formatted="false">  ·  Este dispositivo</string>
+    <string name="catalog_this_device_fa5a6dd9" formatted="false">Este dispositivo</string>
+    <string name="catalog_this_device_stays_signed_in_795f19a1" formatted="false">This device stays signed in.</string>
+    <string name="catalog_this_device_will_stop_receiving_new_conversation_45e9c7a1" formatted="false">Este dispositivo dejará de recibir claves nuevas de conversación. Permanece en el registro de dispositivos de solo anexado como revocado, así que el cambio no se puede ocultar.</string>
+    <string name="catalog_this_happens_the_moment_you_confirm_there_62922ade" formatted="false">Esto ocurre en cuanto confirmas: no hay periodo de espera ni nada que cancelar, porque este teléfono lo firma con la propia clave. Todos los mensajes cifrados de esta cuenta serán ilegibles para siempre para todo el mundo.</string>
+    <string name="catalog_this_is_your_code_they_can_scan_f71a20fe" formatted="false">Este es tu código. Pueden escanearlo desde el candado de arriba de vuestra conversación o desde esta pantalla en su propio teléfono.</string>
+    <string name="catalog_this_media_is_unavailable_1ed2c88e" formatted="false">Este contenido multimedia no está disponible</string>
+    <string name="catalog_this_phone_7bcf6179" formatted="false">  ·  this phone</string>
+    <string name="catalog_this_phone_cannot_revoke_itself_4f680a33" formatted="false">This phone cannot revoke itself.</string>
+    <string name="catalog_this_phone_connects_to_the_new_device_9c190e97" formatted="false">This phone connects to the new device without authorizing it yet.</string>
+    <string name="catalog_this_phone_could_not_be_set_up_ee589c92" formatted="false">This phone could not be set up again.</string>
+    <string name="catalog_this_phone_creates_a_protected_encryption_identity_c2865640" formatted="false">This phone creates a protected encryption identity in Android Keystore.</string>
+    <string name="catalog_this_phone_creates_its_own_non_copyable_e6604888" formatted="false">Este teléfono crea su propia identidad, que no se puede copiar. Desde el PC solo se mueven las claves cifradas del historial de conversaciones.</string>
+    <string name="catalog_this_phone_has_not_made_its_encryption_0af536c0" formatted="false">Este teléfono aún no ha creado su clave de cifrado.</string>
+    <string name="catalog_this_phone_is_not_authorized_yet_finish_1ca6df93" formatted="false">Este teléfono aún no está autorizado. Termina “Añadir este teléfono” antes de poder leer el historial cifrado o revocar otro dispositivo de cifrado.</string>
+    <string name="catalog_this_phone_is_now_an_authorized_encryption_65fc8f05" formatted="false">Este teléfono ya es un dispositivo de cifrado autorizado.</string>
+    <string name="catalog_this_phone_was_removed_from_your_account_a066cfb1" formatted="false">Este teléfono se eliminó de tu cuenta desde otro dispositivo. Su clave ya no abre nada aquí y no puede leer mensajes cifrados nuevos hasta que lo añadas de nuevo.</string>
+    <string name="catalog_this_replaces_all_of_your_existing_recovery_1ee473c2" formatted="false">Esto reemplaza todos tus códigos de recuperación actuales.</string>
+    <string name="catalog_this_version_of_orangchat_is_no_longer_91b823d1" formatted="false">Esta versión de OrangChat ya no es compatible y no puede conectarse.</string>
+    <string name="catalog_those_don_t_match_5820ec54" formatted="false">No coinciden.</string>
+    <string name="catalog_throw_away_the_encryption_identity_on_this_e4c09f9c" formatted="false">Descarta la identidad de cifrado de esta cuenta y crea una nueva aquí. Se eliminan todos los demás dispositivos y tendrás que añadirlos de nuevo.</string>
+    <string name="catalog_tighter_spacing_between_messages_58e3bf31" formatted="false">Menos espacio entre mensajes.</string>
+    <string name="catalog_time_out_71ed8fda" formatted="false">Aplicar restricción temporal</string>
+    <string name="catalog_timed_out_edcd3630" formatted="false">Con restricción temporal</string>
+    <string name="catalog_timed_out_in_64510a0d" formatted="false">Con restricción temporal en</string>
+    <string name="catalog_to_lock_a_box_for_someone_your_a0458be1" formatted="false">Para cerrar una caja para alguien, tu teléfono necesita su candado y se lo pide a nuestros servidores. Así que la pregunta justa es: ¿qué ocurriría si te diéramos un candado que hemos hecho nosotros, guardáramos la clave y reenviáramos tus mensajes después?</string>
+    <string name="catalog_too_many_attempts_wait_a_moment_and_585a4cea" formatted="false">Too many attempts. Wait a moment and try again.</string>
+    <string name="catalog_transfer_code_scanned_fdb95e51" formatted="false">Código de transferencia escaneado</string>
+    <string name="catalog_turn_camera_off_97e661ba" formatted="false">Apagar cámara</string>
+    <string name="catalog_turn_camera_on_98c78a9e" formatted="false">Encender cámara</string>
+    <string name="catalog_turn_off_8807c2b3" formatted="false">Desactivar</string>
+    <string name="catalog_turn_off_two_factor_ec64c330" formatted="false">Desactivar autenticación en dos pasos</string>
+    <string name="catalog_turn_on_two_factor_2d7b5797" formatted="false">Activar autenticación en dos pasos</string>
+    <string name="catalog_turning_off_two_factor_leaves_your_password_7c7e274a" formatted="false">Desactivar la autenticación en dos pasos deja tu contraseña como única protección.</string>
+    <string name="catalog_two_answers_and_you_pick_how_much_c95f5a5c" formatted="false">Dos respuestas, y tú eliges cuánto quieres.</string>
+    <string name="catalog_two_factor_authentication_edfd617a" formatted="false">Autenticación en dos pasos</string>
+    <string name="catalog_two_factor_is_on_65e04e1d" formatted="false">La autenticación en dos pasos está activada</string>
+    <string name="catalog_type_1_s_to_confirm_700d64a1" formatted="true">Type %1$s to confirm</string>
+    <string name="catalog_type_to_search_this_server_s_messages_43fff226" formatted="false">Escribe para buscar en los mensajes de este servidor.</string>
+    <string name="catalog_type_to_search_your_cached_direct_messages_12182460" formatted="false">Escribe para buscar tus mensajes directos en caché.</string>
+    <string name="catalog_unknown_bc7819b3" formatted="false">Unknown</string>
+    <string name="catalog_unknown_device_7af13b29" formatted="false">Unknown device</string>
+    <string name="catalog_unknown_ip_70fef55a" formatted="false">IP desconocida</string>
+    <string name="catalog_until_1_s_5ec80ce8" formatted="true">Until %1$s</string>
+    <string name="catalog_update_now_c4cbac00" formatted="false">Actualizar ahora</string>
+    <string name="catalog_update_required_f440d880" formatted="false">Actualización obligatoria</string>
+    <string name="catalog_update_to_continue_27e65968" formatted="false"> Actualiza para continuar.</string>
+    <string name="catalog_updates_c76d1807" formatted="false">Updates</string>
+    <string name="catalog_upload_failed_ad0d0603" formatted="false">Error al subir</string>
+    <string name="catalog_uploading_d921a79a" formatted="false">Subiendo…</string>
+    <string name="catalog_use_passkey_a93f1827" formatted="false">Usar clave de acceso</string>
+    <string name="catalog_used_to_sign_in_there_s_no_51a10c36" formatted="false">Se usa para iniciar sesión. No hay correo de confirmación, así que compruébalo bien.</string>
+    <string name="catalog_user_settings_f2b85332" formatted="false">Ajustes de usuario</string>
+    <string name="catalog_v_1_s_2682e065" formatted="true">v%1$s</string>
+    <string name="catalog_verify_this_contact_ee09ef5c" formatted="false">Verificar este contacto</string>
+    <string name="catalog_version_1_s_build_2_s_e3646b68" formatted="true">Version %1$s (build %2$s)</string>
+    <string name="catalog_version_1_s_d2f210e6" formatted="true">Version %1$s</string>
+    <string name="catalog_version_1_s_is_available_e41095b0" formatted="true">Version %1$s is available</string>
+    <string name="catalog_version_2da600bf" formatted="false">Version</string>
+    <string name="catalog_version_and_build_3da1c1d8" formatted="false">Versión y compilación</string>
+    <string name="catalog_video_call_12d8c530" formatted="false">videollamada</string>
+    <string name="catalog_video_call_ad60f43c" formatted="false">Videollamada</string>
+    <string name="catalog_voice_call_329f832a" formatted="false">llamada de voz</string>
+    <string name="catalog_voice_connected_538f3e5c" formatted="false">Voz conectada</string>
+    <string name="catalog_waiting_for_the_pc_to_calculate_the_a6606f84" formatted="false">Esperando a que el PC calcule los dígitos de comparación…</string>
+    <string name="catalog_waiting_for_your_pc_b7329350" formatted="false">Esperando a tu PC…</string>
+    <string name="catalog_we_can_still_see_the_outside_of_c8bd071e" formatted="false">Aún podemos ver su exterior: quién lo envió, a quién fue, cuánto ocupaba y cuándo. No podemos ver qué hay dentro.</string>
+    <string name="catalog_we_emailed_you_a_sign_in_code_e283ce1e" formatted="false">Te enviamos por correo un código de inicio de sesión. Caduca en 10 minutos.</string>
+    <string name="catalog_welcome_back_b807833e" formatted="false">Te damos la bienvenida de nuevo</string>
+    <string name="catalog_what_happened_optional_9a81bdcf" formatted="false">¿Qué ocurrió? (opcional)</string>
+    <string name="catalog_what_happens_next_51ecc5b2" formatted="false">Qué ocurre después</string>
+    <string name="catalog_what_incoming_calls_sound_like_5a0f66a3" formatted="false">Cómo suenan las llamadas entrantes</string>
+    <string name="catalog_what_you_share_6998553a" formatted="false">Lo que compartes</string>
+    <string name="catalog_whatever_the_other_person_does_with_the_2d44e6c7" formatted="false">• Lo que haga la otra persona con el mensaje. Puede hacer una captura, guardarlo o enseñárselo a alguien. El cifrado detiene a extraños, no a los destinatarios.</string>
+    <string name="catalog_when_joining_a_call_9f17cb1a" formatted="false">Al entrar en una llamada</string>
+    <string name="catalog_where_you_re_signed_in_af00ae96" formatted="false">Dónde has iniciado sesión</string>
+    <string name="catalog_who_can_add_you_07e171de" formatted="false">Quién puede añadirte</string>
+    <string name="catalog_who_can_message_you_e9356e11" formatted="false">Quién puede escribirte</string>
+    <string name="catalog_who_you_talk_to_when_and_how_96d03db2" formatted="false">• Con quién hablas, cuándo y con qué frecuencia. Las cajas cerradas también deben ir dirigidas a alguien.</string>
+    <string name="catalog_with_someone_new_your_messages_wait_on_376112de" formatted="false">Con alguien nuevo, tus mensajes esperan en este teléfono, cerrados y sin enviarse, hasta que hayas visto su código en persona o leído los números el uno al otro durante una llamada.</string>
+    <string name="catalog_yes_leave_them_all_8520c6e8" formatted="false">Sí, salir de todos</string>
+    <string name="catalog_yes_that_s_them_03f398c0" formatted="false">Sí, es esa persona</string>
+    <string name="catalog_you_can_also_scan_with_the_system_35d7d733" formatted="false">También puedes escanear con la aplicación Cámara del sistema y tocar “Abrir OrangChat”.</string>
+    <string name="catalog_you_do_not_have_this_permission_d4f08a3c" formatted="false">No tienes este permiso.</string>
+    <string name="catalog_you_enter_a_fresh_2fa_code_on_2c858a05" formatted="false">You enter a fresh 2FA code on this authorized phone.</string>
+    <string name="catalog_you_example_com_50e2b46e" formatted="false">you@example.com</string>
+    <string name="catalog_you_ll_need_an_authenticator_app_such_60b7dd86" formatted="false">Necesitarás una aplicación de autenticación como Google Authenticator, 1Password o Aegis.</string>
+    <string name="catalog_you_re_on_the_latest_version_182b7c69" formatted="false">Tienes la última versión</string>
+    <string name="catalog_you_ve_been_invited_to_join_3a282347" formatted="false">Te han invitado a unirte</string>
+    <string name="catalog_you_ve_reached_the_limit_of_1_e25f813b" formatted="true">You\'ve reached the limit of %1$s passkeys. Remove one to add another.</string>
+    <string name="catalog_your_account_is_in_good_standing_1806a501" formatted="false">Tu cuenta está en buen estado</string>
+    <string name="catalog_your_account_is_locked_down_d129bf10" formatted="false">Tu cuenta está bloqueada</string>
+    <string name="catalog_your_current_password_6658f206" formatted="false">Tu contraseña actual</string>
+    <string name="catalog_your_direct_messages_are_locked_on_this_0bc36ae0" formatted="false">Tus mensajes directos se cierran en este teléfono antes de enviarse. La clave se creó aquí, vive en el hardware seguro del teléfono y no se puede copiar fuera: ni OrangChat ni quien tenga una copia de seguridad de la base de datos pueden hacerlo.</string>
+    <string name="catalog_your_messages_are_locked_before_they_leave_a431b93a" formatted="false">Tus mensajes se cierran antes de salir de este teléfono</string>
+    <string name="catalog_your_messages_stay_in_the_conversations_they_34246f3c" formatted="false">Tus mensajes se quedan en las conversaciones de las que forman parte y se muestran como enviados por un </string>
+    <string name="catalog_your_old_keys_are_gone_this_phone_be322585" formatted="false">Your old keys are gone. This phone has fresh ones.</string>
+    <string name="catalog_your_password_26d745d4" formatted="false">Tu contraseña</string>
+    <string name="catalog_your_phone_and_pc_show_six_digits_07bd977d" formatted="false">Your phone and PC show six digits. Compare them and cancel if they differ.</string>
+    <string name="catalog_your_phone_and_your_computer_each_make_ade9350c" formatted="false">Tu teléfono y tu ordenador crean cada uno su propia clave en el propio dispositivo la primera vez que usas el cifrado allí. Va a la parte del dispositivo diseñada para proteger claves y está hecha para que no se pueda extraer de nuevo: ni OrangChat, ni otra aplicación, ni tú. No hay nada que filtrar ni entregar.</string>
+    <string name="catalog_your_phone_puts_the_message_in_a_10625561" formatted="false">Tu teléfono mete el mensaje en una caja y la cierra. Cada dispositivo de la conversación, y solo esos, tiene una clave para esa caja. Nuestros servidores guardan y reenvían la caja cerrada.</string>
+</resources>
+
+

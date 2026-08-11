@@ -7,6 +7,7 @@ import { updateProfile } from "../auth/api";
 import { ConfirmIdentityDialog } from "../e2ee/ConfirmIdentityDialog";
 import { HowEncryptionWorksLink } from "../e2ee/HowEncryptionWorks";
 import { SectionTitle, Toggle } from "./controls";
+import { t } from "../../lib/i18n";
 
 const DM_OPTIONS: { value: DmPrivacy; label: string; hint: string }[] = [
   { value: "everyone", label: "Everyone", hint: "Anyone can start a conversation with you." },
@@ -77,10 +78,9 @@ export function PrivacyTab() {
   return (
     <div className="space-y-6">
       <div>
-        <SectionTitle>Direct messages</SectionTitle>
+        <SectionTitle>{t("privacyTab.directMessages")}</SectionTitle>
         <p className="mb-3 text-sm text-ink-secondary">
-          Who can open a new conversation with you. Conversations you're already in stay
-          open either way.
+          {t("privacyTab.whoCanOpenANewConversation")}
         </p>
         <ChoiceList
           value={user.dmPrivacy}
@@ -90,8 +90,8 @@ export function PrivacyTab() {
       </div>
 
       <div className="border-t border-border pt-5">
-        <SectionTitle>Friend requests</SectionTitle>
-        <p className="mb-3 text-sm text-ink-secondary">Who can send you a friend request.</p>
+        <SectionTitle>{t("privacyTab.friendRequests")}</SectionTitle>
+        <p className="mb-3 text-sm text-ink-secondary">{t("privacyTab.whoCanSendYouAFriend")}</p>
         <ChoiceList
           value={user.friendRequestPrivacy}
           options={REQUEST_OPTIONS}
@@ -100,11 +100,9 @@ export function PrivacyTab() {
       </div>
 
       <div className="space-y-3 border-t border-border pt-5">
-        <SectionTitle>Encryption</SectionTitle>
+        <SectionTitle>{t("privacyTab.encryption")}</SectionTitle>
         <p className="text-sm leading-relaxed text-ink-secondary">
-          Every direct message is encrypted, always, and that part cannot be switched off. This
-          setting is about how carefully the other person's lock is checked before your messages
-          are sent to it.
+          {t("privacyTab.everyDirectMessageIsEncryptedAlways")}
         </p>
         <Toggle
           checked={user.e2eeStrict}
@@ -113,54 +111,51 @@ export function PrivacyTab() {
           onChange={(e2eeStrict) =>
             e2eeStrict ? mutation.mutate({ e2eeStrict: true }) : setConfirmingOff(true)
           }
-          label="Check people before messaging them"
-          hint="With someone new, your messages wait on this device - locked, sent nowhere - until you have seen their code in person or read the numbers to each other on a call. Worth turning on only if you can realistically meet or ring the people you message."
+          label={t("privacyTab.checkPeopleBeforeMessagingThem")}
+          hint={t("privacyTab.withSomeoneNewYourMessagesWait")}
         />
         <p className="text-xs leading-relaxed text-ink-muted">
-          Leaving it off is not "unprotected". Every lock is still checked against a logbook that
-          can only be added to, which your own devices read on every start. The difference is
-          whether a swapped lock is stopped before it can be used, or caught right after. Group
-          conversations always send straight away, either way.
+          {t("privacyTab.leavingItOffIsNotUnprotected")}
         </p>
         <HowEncryptionWorksLink />
         <ConfirmIdentityDialog
           open={confirmingOff}
           onOpenChange={setConfirmingOff}
           onConfirmed={() => mutation.mutate({ e2eeStrict: false })}
-          title="Stop requiring verification"
+          title={t("privacyTab.stopRequiringVerification")}
           explanation="Turning this off lowers the bar for every new conversation, so it takes more than an open session."
         />
       </div>
 
       <div className="space-y-3 border-t border-border pt-5">
-        <SectionTitle>What you share</SectionTitle>
+        <SectionTitle>{t("privacyTab.whatYouShare")}</SectionTitle>
         <Toggle
           checked={user.typingIndicators}
           onChange={(typingIndicators) => mutation.mutate({ typingIndicators })}
-          label="Send typing indicators"
-          hint="Let people see “is typing…” while you write."
+          label={t("privacyTab.sendTypingIndicators")}
+          hint={t("privacyTab.letPeopleSeeIsTypingWhile")}
         />
       </div>
 
       <div className="space-y-3 border-t border-border pt-5">
-        <SectionTitle>Friend notifications</SectionTitle>
+        <SectionTitle>{t("privacyTab.friendNotifications")}</SectionTitle>
         <Toggle
           checked={user.notifyFriendRequests}
           onChange={(notifyFriendRequests) => mutation.mutate({ notifyFriendRequests })}
-          label="Friend requests"
-          hint="Notify me when someone sends me a friend request."
+          label={t("privacyTab.friendRequests")}
+          hint={t("privacyTab.notifyMeWhenSomeoneSendsMe")}
         />
         <Toggle
           checked={user.notifyFriendAccepted}
           onChange={(notifyFriendAccepted) => mutation.mutate({ notifyFriendAccepted })}
-          label="Requests accepted"
-          hint="Notify me when someone accepts my friend request."
+          label={t("privacyTab.requestsAccepted")}
+          hint={t("privacyTab.notifyMeWhenSomeoneAcceptsMy")}
         />
         <Toggle
           checked={user.notifyFriendOnline}
           onChange={(notifyFriendOnline) => mutation.mutate({ notifyFriendOnline })}
-          label="Friends coming online"
-          hint="Off by default - this fires for every friend each time they open the app."
+          label={t("privacyTab.friendsComingOnline")}
+          hint={t("privacyTab.offByDefaultThisFiresFor")}
         />
       </div>
 

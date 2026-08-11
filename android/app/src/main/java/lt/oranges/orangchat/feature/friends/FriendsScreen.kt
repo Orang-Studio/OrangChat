@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.friends
-
+import lt.oranges.orangchat.util.AppStrings
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -64,6 +66,7 @@ fun FriendsScreen(
     onMessage: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     var tab by remember { mutableIntStateOf(0) }
     var addName by remember { mutableStateOf("") }
@@ -88,7 +91,7 @@ fun FriendsScreen(
 
         when (tab) {
             0 -> LazyColumn(modifier = Modifier.fillMaxSize()) {
-                if (friends.isEmpty()) item { EmptyHint("No friends yet. Add someone from the Add tab.") }
+                if (friends.isEmpty()) item { EmptyHint(AppStrings.get(context, R.string.catalog_no_friends_yet_add_someone_from_the_7d7f43ab)) }
                 items(friends, key = { it.id }) { friend ->
                     FriendRow(
                         name = friend.user.displayName,
@@ -122,7 +125,7 @@ fun FriendsScreen(
                 }
             }
             1 -> LazyColumn(modifier = Modifier.fillMaxSize()) {
-                if (incoming.isEmpty() && outgoing.isEmpty()) item { EmptyHint("No pending requests.") }
+                if (incoming.isEmpty() && outgoing.isEmpty()) item { EmptyHint(AppStrings.get(context, R.string.catalog_no_pending_requests_aeedf949)) }
                 if (incoming.isNotEmpty()) item { SectionLabel("Incoming") }
                 items(incoming, key = { it.id }) { req ->
                     FriendRow(req.user.displayName, req.user.username, req.user.avatarUrl, null, trailing = {
@@ -138,12 +141,12 @@ fun FriendsScreen(
                 }
             }
             2 -> Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                Text("Add a friend by their username.", color = c.inkSecondary, fontSize = 14.sp)
+                Text(AppStrings.get(context, R.string.catalog_add_a_friend_by_their_username_c1584607), color = c.inkSecondary, fontSize = 14.sp)
                 Spacer(Modifier.height(12.dp))
                 OrangTextField(value = addName, onValueChange = { addName = it }, label = "Username", placeholder = "username")
                 Spacer(Modifier.height(12.dp))
                 OrangButton(
-                    text = "Send friend request",
+                    text = AppStrings.get(context, R.string.catalog_send_friend_request_c3ed810d),
                     onClick = { if (addName.isNotBlank()) { onAdd(addName.trim()); addName = "" } },
                     size = ButtonSize.Lg,
                     enabled = addName.isNotBlank(),

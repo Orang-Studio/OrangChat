@@ -9,6 +9,7 @@ import {
 import { Avatar } from '../../components/Avatar';
 import { formatFullTime, formatMessageTime } from '../../lib/time';
 import { callActions, useCallStore } from './callStore';
+import { t } from "../../lib/i18n";
 
 interface CallCardProps {
   message: Message;
@@ -125,11 +126,11 @@ export function CallCard({ message, notice, channel, selfId, profiles }: CallCar
           <DropdownMenuContent align="center">
             <DropdownMenuItem onSelect={() => void callActions.start(channel)}>
               <Phone aria-hidden className="size-4" />
-              Audio call
+              {t("callCard.audioCall")}
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => void callActions.start(channel, { video: true })}>
               <Video aria-hidden className="size-4" />
-              Video call
+              {t("callCard.videoCall")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -9,6 +9,17 @@ export const DEVICE_META = {
 } satisfies Record<PresenceDevice, { label: string; Icon: typeof Smartphone }>;
 const DEVICE_PRIORITY: PresenceDevice[] = ["desktop", "browser", "mobile"];
 
+/**
+ * The one client kind worth naming when there is only room for one badge.
+ *
+ * Ordered so "mobile" comes out only when it is the *whole* answer: someone
+ * signed in at their desk with a phone in their pocket is at their desk, and
+ * showing a phone there would be a worse answer than showing none.
+ */
+export function primaryDevice(devices?: PresenceDevice[]): PresenceDevice | undefined {
+  return DEVICE_PRIORITY.find((kind) => devices?.includes(kind));
+}
+
 /** Compact, accessible indicators for every client kind keeping a user online. */
 export function DeviceIndicators({
   status,

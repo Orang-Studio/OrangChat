@@ -7,6 +7,7 @@ import { authStoreActions, useAuthStore } from "../../stores/auth";
 import { updateProfile } from "../auth/api";
 import { getMyConnections } from "../connections/api";
 import { ProfileCard, type ProfileCardData } from "../profile/ProfileCard";
+import { t, tNodes } from "../../lib/i18n";
 
 function ProfileThemeCard({
   theme,
@@ -40,12 +41,12 @@ function ProfileThemeCard({
           {active ? (
             <>
               <Check aria-hidden className="size-4" />
-              Installed
+              {t("profileThemesTab.installed")}
             </>
           ) : (
             <>
               <Download aria-hidden className="size-4" />
-              Install
+              {t("profileThemesTab.install")}
             </>
           )}
         </Button>
@@ -85,13 +86,13 @@ export function ProfileThemesTab() {
 
   const preview = useMemo<ProfileCardData>(
     () => ({
-      displayName: user?.displayName ?? "Your name",
-      username: user?.username ?? "username",
+      displayName: user?.displayName ?? t("profileThemesTab.yourName"),
+      username: user?.username ?? t("profileThemesTab.username"),
       avatarUrl: user?.avatarUrl ?? null,
       bannerUrl: user?.bannerUrl ?? null,
       accentColor: user?.accentColor ?? null,
       pronouns: user?.pronouns ?? null,
-      bio: user?.bio ?? "This is how your About me reads with this theme applied.",
+      bio: user?.bio ?? t("profileThemesTab.thisIsHowYourAboutMe"),
       status: user?.status,
       createdAt: user?.createdAt,
       badges: user?.badges,
@@ -105,18 +106,18 @@ export function ProfileThemesTab() {
       <div className="flex items-start gap-3 rounded-lg border border-border bg-surface-1 px-3 py-2.5">
         <UserRound aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-secondary" />
         <p className="text-xs text-ink-secondary">
-          Profile themes style your public profile card - each preview below is your own card with
-          that theme applied. Every entry is reviewed through a pull request, bundled with the
-          client, and sanitized before it renders. Want to contribute?{" "}
-          <a
-            href="https://github.com/Orang-Studio/orangchat-marketplace"
-            target="_blank"
-            rel="noreferrer"
-            className="oc-link"
-          >
-            See the marketplace repo
-          </a>
-          .
+          {tNodes("profileThemesTab.intro", {
+            repo: (
+              <a
+                href="https://github.com/Orang-Studio/orangchat-marketplace"
+                target="_blank"
+                rel="noreferrer"
+                className="oc-link"
+              >
+                {t("profileThemesTab.seeTheMarketplaceRepo")}
+              </a>
+            ),
+          })}
         </p>
       </div>
 
@@ -126,8 +127,8 @@ export function ProfileThemesTab() {
           className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted"
         />
         <input
-          aria-label="Search profile themes"
-          placeholder="Search profile themes"
+          aria-label={t("profileThemesTab.searchProfileThemes")}
+          placeholder={t("profileThemesTab.searchProfileThemes")}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           className="h-10 w-full rounded-lg border border-border bg-surface-1 pl-9 pr-3 text-sm outline-none focus:border-primary"
@@ -136,7 +137,7 @@ export function ProfileThemesTab() {
 
       {filtered.length === 0 ? (
         <p className="py-8 text-center text-sm text-ink-muted">
-          No profile themes match “{query}”.
+          {t("profileThemesTab.noProfileThemesMatch", { query })}
         </p>
       ) : (
         <ul className="space-y-2">

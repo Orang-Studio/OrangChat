@@ -30,6 +30,7 @@ import { unreadActions } from "../../stores/unread";
 import { markChannelUnread } from "../unread/api";
 import { QUICK_EMOJIS } from "./emoji-data";
 import { deleteMessage, toggleReaction } from "./socket-actions";
+import { t } from "../../lib/i18n";
 
 const copyText = (text: string) => void navigator.clipboard?.writeText(text);
 
@@ -109,7 +110,7 @@ export function MessageContextMenu({
       <ContextMenuSub>
         <ContextMenuSubTrigger>
           <SmilePlus aria-hidden className="size-4" />
-          Add Reaction
+          {t("messageContextMenu.addReaction")}
         </ContextMenuSubTrigger>
         <ContextMenuSubContent className="min-w-0">
           <div className="grid grid-cols-4 gap-0.5">
@@ -129,25 +130,25 @@ export function MessageContextMenu({
       {isOwn && (
         <ContextMenuItem onSelect={onEdit}>
           <Pencil aria-hidden className="size-4" />
-          Edit Message
+          {t("messageContextMenu.editMessage")}
         </ContextMenuItem>
       )}
 
       <ContextMenuItem onSelect={onReply}>
         <Reply aria-hidden className="size-4" />
-        Reply
+        {t("messageContextMenu.reply")}
       </ContextMenuItem>
 
       <ContextMenuItem onSelect={onForward}>
         <Forward aria-hidden className="size-4" />
-        Forward
+        {t("messageContextMenu.forward")}
       </ContextMenuItem>
 
       {apps.length > 0 && (
         <ContextMenuSub>
           <ContextMenuSubTrigger>
             <Blocks aria-hidden className="size-4" />
-            Apps
+            {t("messageContextMenu.apps")}
           </ContextMenuSubTrigger>
           <ContextMenuSubContent>
             {apps.map(({ pluginId, pluginName, action, ctx }) => (
@@ -173,7 +174,7 @@ export function MessageContextMenu({
 
       <ContextMenuItem disabled={!message.content} onSelect={() => copyText(message.content)}>
         <Copy aria-hidden className="size-4" />
-        Copy Text
+        {t("messageContextMenu.copyText")}
       </ContextMenuItem>
 
       {canPin && (
@@ -181,12 +182,12 @@ export function MessageContextMenu({
           {message.pinned ? (
             <>
               <PinOff aria-hidden className="size-4" />
-              Unpin Message
+              {t("messageContextMenu.unpinMessage")}
             </>
           ) : (
             <>
               <Pin aria-hidden className="size-4" />
-              Pin Message
+              {t("messageContextMenu.pinMessage")}
             </>
           )}
         </ContextMenuItem>
@@ -200,23 +201,23 @@ export function MessageContextMenu({
         }
       >
         <MailQuestionMark aria-hidden className="size-4" />
-        Mark Unread
+        {t("messageContextMenu.markUnread")}
       </ContextMenuItem>
 
       <ContextMenuItem onSelect={() => copyText(messageLink)}>
         <LinkIcon aria-hidden className="size-4" />
-        Copy Message Link
+        {t("messageContextMenu.copyMessageLink")}
       </ContextMenuItem>
 
       <ContextMenuItem disabled={!message.content} onSelect={() => speak(message.content)}>
         <Volume2 aria-hidden className="size-4" />
-        Speak Message
+        {t("messageContextMenu.speakMessage")}
       </ContextMenuItem>
 
       {!isOwn && (
         <ContextMenuItem danger onSelect={onReport}>
           <Flag aria-hidden className="size-4" />
-          Report Message
+          {t("messageContextMenu.reportMessage")}
         </ContextMenuItem>
       )}
 
@@ -233,7 +234,7 @@ export function MessageContextMenu({
             }
           >
             <Trash2 aria-hidden className="size-4" />
-            Delete Message
+            {t("messageContextMenu.deleteMessage")}
           </ContextMenuItem>
         </>
       )}
@@ -241,7 +242,7 @@ export function MessageContextMenu({
       <ContextMenuSeparator />
       <ContextMenuItem onSelect={() => copyText(message.id)}>
         <Hash aria-hidden className="size-4" />
-        Copy Message ID
+        {t("messageContextMenu.copyMessageId")}
       </ContextMenuItem>
     </ContextMenuContent>
   );

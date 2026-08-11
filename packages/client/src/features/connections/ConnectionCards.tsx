@@ -1,6 +1,7 @@
 import { BadgeCheck } from "lucide-react";
 import type { Connection } from "@orangchat/shared";
 import { PROVIDER_LABEL, ProviderIcon } from "./icons";
+import { t } from "../../lib/i18n";
 
 /** Host of a link, for the subtitle on custom (unverified) entries. */
 function hostOf(url: string | null) {
@@ -29,7 +30,7 @@ function ConnectionCard({ connection }: { connection: Connection }) {
             // The check is the only signal separating an OAuth-proven account
             // from a link someone typed in, so it needs a real label.
             <BadgeCheck
-              aria-label="Verified"
+              aria-label={t("connectionCards.verified")}
               className="oc-pf-connection-verified size-3.5 shrink-0 text-primary"
             />
           )}
@@ -74,7 +75,7 @@ export function ConnectionCards({ connections }: { connections: Connection[] }) 
   return (
     <div className="oc-pf-connections oc-pf-section mt-2.5 border-t border-border pt-2.5">
       <h3 className="oc-pf-heading mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-        Connections
+        {t("connectionCards.connections")}
       </h3>
       <div className="oc-pf-connections-grid grid grid-cols-2 gap-1.5">
         {connections.map((c) => (

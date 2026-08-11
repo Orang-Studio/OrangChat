@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.feature.home
-
+import lt.oranges.orangchat.util.AppStrings
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -61,6 +63,7 @@ fun AuditLogScreen(
     onLoad: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     LaunchedEffect(Unit) { onLoad() }
 
@@ -76,7 +79,7 @@ fun AuditLogScreen(
                 modifier = Modifier.clickable(onClick = onBack).padding(4.dp),
             )
             Spacer(Modifier.width(4.dp))
-            Text("Audit log", color = c.ink, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text(AppStrings.get(context, R.string.catalog_audit_log_3cfc5f1c), color = c.ink, fontWeight = FontWeight.Bold, fontSize = 18.sp)
         }
         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(c.border))
 
@@ -89,7 +92,7 @@ fun AuditLogScreen(
             entries.isEmpty() -> Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
-            ) { Text("Nothing has been logged yet.", color = c.inkMuted, fontSize = 14.sp) }
+            ) { Text(AppStrings.get(context, R.string.catalog_nothing_has_been_logged_yet_e4080778), color = c.inkMuted, fontSize = 14.sp) }
 
             else -> LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
                 items(entries, key = { it.id }) { entry -> AuditRow(entry) }
@@ -100,11 +103,12 @@ fun AuditLogScreen(
 
 @Composable
 private fun AuditRow(entry: AuditLogEntry) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val changed = remember(entry.id) { entry.changes.keys.toList() }
     // A deleted account keeps its entries - the action still happened, and
     // dropping it would make the log lie by omission.
-    val actor = entry.actor?.displayName ?: "A deleted account"
+    val actor = entry.actor?.displayName ?: AppStrings.get(context, R.string.catalog_a_deleted_account_b1c40a9e)
 
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),

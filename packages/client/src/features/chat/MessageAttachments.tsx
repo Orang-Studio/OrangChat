@@ -25,6 +25,7 @@ import type { MediaContext } from './MediaSenderBar';
 import type { MediaOrigin } from './useMediaZoom';
 import { ImageContextMenu } from './ImageContextMenu';
 import { VideoLightbox } from './VideoLightbox';
+import { t } from "../../lib/i18n";
 
 /**
  * Attachments on a sent message. Two kinds, told apart by `expiresAt`: local
@@ -96,7 +97,7 @@ function Expired({ attachment }: { attachment: Attachment }) {
       <FileWarning aria-hidden className="size-4 shrink-0" />
       <div className="min-w-0">
         <p className="truncate text-xs font-medium line-through">{attachment.filename}</p>
-        <p className="text-[11px]">Expired - large files are only kept for an hour</p>
+        <p className="text-[11px]">{t("messageAttachments.expiredLargeFilesAreOnlyKept")}</p>
       </div>
     </div>
   );
@@ -114,14 +115,14 @@ function Flagged({ attachment, context }: { attachment: Attachment; context?: Me
     <div className="flex max-w-sm items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2 text-ink-muted">
       <ShieldAlert aria-hidden className="size-4 shrink-0 text-danger" />
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium text-ink">Inappropriate content</p>
+        <p className="text-xs font-medium text-ink">{t("messageAttachments.inappropriateContent")}</p>
         <p className="text-[11px]">
-          This image was hidden by automatic moderation
+          {t("messageAttachments.hiddenByModeration")}
           {attachment.filename && ` · ${attachment.filename}`}
         </p>
       </div>
       <Button type="button" size="sm" className="shrink-0" onClick={() => setRevealed(true)}>
-        Show
+        {t("messageAttachments.show")}
       </Button>
     </div>
   );
@@ -157,7 +158,7 @@ function SpoilerShade({ children }: { children: ReactNode }) {
       >
         <span className="flex items-center gap-1.5 rounded-full bg-surface-0/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-ink">
           <EyeOff aria-hidden className="size-3.5" />
-          Spoiler
+          {t("messageAttachments.spoiler")}
         </span>
       </button>
     </div>
@@ -439,7 +440,7 @@ function SealedBody({
         <FileWarning aria-hidden className="size-4 shrink-0" />
         <div className="min-w-0">
           <p className="truncate text-xs font-medium">{sealed.filename}</p>
-          <p className="text-[11px]">This file could not be decrypted on this device</p>
+          <p className="text-[11px]">{t("messageAttachments.thisFileCouldNotBeDecrypted")}</p>
         </div>
       </div>
     );
@@ -473,7 +474,7 @@ function SealedBody({
             )}
             <div className="flex-1" />
             <Button type="button" size="sm" onClick={() => setWanted(true)}>
-              Decrypt
+              {t("messageAttachments.decrypt")}
             </Button>
           </div>
         </div>
@@ -484,10 +485,12 @@ function SealedBody({
         <Lock aria-hidden className="size-4 shrink-0 text-ink-muted" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-medium text-ink">{sealed.filename}</p>
-          <p className="text-[11px] text-ink-muted">{formatBytes(sealed.size)} · encrypted</p>
+          <p className="text-[11px] text-ink-muted">
+            {t("messageAttachments.sizeEncrypted", { size: formatBytes(sealed.size) })}
+          </p>
         </div>
         <Button type="button" size="sm" className="shrink-0" onClick={() => setWanted(true)}>
-          Decrypt
+          {t("messageAttachments.decrypt")}
         </Button>
       </div>
     );
@@ -520,7 +523,9 @@ function SealedBody({
     return (
       <div className="flex max-w-sm items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2 text-ink-muted">
         <Lock aria-hidden className="size-4 shrink-0" />
-        <p className="truncate text-xs">Decrypting {sealed.filename}…</p>
+        <p className="truncate text-xs">
+          {t("messageAttachments.decryptingFile", { filename: sealed.filename })}
+        </p>
       </div>
     );
   }

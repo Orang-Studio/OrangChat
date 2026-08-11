@@ -16,6 +16,7 @@ import { formatFullTime } from "../../lib/time";
 import { useMyPermissions, useServerDetail } from "../servers/queries";
 import { createEvent, deleteEvent, setEventInterest, type EventInput } from "./api";
 import { removeEvent, upsertEvent, useEvents } from "./queries";
+import { t } from "../../lib/i18n";
 
 interface EventsDialogProps {
   server: Server;
@@ -80,34 +81,34 @@ function EventForm({
       }}
     >
       <TextField
-        label="Event name"
+        label={t("eventsDialog.eventName")}
         value={name}
         onChange={(e) => setName(e.target.value)}
         maxLength={100}
-        placeholder="Game night"
+        placeholder={t("eventsDialog.gameNight")}
         autoFocus
       />
 
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-ink-secondary">Description</label>
+        <label className="mb-1.5 block text-sm font-medium text-ink-secondary">{t("eventsDialog.description")}</label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           maxLength={1000}
           rows={3}
-          placeholder="What's happening?"
+          placeholder={t("eventsDialog.whatsHappening")}
           className="w-full resize-none rounded-lg border border-border bg-surface-1 px-3 py-2 text-sm"
         />
       </div>
 
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-ink-secondary">Where</label>
+        <label className="mb-1.5 block text-sm font-medium text-ink-secondary">{t("eventsDialog.where")}</label>
         <select
           value={channelId}
           onChange={(e) => setChannelId(e.target.value)}
           className="h-10 w-full rounded-lg border border-border bg-surface-1 px-2 text-sm"
         >
-          <option value="">Somewhere else</option>
+          <option value="">{t("eventsDialog.somewhereElse")}</option>
           {channels.map((channel) => (
             <option key={channel.id} value={channel.id}>
               {channel.type === "voice" ? "🔊" : "#"} {channel.name}
@@ -117,11 +118,11 @@ function EventForm({
         {!channelId && (
           <div className="mt-2">
             <TextField
-              label="Location"
+              label={t("eventsDialog.location")}
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               maxLength={100}
-              placeholder="A link, an address, anywhere"
+              placeholder={t("eventsDialog.aLinkAnAddressAnywhere")}
             />
           </div>
         )}
@@ -129,13 +130,13 @@ function EventForm({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <TextField
-          label="Starts"
+          label={t("eventsDialog.starts")}
           type="datetime-local"
           value={startsAt}
           onChange={(e) => setStartsAt(e.target.value)}
         />
         <TextField
-          label="Ends (optional)"
+          label={t("eventsDialog.endsOptional")}
           type="datetime-local"
           value={endsAt}
           onChange={(e) => setEndsAt(e.target.value)}
@@ -150,10 +151,10 @@ function EventForm({
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="secondary" onClick={onDone}>
-          Cancel
+          {t("common.cancel")}
         </Button>
         <Button type="submit" loading={mutation.isPending} disabled={!valid}>
-          Create event
+          {t("eventsDialog.createEvent")}
         </Button>
       </div>
     </form>
@@ -295,13 +296,13 @@ export function EventsDialog({
             {canManage && (
               <Button type="button" size="sm" onClick={() => setCreating(true)}>
                 <CalendarPlus aria-hidden className="size-4" />
-                Create event
+                {t("eventsDialog.createEvent")}
               </Button>
             )}
             {isLoading ? (
-              <p className="py-6 text-center text-sm text-ink-muted">Loading events…</p>
+              <p className="py-6 text-center text-sm text-ink-muted">{t("eventsDialog.loadingEvents")}</p>
             ) : upcoming.length === 0 ? (
-              <p className="py-6 text-center text-sm text-ink-muted">Nothing scheduled yet.</p>
+              <p className="py-6 text-center text-sm text-ink-muted">{t("eventsDialog.nothingScheduledYet")}</p>
             ) : (
               <ul className="max-h-[60vh] space-y-2 overflow-y-auto">
                 {upcoming.map((event) => (

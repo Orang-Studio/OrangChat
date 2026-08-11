@@ -4,6 +4,7 @@ import { RefreshCw, Smartphone } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { qrPoll, qrStart } from "./api";
 import { applySession } from "./session";
+import { t } from "../../lib/i18n";
 
 /** The QR encodes a deep link the app recognises, not a bare token. */
 const linkFor = (token: string) => `orangchat://login?token=${token}`;
@@ -77,7 +78,7 @@ export function QrLogin({ onBack }: { onBack: () => void }) {
       <div className="relative flex size-52 items-center justify-center rounded-xl bg-white p-2">
         {svg ? (
           <div
-            aria-label="Sign-in QR code"
+            aria-label={t("qrLogin.signInQrCode")}
             className="size-full [&>svg]:size-full"
             dangerouslySetInnerHTML={{ __html: svg }}
           />
@@ -86,10 +87,10 @@ export function QrLogin({ onBack }: { onBack: () => void }) {
         )}
         {phase === "expired" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-xl bg-black/70 text-white">
-            <p className="text-sm font-medium">Code expired</p>
+            <p className="text-sm font-medium">{t("qrLogin.codeExpired")}</p>
             <Button type="button" size="sm" variant="secondary" onClick={() => void begin()}>
               <RefreshCw aria-hidden className="size-4" />
-              New code
+              {t("qrLogin.newCode")}
             </Button>
           </div>
         )}
@@ -99,26 +100,26 @@ export function QrLogin({ onBack }: { onBack: () => void }) {
         {phase === "scanned" ? (
           <p className="flex items-center justify-center gap-1.5 text-sm font-medium text-primary">
             <Smartphone aria-hidden className="size-4" />
-            Confirm on your phone
+            {t("qrLogin.confirmOnYourPhone")}
           </p>
         ) : (
-          <p className="text-sm font-medium">Scan with the OrangChat app</p>
+          <p className="text-sm font-medium">{t("qrLogin.scanWithTheOrangchatApp")}</p>
         )}
         <p className="text-xs text-ink-secondary">
-          Open OrangChat on your phone, and point it at this code to sign in here.
+          {t("qrLogin.openOrangchatOnYourPhoneAnd")}
         </p>
         {phase === "error" && (
           <p role="alert" className="text-xs text-danger">
-            Could not start QR sign-in.{" "}
+            {t("qrLogin.couldNotStartQrSignIn")}{" "}
             <button type="button" className="underline" onClick={() => void begin()}>
-              Try again
+              {t("qrLogin.tryAgain")}
             </button>
           </p>
         )}
       </div>
 
       <button type="button" onClick={onBack} className="text-sm text-ink-secondary hover:underline">
-        Use email and password instead
+        {t("qrLogin.useEmailAndPasswordInstead")}
       </button>
     </div>
   );

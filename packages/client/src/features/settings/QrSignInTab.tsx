@@ -4,6 +4,7 @@ import { QR_KIND } from '@orangchat/shared';
 import { Button } from '../../components/ui/Button';
 import { qrApprove, qrScan } from '../auth/api';
 import { QrScanner } from '../e2ee/QrScanner';
+import { t } from "../../lib/i18n";
 
 function tokenFrom(raw: string): string {
   const url = new URL(raw);
@@ -57,9 +58,9 @@ export function QrSignInTab() {
       <div className="space-y-4">
         <div className="rounded-xl border border-success/30 bg-success/10 p-4 text-center">
           <Check aria-hidden className="mx-auto size-7 text-success" />
-          <p className="mt-2 text-sm font-medium">Sign-in approved</p>
+          <p className="mt-2 text-sm font-medium">{t("qrSignInTab.signInApproved")}</p>
           <p className="mt-1 text-xs text-ink-secondary">
-            The other device can now finish signing in.
+            {t("qrSignInTab.theOtherDeviceCanNowFinish")}
           </p>
         </div>
         <Button
@@ -69,7 +70,7 @@ export function QrSignInTab() {
           onClick={() => setApproved(false)}
         >
           <ScanLine aria-hidden className="size-4" />
-          Scan another code
+          {t("qrSignInTab.scanAnotherCode")}
         </Button>
       </div>
     );
@@ -80,10 +81,9 @@ export function QrSignInTab() {
       <div className="space-y-4">
         <div className="rounded-xl border border-border bg-surface-1 p-4">
           <ShieldCheck aria-hidden className="size-6 text-primary" />
-          <p className="mt-2 text-sm font-medium">Approve this sign-in?</p>
+          <p className="mt-2 text-sm font-medium">{t("qrSignInTab.approveThisSignIn")}</p>
           <p className="mt-1 text-xs text-ink-secondary">
-            Only approve a code shown on a device you trust. This will sign that device into your
-            OrangChat account.
+            {t("qrSignInTab.onlyApproveACodeShownOn")}
           </p>
         </div>
         {error && (
@@ -94,7 +94,7 @@ export function QrSignInTab() {
         <div className="flex gap-2">
           <Button type="button" className="flex-1" loading={approving} onClick={approve}>
             <ShieldCheck aria-hidden className="size-4" />
-            Approve sign-in
+            {t("qrSignInTab.approveSignIn")}
           </Button>
           <Button
             type="button"
@@ -105,7 +105,7 @@ export function QrSignInTab() {
               setError(null);
             }}
           >
-            Cancel
+            {t("common.cancel")}
           </Button>
         </div>
       </div>
@@ -115,14 +115,13 @@ export function QrSignInTab() {
   return (
     <div className="space-y-4">
       <div>
-        <p className="text-sm font-medium">Scan a sign-in code</p>
+        <p className="text-sm font-medium">{t("qrSignInTab.scanASignInCode")}</p>
         <p className="mt-1 text-sm text-ink-secondary">
-          Point your camera at the QR code on the device you want to sign in. You will review and
-          approve the request before it is allowed.
+          {t("qrSignInTab.pointYourCameraAtTheQr")}
         </p>
       </div>
       <QrScanner key={scannerKey} expect={QR_KIND.signIn} onScan={scan} />
-      {approving && <p className="text-xs text-ink-muted">Checking sign-in code…</p>}
+      {approving && <p className="text-xs text-ink-muted">{t("qrSignInTab.checkingSignInCode")}</p>}
       {error && (
         <p role="alert" className="text-sm text-danger">
           {error}

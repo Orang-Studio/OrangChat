@@ -3,6 +3,7 @@ import { useConnectionStore } from "../../stores/connection";
 import { panelActions } from "../../stores/panels";
 import { LogoMark } from "../../components/LogoMark";
 import { useServers } from "../servers/queries";
+import { t } from "../../lib/i18n";
 
 /** The `/app` home pane inside the shell - greets and points at the rail. */
 export function HomePane() {
@@ -14,14 +15,14 @@ export function HomePane() {
       <button
         type="button"
         onClick={panelActions.openLeft}
-        aria-label="Open navigation"
+        aria-label={t("homePane.openNavigation")}
         className="absolute left-2 top-2 rounded-lg p-2 text-ink-secondary transition-colors hover:bg-surface-3 hover:text-ink md:hidden"
       >
         <Menu aria-hidden className="size-5" />
       </button>
       <LogoMark className="size-20 drop-shadow-lg" />
       <h1 className="text-2xl font-bold tracking-tight">
-        Orang<span className="text-primary">Chat</span>
+        {t("homePane.orang")}<span className="text-primary">{t("homePane.chat")}</span>
       </h1>
       <p className="max-w-sm text-sm text-ink-secondary">
         {servers && servers.length > 0

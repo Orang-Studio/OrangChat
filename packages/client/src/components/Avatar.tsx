@@ -1,6 +1,6 @@
 import type { PresenceStatus, User } from "@orangchat/shared";
 import { cn } from "../lib/cn";
-import { DEVICE_META } from "./DeviceIndicators";
+import { DEVICE_META, primaryDevice } from "./DeviceIndicators";
 import { StatusIcon } from "./StatusIcon";
 
 export const STATUS_LABEL: Record<PresenceStatus, string> = {
@@ -23,9 +23,12 @@ interface AvatarProps {
 
 /** User avatar with initial fallback and optional presence dot. */
 export function Avatar({ user, status, className, imgClassName, fallbackClassName }: AvatarProps) {
-  const device = user.devices?.find((kind) => kind === "desktop")
-    ?? user.devices?.find((kind) => kind === "browser")
-    ?? user.devices?.find((kind) => kind === "mobile");
+  const device = primaryDevice(user.devices);
+  const label = status
+    ? device
+      ? `${STATUS_LABEL[status]} · ${DEVICE_META[device].label}`
+      : STATUS_LABEL[status]
+    : "";
   return (
     // rounded-full on the wrapper too: it has no fill of its own, but a ring or
     // outline from a caller follows the wrapper's radius rather than the image's,
@@ -51,12 +54,21 @@ export function Avatar({ user, status, className, imgClassName, fallbackClassNam
       {status ? (
         // The badge scales with the avatar - a 16px dot pinned to an 80px
         // profile avatar reads as a rendering mistake - and the surface-2 disc
-        // behind it is what shows through the shape's cut-outs.
+        // behind it is what shows through the shape's cut-outs. The floor is
+        // only there to keep the shape legible; anything higher and it stops
+        // scaling on the small avatars (the 28px DM header one) entirely.
         <span
-          title={device ? `${STATUS_LABEL[status]} · ${DEVICE_META[device].label}` : STATUS_LABEL[status]}
-          className="absolute -bottom-0.5 -right-0.5 flex size-[38%] min-h-4 min-w-4 items-center justify-center rounded-full bg-surface-2"
+          title={label}
+          className="absolute -bottom-0.5 -right-0.5 flex size-[34%] min-h-2.5 min-w-2.5 items-center justify-center rounded-full bg-surface-2"
         >
-          <StatusIcon status={status} className="size-[75%]" label={STATUS_LABEL[status]} />
+          <StatusIcon
+            status={status}
+            mobile={device === "mobile"}
+            // The phone is narrower than the disc, so it needs the extra room
+            // to end up the same visual weight inside the same backdrop.
+            className={device === "mobile" ? "size-[92%]" : "size-[75%]"}
+            label={label}
+          />
         </span>
       ) : null}
     </span>

@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import type { Server } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
+import { useStillFrame } from "../../lib/stillFrame";
 import { LogoMark } from "../../components/LogoMark";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { ContextMenu, ContextMenuTrigger } from "../../components/ui/ContextMenu";
@@ -23,6 +24,7 @@ import { initials } from "./ServerIcon";
 import { AddServerDialog } from "./AddServerDialog";
 import { ServerContextMenu } from "./ServerContextMenu";
 import { ServerSettingsDialog } from "./ServerSettingsDialog";
+import { t } from "../../lib/i18n";
 
 /** Which of the rail's server dialogs is open, if any. */
 type ServerDialog =
@@ -67,14 +69,14 @@ function NicknameDialog({
       open={open}
       onOpenChange={(next) => !next && onClose()}
       title={`Your profile in ${server.name}`}
-      description="Members of this server see this nickname instead of your display name. Leave it empty to use your display name."
-      confirmLabel="Save"
+      description={t("serverRail.membersOfThisServerSeeThis")}
+      confirmLabel={t("common.save")}
       loading={mutation.isPending}
       error={mutation.error?.message}
       onConfirm={() => mutation.mutate()}
     >
       <TextField
-        label="Nickname"
+        label={t("serverRail.nickname")}
         value={nickname}
         onChange={(e) => setValue(e.target.value)}
         maxLength={32}
@@ -87,6 +89,7 @@ function NicknameDialog({
 function ServerRailIcon({ server, active }: { server: Server; active: boolean }) {
   const { unread, mentionCount } = useServerUnread(server.id);
   const showUnread = unread && !active;
+  const stillIcon = useStillFrame(server.iconUrl);
   const client = useQueryClient();
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<ServerDialog>(null);
@@ -128,7 +131,10 @@ function ServerRailIcon({ server, active }: { server: Server; active: boolean })
                 )}
                 {server.iconUrl ? (
                   <img
-                    src={server.iconUrl}
+                    // An animated icon plays only for the server you are in;
+                    // the rest hold their first frame. Null whenever a still
+                    // could not be taken, which lands back on the live URL.
+                    src={(!active && stillIcon) || server.iconUrl}
                     alt={server.name}
                     className={cn(
                       "size-12 rounded-squircle object-cover ring-2 transition-all",
@@ -203,8 +209,8 @@ function ServerRailIcon({ server, active }: { server: Server; active: boolean })
         open={dialog === "leave"}
         onOpenChange={(open) => !open && close()}
         title={`Leave ${server.name}?`}
-        description="You'll need a new invite to get back in."
-        confirmLabel="Leave server"
+        description={t("serverRail.youllNeedANewInviteTo")}
+        confirmLabel={t("serverRail.leaveServer")}
         danger
         loading={leave.isPending}
         error={leave.error?.message}
@@ -238,15 +244,15 @@ export function ServerRail() {
 
   return (
     <nav
-      aria-label="Servers"
+      aria-label={t("serverRail.servers")}
       className="flex w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-surface-0 px-3 py-3"
     >
-      <Tooltip label="Home">
+      <Tooltip label={t("serverRail.home")}>
         <Link to="/app" className="relative flex justify-center">
           <LogoMark className="size-12 transition-transform hover:scale-105" />
           <UnreadBadge
             count={dmUnread}
-            label="unread direct messages"
+            label={t("serverRail.unreadDirectMessages")}
             className="absolute -bottom-0.5 -right-0.5 z-10 rounded-full border-2 border-surface-0"
           />
         </Link>
@@ -257,14 +263,14 @@ export function ServerRail() {
         <ServerRailIcon key={server.id} server={server} active={server.id === serverId} />
       ))}
 
-      <Tooltip label="Add a server">
+      <Tooltip label={t("serverRail.addAServer")}>
         <button
           type="button"
           onClick={() => setAddOpen(true)}
           className="flex size-12 shrink-0 items-center justify-center rounded-squircle bg-surface-3 text-success transition-colors hover:bg-success hover:text-surface-0"
         >
           <Plus aria-hidden className="size-6" />
-          <span className="sr-only">Add a server</span>
+          <span className="sr-only">{t("serverRail.addAServer")}</span>
         </button>
       </Tooltip>
 

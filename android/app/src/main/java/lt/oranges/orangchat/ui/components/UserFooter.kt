@@ -1,5 +1,7 @@
 package lt.oranges.orangchat.ui.components
-
+import lt.oranges.orangchat.util.AppStrings
+import androidx.compose.ui.platform.LocalContext
+import lt.oranges.orangchat.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -30,6 +32,7 @@ fun UserFooter(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     Row(
         modifier = modifier
@@ -56,7 +59,7 @@ fun UserFooter(
         }
         Icon(
             Icons.Default.Settings,
-            contentDescription = "User settings",
+            contentDescription = AppStrings.get(context, R.string.catalog_user_settings_f2b85332),
             tint = c.inkMuted,
             modifier = Modifier
                 .minimumInteractiveComponentSize()

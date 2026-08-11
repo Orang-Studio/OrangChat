@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { LogoMark } from "../../components/LogoMark";
+import { t } from "../../lib/i18n";
 
 interface AuthLayoutProps {
   title: string;
@@ -14,7 +15,7 @@ export function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProp
       <div className="flex items-center gap-3">
         <LogoMark className="size-12" />
         <span className="text-2xl font-bold tracking-tight">
-          Orang<span className="text-primary">Chat</span>
+          {t("authLayout.orang")}<span className="text-primary">{t("authLayout.chat")}</span>
         </span>
       </div>
 
@@ -25,11 +26,11 @@ export function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProp
       </section>
 
       {footer && <div className="text-sm text-ink-secondary">{footer}</div>}
-      <nav aria-label="Legal" className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-ink-muted">
-        <a href="/terms" className="hover:text-ink">Terms</a>
-        <a href="/privacy" className="hover:text-ink">Privacy</a>
-        <a href="/cookies" className="hover:text-ink">Cookies</a>
-        <a href="/guidelines" className="hover:text-ink">Guidelines</a>
+      <nav aria-label={t("authLayout.legal")} className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-ink-muted">
+        <a href="/terms" className="hover:text-ink">{t("authLayout.terms")}</a>
+        <a href="/privacy" className="hover:text-ink">{t("authLayout.privacy")}</a>
+        <a href="/cookies" className="hover:text-ink">{t("authLayout.cookies")}</a>
+        <a href="/guidelines" className="hover:text-ink">{t("authLayout.guidelines")}</a>
       </nav>
     </main>
   );

@@ -26,6 +26,7 @@ import { useAuthStore } from "../../stores/auth";
 import { createRole, deleteRole, listBans, unbanMember, updateRole } from "../roles/api";
 import { deleteServer, updateServer } from "./api";
 import { serverKeys, useMyPermissions } from "./queries";
+import { t } from "../../lib/i18n";
 
 interface ServerSettingsDialogProps {
   server: Server;
@@ -86,14 +87,14 @@ function OverviewTab({ server, onClosed }: { server: Server; onClosed: () => voi
   return (
     <div className="space-y-4">
       <TextField
-        label="Server name"
+        label={t("serverSettingsDialog.serverName")}
         value={name}
         onChange={(e) => setName(e.target.value)}
         maxLength={100}
         disabled={!canManage}
       />
       <ImageField
-        label="Server icon"
+        label={t("serverSettingsDialog.serverIcon")}
         kind="avatar"
         rounded="md"
         value={iconUrl}
@@ -102,22 +103,22 @@ function OverviewTab({ server, onClosed }: { server: Server; onClosed: () => voi
           setIconUrl(url);
           setIconPreview(preview);
         }}
-        hint="Leave empty for initials."
+        hint={t("serverSettingsDialog.leaveEmptyForInitials")}
         disabled={!canManage}
       />
       <label className="block">
-        <span className="mb-1.5 block text-sm font-medium text-ink-secondary">Description</span>
+        <span className="mb-1.5 block text-sm font-medium text-ink-secondary">{t("serverSettingsDialog.description")}</span>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           maxLength={1024}
           rows={3}
           disabled={!canManage}
-          placeholder="What is this server about?"
+          placeholder={t("serverSettingsDialog.whatIsThisServerAbout")}
           className="w-full resize-y rounded-lg border border-border bg-surface-1 px-3 py-2 text-sm text-ink placeholder:text-ink-muted hover:border-border-strong disabled:opacity-60"
         />
         <span className="mt-1 block text-xs text-ink-muted">
-          Shown on the invite page. {description.length}/1024
+          {t("serverSettingsDialog.shownOnInvitePage", { count: description.length })}
         </span>
       </label>
       {saveMutation.isError && (
@@ -131,25 +132,25 @@ function OverviewTab({ server, onClosed }: { server: Server; onClosed: () => voi
           disabled={!name.trim()}
           onClick={() => saveMutation.mutate()}
         >
-          Save changes
+          {t("serverSettingsDialog.saveChanges")}
         </Button>
       )}
 
       {isOwner && (
         <div className="rounded-xl border border-danger/40 p-4">
-          <p className="font-semibold text-danger">Danger zone</p>
+          <p className="font-semibold text-danger">{t("serverSettingsDialog.dangerZone")}</p>
           <p className="mt-1 text-sm text-ink-secondary">
-            Deleting a server removes all its channels and messages. This cannot be undone.
+            {t("serverSettingsDialog.deletingAServerRemovesAllIts")}
           </p>
           <Button variant="danger" size="sm" className="mt-3" onClick={() => setDeleteOpen(true)}>
-            Delete server
+            {t("serverSettingsDialog.deleteServer")}
           </Button>
           <ConfirmDialog
             open={deleteOpen}
             onOpenChange={setDeleteOpen}
             title={`Delete ${server.name}?`}
-            description="This permanently deletes the server, its channels, and every message."
-            confirmLabel="Delete forever"
+            description={t("serverSettingsDialog.thisPermanentlyDeletesTheServerIts")}
+            confirmLabel={t("serverSettingsDialog.deleteForever")}
             danger
             loading={deleteMutation.isPending}
             error={deleteMutation.error?.message}
@@ -200,14 +201,14 @@ function RoleEditor({ server, role }: { server: Server; role: Role }) {
         <div className="flex items-end gap-3">
           <div className="flex-1">
             <TextField
-              label="Role name"
+              label={t("serverSettingsDialog.roleName")}
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={100}
             />
           </div>
           <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-secondary">
-            Color
+            {t("serverSettingsDialog.color")}
             <input
               type="color"
               value={color}
@@ -255,12 +256,12 @@ function RoleEditor({ server, role }: { server: Server; role: Role }) {
 
       <div className="flex items-center gap-2">
         <Button size="sm" loading={saveMutation.isPending} onClick={() => saveMutation.mutate()}>
-          Save role
+          {t("serverSettingsDialog.saveRole")}
         </Button>
         {!isEveryone && (
           <Button variant="ghost" size="sm" className="text-danger hover:text-danger" onClick={() => setDeleteOpen(true)}>
             <Trash2 aria-hidden className="size-4" />
-            Delete
+            {t("common.delete")}
           </Button>
         )}
       </div>
@@ -269,8 +270,8 @@ function RoleEditor({ server, role }: { server: Server; role: Role }) {
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         title={`Delete ${role.name}?`}
-        description="Members lose this role immediately."
-        confirmLabel="Delete role"
+        description={t("serverSettingsDialog.membersLoseThisRoleImmediately")}
+        confirmLabel={t("serverSettingsDialog.deleteRole")}
         danger
         loading={deleteMutation.isPending}
         onConfirm={() => deleteMutation.mutate()}
@@ -304,7 +305,7 @@ function RolesTab({ server, roles }: { server: Server; roles: Role[] }) {
           onClick={() => createMutation.mutate()}
         >
           <Plus aria-hidden className="size-4" />
-          New role
+          {t("serverSettingsDialog.newRole")}
         </Button>
         {sorted.map((role) => (
           <button
@@ -330,7 +331,7 @@ function RolesTab({ server, roles }: { server: Server; roles: Role[] }) {
         {selected ? (
           <RoleEditor key={selected.id} server={server} role={selected} />
         ) : (
-          <p className="text-sm text-ink-muted">No roles yet.</p>
+          <p className="text-sm text-ink-muted">{t("serverSettingsDialog.noRolesYet")}</p>
         )}
       </div>
     </div>
@@ -351,7 +352,7 @@ function BansTab({ server }: { server: Server }) {
   });
 
   if (bansQuery.isLoading) {
-    return <p className="py-6 text-center text-sm text-ink-muted">Loading bans…</p>;
+    return <p className="py-6 text-center text-sm text-ink-muted">{t("serverSettingsDialog.loadingBans")}</p>;
   }
   if (bansQuery.isError) {
     return (
@@ -363,7 +364,7 @@ function BansTab({ server }: { server: Server }) {
 
   const bans = bansQuery.data ?? [];
   if (bans.length === 0) {
-    return <p className="py-6 text-center text-sm text-ink-muted">No banned users.</p>;
+    return <p className="py-6 text-center text-sm text-ink-muted">{t("serverSettingsDialog.noBannedUsers")}</p>;
   }
 
   return (
@@ -383,7 +384,7 @@ function BansTab({ server }: { server: Server }) {
             loading={unbanMutation.isPending && unbanMutation.variables === ban.user.id}
             onClick={() => unbanMutation.mutate(ban.user.id)}
           >
-            Unban
+            {t("serverSettingsDialog.unban")}
           </Button>
         </li>
       ))}
@@ -407,15 +408,15 @@ export function ServerSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Server settings" className="max-w-2xl">
+      <DialogContent title={t("serverSettingsDialog.serverSettings")} className="max-w-2xl">
         <Tabs defaultValue="overview">
           <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            {canRoles && <TabsTrigger value="roles">Roles</TabsTrigger>}
-            {canExpressions && <TabsTrigger value="emojis">Emoji</TabsTrigger>}
-            {canExpressions && <TabsTrigger value="sounds">Sounds</TabsTrigger>}
-            {canBans && <TabsTrigger value="bans">Bans</TabsTrigger>}
-            {canAudit && <TabsTrigger value="audit">Audit log</TabsTrigger>}
+            <TabsTrigger value="overview">{t("serverSettingsDialog.overview")}</TabsTrigger>
+            {canRoles && <TabsTrigger value="roles">{t("serverSettingsDialog.roles")}</TabsTrigger>}
+            {canExpressions && <TabsTrigger value="emojis">{t("serverSettingsDialog.emoji")}</TabsTrigger>}
+            {canExpressions && <TabsTrigger value="sounds">{t("serverSettingsDialog.sounds")}</TabsTrigger>}
+            {canBans && <TabsTrigger value="bans">{t("serverSettingsDialog.bans")}</TabsTrigger>}
+            {canAudit && <TabsTrigger value="audit">{t("serverSettingsDialog.auditLog")}</TabsTrigger>}
           </TabsList>
           <TabsContent value="overview" className="pt-4">
             <OverviewTab server={server} onClosed={() => onOpenChange(false)} />

@@ -1,5 +1,6 @@
 package lt.oranges.orangchat.feature.transfer
-
+import lt.oranges.orangchat.util.AppStrings
+import lt.oranges.orangchat.R
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -112,7 +113,7 @@ private fun OrangQrScanner(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         hasPermission = granted
-        if (!granted) scanError = "Camera access is needed to scan the code on your PC."
+        if (!granted) scanError = AppStrings.get(context, R.string.catalog_camera_access_is_needed_to_scan_the_dcfe064f)
     }
 
     LaunchedEffect(Unit) {
@@ -123,11 +124,11 @@ private fun OrangQrScanner(
         Text(
             when (purpose) {
                 QrScanPurpose.TRANSFER_INVITATION ->
-                    "Point this phone at the QR code shown in OrangChat on your PC."
+                    AppStrings.get(context, R.string.catalog_point_this_phone_at_the_qr_code_cea07275)
                 QrScanPurpose.TRANSFER_DEVICE ->
-                    "Point this phone at the transfer code shown on the new device."
+                    AppStrings.get(context, R.string.catalog_point_this_phone_at_the_transfer_code_d6baae81)
                 QrScanPurpose.CONTACT_VERIFY ->
-                    "Ask them to show their verification QR, then fit it inside the frame."
+                    AppStrings.get(context, R.string.catalog_ask_them_to_show_their_verification_qr_630e919c)
             },
             color = c.inkSecondary,
             fontSize = 14.sp,
@@ -178,7 +179,7 @@ private fun OrangQrScanner(
                             analyzer,
                         )
                     }.onFailure {
-                        scanError = "The camera could not start. You can retry or use the system Camera app."
+                        scanError = AppStrings.get(context, R.string.catalog_the_camera_could_not_start_you_can_a181859b)
                     }
                 }
                 providerFuture.addListener(startCamera, ContextCompat.getMainExecutor(context))
@@ -212,7 +213,7 @@ private fun OrangQrScanner(
                     )
                 }
                 Text(
-                    "Hold steady - scanning happens automatically",
+                    AppStrings.get(context, R.string.catalog_hold_steady_scanning_happens_automatically_ae832ed2),
                     color = Color.White,
                     fontSize = 12.sp,
                     modifier = Modifier
@@ -230,17 +231,17 @@ private fun OrangQrScanner(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(
-                    "Allow camera access to scan without leaving OrangChat.",
+                    AppStrings.get(context, R.string.catalog_allow_camera_access_to_scan_without_leaving_ca7cd21f),
                     color = c.inkSecondary,
                     fontSize = 14.sp,
                 )
                 OrangButton(
-                    text = "Allow camera",
+                    text = AppStrings.get(context, R.string.catalog_allow_camera_1dfb1b87),
                     onClick = { permission.launch(Manifest.permission.CAMERA) },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OrangButton(
-                    text = "Open app permissions",
+                    text = AppStrings.get(context, R.string.catalog_open_app_permissions_893246fb),
                     onClick = {
                         context.startActivity(
                             Intent(
@@ -257,7 +258,7 @@ private fun OrangQrScanner(
 
         scanError?.let { Text(it, color = c.danger, fontSize = 13.sp) }
         OrangButton(
-            text = "Cancel scanning",
+            text = AppStrings.get(context, R.string.catalog_cancel_scanning_f1f3d169),
             onClick = onCancel,
             variant = ButtonVariant.Secondary,
             modifier = Modifier.fillMaxWidth(),

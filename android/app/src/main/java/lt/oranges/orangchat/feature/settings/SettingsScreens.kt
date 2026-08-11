@@ -1,5 +1,6 @@
 package lt.oranges.orangchat.feature.settings
 
+import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -64,6 +65,7 @@ import lt.oranges.orangchat.ui.components.ButtonVariant
 import lt.oranges.orangchat.ui.components.OrangButton
 import lt.oranges.orangchat.ui.components.OrangTextField
 import lt.oranges.orangchat.ui.theme.OrangRadius
+import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.absoluteUrl
 import lt.oranges.orangchat.util.formatFullTime
 import lt.oranges.orangchat.ui.theme.OrangTheme
@@ -88,73 +90,73 @@ fun PrivacyScreen(self: SelfUser, onBack: () -> Unit, vm: SettingsViewModel = hi
     val notificationsAllowed = rememberNotificationPermissionState()
 
     Column(modifier = screenModifier(c)) {
-        SettingsTopBar("Privacy", onBack)
+        SettingsTopBar(AppStrings.get(context, R.string.catalog_privacy_cf01481f), onBack)
         Column(
             modifier = Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            SettingSection("Who can message you") {
+            SettingSection(AppStrings.get(context, R.string.catalog_who_can_message_you_e9356e11)) {
                 SettingsChoiceRow(
                     value = self.dmPrivacy,
                     options = listOf(
-                        Triple(DmPrivacy.EVERYONE, "Everyone", "Anyone can start a conversation."),
-                        Triple(DmPrivacy.FRIENDS, "Friends only", "Only people on your friends list."),
-                        Triple(DmPrivacy.NONE, "No one", "Nobody new can message you."),
+                        Triple(DmPrivacy.EVERYONE, AppStrings.get(context, R.string.catalog_everyone_c756f6af), AppStrings.get(context, R.string.catalog_anyone_can_start_a_conversation_fa59af86)),
+                        Triple(DmPrivacy.FRIENDS, AppStrings.get(context, R.string.catalog_friends_only_0b2d5f25), AppStrings.get(context, R.string.catalog_only_people_on_your_friends_list_a0690c48)),
+                        Triple(DmPrivacy.NONE, AppStrings.get(context, R.string.catalog_no_one_41c06c15), AppStrings.get(context, R.string.catalog_nobody_new_can_message_you_d72cdf15)),
                     ),
                     onSelect = vm::setDmPrivacy,
                 )
             }
-            SettingSection("Who can add you") {
+            SettingSection(AppStrings.get(context, R.string.catalog_who_can_add_you_07e171de)) {
                 SettingsChoiceRow(
                     value = self.friendRequestPrivacy,
                     options = listOf(
-                        Triple(FriendRequestPrivacy.EVERYONE, "Everyone", "Anyone who knows your username."),
-                        Triple(FriendRequestPrivacy.MUTUAL, "Friends of friends", "Only people you share a friend with."),
-                        Triple(FriendRequestPrivacy.NONE, "No one", "Nobody can send you requests."),
+                        Triple(FriendRequestPrivacy.EVERYONE, AppStrings.get(context, R.string.catalog_everyone_c756f6af), AppStrings.get(context, R.string.catalog_anyone_who_knows_your_username_b7505a81)),
+                        Triple(FriendRequestPrivacy.MUTUAL, AppStrings.get(context, R.string.catalog_friends_of_friends_9abdf2fe), AppStrings.get(context, R.string.catalog_only_people_you_share_a_friend_with_dd960ba7)),
+                        Triple(FriendRequestPrivacy.NONE, AppStrings.get(context, R.string.catalog_no_one_41c06c15), AppStrings.get(context, R.string.catalog_nobody_can_send_you_requests_5279aaea)),
                     ),
                     onSelect = vm::setFriendRequestPrivacy,
                 )
             }
-            SettingSection("What you share") {
+            SettingSection(AppStrings.get(context, R.string.catalog_what_you_share_6998553a)) {
                 SettingsToggleRow(
-                    label = "Send typing indicators",
-                    hint = "Let people see when you're typing.",
+                    label = AppStrings.get(context, R.string.catalog_send_typing_indicators_6ca26372),
+                    hint = AppStrings.get(context, R.string.catalog_let_people_see_when_you_re_typing_eb96518c),
                     checked = self.typingIndicators,
                     onCheckedChange = vm::setTypingIndicators,
                 )
             }
-            SettingSection("Notifications") {
+            SettingSection(AppStrings.get(context, R.string.catalog_notifications_753a22b2)) {
                 // The first-run prompt takes "no" for an answer and never asks
                 // again, and the permission can be revoked from the system at
                 // any time. This row is the whole way back from either.
                 if (!notificationsAllowed) {
                     SettingsNavRow(
-                        label = "Notifications are turned off",
-                        subtitle = "Android is not letting OrangChat notify you about messages or calls. Turn them on in system settings.",
+                        label = AppStrings.get(context, R.string.catalog_notifications_are_turned_off_e638becc),
+                        subtitle = AppStrings.get(context, R.string.catalog_android_is_not_letting_orangchat_notify_you_eb9878eb),
                         onClick = { context.startActivity(appNotificationSettingsIntent(context)) },
                     )
                 }
                 SettingsToggleRow(
-                    label = "Show message text",
-                    hint = "Off, the shade and lock screen show who wrote and nothing more. Encrypted messages are then never unlocked to make a notification at all. This phone only.",
+                    label = AppStrings.get(context, R.string.catalog_show_message_text_66bf26b1),
+                    hint = AppStrings.get(context, R.string.catalog_off_the_shade_and_lock_screen_show_29ea09db),
                     checked = prefs.notificationPreviews,
                     onCheckedChange = vm::setNotificationPreviews,
                 )
             }
-            SettingSection("Encryption") {
+            SettingSection(AppStrings.get(context, R.string.catalog_encryption_0af149c2)) {
                 Text(
-                    "Every direct message is encrypted, always, and that part cannot be switched off. This setting is about how carefully the other person's lock is checked before your messages are sent to it.",
+                    AppStrings.get(context, R.string.catalog_every_direct_message_is_encrypted_always_and_bacae7ec),
                     color = c.inkSecondary,
                     fontSize = 13.sp,
                 )
                 SettingsToggleRow(
-                    label = "Check people before messaging them",
-                    hint = "With someone new, your messages wait on this phone - locked, sent nowhere - until you have seen their code in person or read the numbers to each other on a call.",
+                    label = AppStrings.get(context, R.string.catalog_check_people_before_messaging_them_986118e4),
+                    hint = AppStrings.get(context, R.string.catalog_with_someone_new_your_messages_wait_on_376112de),
                     checked = self.e2eeStrict,
                     onCheckedChange = vm::setE2eeStrict,
                 )
                 Text(
-                    "Leaving it off is not \"unprotected\". Every lock is still checked against a logbook that can only be added to, which your own devices read on every start. The difference is whether a swapped lock is stopped before it can be used, or caught right after. Group conversations always send straight away, either way.",
+                    AppStrings.get(context, R.string.catalog_leaving_it_off_is_not_unprotected_every_94d76940),
                     color = c.inkMuted,
                     fontSize = 12.sp,
                 )
@@ -175,37 +177,38 @@ fun PrivacyScreen(self: SelfUser, onBack: () -> Unit, vm: SettingsViewModel = hi
 
 @Composable
 fun SharingScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val prefs by vm.prefs.collectAsStateWithLifecycle()
 
     Column(modifier = screenModifier(c)) {
-        SettingsTopBar("Camera & Microphone", onBack)
+        SettingsTopBar(AppStrings.get(context, R.string.catalog_camera_microphone_abf47618), onBack)
         Column(
             modifier = Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             Text(
-                "OrangChat only opens your camera and microphone during a call. Android asks " +
-                    "for permission the first time you join one.",
+                AppStrings.get(context, R.string.catalog_orangchat_only_opens_your_camera_and_microphone_16da857f) +
+                    AppStrings.get(context, R.string.catalog_for_permission_the_first_time_you_join_1cbeb90e),
                 color = c.inkSecondary,
                 fontSize = 13.sp,
             )
-            SettingSection("When joining a call") {
+            SettingSection(AppStrings.get(context, R.string.catalog_when_joining_a_call_9f17cb1a)) {
                 SettingsToggleRow(
-                    label = "Join muted",
-                    hint = "Start every call with your microphone off.",
+                    label = AppStrings.get(context, R.string.catalog_join_muted_8ccaf5fe),
+                    hint = AppStrings.get(context, R.string.catalog_start_every_call_with_your_microphone_off_087b5564),
                     checked = prefs.joinMuted,
                     onCheckedChange = vm::setJoinMuted,
                 )
                 SettingsToggleRow(
-                    label = "Join with camera on",
-                    hint = "Start calls with video already publishing.",
+                    label = AppStrings.get(context, R.string.catalog_join_with_camera_on_c39f4e79),
+                    hint = AppStrings.get(context, R.string.catalog_start_calls_with_video_already_publishing_04f2d03f),
                     checked = prefs.joinWithVideo,
                     onCheckedChange = vm::setJoinWithVideo,
                 )
             }
             Text(
-                "These choices are stored on this device only.",
+                AppStrings.get(context, R.string.catalog_these_choices_are_stored_on_this_device_ac326393),
                 color = c.inkMuted,
                 fontSize = 12.sp,
             )
@@ -220,21 +223,21 @@ fun SharingScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
  * attacker-controlled and only ever a label, so it's matched against a short
  * list of substrings rather than parsed.
  */
-private fun describeDevice(userAgent: String?): String {
-    if (userAgent.isNullOrBlank()) return "Unknown device"
+private fun describeDevice(context: Context, userAgent: String?): String {
+    if (userAgent.isNullOrBlank()) return AppStrings.get(context, R.string.catalog_unknown_device_7af13b29)
     val ua = userAgent.lowercase()
     return when {
-        ua.contains("orangchat-android") -> "OrangChat for Android"
-        ua.contains("electron") -> "OrangChat desktop app"
-        ua.contains("android") -> "Android browser"
-        ua.contains("iphone") || ua.contains("ipad") -> "iOS browser"
+        ua.contains("orangchat-android") -> AppStrings.get(context, R.string.catalog_orangchat_for_android_3f20ca31)
+        ua.contains("electron") -> AppStrings.get(context, R.string.catalog_orangchat_desktop_app_ffb92600)
+        ua.contains("android") -> AppStrings.get(context, R.string.catalog_android_browser_05f5cb3d)
+        ua.contains("iphone") || ua.contains("ipad") -> AppStrings.get(context, R.string.catalog_ios_browser_1da182c5)
         else -> {
             val browser = when {
                 ua.contains("firefox") -> "Firefox"
                 ua.contains("edg/") -> "Edge"
                 ua.contains("chrome") -> "Chrome"
                 ua.contains("safari") -> "Safari"
-                else -> "Browser"
+                else -> AppStrings.get(context, R.string.catalog_browser_54a2cf5e)
             }
             val os = when {
                 ua.contains("windows") -> "Windows"
@@ -242,7 +245,7 @@ private fun describeDevice(userAgent: String?): String {
                 ua.contains("linux") -> "Linux"
                 else -> null
             }
-            if (os != null) "$browser on $os" else browser
+            if (os != null) AppStrings.get(context, R.string.catalog_1_s_on_2_s_105d6e4b, browser, os) else browser
         }
     }
 }
@@ -254,26 +257,27 @@ private fun describeDevice(userAgent: String?): String {
  */
 @Composable
 fun DevicesScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val state by vm.sessions.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { vm.refreshSessions() }
 
     Column(modifier = screenModifier(c)) {
-        SettingsTopBar("Devices", onBack)
+        SettingsTopBar(AppStrings.get(context, R.string.catalog_devices_df485c87), onBack)
         Column(
             modifier = Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                "Each entry is a device with a live sign-in. Revoking one stops it " +
-                    "renewing; it loses access within a few minutes.",
+                AppStrings.get(context, R.string.catalog_each_entry_is_a_device_with_a_8778c193) +
+                    AppStrings.get(context, R.string.catalog_renewing_it_loses_access_within_a_few_1d7c7abe),
                 color = c.inkSecondary,
                 fontSize = 13.sp,
             )
 
             when (val s = state) {
-                is SessionsUi.Loading -> Text("Loading…", color = c.inkMuted, fontSize = 14.sp)
+                is SessionsUi.Loading -> Text(AppStrings.get(context, R.string.catalog_loading_33ce4174), color = c.inkMuted, fontSize = 14.sp)
                 is SessionsUi.Failed -> Text(s.error, color = c.danger, fontSize = 13.sp)
                 is SessionsUi.Loaded -> {
                     s.sessions.forEach { session ->
@@ -287,18 +291,17 @@ fun DevicesScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    describeDevice(session.userAgent) +
-                                        if (session.current) "  ·  This device" else "",
+                                    describeDevice(context, session.userAgent) +
+                                        if (session.current) AppStrings.get(context, R.string.catalog_this_device_82229094) else "",
                                     color = c.ink,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Medium,
                                 )
                                 Text(
                                     buildString {
-                                        append(session.ip ?: "unknown IP")
+                                        append(session.ip ?: AppStrings.get(context, R.string.catalog_unknown_ip_70fef55a))
                                         session.lastSeenAt?.let {
-                                            append(" · last active ")
-                                            append(formatFullTime(it))
+                                            append(AppStrings.get(context, R.string.catalog_last_active_1_s_df09e3bb, formatFullTime(it)))
                                         }
                                     },
                                     color = c.inkMuted,
@@ -306,14 +309,14 @@ fun DevicesScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
                                 )
                                 session.createdAt?.let {
                                     Text(
-                                        "Signed in ${formatFullTime(it)}",
+                                        AppStrings.get(context, R.string.catalog_signed_in_1_s_3b0f6db2, formatFullTime(it)),
                                         color = c.inkMuted,
                                         fontSize = 12.sp,
                                     )
                                 }
                             }
                             OrangButton(
-                                text = if (session.current) "Sign out" else "Revoke",
+                                text = if (session.current) AppStrings.get(context, R.string.catalog_sign_out_dc1649a1) else AppStrings.get(context, R.string.catalog_revoke_0be72075),
                                 onClick = { vm.revokeSession(session.id) },
                                 variant = ButtonVariant.Ghost,
                                 size = ButtonSize.Sm,
@@ -324,7 +327,8 @@ fun DevicesScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
                     val others = s.sessions.count { !it.current }
                     if (others > 0) {
                         OrangButton(
-                            text = "Sign out $others other device${if (others == 1) "" else "s"}",
+                            text = if (others == 1) AppStrings.get(context, R.string.catalog_sign_out_1_s_other_device_24648e43, others)
+                            else AppStrings.get(context, R.string.catalog_sign_out_1_s_other_devices_5bd5b0ba, others),
                             onClick = { vm.revokeOtherSessions() },
                             variant = ButtonVariant.Secondary,
                             size = ButtonSize.Sm,
@@ -367,11 +371,10 @@ private fun PasskeysSection(self: SelfUser, vm: SettingsViewModel) {
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Passkeys", color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text(AppStrings.get(context, R.string.catalog_passkeys_caab7827), color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         Text(
-            "Sign in with your fingerprint, face or device PIN instead of a password. " +
-                "A passkey only works on the site that created it, so it can't be phished - " +
-                "which is why we ask for one instead of an emailed code when your account has one.",
+            AppStrings.get(context, R.string.catalog_sign_in_with_your_fingerprint_face_or_ec24e91a) +
+                AppStrings.get(context, R.string.catalog_a_passkey_only_works_on_the_site_ca725d27),
             color = c.inkSecondary,
             fontSize = 13.sp,
         )
@@ -382,8 +385,8 @@ private fun PasskeysSection(self: SelfUser, vm: SettingsViewModel) {
         }
 
         when {
-            ui.loading -> Text("Loading…", color = c.inkMuted, fontSize = 14.sp)
-            ui.passkeys.isEmpty() -> Text("No passkeys yet.", color = c.inkSecondary, fontSize = 14.sp)
+            ui.loading -> Text(AppStrings.get(context, R.string.catalog_loading_33ce4174), color = c.inkMuted, fontSize = 14.sp)
+            ui.passkeys.isEmpty() -> Text(AppStrings.get(context, R.string.catalog_no_passkeys_yet_6dc4fe0f), color = c.inkSecondary, fontSize = 14.sp)
             else -> ui.passkeys.forEach { passkey ->
                 PasskeyRow(
                     passkey = passkey,
@@ -412,28 +415,28 @@ private fun PasskeysSection(self: SelfUser, vm: SettingsViewModel) {
                 OrangTextField(
                     value = addName,
                     onValueChange = { addName = it.take(60); vm.clearPasskeyError() },
-                    label = "Name",
-                    placeholder = "Personal phone",
-                    hint = "So you can tell it apart from your other devices later.",
+                    label = AppStrings.get(context, R.string.catalog_name_709a2322),
+                    placeholder = AppStrings.get(context, R.string.catalog_personal_phone_a154b2eb),
+                    hint = AppStrings.get(context, R.string.catalog_so_you_can_tell_it_apart_from_5878d69c),
                 )
                 OrangTextField(
                     value = addPassword,
                     onValueChange = { addPassword = it; vm.clearPasskeyError() },
-                    label = "Current password",
+                    label = AppStrings.get(context, R.string.catalog_current_password_19dff4da),
                     isPassword = true,
                 )
                 if (needsCode) {
                     OrangTextField(
                         value = addCode,
                         onValueChange = { addCode = it.take(32); vm.clearPasskeyError() },
-                        label = "Authenticator code",
+                        label = AppStrings.get(context, R.string.catalog_authenticator_code_2908b4e9),
                         placeholder = "123456",
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OrangButton(
-                        text = "Create passkey",
+                        text = AppStrings.get(context, R.string.catalog_create_passkey_500022b0),
                         onClick = {
                             vm.addPasskey(context, addName, addPassword, addCode) { closeAdd() }
                         },
@@ -442,7 +445,7 @@ private fun PasskeysSection(self: SelfUser, vm: SettingsViewModel) {
                         size = ButtonSize.Sm,
                     )
                     OrangButton(
-                        text = "Cancel",
+                        text = AppStrings.get(context, R.string.catalog_cancel_77dfd213),
                         onClick = { closeAdd(); vm.clearPasskeyError() },
                         variant = ButtonVariant.Ghost,
                         size = ButtonSize.Sm,
@@ -451,7 +454,7 @@ private fun PasskeysSection(self: SelfUser, vm: SettingsViewModel) {
             }
         } else {
             OrangButton(
-                text = "Add a passkey",
+                text = AppStrings.get(context, R.string.catalog_add_a_passkey_0daca495),
                 onClick = { vm.clearPasskeyError(); adding = true },
                 variant = ButtonVariant.Secondary,
                 enabled = !full && !ui.busy,
@@ -459,7 +462,7 @@ private fun PasskeysSection(self: SelfUser, vm: SettingsViewModel) {
             )
             if (full) {
                 Text(
-                    "You've reached the limit of ${ui.max} passkeys. Remove one to add another.",
+                    AppStrings.get(context, R.string.catalog_you_ve_reached_the_limit_of_1_e25f813b, ui.max),
                     color = c.inkSecondary,
                     fontSize = 12.sp,
                 )
@@ -470,23 +473,23 @@ private fun PasskeysSection(self: SelfUser, vm: SettingsViewModel) {
     renaming?.let { id ->
         AlertDialog(
             onDismissRequest = { if (!ui.busy) renaming = null },
-            title = { Text("Rename passkey", color = c.ink) },
+            title = { Text(AppStrings.get(context, R.string.catalog_rename_passkey_cb9298c9), color = c.ink) },
             text = {
                 OrangTextField(
                     value = renameDraft,
                     onValueChange = { renameDraft = it.take(60) },
-                    label = "Name",
+                    label = AppStrings.get(context, R.string.catalog_name_709a2322),
                 )
             },
             confirmButton = {
                 TextButton(
                     enabled = renameDraft.isNotBlank() && !ui.busy,
                     onClick = { vm.renamePasskey(id, renameDraft.trim()) { renaming = null } },
-                ) { Text("Rename", color = c.primary) }
+                ) { Text(AppStrings.get(context, R.string.catalog_rename_d3f4cb89), color = c.primary) }
             },
             dismissButton = {
                 TextButton(onClick = { renaming = null }) {
-                    Text("Cancel", color = c.inkSecondary)
+                    Text(AppStrings.get(context, R.string.catalog_cancel_77dfd213), color = c.inkSecondary)
                 }
             },
         )
@@ -504,6 +507,7 @@ private fun PasskeyRow(
     onRemove: (String, String) -> Unit,
     onRenameOpen: () -> Unit,
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     var password by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
@@ -517,27 +521,27 @@ private fun PasskeyRow(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(passkey.name.ifBlank { "Passkey" }, color = c.ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text(passkey.name.ifBlank { AppStrings.get(context, R.string.catalog_passkey_e35828da) }, color = c.ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 Text(
-                    "Added ${formatFullTime(passkey.createdAt)}" +
-                        (passkey.lastUsedAt?.let { " · last used ${formatFullTime(it)}" } ?: " · never used"),
+                    AppStrings.get(context, R.string.catalog_added_1_s_76044af1, formatFullTime(passkey.createdAt)) +
+                        (passkey.lastUsedAt?.let { AppStrings.get(context, R.string.catalog_last_used_1_s_c8f76185, formatFullTime(it)) } ?: AppStrings.get(context, R.string.catalog_never_used_8c1c3645)),
                     color = c.inkSecondary,
                     fontSize = 12.sp,
                 )
                 if (passkey.backedUp) {
-                    Text("Synced to your device's keychain.", color = c.inkSecondary, fontSize = 12.sp)
+                    Text(AppStrings.get(context, R.string.catalog_synced_to_your_device_s_keychain_4f237bce), color = c.inkSecondary, fontSize = 12.sp)
                 }
             }
             Spacer(Modifier.width(8.dp))
             OrangButton(
-                text = "Rename",
+                text = AppStrings.get(context, R.string.catalog_rename_d3f4cb89),
                 onClick = onRenameOpen,
                 variant = ButtonVariant.Ghost,
                 size = ButtonSize.Sm,
                 enabled = !busy,
             )
             OrangButton(
-                text = "Remove",
+                text = AppStrings.get(context, R.string.catalog_remove_e963907d),
                 onClick = onRemoveOpen,
                 variant = ButtonVariant.Danger,
                 size = ButtonSize.Sm,
@@ -548,29 +552,29 @@ private fun PasskeyRow(
         if (removing) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "Removing this only affects OrangChat. Delete it from the device's own " +
-                        "passkey settings too, or it will keep showing up there.",
+                    AppStrings.get(context, R.string.catalog_removing_this_only_affects_orangchat_delete_it_28979691) +
+                        AppStrings.get(context, R.string.catalog_passkey_settings_too_or_it_will_keep_26130742),
                     color = c.inkSecondary,
                     fontSize = 13.sp,
                 )
                 OrangTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = "Current password",
+                    label = AppStrings.get(context, R.string.catalog_current_password_19dff4da),
                     isPassword = true,
                 )
                 if (needsCode) {
                     OrangTextField(
                         value = code,
                         onValueChange = { code = it.take(32) },
-                        label = "Authenticator code",
+                        label = AppStrings.get(context, R.string.catalog_authenticator_code_2908b4e9),
                         placeholder = "123456",
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OrangButton(
-                        text = "Remove passkey",
+                        text = AppStrings.get(context, R.string.catalog_remove_passkey_988b1b7e),
                         onClick = { onRemove(password, code) },
                         variant = ButtonVariant.Danger,
                         enabled = password.isNotBlank() && !busy,
@@ -578,7 +582,7 @@ private fun PasskeyRow(
                         size = ButtonSize.Sm,
                     )
                     OrangButton(
-                        text = "Cancel",
+                        text = AppStrings.get(context, R.string.catalog_cancel_77dfd213),
                         onClick = onRemoveCancel,
                         variant = ButtonVariant.Ghost,
                         size = ButtonSize.Sm,
@@ -598,13 +602,14 @@ fun SecurityScreen(
     onBack: () -> Unit,
     vm: SettingsViewModel = hiltViewModel(),
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val state by vm.twoFactor.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { vm.refreshTwoFactor() }
 
     Column(modifier = screenModifier(c)) {
-        SettingsTopBar("Security", onBack)
+        SettingsTopBar(AppStrings.get(context, R.string.catalog_security_f25ce1b8), onBack)
         Column(
             modifier = Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -621,14 +626,14 @@ fun SecurityScreen(
 
             HorizontalDivider(color = c.border)
 
-            Text("Two-factor authentication", color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(AppStrings.get(context, R.string.catalog_two_factor_authentication_edfd617a), color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             Text(
-                "Ask for a code from your phone in addition to your password when you sign in.",
+                AppStrings.get(context, R.string.catalog_ask_for_a_code_from_your_phone_b6d62586),
                 color = c.inkSecondary,
                 fontSize = 13.sp,
             )
             when (val s = state) {
-                is TwoFactorUi.Loading -> Text("Loading…", color = c.inkMuted, fontSize = 14.sp)
+                is TwoFactorUi.Loading -> Text(AppStrings.get(context, R.string.catalog_loading_33ce4174), color = c.inkMuted, fontSize = 14.sp)
                 is TwoFactorUi.Off -> TwoFactorEnroll(hasPassword, s.error, vm)
                 is TwoFactorUi.Setup -> TwoFactorVerify(s, vm)
                 is TwoFactorUi.ShowCodes -> BackupCodes(s.codes) { vm.dismissCodes() }
@@ -661,6 +666,7 @@ fun SecurityScreen(
  */
 @Composable
 private fun CredentialsSection(self: SelfUser, hasPassword: Boolean, vm: SettingsViewModel) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val ui by vm.credentials.collectAsStateWithLifecycle()
 
@@ -682,21 +688,21 @@ private fun CredentialsSection(self: SelfUser, hasPassword: Boolean, vm: Setting
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Email & password", color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-        Text("Signed in as ${self.email}.", color = c.inkSecondary, fontSize = 13.sp)
+        Text(AppStrings.get(context, R.string.catalog_email_password_8973dcae), color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text(AppStrings.get(context, R.string.catalog_signed_in_as_1_s_21660e7d, self.email), color = c.inkSecondary, fontSize = 13.sp)
 
         ui.done?.let { Text(it, color = c.success, fontSize = 13.sp) }
 
         if (mode == null) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OrangButton(
-                    text = "Change email",
+                    text = AppStrings.get(context, R.string.catalog_change_email_8f1514b5),
                     onClick = { vm.clearCredentialsMessages(); mode = "email" },
                     variant = ButtonVariant.Secondary,
                     size = ButtonSize.Sm,
                 )
                 OrangButton(
-                    text = if (hasPassword) "Change password" else "Set a password",
+                    text = if (hasPassword) AppStrings.get(context, R.string.catalog_change_password_8c684290) else AppStrings.get(context, R.string.catalog_set_a_password_f5c8f412),
                     onClick = { vm.clearCredentialsMessages(); mode = "password" },
                     variant = ButtonVariant.Secondary,
                     size = ButtonSize.Sm,
@@ -715,25 +721,25 @@ private fun CredentialsSection(self: SelfUser, hasPassword: Boolean, vm: Setting
                     OrangTextField(
                         value = email,
                         onValueChange = { email = it },
-                        label = "New email",
+                        label = AppStrings.get(context, R.string.catalog_new_email_b07e22b0),
                         // Nothing confirms the address afterwards - there's no
                         // mail transport - so don't imply a confirmation email.
-                        hint = "Used to sign in. There's no confirmation email, so double-check it.",
+                        hint = AppStrings.get(context, R.string.catalog_used_to_sign_in_there_s_no_51a10c36),
                     )
                 } else {
                     OrangTextField(
                         value = newPassword,
                         onValueChange = { newPassword = it },
-                        label = "New password",
+                        label = AppStrings.get(context, R.string.catalog_new_password_d850ee18),
                         isPassword = true,
-                        hint = "At least 8 characters.",
+                        hint = AppStrings.get(context, R.string.catalog_at_least_8_characters_6089e5f3),
                     )
                     OrangTextField(
                         value = confirm,
                         onValueChange = { confirm = it },
-                        label = "Confirm new password",
+                        label = AppStrings.get(context, R.string.catalog_confirm_new_password_f85039fd),
                         isPassword = true,
-                        error = if (mismatch) "Those don't match." else null,
+                        error = if (mismatch) AppStrings.get(context, R.string.catalog_those_don_t_match_5820ec54) else null,
                     )
                 }
 
@@ -741,7 +747,7 @@ private fun CredentialsSection(self: SelfUser, hasPassword: Boolean, vm: Setting
                     OrangTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = "Your current password",
+                        label = AppStrings.get(context, R.string.catalog_your_current_password_6658f206),
                         isPassword = true,
                     )
                 }
@@ -749,14 +755,14 @@ private fun CredentialsSection(self: SelfUser, hasPassword: Boolean, vm: Setting
                     OrangTextField(
                         value = code,
                         onValueChange = { code = it },
-                        label = "Code from your app (or a recovery code)",
+                        label = AppStrings.get(context, R.string.catalog_code_from_your_app_or_a_recovery_c6308bc3),
                         placeholder = "123456",
                     )
                 }
 
                 if (mode == "password") {
                     Text(
-                        "Changing your password signs out every other session.",
+                        AppStrings.get(context, R.string.catalog_changing_your_password_signs_out_every_other_062a10ab),
                         color = c.inkMuted,
                         fontSize = 12.sp,
                     )
@@ -765,7 +771,7 @@ private fun CredentialsSection(self: SelfUser, hasPassword: Boolean, vm: Setting
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OrangButton(
-                        text = if (mode == "email") "Change email" else if (hasPassword) "Change password" else "Set password",
+                        text = if (mode == "email") AppStrings.get(context, R.string.catalog_change_email_8f1514b5) else if (hasPassword) AppStrings.get(context, R.string.catalog_change_password_8c684290) else AppStrings.get(context, R.string.catalog_set_password_94408e41),
                         onClick = {
                             if (mode == "email") {
                                 vm.changeEmail(password, email, code) { reset() }
@@ -778,7 +784,7 @@ private fun CredentialsSection(self: SelfUser, hasPassword: Boolean, vm: Setting
                         size = ButtonSize.Sm,
                     )
                     OrangButton(
-                        text = "Cancel",
+                        text = AppStrings.get(context, R.string.catalog_cancel_77dfd213),
                         onClick = { reset() },
                         variant = ButtonVariant.Ghost,
                         size = ButtonSize.Sm,
@@ -796,16 +802,17 @@ private fun CredentialsSection(self: SelfUser, hasPassword: Boolean, vm: Setting
  */
 @Composable
 private fun AccountStandingSection(vm: SettingsViewModel) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val state by vm.standing.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { vm.refreshStanding() }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("Account standing", color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text(AppStrings.get(context, R.string.catalog_account_standing_2b18a30b), color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
 
         when (val s = state) {
-            is StandingUi.Loading -> Text("Loading…", color = c.inkMuted, fontSize = 14.sp)
+            is StandingUi.Loading -> Text(AppStrings.get(context, R.string.catalog_loading_33ce4174), color = c.inkMuted, fontSize = 14.sp)
             is StandingUi.Failed -> Text(s.error, color = c.danger, fontSize = 13.sp)
             is StandingUi.Loaded -> if (s.standing.good) {
                 Column(
@@ -816,13 +823,13 @@ private fun AccountStandingSection(vm: SettingsViewModel) {
                         .padding(12.dp),
                 ) {
                     Text(
-                        "Your account is in good standing",
+                        AppStrings.get(context, R.string.catalog_your_account_is_in_good_standing_1806a501),
                         color = c.ink,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                     )
                     Text(
-                        "No server is currently restricting you.",
+                        AppStrings.get(context, R.string.catalog_no_server_is_currently_restricting_you_061000ea),
                         color = c.inkSecondary,
                         fontSize = 12.sp,
                     )
@@ -837,18 +844,18 @@ private fun AccountStandingSection(vm: SettingsViewModel) {
                                 .background(c.danger.copy(alpha = 0.10f))
                                 .padding(12.dp),
                         ) {
-                            val verb = if (entry.kind == "ban") "Banned from" else "Timed out in"
+                            val verb = if (entry.kind == "ban") AppStrings.get(context, R.string.catalog_banned_from_b1b7bda2) else AppStrings.get(context, R.string.catalog_timed_out_in_64510a0d)
                             Text(
-                                "$verb ${entry.serverName}",
+                                AppStrings.get(context, R.string.catalog_1_s_2_s_78c505fe, verb, entry.serverName),
                                 color = c.ink,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
                             )
                             entry.reason?.let {
-                                Text("Reason: $it", color = c.inkSecondary, fontSize = 12.sp)
+                                Text(AppStrings.get(context, R.string.catalog_reason_1_s_bce5b2c7, it), color = c.inkSecondary, fontSize = 12.sp)
                             }
                             entry.expiresAt?.let {
-                                Text("Until ${formatFullTime(it)}", color = c.inkSecondary, fontSize = 12.sp)
+                                Text(AppStrings.get(context, R.string.catalog_until_1_s_5ec80ce8, formatFullTime(it)), color = c.inkSecondary, fontSize = 12.sp)
                             }
                             if (entry.kind == "ban") {
                                 entry.createdAt?.let {
@@ -870,6 +877,7 @@ private fun AccountStandingSection(vm: SettingsViewModel) {
  */
 @Composable
 private fun LockdownSection(self: SelfUser, hasPassword: Boolean, vm: SettingsViewModel) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val ui by vm.lockdown.collectAsStateWithLifecycle()
     val locked = self.lockdown
@@ -878,7 +886,7 @@ private fun LockdownSection(self: SelfUser, hasPassword: Boolean, vm: SettingsVi
     var password by remember { mutableStateOf("") }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("Lockdown", color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text(AppStrings.get(context, R.string.catalog_lockdown_8ba04349), color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
 
         if (locked) {
             Column(
@@ -889,23 +897,22 @@ private fun LockdownSection(self: SelfUser, hasPassword: Boolean, vm: SettingsVi
                     .padding(12.dp),
             ) {
                 Text(
-                    "Your account is locked down",
+                    AppStrings.get(context, R.string.catalog_your_account_is_locked_down_d129bf10),
                     color = c.ink,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                 )
                 Text(
-                    "Nothing can sign in, and no new DMs or friend requests reach you. " +
-                        "This device stays signed in.",
+                    AppStrings.get(context, R.string.catalog_nothing_can_sign_in_and_no_new_e0c687ac) +
+                        AppStrings.get(context, R.string.catalog_this_device_stays_signed_in_795f19a1),
                     color = c.inkSecondary,
                     fontSize = 12.sp,
                 )
             }
         } else {
             Text(
-                "Freezes the account if you think someone else is in it: signs out every " +
-                    "other device, blocks new sign-ins, and closes new DMs and friend " +
-                    "requests until you lift it.",
+                AppStrings.get(context, R.string.catalog_freezes_the_account_if_you_think_someone_09f45852) +
+                    AppStrings.get(context, R.string.catalog_other_device_blocks_new_sign_ins_and_6199dab7),
                 color = c.inkSecondary,
                 fontSize = 13.sp,
             )
@@ -921,13 +928,13 @@ private fun LockdownSection(self: SelfUser, hasPassword: Boolean, vm: SettingsVi
                 OrangTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = "Your password",
+                    label = AppStrings.get(context, R.string.catalog_your_password_26d745d4),
                     isPassword = true,
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OrangButton(
-                    text = if (locked) "Lift lockdown" else "Lock down my account",
+                    text = if (locked) AppStrings.get(context, R.string.catalog_lift_lockdown_4131d82c) else AppStrings.get(context, R.string.catalog_lock_down_my_account_c7b52afc),
                     onClick = {
                         vm.setLockdown(!locked, password) {
                             confirming = false
@@ -940,7 +947,7 @@ private fun LockdownSection(self: SelfUser, hasPassword: Boolean, vm: SettingsVi
                     loading = ui.busy,
                 )
                 OrangButton(
-                    text = "Cancel",
+                    text = AppStrings.get(context, R.string.catalog_cancel_77dfd213),
                     onClick = { confirming = false; password = "" },
                     variant = ButtonVariant.Ghost,
                     size = ButtonSize.Sm,
@@ -948,7 +955,7 @@ private fun LockdownSection(self: SelfUser, hasPassword: Boolean, vm: SettingsVi
             }
         } else {
             OrangButton(
-                text = if (locked) "Lift lockdown" else "Lock down my account",
+                text = if (locked) AppStrings.get(context, R.string.catalog_lift_lockdown_4131d82c) else AppStrings.get(context, R.string.catalog_lock_down_my_account_c7b52afc),
                 onClick = { vm.resetLockdown(); confirming = true },
                 variant = if (locked) ButtonVariant.Primary else ButtonVariant.Secondary,
                 size = ButtonSize.Sm,
@@ -963,24 +970,26 @@ private fun LockdownSection(self: SelfUser, hasPassword: Boolean, vm: SettingsVi
  */
 @Composable
 private fun LeaveAllServersSection(vm: SettingsViewModel) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val state by vm.leaveAll.collectAsStateWithLifecycle()
     var confirming by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("Leave all servers", color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text(AppStrings.get(context, R.string.catalog_leave_all_servers_65e7741b), color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         Text(
-            "Leaves every server you're in except the ones you own. You'll need a new " +
-                "invite to get back into any of them.",
+            AppStrings.get(context, R.string.catalog_leaves_every_server_you_re_in_except_bcbf7a17) +
+                AppStrings.get(context, R.string.catalog_invite_to_get_back_into_any_of_016b015f),
             color = c.inkSecondary,
             fontSize = 13.sp,
         )
 
         when (val s = state) {
             is LeaveAllUi.Done -> {
-                val kept = if (s.keptOwned.isEmpty()) "" else " Still yours: ${s.keptOwned.joinToString(", ")}."
+                val kept = if (s.keptOwned.isEmpty()) "" else AppStrings.get(context, R.string.catalog_still_yours_1_s_42da6dc4, s.keptOwned.joinToString(", "))
                 Text(
-                    "Left ${s.left} server${if (s.left == 1) "" else "s"}.$kept",
+                    if (s.left == 1) AppStrings.get(context, R.string.catalog_left_1_s_server_2619a08f, s.left) + kept
+                    else AppStrings.get(context, R.string.catalog_left_1_s_servers_8833549c, s.left) + kept,
                     color = c.success,
                     fontSize = 13.sp,
                 )
@@ -992,14 +1001,14 @@ private fun LeaveAllServersSection(vm: SettingsViewModel) {
         if (confirming) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OrangButton(
-                    text = "Yes, leave them all",
+                    text = AppStrings.get(context, R.string.catalog_yes_leave_them_all_8520c6e8),
                     onClick = { vm.leaveAllServers(); confirming = false },
                     variant = ButtonVariant.Danger,
                     size = ButtonSize.Sm,
                     loading = state is LeaveAllUi.Busy,
                 )
                 OrangButton(
-                    text = "Cancel",
+                    text = AppStrings.get(context, R.string.catalog_cancel_77dfd213),
                     onClick = { confirming = false },
                     variant = ButtonVariant.Ghost,
                     size = ButtonSize.Sm,
@@ -1007,7 +1016,7 @@ private fun LeaveAllServersSection(vm: SettingsViewModel) {
             }
         } else {
             OrangButton(
-                text = "Leave all servers",
+                text = AppStrings.get(context, R.string.catalog_leave_all_servers_65e7741b),
                 onClick = { vm.resetLeaveAll(); confirming = true },
                 variant = ButtonVariant.Secondary,
                 size = ButtonSize.Sm,
@@ -1023,6 +1032,7 @@ private fun LeaveAllServersSection(vm: SettingsViewModel) {
  */
 @Composable
 private fun DeleteAllMessagesSection(self: SelfUser, hasPassword: Boolean, vm: SettingsViewModel) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val ui by vm.wipe.collectAsStateWithLifecycle()
 
@@ -1032,15 +1042,14 @@ private fun DeleteAllMessagesSection(self: SelfUser, hasPassword: Boolean, vm: S
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
-            "Delete all your messages",
+            AppStrings.get(context, R.string.catalog_delete_all_your_messages_f9463fad),
             color = c.ink,
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold,
         )
         Text(
-            "Removes every message you've sent, in every server and group - including " +
-                "the ones you've left. Attachments you uploaded aren't removed from " +
-                "storage. This can't be undone.",
+            AppStrings.get(context, R.string.catalog_removes_every_message_you_ve_sent_in_f63902f1) +
+                AppStrings.get(context, R.string.catalog_the_ones_you_ve_left_attachments_you_87419c2e),
             color = c.inkSecondary,
             fontSize = 13.sp,
         )
@@ -1049,7 +1058,7 @@ private fun DeleteAllMessagesSection(self: SelfUser, hasPassword: Boolean, vm: S
 
         if (!open) {
             OrangButton(
-                text = "Delete all my messages",
+                text = AppStrings.get(context, R.string.catalog_delete_all_my_messages_3549d600),
                 onClick = { vm.resetWipe(); open = true },
                 variant = ButtonVariant.Ghost,
                 size = ButtonSize.Sm,
@@ -1059,7 +1068,7 @@ private fun DeleteAllMessagesSection(self: SelfUser, hasPassword: Boolean, vm: S
                 OrangTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = "Your password",
+                    label = AppStrings.get(context, R.string.catalog_your_password_26d745d4),
                     isPassword = true,
                 )
             }
@@ -1067,14 +1076,14 @@ private fun DeleteAllMessagesSection(self: SelfUser, hasPassword: Boolean, vm: S
                 OrangTextField(
                     value = code,
                     onValueChange = { code = it },
-                    label = "Code from your app (or a recovery code)",
+                    label = AppStrings.get(context, R.string.catalog_code_from_your_app_or_a_recovery_c6308bc3),
                     placeholder = "123456",
                 )
             }
             ui.error?.let { Text(it, color = c.danger, fontSize = 13.sp) }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OrangButton(
-                    text = "Delete them all",
+                    text = AppStrings.get(context, R.string.catalog_delete_them_all_a3132ab8),
                     onClick = {
                         vm.deleteAllMessages(password, code) {
                             open = false
@@ -1088,7 +1097,7 @@ private fun DeleteAllMessagesSection(self: SelfUser, hasPassword: Boolean, vm: S
                     loading = ui.busy,
                 )
                 OrangButton(
-                    text = "Cancel",
+                    text = AppStrings.get(context, R.string.catalog_cancel_77dfd213),
                     onClick = { open = false; password = ""; code = "" },
                     variant = ButtonVariant.Ghost,
                     size = ButtonSize.Sm,
@@ -1105,6 +1114,7 @@ private fun DeleteAllMessagesSection(self: SelfUser, hasPassword: Boolean, vm: S
  */
 @Composable
 private fun DeleteAccountSection(self: SelfUser, hasPassword: Boolean, vm: SettingsViewModel) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val ui by vm.credentials.collectAsStateWithLifecycle()
 
@@ -1114,18 +1124,17 @@ private fun DeleteAccountSection(self: SelfUser, hasPassword: Boolean, vm: Setti
     var username by remember { mutableStateOf("") }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("Delete account", color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text(AppStrings.get(context, R.string.catalog_delete_account_1753c206), color = c.ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         Text(
-            "Your messages stay in the conversations they're part of, shown as from a " +
-                "deleted user. Everything else - profile, connections, friends, server " +
-                "memberships - is erased. This can't be undone.",
+            AppStrings.get(context, R.string.catalog_your_messages_stay_in_the_conversations_they_34246f3c) +
+                AppStrings.get(context, R.string.catalog_deleted_user_everything_else_profile_connections_friends_6e1c6e09),
             color = c.inkSecondary,
             fontSize = 13.sp,
         )
 
         if (!open) {
             OrangButton(
-                text = "Delete my account",
+                text = AppStrings.get(context, R.string.catalog_delete_my_account_2ae3a019),
                 onClick = { vm.clearCredentialsMessages(); open = true },
                 variant = ButtonVariant.Ghost,
                 size = ButtonSize.Sm,
@@ -1134,13 +1143,13 @@ private fun DeleteAccountSection(self: SelfUser, hasPassword: Boolean, vm: Setti
             OrangTextField(
                 value = username,
                 onValueChange = { username = it },
-                label = "Type ${self.username} to confirm",
+                label = AppStrings.get(context, R.string.catalog_type_1_s_to_confirm_700d64a1, self.username),
             )
             if (hasPassword) {
                 OrangTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = "Your password",
+                    label = AppStrings.get(context, R.string.catalog_your_password_26d745d4),
                     isPassword = true,
                 )
             }
@@ -1148,14 +1157,14 @@ private fun DeleteAccountSection(self: SelfUser, hasPassword: Boolean, vm: Setti
                 OrangTextField(
                     value = code,
                     onValueChange = { code = it },
-                    label = "Code from your app (or a recovery code)",
+                    label = AppStrings.get(context, R.string.catalog_code_from_your_app_or_a_recovery_c6308bc3),
                     placeholder = "123456",
                 )
             }
             ui.error?.let { Text(it, color = c.danger, fontSize = 13.sp) }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OrangButton(
-                    text = "Permanently delete",
+                    text = AppStrings.get(context, R.string.catalog_permanently_delete_2eea1fa8),
                     onClick = { vm.deleteAccount(password, username, code) },
                     variant = ButtonVariant.Danger,
                     size = ButtonSize.Sm,
@@ -1163,7 +1172,7 @@ private fun DeleteAccountSection(self: SelfUser, hasPassword: Boolean, vm: Setti
                     loading = ui.busy,
                 )
                 OrangButton(
-                    text = "Cancel",
+                    text = AppStrings.get(context, R.string.catalog_cancel_77dfd213),
                     onClick = { open = false; username = ""; password = ""; code = "" },
                     variant = ButtonVariant.Ghost,
                     size = ButtonSize.Sm,
@@ -1175,11 +1184,12 @@ private fun DeleteAccountSection(self: SelfUser, hasPassword: Boolean, vm: Setti
 
 @Composable
 private fun TwoFactorEnroll(hasPassword: Boolean, error: String?, vm: SettingsViewModel) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     var password by remember { mutableStateOf("") }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
-            "You'll need an authenticator app such as Google Authenticator, 1Password, or Aegis.",
+            AppStrings.get(context, R.string.catalog_you_ll_need_an_authenticator_app_such_60b7dd86),
             color = c.inkSecondary,
             fontSize = 13.sp,
         )
@@ -1187,22 +1197,23 @@ private fun TwoFactorEnroll(hasPassword: Boolean, error: String?, vm: SettingsVi
             OrangTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = "Confirm your password",
+                label = AppStrings.get(context, R.string.catalog_confirm_your_password_198b73ff),
                 isPassword = true,
             )
         }
         if (error != null) Text(error, color = c.danger, fontSize = 13.sp)
-        OrangButton(text = "Set up two-factor", onClick = { vm.beginSetup(password) })
+        OrangButton(text = AppStrings.get(context, R.string.catalog_set_up_two_factor_a6722c51), onClick = { vm.beginSetup(password) })
     }
 }
 
 @Composable
 private fun TwoFactorVerify(state: TwoFactorUi.Setup, vm: SettingsViewModel) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val clipboard = LocalClipboardManager.current
     var code by remember { mutableStateOf("") }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        SettingSection("1. Add this key to your app") {
+        SettingSection(AppStrings.get(context, R.string.catalog_1_add_this_key_to_your_app_c5c6bb28)) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1217,20 +1228,20 @@ private fun TwoFactorVerify(state: TwoFactorUi.Setup, vm: SettingsViewModel) {
                     fontFamily = FontFamily.Monospace,
                 )
             }
-            Text("Tap the key to copy it.", color = c.inkMuted, fontSize = 12.sp)
+            Text(AppStrings.get(context, R.string.catalog_tap_the_key_to_copy_it_1965f6e7), color = c.inkMuted, fontSize = 12.sp)
         }
-        SettingSection("2. Enter the 6-digit code") {
+        SettingSection(AppStrings.get(context, R.string.catalog_2_enter_the_6_digit_code_183ee7cb)) {
             OrangTextField(
                 value = code,
                 onValueChange = { code = it.filter(Char::isDigit).take(6) },
-                label = "Code from your app",
+                label = AppStrings.get(context, R.string.catalog_code_from_your_app_2e089607),
                 placeholder = "123456",
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             )
         }
         if (state.error != null) Text(state.error, color = c.danger, fontSize = 13.sp)
         OrangButton(
-            text = "Turn on two-factor",
+            text = AppStrings.get(context, R.string.catalog_turn_on_two_factor_2d7b5797),
             onClick = { vm.confirmSetup(code) },
             enabled = code.length == 6,
             loading = state.verifying,
@@ -1240,6 +1251,7 @@ private fun TwoFactorVerify(state: TwoFactorUi.Setup, vm: SettingsViewModel) {
 
 @Composable
 private fun TwoFactorManage(state: TwoFactorUi.On, hasPassword: Boolean, vm: SettingsViewModel) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     var mode by remember { mutableStateOf("idle") } // idle | disable | regen
     var password by remember { mutableStateOf("") }
@@ -1253,10 +1265,11 @@ private fun TwoFactorManage(state: TwoFactorUi.On, hasPassword: Boolean, vm: Set
                 .padding(14.dp),
         ) {
             Column {
-                Text("Two-factor is on", color = c.ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text(AppStrings.get(context, R.string.catalog_two_factor_is_on_65e04e1d), color = c.ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 Text(
-                    "${state.backupCodesRemaining} recovery code" +
-                        (if (state.backupCodesRemaining == 1) "" else "s") + " left.",
+                    if (state.backupCodesRemaining == 1)
+                        AppStrings.get(context, R.string.catalog_1_s_recovery_code_left_fb553535, state.backupCodesRemaining)
+                    else AppStrings.get(context, R.string.catalog_1_s_recovery_codes_left_da20cfb2, state.backupCodesRemaining),
                     color = c.inkSecondary,
                     fontSize = 12.sp,
                 )
@@ -1265,12 +1278,12 @@ private fun TwoFactorManage(state: TwoFactorUi.On, hasPassword: Boolean, vm: Set
 
         if (mode == "idle") {
             OrangButton(
-                text = "New recovery codes",
+                text = AppStrings.get(context, R.string.catalog_new_recovery_codes_90b8afc8),
                 onClick = { mode = "regen" },
                 variant = ButtonVariant.Secondary,
             )
             OrangButton(
-                text = "Turn off two-factor",
+                text = AppStrings.get(context, R.string.catalog_turn_off_two_factor_ec64c330),
                 onClick = { mode = "disable" },
                 variant = ButtonVariant.Danger,
             )
@@ -1278,8 +1291,8 @@ private fun TwoFactorManage(state: TwoFactorUi.On, hasPassword: Boolean, vm: Set
             val disabling = mode == "disable"
             Text(
                 if (disabling)
-                    "Turning off two-factor leaves your password as the only protection."
-                else "This replaces all of your existing recovery codes.",
+                    AppStrings.get(context, R.string.catalog_turning_off_two_factor_leaves_your_password_7c7e274a)
+                else AppStrings.get(context, R.string.catalog_this_replaces_all_of_your_existing_recovery_1ee473c2),
                 color = c.inkSecondary,
                 fontSize = 13.sp,
             )
@@ -1287,21 +1300,21 @@ private fun TwoFactorManage(state: TwoFactorUi.On, hasPassword: Boolean, vm: Set
                 OrangTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = "Your password",
+                    label = AppStrings.get(context, R.string.catalog_your_password_26d745d4),
                     isPassword = true,
                 )
             }
             OrangTextField(
                 value = code,
                 onValueChange = { code = it.take(32) },
-                label = if (disabling) "Code from your app (or a recovery code)" else "Code from your app",
+                label = if (disabling) AppStrings.get(context, R.string.catalog_code_from_your_app_or_a_recovery_c6308bc3) else AppStrings.get(context, R.string.catalog_code_from_your_app_2e089607),
                 placeholder = "123456",
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             )
             if (state.error != null) Text(state.error, color = c.danger, fontSize = 13.sp)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OrangButton(
-                    text = if (disabling) "Turn off" else "Generate",
+                    text = if (disabling) AppStrings.get(context, R.string.catalog_turn_off_8807c2b3) else AppStrings.get(context, R.string.catalog_generate_fc45f9b7),
                     onClick = {
                         if (disabling) vm.disable(password, code) else vm.regenerateCodes(password, code)
                     },
@@ -1310,7 +1323,7 @@ private fun TwoFactorManage(state: TwoFactorUi.On, hasPassword: Boolean, vm: Set
                     loading = state.busy,
                 )
                 OrangButton(
-                    text = "Cancel",
+                    text = AppStrings.get(context, R.string.catalog_cancel_77dfd213),
                     onClick = { mode = "idle"; password = ""; code = "" },
                     variant = ButtonVariant.Ghost,
                 )
@@ -1321,12 +1334,13 @@ private fun TwoFactorManage(state: TwoFactorUi.On, hasPassword: Boolean, vm: Set
 
 @Composable
 private fun BackupCodes(codes: List<String>, onDone: () -> Unit) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val clipboard = LocalClipboardManager.current
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Recovery codes", color = c.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Text(AppStrings.get(context, R.string.catalog_recovery_codes_b3f5f8ca), color = c.ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
         Text(
-            "Save these now - each works once if you lose your phone, and they're shown only this once.",
+            AppStrings.get(context, R.string.catalog_save_these_now_each_works_once_if_2a1aad82),
             color = c.inkSecondary,
             fontSize = 13.sp,
         )
@@ -1343,11 +1357,11 @@ private fun BackupCodes(codes: List<String>, onDone: () -> Unit) {
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OrangButton(
-                text = "Copy",
+                text = AppStrings.get(context, R.string.catalog_copy_af74f7c5),
                 onClick = { clipboard.setText(AnnotatedString(codes.joinToString("\n"))) },
                 variant = ButtonVariant.Secondary,
             )
-            OrangButton(text = "I've saved them", onClick = onDone)
+            OrangButton(text = AppStrings.get(context, R.string.catalog_i_ve_saved_them_d4c0b9ed), onClick = onDone)
         }
     }
 }
@@ -1356,16 +1370,17 @@ private fun BackupCodes(codes: List<String>, onDone: () -> Unit) {
 
 @Composable
 fun AccessibilityScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val prefs by vm.prefs.collectAsStateWithLifecycle()
 
     Column(modifier = screenModifier(c)) {
-        SettingsTopBar("Accessibility", onBack)
+        SettingsTopBar(AppStrings.get(context, R.string.catalog_accessibility_d660049b), onBack)
         Column(
             modifier = Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            SettingSection("Text size") {
+            SettingSection(AppStrings.get(context, R.string.catalog_text_size_3cc6e124)) {
                 Text(
                     "${(prefs.fontScale * 100).toInt()}%",
                     color = c.inkSecondary,
@@ -1388,28 +1403,28 @@ fun AccessibilityScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewMode
                         .padding(14.dp),
                 ) {
                     Text(
-                        "The quick brown fox jumps over the lazy dog.",
+                        AppStrings.get(context, R.string.catalog_the_quick_brown_fox_jumps_over_the_408d9438),
                         color = c.ink,
                         fontSize = (15 * prefs.fontScale).sp,
                     )
                 }
             }
-            SettingSection("Display") {
+            SettingSection(AppStrings.get(context, R.string.catalog_display_574ff9b0)) {
                 SettingsToggleRow(
-                    label = "Compact messages",
-                    hint = "Tighter spacing between messages.",
+                    label = AppStrings.get(context, R.string.catalog_compact_messages_8efe5e6b),
+                    hint = AppStrings.get(context, R.string.catalog_tighter_spacing_between_messages_58e3bf31),
                     checked = prefs.compactMessages,
                     onCheckedChange = vm::setCompactMessages,
                 )
                 SettingsToggleRow(
-                    label = "Reduce motion",
-                    hint = "Skip the scroll and swipe animations.",
+                    label = AppStrings.get(context, R.string.catalog_reduce_motion_25a5aef5),
+                    hint = AppStrings.get(context, R.string.catalog_skip_the_scroll_and_swipe_animations_3bb4a091),
                     checked = prefs.reducedMotion,
                     onCheckedChange = vm::setReducedMotion,
                 )
             }
             OrangButton(
-                text = "Reset to defaults",
+                text = AppStrings.get(context, R.string.catalog_reset_to_defaults_ddefe47d),
                 onClick = vm::resetPrefs,
                 variant = ButtonVariant.Secondary,
             )
@@ -1425,16 +1440,17 @@ fun SystemScreen(
     onBack: () -> Unit,
     vm: SettingsViewModel = hiltViewModel(),
 ) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     val backend by vm.backend.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.refreshBackend() }
     Column(modifier = screenModifier(c)) {
-        SettingsTopBar("System", onBack)
+        SettingsTopBar(AppStrings.get(context, R.string.catalog_system_bc0792d8), onBack)
         Column(
             modifier = Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            SettingSection("Connection") {
+            SettingSection(AppStrings.get(context, R.string.catalog_connection_6512ee15)) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1449,23 +1465,23 @@ fun SystemScreen(
                     )
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        if (connected) "Connected" else "Disconnected",
+                        if (connected) AppStrings.get(context, R.string.catalog_connected_c2f9b7b4) else AppStrings.get(context, R.string.catalog_disconnected_771e05f2),
                         color = c.ink,
                         fontSize = 14.sp,
                     )
                 }
             }
-            SettingSection("Server") {
+            SettingSection(AppStrings.get(context, R.string.catalog_server_cb0cb170)) {
                 InfoRow(
-                    "Backend",
+                    AppStrings.get(context, R.string.catalog_backend_e758ca64),
                     when (val b = backend) {
-                        is BackendUi.Loading -> "Checking…"
-                        is BackendUi.Loaded -> "v${b.version}"
-                        is BackendUi.Unknown -> "Unknown"
+                        is BackendUi.Loading -> AppStrings.get(context, R.string.catalog_checking_820d6004)
+                        is BackendUi.Loaded -> AppStrings.get(context, R.string.catalog_v_1_s_2682e065, b.version)
+                        is BackendUi.Unknown -> AppStrings.get(context, R.string.catalog_unknown_bc7819b3)
                     },
                 )
-                InfoRow("API", BuildConfig.API_BASE_URL)
-                InfoRow("Realtime", BuildConfig.SOCKET_URL)
+                InfoRow(AppStrings.get(context, R.string.catalog_api_d93d10ff), BuildConfig.API_BASE_URL)
+                InfoRow(AppStrings.get(context, R.string.catalog_realtime_5973df61), BuildConfig.SOCKET_URL)
             }
         }
     }
@@ -1475,9 +1491,10 @@ fun SystemScreen(
 
 @Composable
 fun AboutScreen(appIconUrl: String?, onBack: () -> Unit) {
+        val context = LocalContext.current
     val c = OrangTheme.colors
     Column(modifier = screenModifier(c)) {
-        SettingsTopBar("About", onBack)
+        SettingsTopBar(AppStrings.get(context, R.string.catalog_about_6b21fb79), onBack)
         Column(
             modifier = Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
@@ -1488,30 +1505,30 @@ fun AboutScreen(appIconUrl: String?, onBack: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 AppMark(appIconUrl)
-                Text("OrangChat", color = c.ink, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                Text("Version ${BuildConfig.VERSION_NAME}", color = c.inkMuted, fontSize = 13.sp)
+                Text(AppStrings.get(context, R.string.app_name), color = c.ink, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text(AppStrings.get(context, R.string.catalog_version_1_s_d2f210e6, BuildConfig.VERSION_NAME), color = c.inkMuted, fontSize = 13.sp)
                 Text(
-                    "A fast, self-hosted chat for servers, DMs, and voice - part of the Oranges.LT family.",
+                    AppStrings.get(context, R.string.catalog_a_fast_self_hosted_chat_for_servers_fa05634c),
                     color = c.inkSecondary,
                     fontSize = 13.sp,
                 )
             }
-            SettingSection("Updates") { UpdateSection() }
-            SettingSection("Build") {
+            SettingSection(AppStrings.get(context, R.string.catalog_updates_c76d1807)) { UpdateSection() }
+            SettingSection(AppStrings.get(context, R.string.catalog_build_bbd80cf7)) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(c.surface3, RoundedCornerShape(OrangRadius.lg))
                         .padding(horizontal = 14.dp),
                 ) {
-                    InfoRow("Version", BuildConfig.VERSION_NAME)
-                    InfoRow("Build", if (BuildConfig.DEBUG) "Debug" else "Release")
-                    InfoRow("Package", BuildConfig.APPLICATION_ID)
-                    InfoRow("Client", "Android (native)")
+                    InfoRow(AppStrings.get(context, R.string.catalog_version_2da600bf), BuildConfig.VERSION_NAME)
+                    InfoRow(AppStrings.get(context, R.string.catalog_build_bbd80cf7), if (BuildConfig.DEBUG) AppStrings.get(context, R.string.catalog_debug_bd604d99) else AppStrings.get(context, R.string.catalog_release_d41f56ce))
+                    InfoRow(AppStrings.get(context, R.string.catalog_package_7431e3df), BuildConfig.APPLICATION_ID)
+                    InfoRow(AppStrings.get(context, R.string.catalog_client_1bdd79b1), AppStrings.get(context, R.string.catalog_android_native_a2dee752))
                 }
             }
             Text(
-                "© 2026 Oranges.LT · Made with 🍊",
+                AppStrings.get(context, R.string.catalog_2026_oranges_lt_made_with_c3b7fea5),
                 color = c.inkMuted,
                 fontSize = 12.sp,
                 modifier = Modifier.fillMaxWidth(),
@@ -1564,12 +1581,12 @@ private fun UpdateSection() {
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         val status = when (val s = state) {
-            is UpdateUiState.Idle -> "Version ${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})"
-            is UpdateUiState.Checking -> "Checking…"
-            is UpdateUiState.UpToDate -> "You're on the latest version"
-            is UpdateUiState.Available -> "Version ${s.manifest.versionName} is available"
-            is UpdateUiState.Downloading -> "Downloading ${s.manifest.versionName}…"
-            is UpdateUiState.ReadyToInstall -> "Follow the installer to finish updating"
+            is UpdateUiState.Idle -> AppStrings.get(context, R.string.catalog_version_1_s_build_2_s_e3646b68, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
+            is UpdateUiState.Checking -> AppStrings.get(context, R.string.catalog_checking_820d6004)
+            is UpdateUiState.UpToDate -> AppStrings.get(context, R.string.catalog_you_re_on_the_latest_version_182b7c69)
+            is UpdateUiState.Available -> AppStrings.get(context, R.string.catalog_version_1_s_is_available_e41095b0, s.manifest.versionName)
+            is UpdateUiState.Downloading -> AppStrings.get(context, R.string.catalog_downloading_1_s_66b84142, s.manifest.versionName)
+            is UpdateUiState.ReadyToInstall -> AppStrings.get(context, R.string.catalog_follow_the_installer_to_finish_updating_2742868e)
             is UpdateUiState.Failed -> s.message
         }
         Text(
@@ -1593,7 +1610,7 @@ private fun UpdateSection() {
                     // The per-app "install unknown apps" toggle has no runtime
                     // dialog, so send the user to it before downloading 30 MB
                     // they could not install at the end of.
-                    text = if (vm.canInstall()) "Download & install" else "Allow installs first",
+                    text = if (vm.canInstall()) AppStrings.get(context, R.string.catalog_download_install_7db0bddc) else AppStrings.get(context, R.string.catalog_allow_installs_first_a339d45d),
                     onClick = {
                         if (vm.canInstall()) vm.download(s.manifest)
                         else context.startActivity(vm.installPermissionIntent())
@@ -1604,7 +1621,7 @@ private fun UpdateSection() {
 
             else ->
                 OrangButton(
-                    text = "Check for updates",
+                    text = AppStrings.get(context, R.string.catalog_check_for_updates_736b9062),
                     variant = ButtonVariant.Secondary,
                     loading = state is UpdateUiState.Checking,
                     onClick = vm::check,

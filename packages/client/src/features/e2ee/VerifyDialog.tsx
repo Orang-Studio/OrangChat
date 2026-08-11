@@ -32,6 +32,7 @@ import { QrScanner } from './QrScanner';
 import { SafetyNumberCheck } from './SafetyNumberCheck';
 import { StrictModeError, isVerified, setStrictFor, useStrictStore } from './strict';
 import { rotate } from './conversation';
+import { t } from "../../lib/i18n";
 
 type Step = 'overview' | 'scan' | 'show';
 
@@ -246,8 +247,7 @@ export function VerifyDialog({
                   {allVerified ? 'Check them again' : `Check that it is really ${who}`}
                 </p>
                 <p className="text-xs leading-relaxed text-ink-muted">
-                  Standing together? Scan each other's codes - one scan proves one direction, so do
-                  both. Apart, compare the numbers below instead.
+                  {t("verifyDialog.standingTogetherScanEachOthersCodes")}
                 </p>
                 <Button
                   type="button"
@@ -258,7 +258,7 @@ export function VerifyDialog({
                   }}
                 >
                   <ScanLine aria-hidden className="size-4" />
-                  Scan their code
+                  {t("verifyDialog.scanTheirCode")}
                 </Button>
                 <Button
                   type="button"
@@ -267,7 +267,7 @@ export function VerifyDialog({
                   onClick={() => setStep('show')}
                 >
                   <QrCodeIcon aria-hidden className="size-4" />
-                  Show my code
+                  {t("verifyDialog.showMyCode")}
                 </Button>
                 {allVerified && (
                   <Button
@@ -277,7 +277,7 @@ export function VerifyDialog({
                     onClick={() => unverify.mutate()}
                     disabled={unverify.isPending}
                   >
-                    Forget that I checked them
+                    {t("verifyDialog.forgetThatICheckedThem")}
                   </Button>
                 )}
               </div>
@@ -295,11 +295,10 @@ export function VerifyDialog({
               <div className="rounded-xl border border-border px-3 py-2.5">
                 <p className="flex items-center gap-2 text-sm font-medium">
                   <RotateCcw aria-hidden className="size-4 shrink-0 text-ink-muted" />
-                  Start a fresh key
+                  {t("verifyDialog.startAFreshKey")}
                 </p>
                 <p className="mt-1 text-xs leading-relaxed text-ink-muted">
-                  Replaces the key used from now on, so a device that has since been removed cannot
-                  read anything new. Messages already here stay readable, and nobody is locked out.
+                  {t("verifyDialog.replacesTheKeyUsedFromNow")}
                 </p>
                 <Button
                   type="button"
@@ -313,7 +312,7 @@ export function VerifyDialog({
                 </Button>
                 {reset.isSuccess && !error && (
                   <p className="mt-2 text-xs text-success">
-                    Done. Everything from here on uses the new key.
+                    {t("verifyDialog.doneEverythingFromHereOnUses")}
                   </p>
                 )}
               </div>
@@ -330,8 +329,7 @@ export function VerifyDialog({
         {step === 'scan' && (
           <div className="mt-3 space-y-3">
             <p className="text-sm text-ink-secondary">
-              Point this at the code on {peers[0]?.displayName ?? 'their'} screen. They will find it
-              under the lock at the top of this conversation, or in Settings → Encryption.
+              {t("verifyDialog.pointAtTheirCode", { name: peers[0]?.displayName ?? t("verifyDialog.their") })}
             </p>
             <QrScanner
               expect={QR_KIND.contactVerify}
@@ -351,21 +349,17 @@ export function VerifyDialog({
             {justScanned && (
               <p className="flex items-start gap-2 rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-sm">
                 <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />
-                <span>
-                  You have checked {scannedName}. They have not checked you yet - have them scan
-                  this code now, so it works both ways.
-                </span>
+                <span>{t("verifyDialog.youHaveCheckedName", { name: scannedName })}</span>
               </p>
             )}
-            {myCode.data && <QrCode value={myCode.data} label="My verification code" />}
+            {myCode.data && <QrCode value={myCode.data} label={t("verifyDialog.myVerificationCode")} />}
             {myCode.error instanceof Error && (
               <p role="alert" className="text-xs text-danger">
                 {myCode.error.message}
               </p>
             )}
             <p className="text-center text-xs leading-relaxed text-ink-muted">
-              This code holds nothing secret. It is safe for anyone to see; being in the room is
-              what makes scanning it mean something.
+              {t("verifyDialog.thisCodeHoldsNothingSecretIt")}
             </p>
             <Button
               type="button"
@@ -373,7 +367,7 @@ export function VerifyDialog({
               className="w-full"
               onClick={() => setStep('overview')}
             >
-              Done
+              {t("common.done")}
             </Button>
           </div>
         )}
@@ -382,7 +376,7 @@ export function VerifyDialog({
           open={confirmingOff}
           onOpenChange={setConfirmingOff}
           onConfirmed={relax}
-          title="Send without checking them first"
+          title={t("verifyDialog.sendWithoutCheckingThemFirst")}
           explanation="Going back to sending straight away is visible to the other person, and it takes more than an open session on this device."
         />
         <ConfirmDialog
@@ -392,9 +386,9 @@ export function VerifyDialog({
             setConfirmingReset(false);
             reset.mutate();
           }}
-          title="Start a fresh key here"
-          description="Everything sent from now on uses a new key. Existing messages stay readable, and everyone still in the conversation keeps access."
-          confirmLabel="Make a new key"
+          title={t("verifyDialog.startAFreshKeyHere")}
+          description={t("verifyDialog.everythingSentFromNowOnUses")}
+          confirmLabel={t("verifyDialog.makeANewKey")}
           loading={reset.isPending}
         />
       </DialogContent>

@@ -11,6 +11,7 @@ import coil.memory.MemoryCache
 import android.os.Build
 import dagger.hilt.android.HiltAndroidApp
 import lt.oranges.orangchat.util.AppForegroundState
+import lt.oranges.orangchat.util.RemoteI18n
 
 /** Hilt application root. Also configures Coil for animated-GIF avatars and for
  *  decoding a video's own first frame as its poster. */
@@ -19,6 +20,11 @@ class OrangChatApp : Application(), ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
+        // Server-served translations: load whatever is cached (so the very
+        // first string lookup already speaks the last-known language), then
+        // start the launch-and-hourly poll for fixes and new languages.
+        RemoteI18n.init(applicationContext)
+        RemoteI18n.start()
         // Track process foreground/background so notifications only fire when the
         // app (or the focused chat) isn't visible.
         AppForegroundState.register()

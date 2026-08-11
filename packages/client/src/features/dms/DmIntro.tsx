@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Lock } from "lucide-react";
 import type { User } from "@orangchat/shared";
 import { Avatar, STATUS_LABEL } from "../../components/Avatar";
+import { primaryDevice } from "../../components/DeviceIndicators";
 import { StatusIcon } from "../../components/StatusIcon";
 import { HowEncryptionWorksLink } from "../e2ee/HowEncryptionWorks";
 import { GroupIcon } from "./GroupIcon";
 import { ProfileDialog } from "../profile/ProfileDialog";
+import { t, tCount, tNodes } from "../../lib/i18n";
 
 /**
  * Header shown at the very start of a conversation, once there's no older
@@ -24,8 +26,7 @@ function EncryptionLine() {
     <div className="mt-2 space-y-1">
       <p className="flex items-start gap-1.5 text-xs text-ink-muted">
         <Lock aria-hidden className="mt-0.5 size-3 shrink-0" />
-        Messages here are locked on your device, so only the people in this conversation can read
-        them.
+        {t("dmIntro.messagesHereAreLockedOnYour")}
       </p>
       <HowEncryptionWorksLink className="ml-[1.125rem]" />
     </div>
@@ -51,9 +52,9 @@ export function DmIntro({
   if (!other) {
     return (
       <div className="px-4 pb-2 pt-6">
-        <h2 className="text-xl font-bold">Just you here</h2>
+        <h2 className="text-xl font-bold">{t("dmIntro.justYouHere")}</h2>
         <p className="text-sm text-ink-secondary">
-          Messages you send in this conversation are only visible to you.
+          {t("dmIntro.messagesYouSendInThisConversation")}
         </p>
       </div>
     );
@@ -80,8 +81,7 @@ export function DmIntro({
         )}
         <h2 className="text-2xl font-bold">{groupName || "Group conversation"}</h2>
         <p className="text-sm text-ink-secondary">
-          This is the beginning of this group, with {participants.length} other{" "}
-          {participants.length === 1 ? "person" : "people"}.
+          {tCount("dmIntro.groupBeginning", participants.length)}
         </p>
         <EncryptionLine />
       </div>
@@ -101,12 +101,18 @@ export function DmIntro({
       <h2 className="text-2xl font-bold">{other.displayName}</h2>
       <p className="text-sm text-ink-secondary">@{other.username}</p>
       <p className="mt-1 flex items-center gap-1.5 text-sm text-ink-muted">
-        <StatusIcon status={other.status} label={null} className="size-3.5" />
+        <StatusIcon
+          status={other.status}
+          mobile={primaryDevice(other.devices) === "mobile"}
+          label={null}
+          className="size-3"
+        />
         {STATUS_LABEL[other.status]}
       </p>
       <p className="mt-2 text-sm text-ink-secondary">
-        This is the beginning of your direct message history with{" "}
-        <span className="font-semibold text-ink">{other.displayName}</span>.
+        {tNodes("dmIntro.dmBeginning", {
+          name: <span className="font-semibold text-ink">{other.displayName}</span>,
+        })}
       </p>
       <EncryptionLine />
       <ProfileDialog user={other} open={profileOpen} onOpenChange={setProfileOpen} />

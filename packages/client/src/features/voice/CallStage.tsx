@@ -20,6 +20,7 @@ import { conversationName, useConversations } from "../dms/queries";
 import { callActions, useCallStore } from "./callStore";
 import type { VideoTile } from "./livekit";
 import { useVoiceStore, voiceActions } from "./store";
+import { t } from "../../lib/i18n";
 
 function VideoSurface({ tile, contain = false }: { tile: VideoTile; contain?: boolean }) {
   const ref = useRef<HTMLVideoElement>(null);
@@ -73,7 +74,7 @@ function FocusedVideo({ tile, onClose }: { tile: VideoTile; onClose: () => void 
       <button
         type="button"
         onClick={onClose}
-        aria-label="Close full screen"
+        aria-label={t("callStage.closeFullScreen")}
         className="absolute inset-0 cursor-zoom-out"
       />
       <VideoSurface tile={tile} contain />
@@ -89,7 +90,7 @@ const keyOf = (tile: VideoTile) =>
   `${tile.identity}:${tile.isLocal ? "self" : "remote"}:${tile.source}`;
 
 const screenLabel = (tile: VideoTile) =>
-  tile.isLocal ? "Your screen" : `${tile.name}'s screen`;
+  tile.isLocal ? t("callStage.yourScreen") : t("callStage.nameSScreen", { name: tile.name });
 
 /** A shared screen stands on its own rather than replacing anybody's card. */
 function ScreenCard({ tile, onExpand }: { tile: VideoTile; onExpand: () => void }) {
@@ -188,8 +189,8 @@ function ParticipantCard({
           talk - so neither icon stands in for the other. */}
       {(muted || deafened) && (
         <div className="absolute right-2 top-2 flex gap-1.5">
-          {muted && <VoiceBadge icon={MicOff} label="Muted" />}
-          {deafened && <VoiceBadge icon={HeadphoneOff} label="Deafened" />}
+          {muted && <VoiceBadge icon={MicOff} label={t("callStage.muted")} />}
+          {deafened && <VoiceBadge icon={HeadphoneOff} label={t("callStage.deafened")} />}
         </div>
       )}
       <div className="absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/80 to-transparent p-3 pt-10">
@@ -203,12 +204,12 @@ function ParticipantCard({
           )}
         >
           {speaking
-            ? "Speaking"
+            ? t("callStage.speaking")
             : status === "connected"
-              ? "In call"
+              ? t("callStage.inCall")
               : status === "ringing"
-                ? "Ringing…"
-                : "Not in call"}
+                ? t("callStage.ringingStatus")
+                : t("callStage.notInCall")}
         </span>
       </div>
     </div>
@@ -301,14 +302,14 @@ function DmCallScreen() {
   const controls = (
     <div className="flex items-center justify-center gap-3">
       <Control
-        label={session.muted ? "Unmute" : "Mute"}
+        label={session.muted ? t("callStage.unmute") : t("callStage.mute")}
         active={session.muted}
         onClick={() => void voiceActions.toggleMute()}
       >
         {session.muted ? <MicOff className="size-5" /> : <Mic className="size-5" />}
       </Control>
       <Control
-        label={session.deafened ? "Undeafen" : "Deafen"}
+        label={session.deafened ? t("callStage.undeafen") : t("callStage.deafen")}
         active={session.deafened}
         onClick={() => void voiceActions.toggleDeafen()}
       >
@@ -319,14 +320,18 @@ function DmCallScreen() {
         )}
       </Control>
       <Control
-        label={session.video ? "Turn camera off" : "Turn camera on"}
+        label={session.video ? t("callStage.turnCameraOff") : t("callStage.turnCameraOn")}
         active={session.video}
         onClick={() => void voiceActions.toggleCamera()}
       >
         {session.video ? <Video className="size-5" /> : <VideoOff className="size-5" />}
       </Control>
       <Control
-        label={session.screenSharing ? "Stop sharing your screen" : "Share your screen"}
+        label={
+          session.screenSharing
+            ? t("callStage.stopSharingYourScreen")
+            : t("callStage.shareYourScreen")
+        }
         active={session.screenSharing}
         onClick={() => void voiceActions.toggleScreenShare()}
       >
@@ -336,7 +341,7 @@ function DmCallScreen() {
           <ScreenShare className="size-5" />
         )}
       </Control>
-      <Control label="Hang up" danger onClick={hangUp}>
+      <Control label={t("callStage.hangUp")} danger onClick={hangUp}>
         <PhoneOff className="size-5" />
       </Control>
     </div>
@@ -366,13 +371,13 @@ function DmCallScreen() {
                       stronger signal, so it wins when someone is both. */}
                   {(muted || deafened) && (
                     <span
-                      title={deafened ? "Deafened" : "Muted"}
+                      title={deafened ? t("callStage.deafened") : t("callStage.muted")}
                       className="absolute -bottom-0.5 -right-0.5 grid size-4 place-items-center rounded-full border border-surface-2 bg-surface-3 text-danger"
                     >
                       {deafened ? (
-                        <HeadphoneOff aria-label="Deafened" className="size-2.5" />
+                        <HeadphoneOff aria-label={t("callStage.deafened")} className="size-2.5" />
                       ) : (
-                        <MicOff aria-label="Muted" className="size-2.5" />
+                        <MicOff aria-label={t("callStage.muted")} className="size-2.5" />
                       )}
                     </span>
                   )}
@@ -383,7 +388,9 @@ function DmCallScreen() {
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">{title}</p>
             <p className="text-xs text-ink-muted">
-              {call.phase === "outgoing" ? "Ringing…" : `${connected.size} in call`}
+              {call.phase === "outgoing"
+                ? t("callStage.ringingStatus")
+                : t("callStage.connectedInCall", { count: connected.size })}
             </p>
           </div>
           <PictureInPicture2 className="size-4 text-ink-muted" />
@@ -398,19 +405,19 @@ function DmCallScreen() {
       <header className="mb-4 flex items-center justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-success">
-            {call.phase === "outgoing" ? "Calling" : "Call connected"}
+            {call.phase === "outgoing" ? t("callStage.calling") : t("callStage.callConnected")}
           </p>
           <h1 className="text-xl font-bold">{title}</h1>
           <p className="text-sm text-ink-muted">
-            {connected.size} in call · {ringing.size} ringing
+            {t("callStage.participantsSummary", { connected: connected.size, ringing: ringing.size })}
           </p>
         </div>
         <button
           type="button"
           onClick={() => setMinimized(true)}
           className="rounded-lg border border-border bg-surface-2 p-2 text-ink-muted hover:text-ink"
-          aria-label="Minimize call"
-          title="Minimize call"
+          aria-label={t("callStage.minimizeCall")}
+          title={t("callStage.minimizeCall")}
         >
           <PictureInPicture2 className="size-5" />
         </button>
