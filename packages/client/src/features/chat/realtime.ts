@@ -19,7 +19,7 @@ import {
 } from '../messages/queries';
 import { serverKeys } from '../servers/queries';
 import { applyEventBroadcast, removeEvent, setEventInterestCount } from '../events/queries';
-import { getServerNotificationPrefs } from '../servers/notificationPrefs';
+import { getServerNotificationPrefs, isDmMuted } from '../servers/notificationPrefs';
 import type { ServerDetail } from '../servers/api';
 import {
   dmKeys,
@@ -117,7 +117,7 @@ export function registerRealtime(client: QueryClient): void {
     const isDm = p.serverId === null;
     const prefs = isDm ? null : getServerNotificationPrefs(p.serverId!);
     const shouldNotify = isDm
-      ? true
+      ? !isDmMuted(p.channelId)
       : prefs!.mutedUntil === null &&
         (prefs!.level === 'all' || (prefs!.level === 'mentions' && mentioned));
 

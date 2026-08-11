@@ -250,6 +250,10 @@
     <string name="catalog_follow_the_installer_to_finish_updating_2742868e" formatted="false">Follow the installer to finish updating</string>
     <string name="catalog_for_permission_the_first_time_you_join_1cbeb90e" formatted="false">for permission the first time you join one.</string>
     <string name="catalog_freezes_the_account_if_you_think_someone_09f45852" formatted="false">Freezes the account if you think someone else is in it: signs out every </string>
+    <string name="catalog_for_15_minutes_0c40b888" formatted="false">For 15 minutes</string>
+    <string name="catalog_for_1_hour_32c996ba" formatted="false">For 1 hour</string>
+    <string name="catalog_for_8_hours_3e610b98" formatted="false">For 8 hours</string>
+    <string name="catalog_for_24_hours_0a7aea9d" formatted="false">For 24 hours</string>
     <string name="catalog_friends_of_friends_9abdf2fe" formatted="false">Friends of friends</string>
     <string name="catalog_friends_only_0b2d5f25" formatted="false">Friends only</string>
     <string name="catalog_generate_fc45f9b7" formatted="false">Generate</string>
@@ -318,8 +322,12 @@
     <string name="catalog_messages_friend_requests_typing_notifications_17b64746" formatted="false">Messages, friend requests, typing, notifications</string>
     <string name="catalog_messages_go_as_soon_as_you_send_e76569f5" formatted="false">Messages go as soon as you send them. If anyone ever swaps this person\'s lock, your devices notice and tell you.</string>
     <string name="catalog_microphone_access_is_needed_to_record_a_9afc8aaa" formatted="false">Microphone access is needed to record a voice message</string>
+    <string name="catalog_mobile_b1d70245" formatted="false">Mobile</string>
     <string name="catalog_minimize_call_6cb0f0f8" formatted="false">Minimize call</string>
     <string name="catalog_missed_call_0200c293" formatted="false">Missed call</string>
+    <string name="catalog_mute_conversation_d261547e" formatted="false">Mute conversation</string>
+    <string name="catalog_mute_server_b02c984e" formatted="false">Mute server</string>
+    <string name="catalog_muted_b9e78ced" formatted="false">Muted</string>
     <string name="catalog_my_contact_verification_qr_code_44a80ea4" formatted="false">My contact verification QR code</string>
     <string name="catalog_my_orange_grove_c6cfda8f" formatted="false">My orange grove</string>
     <string name="catalog_name_709a2322" formatted="false">Name</string>
@@ -606,7 +614,10 @@
     <string name="catalog_unknown_bc7819b3" formatted="false">Unknown</string>
     <string name="catalog_unknown_device_7af13b29" formatted="false">Unknown device</string>
     <string name="catalog_unknown_ip_70fef55a" formatted="false">unknown IP</string>
+    <string name="catalog_unmute_conversation_2c24b950" formatted="false">Unmute conversation</string>
+    <string name="catalog_unmute_server_b4a70262" formatted="false">Unmute server</string>
     <string name="catalog_until_1_s_5ec80ce8" formatted="true">Until %1$s</string>
+    <string name="catalog_until_i_turn_it_back_on_d3444633" formatted="false">Until I turn it back on</string>
     <string name="catalog_update_now_c4cbac00" formatted="false">Update now</string>
     <string name="catalog_update_required_f440d880" formatted="false">Update required</string>
     <string name="catalog_update_to_continue_27e65968" formatted="false"> Update to continue.</string>

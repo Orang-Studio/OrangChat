@@ -1,8 +1,9 @@
 package lt.oranges.orangchat.ui.components
-
 import androidx.compose.ui.platform.LocalContext
 import lt.oranges.orangchat.R
+
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -23,8 +24,8 @@ import lt.oranges.orangchat.data.model.PresenceStatus
 import lt.oranges.orangchat.data.model.PresenceDevice
 import lt.oranges.orangchat.data.model.User
 import lt.oranges.orangchat.ui.theme.OrangTheme
-import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.absoluteUrl
+import lt.oranges.orangchat.util.AppStrings
 
 @Composable
 fun statusColor(status: PresenceStatus): Color {
@@ -37,11 +38,11 @@ fun statusColor(status: PresenceStatus): Color {
     }
 }
 
-fun statusLabel(status: PresenceStatus): String = when (status) {
-    PresenceStatus.ONLINE -> "Online"
-    PresenceStatus.IDLE -> "Idle"
-    PresenceStatus.DND -> "Do not disturb"
-    PresenceStatus.OFFLINE -> "Offline"
+fun statusLabel(context: android.content.Context, status: PresenceStatus): String = when (status) {
+    PresenceStatus.ONLINE -> AppStrings.get(context, R.string.catalog_online_c3e839df)
+    PresenceStatus.IDLE -> AppStrings.get(context, R.string.catalog_idle_cc1ebdd0)
+    PresenceStatus.DND -> AppStrings.get(context, R.string.catalog_do_not_disturb_875ba794)
+    PresenceStatus.OFFLINE -> AppStrings.get(context, R.string.catalog_offline_e01fa717)
 }
 
 @Composable
@@ -51,6 +52,7 @@ fun Avatar(
     size: Dp = 36.dp,
     status: PresenceStatus? = null,
     shape: Shape = CircleShape,
+    onStatusClick: (() -> Unit)? = null,
 ) {
     Avatar(
         displayName = user.displayName,
@@ -60,6 +62,7 @@ fun Avatar(
         status = status,
         devices = user.devices,
         shape = shape,
+        onStatusClick = onStatusClick,
     )
 }
 
@@ -72,8 +75,9 @@ fun Avatar(
     status: PresenceStatus? = null,
     devices: List<PresenceDevice> = emptyList(),
     shape: Shape = CircleShape,
+    onStatusClick: (() -> Unit)? = null,
 ) {
-        val context = LocalContext.current
+    val context = LocalContext.current
     val c = OrangTheme.colors
     Box(modifier = modifier.size(size)) {
         if (!avatarUrl.isNullOrBlank()) {
@@ -97,23 +101,25 @@ fun Avatar(
             }
         }
         if (status != null) {
-            val badge = (size.value * 0.38f).coerceAtLeast(16f).dp
-            val device = when {
-                PresenceDevice.DESKTOP in devices -> AppStrings.get(context, R.string.catalog_desktop_app_f7a44c6b)
-                PresenceDevice.BROWSER in devices -> "Browser"
-                PresenceDevice.MOBILE in devices -> "Mobile"
-                else -> null
-            }
-            val label = statusLabel(status).let { if (device == null) it else "$it · $device" }
+            val badge = (size.value * 0.34f).coerceAtLeast(10f).dp
+            val device = primaryDevice(devices)
+            val label = statusLabel(context, status)
+                .let { if (device == null) it else "$it · ${deviceLabel(context, device)}" }
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .size(badge)
                     .clip(CircleShape)
+                    .clickable(enabled = onStatusClick != null) { onStatusClick?.invoke() }
                     .background(c.surface2),
                 contentAlignment = Alignment.Center,
             ) {
-                StatusIcon(status = status, size = badge * 0.75f, contentDescription = label)
+                StatusIcon(
+                    status = status,
+                    size = badge * if (device == PresenceDevice.MOBILE) 0.92f else 0.75f,
+                    mobile = device == PresenceDevice.MOBILE,
+                    contentDescription = label,
+                )
             }
         }
     }

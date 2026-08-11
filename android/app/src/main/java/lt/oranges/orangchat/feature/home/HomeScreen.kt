@@ -156,6 +156,7 @@ fun HomeScreen(
     val audioOutputs by callViewModel.audioOutputs.collectAsStateWithLifecycle()
     val selectedAudioOutputId by callViewModel.selectedAudioOutputId.collectAsStateWithLifecycle()
     val unreads by appViewModel.unreads.collectAsStateWithLifecycle()
+    val mutes by appViewModel.mutes.collectAsStateWithLifecycle()
     val voiceParticipants by callViewModel.voiceParticipants.collectAsStateWithLifecycle()
     val emojis by appViewModel.emojis.collectAsStateWithLifecycle()
     val sounds by appViewModel.sounds.collectAsStateWithLifecycle()
@@ -279,6 +280,9 @@ fun HomeScreen(
             selectedServerId = detail?.server?.id,
             homeSelected = homeSelected,
             unreads = unreads,
+            mutes = mutes,
+            onMute = appViewModel::mute,
+            onUnmute = appViewModel::unmute,
             onHome = {
                 homeSelected = true
                 openChat = false
@@ -307,6 +311,9 @@ fun HomeScreen(
                 friendIds = friendIds,
                 unreads = unreads,
                 typing = typing,
+                mutes = mutes,
+                onMute = appViewModel::mute,
+                onUnmute = appViewModel::unmute,
                 onOpenFriends = { overlay = Overlay.FRIENDS; closeDrawer() },
                 onOpenConversation = { convo ->
                     appViewModel.selectChannel(convo.id)
@@ -314,6 +321,7 @@ fun HomeScreen(
                     closeDrawer()
                 },
                 onOpenSettings = { overlay = Overlay.SETTINGS; closeDrawer() },
+                onStatusChange = appViewModel::updateStatus,
                 onSearch = {
                     searchChannelId = null
                     overlay = Overlay.SEARCH
@@ -351,6 +359,7 @@ fun HomeScreen(
                     }
                 },
                 onMarkRead = { channel -> appViewModel.markChannelRead(channel.id) },
+                onStatusChange = appViewModel::updateStatus,
                 onAddChannel = { showCreateChannel = true; closeDrawer() },
                 onSearch = {
                     searchChannelId = null

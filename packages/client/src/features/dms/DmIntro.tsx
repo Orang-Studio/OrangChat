@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Lock } from "lucide-react";
 import type { User } from "@orangchat/shared";
-import { Avatar, STATUS_LABEL } from "../../components/Avatar";
+import { Avatar, statusLabel } from "../../components/Avatar";
 import { primaryDevice } from "../../components/DeviceIndicators";
 import { StatusIcon } from "../../components/StatusIcon";
 import { HowEncryptionWorksLink } from "../e2ee/HowEncryptionWorks";
@@ -97,7 +97,7 @@ export function DmIntro({
           label={null}
           className="size-3"
         />
-        {STATUS_LABEL[other.status]}
+        {statusLabel(other.status)}
       </p>
       <p className="mt-2 text-sm text-ink-secondary">
         {tNodes("dmIntro.dmBeginning", {

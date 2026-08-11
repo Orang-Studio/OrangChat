@@ -166,6 +166,7 @@ private fun ProfileCardNative(
             Avatar(
                 user = user,
                 size = 56.dp,
+                status = presence ?: user.status,
                 shape = avatarShape,
             )
         }

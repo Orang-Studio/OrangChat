@@ -15,6 +15,7 @@ class FcmService : FirebaseMessagingService() {
     @Inject lateinit var notificationHelper: NotificationHelper
     @Inject lateinit var tokenRegistrar: PushTokenRegistrar
     @Inject lateinit var e2eeRepository: E2eeRepository
+    @Inject lateinit var muteStore: NotificationMuteStore
 
     override fun onNewToken(token: String) = tokenRegistrar.register(token).let { Unit }
 
@@ -33,6 +34,7 @@ class FcmService : FirebaseMessagingService() {
             return
         }
         if (AppForegroundState.isOnScreen(channelId)) return
+        if (message.data["kind"] != "call" && muteStore.isChannelMuted(channelId)) return
 
         val title = message.data["title"] ?: "OrangChat"
         val body = message.data["body"].orEmpty()

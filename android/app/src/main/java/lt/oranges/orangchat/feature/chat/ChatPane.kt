@@ -44,6 +44,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -201,6 +202,10 @@ import androidx.compose.material.icons.filled.Edit
 
 private val REPLY_TRIGGER = 64.dp
 
+private val AVATAR_COLUMN_WIDTH = 48.dp
+
+private val MESSAGE_AVATAR_SIZE = 38.dp
+
 private val EDIT_TRIGGER = 148.dp
 
 private enum class SwipeAction { NONE, REPLY, EDIT }
@@ -262,6 +267,11 @@ private const val JUMP_POLL_MS = 200L
 private const val JUMP_MAX_INITIAL_WAITS = 50
 
 private const val JUMP_MISSING_NOTICE_MS = 4_000L
+
+private const val JUMP_VIEWPORT_FRACTION = 0.72f
+
+private fun LazyListState.jumpOffset(): Int =
+    (layoutInfo.viewportSize.height * JUMP_VIEWPORT_FRACTION).toInt()
 
 private data class MessageRowData(
     val message: Message,
@@ -440,7 +450,7 @@ fun ChatPane(
         while (pagesAsked <= JUMP_MAX_PAGES) {
             val index = liveRows.indexOfFirst { it.message.id == target }
             if (index >= 0) {
-                listState.scrollToItem(index)
+                listState.scrollToItem(index, listState.jumpOffset())
                 highlightedId = target
                 landed = true
                 break
@@ -496,7 +506,12 @@ fun ChatPane(
         val index = rows.indexOfFirst { it.message.id == id }
         if (index >= 0) {
             jumpScope.launch {
-                if (reducedMotion) listState.scrollToItem(index) else listState.animateScrollToItem(index)
+                val offset = listState.jumpOffset()
+                if (reducedMotion) {
+                    listState.scrollToItem(index, offset)
+                } else {
+                    listState.animateScrollToItem(index, offset)
+                }
                 highlightedId = id
             }
         }
@@ -727,7 +742,6 @@ fun ChatPane(
                             onRetry = { onRetryMessage(message.id) },
                             onDiscard = { onDiscardMessage(message.id) },
                             selfId = selfId,
-                            presence = presence[message.author.id],
                             grouped = row.grouped,
                             plated = backgroundUrl != null,
                             groupEnd = row.groupEnd,
@@ -1159,7 +1173,6 @@ private fun MessageRow(
     onRetry: () -> Unit,
     onDiscard: () -> Unit,
     selfId: String,
-    presence: PresenceStatus?,
     grouped: Boolean,
     plated: Boolean,
     groupEnd: Boolean,
@@ -1253,7 +1266,7 @@ private fun MessageRow(
                 .size(18.dp)
                 .alpha((-dragX.value / replyPx).coerceIn(0f, 1f)),
         )
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .alpha(if (pending) 0.5f else 1f)
@@ -1330,50 +1343,53 @@ private fun MessageRow(
                 top = if (grouped) 0.dp else if (compact) 2.dp else 4.dp,
                 bottom = if (!groupEnd) 0.dp else if (compact) 1.dp else 2.dp,
             ),
-        verticalAlignment = Alignment.Top,
     ) {
+        repliedTo?.let { parent ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .padding(start = AVATAR_COLUMN_WIDTH)
+                    .clickable { onJumpToMessage(parent.id) }
+                    .padding(vertical = 2.dp),
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.Reply,
+                    contentDescription = null,
+                    tint = c.inkMuted,
+                    modifier = Modifier.size(12.dp),
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = nameOf(parent.author.id) ?: parent.author.displayName,
+                    color = c.inkSecondary,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 11.sp,
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = parent.content.replace("\n", " "),
+                    color = c.inkMuted,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        Row(verticalAlignment = Alignment.Top) {
         if (grouped) {
-            Spacer(Modifier.width(48.dp))
+            Spacer(Modifier.width(AVATAR_COLUMN_WIDTH))
         } else {
             Box(
-                modifier = Modifier.size(48.dp).clickable { onOpenProfile(message.author) },
+                modifier = Modifier
+                    .size(width = AVATAR_COLUMN_WIDTH, height = MESSAGE_AVATAR_SIZE)
+                    .clickable { onOpenProfile(message.author) },
                 contentAlignment = Alignment.TopStart,
             ) {
-                Avatar(message.author, size = 38.dp, status = presence)
+                Avatar(message.author, size = MESSAGE_AVATAR_SIZE)
             }
         }
         Spacer(Modifier.width(2.dp))
         Column(modifier = Modifier.weight(1f)) {
-            repliedTo?.let { parent ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .clickable { onJumpToMessage(parent.id) }
-                        .padding(vertical = 2.dp),
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Reply,
-                        contentDescription = null,
-                        tint = c.inkMuted,
-                        modifier = Modifier.size(12.dp),
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = nameOf(parent.author.id) ?: parent.author.displayName,
-                        color = c.inkSecondary,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 11.sp,
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = parent.content.replace("\n", " "),
-                        color = c.inkMuted,
-                        fontSize = 11.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
             if (!grouped) {
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
@@ -1536,6 +1552,8 @@ private fun MessageRow(
         }
     }
     }
+}
+
 }
 
 @Composable

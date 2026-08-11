@@ -1,14 +1,19 @@
 import type { PresenceStatus, User } from "@orangchat/shared";
 import { cn } from "../lib/cn";
-import { DEVICE_META, primaryDevice } from "./DeviceIndicators";
+import { deviceLabel, primaryDevice } from "./DeviceIndicators";
 import { StatusIcon } from "./StatusIcon";
+import { t } from "../lib/i18n";
 
-export const STATUS_LABEL: Record<PresenceStatus, string> = {
-  online: "Online",
-  idle: "Idle",
-  dnd: "Do not disturb",
-  offline: "Offline",
-};
+const STATUS_KEYS = {
+  online: "common.online",
+  idle: "common.idle",
+  dnd: "common.doNotDisturb",
+  offline: "common.offline",
+} as const;
+
+export function statusLabel(status: PresenceStatus): string {
+  return t(STATUS_KEYS[status]);
+}
 
 interface AvatarProps {
   user: Pick<User, "displayName" | "avatarUrl"> & Partial<Pick<User, "devices">>;
@@ -26,8 +31,8 @@ export function Avatar({ user, status, className, imgClassName, fallbackClassNam
   const device = primaryDevice(user.devices);
   const label = status
     ? device
-      ? `${STATUS_LABEL[status]} · ${DEVICE_META[device].label}`
-      : STATUS_LABEL[status]
+      ? `${statusLabel(status)} · ${deviceLabel(device)}`
+      : statusLabel(status)
     : "";
   return (
     // rounded-full on the wrapper too: it has no fill of its own, but a ring or

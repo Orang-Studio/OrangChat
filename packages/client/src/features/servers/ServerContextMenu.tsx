@@ -113,12 +113,12 @@ export function ServerContextMenu({
             {t("serverContextMenu.muteServer")}
           </ContextMenuSubTrigger>
           <ContextMenuSubContent>
-            {MUTE_DURATIONS.map(({ label, ms }) => (
+            {MUTE_DURATIONS.map(({ labelKey, ms }) => (
               <ContextMenuItem
-                key={label}
+                key={labelKey}
                 onSelect={() => serverNotificationActions.mute(server.id, ms)}
               >
-                {label}
+                {t(labelKey)}
               </ContextMenuItem>
             ))}
           </ContextMenuSubContent>

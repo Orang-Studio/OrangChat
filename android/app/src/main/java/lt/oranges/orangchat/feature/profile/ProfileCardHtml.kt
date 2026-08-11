@@ -125,6 +125,7 @@ fun buildProfileCardHtml(
     } else {
         """<span class="oc-pf-avatar-fallback">${displayName.take(1).uppercase().escapeHtml()}</span>"""
     }
+    val statusBadge = """<span class="oc-pf-status" data-status="${status.name.lowercase()}" title="${statusHtmlLabel(status)}">${statusIconSvg(status, statusDotColor(status, colors))}</span>"""
     val pronouns = user.pronouns?.takeIf { it.isNotBlank() }
         ?.let { """<span class="oc-pf-pronouns">${it.escapeHtml()}</span>""" } ?: ""
     val resolvedBadges = Badge.resolve(user.badges)
@@ -163,7 +164,7 @@ fun buildProfileCardHtml(
 <div class="oc-profile-card" data-status="${(status ?: PresenceStatus.OFFLINE).name.lowercase()}" data-has-banner="${banner != null}" data-has-avatar="${avatar != null}">
   <div class="oc-pf-banner">$bannerInner</div>
   <div class="oc-pf-inner">
-    <div class="oc-pf-avatar"><span class="oc-pf-avatar-frame">$avatarInner</span></div>
+    <div class="oc-pf-avatar"><span class="oc-pf-avatar-frame">$avatarInner$statusBadge</span></div>
     <div class="oc-pf-body">
       <div class="oc-pf-head"><h2 class="oc-pf-name">${displayName.ifBlank { "-" }.escapeHtml()}</h2>$pronouns</div>
       <div class="oc-pf-identity"><p class="oc-pf-username">@${username.ifBlank { "username" }.escapeHtml()}</p>$devices</div>
@@ -229,6 +230,14 @@ body {
   color: ${c.primary.css()};
   font-size: 24px; font-weight: 600; line-height: 1;
 }
+.oc-pf-status {
+  position: absolute; right: -1px; bottom: -1px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: ${c.surface2.css()};
+  display: flex; align-items: center; justify-content: center;
+  line-height: 0;
+}
+.oc-pf-status-icon { width: 15px; height: 15px; display: block; }
 .oc-pf-identity { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .oc-pf-devices { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .oc-pf-device { color: ${statusDotColor(status ?: PresenceStatus.OFFLINE, c).css()}; font-size: 13px; line-height: 1; }
@@ -305,6 +314,23 @@ private fun statusDotColor(status: PresenceStatus, c: OrangColors): Color = when
     PresenceStatus.IDLE -> c.warning
     PresenceStatus.DND -> c.danger
     PresenceStatus.OFFLINE -> c.inkMuted
+}
+
+private fun statusHtmlLabel(status: PresenceStatus): String = when (status) {
+    PresenceStatus.ONLINE -> "Online"
+    PresenceStatus.IDLE -> "Idle"
+    PresenceStatus.DND -> "Do not disturb"
+    PresenceStatus.OFFLINE -> "Offline"
+}
+
+private fun statusIconSvg(status: PresenceStatus, color: Color): String {
+    val cut = when (status) {
+        PresenceStatus.ONLINE -> ""
+        PresenceStatus.IDLE -> """<circle cx="4.6" cy="4.6" r="4.8" fill="black"/>"""
+        PresenceStatus.DND -> """<rect x="1.4" y="4.9" width="9.2" height="2.2" rx="1.1" fill="black"/>"""
+        PresenceStatus.OFFLINE -> """<circle cx="6" cy="6" r="2.8" fill="black"/>"""
+    }
+    return """<svg class="oc-pf-status-icon" viewBox="0 0 12 12" aria-hidden="true"><mask id="ocStatusMask"><circle cx="6" cy="6" r="6" fill="white"/>$cut</mask><rect width="12" height="12" fill="${color.css()}" mask="url(#ocStatusMask)"/></svg>"""
 }
 
 private fun formatElapsed(startedAt: String, now: Long): String = runCatching {

@@ -11,13 +11,20 @@ export interface ServerNotificationPrefs {
 
 const DEFAULTS: ServerNotificationPrefs = { mutedUntil: null, level: "mentions" };
 
-export const MUTE_DURATIONS: { label: string; ms: number | "forever" }[] = [
-  { label: "For 15 Minutes", ms: 15 * 60_000 },
-  { label: "For 1 Hour", ms: 60 * 60_000 },
-  { label: "For 8 Hours", ms: 8 * 60 * 60_000 },
-  { label: "For 24 Hours", ms: 24 * 60 * 60_000 },
-  { label: "Until I turn it back on", ms: "forever" },
+export const MUTE_DURATIONS: { labelKey: MuteDurationKey; ms: number | "forever" }[] = [
+  { labelKey: "notificationPrefs.for15Minutes", ms: 15 * 60_000 },
+  { labelKey: "notificationPrefs.for1Hour", ms: 60 * 60_000 },
+  { labelKey: "notificationPrefs.for8Hours", ms: 8 * 60 * 60_000 },
+  { labelKey: "notificationPrefs.for24Hours", ms: 24 * 60 * 60_000 },
+  { labelKey: "notificationPrefs.untilTurnedBackOn", ms: "forever" },
 ];
+
+type MuteDurationKey =
+  | "notificationPrefs.for15Minutes"
+  | "notificationPrefs.for1Hour"
+  | "notificationPrefs.for8Hours"
+  | "notificationPrefs.for24Hours"
+  | "notificationPrefs.untilTurnedBackOn";
 
 export const LEVEL_LABEL: Record<NotificationLevel, string> = {
   all: "All Messages",
@@ -25,53 +32,72 @@ export const LEVEL_LABEL: Record<NotificationLevel, string> = {
   none: "Nothing",
 };
 
-const STORAGE_KEY = "oc-server-notifications";
+const SERVER_STORAGE_KEY = "oc-server-notifications";
+const DM_STORAGE_KEY = "oc-dm-notifications";
 
 type PrefsMap = Record<string, ServerNotificationPrefs>;
 
-function read(): PrefsMap {
+function read(storageKey: string): PrefsMap {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey);
     return raw ? (JSON.parse(raw) as PrefsMap) : {};
   } catch {
     return {};
   }
 }
 
-function write(map: PrefsMap): void {
+function write(storageKey: string, map: PrefsMap): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+    localStorage.setItem(storageKey, JSON.stringify(map));
   } catch {
   }
 }
 
 interface PrefsStore {
   servers: PrefsMap;
+  dms: PrefsMap;
 }
 
-export const useServerNotifications = create<PrefsStore>(() => ({ servers: read() }));
+export const useServerNotifications = create<PrefsStore>(() => ({
+  servers: read(SERVER_STORAGE_KEY),
+  dms: read(DM_STORAGE_KEY),
+}));
 
-function patch(serverId: string, changes: Partial<ServerNotificationPrefs>): void {
-  const current = useServerNotifications.getState().servers;
+function patch(
+  scope: "servers" | "dms",
+  id: string,
+  changes: Partial<ServerNotificationPrefs>,
+): void {
+  const current = useServerNotifications.getState()[scope];
   const next: PrefsMap = {
     ...current,
-    [serverId]: { ...DEFAULTS, ...current[serverId], ...changes },
+    [id]: { ...DEFAULTS, ...current[id], ...changes },
   };
-  write(next);
-  useServerNotifications.setState({ servers: next });
+  write(scope === "servers" ? SERVER_STORAGE_KEY : DM_STORAGE_KEY, next);
+  useServerNotifications.setState({ [scope]: next } as Pick<PrefsStore, typeof scope>);
 }
+
+const muteValue = (duration: number | "forever") =>
+  duration === "forever" ? ("forever" as const) : Date.now() + duration;
 
 export const serverNotificationActions = {
   mute(serverId: string, duration: number | "forever") {
-    patch(serverId, {
-      mutedUntil: duration === "forever" ? "forever" : Date.now() + duration,
-    });
+    patch("servers", serverId, { mutedUntil: muteValue(duration) });
   },
   unmute(serverId: string) {
-    patch(serverId, { mutedUntil: null });
+    patch("servers", serverId, { mutedUntil: null });
   },
   setLevel(serverId: string, level: NotificationLevel) {
-    patch(serverId, { level });
+    patch("servers", serverId, { level });
+  },
+};
+
+export const dmNotificationActions = {
+  mute(conversationId: string, duration: number | "forever") {
+    patch("dms", conversationId, { mutedUntil: muteValue(duration) });
+  },
+  unmute(conversationId: string) {
+    patch("dms", conversationId, { mutedUntil: null });
   },
 };
 
@@ -91,4 +117,12 @@ export function useServerNotificationPrefs(serverId: string): ServerNotification
 
 export function getServerNotificationPrefs(serverId: string): ServerNotificationPrefs {
   return resolve(useServerNotifications.getState().servers[serverId]);
+}
+
+export function useDmMuted(conversationId: string): boolean {
+  return resolve(useServerNotifications((s) => s.dms[conversationId])).mutedUntil !== null;
+}
+
+export function isDmMuted(conversationId: string): boolean {
+  return resolve(useServerNotifications.getState().dms[conversationId]).mutedUntil !== null;
 }

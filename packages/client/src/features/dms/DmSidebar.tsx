@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useLocation, useMatch, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
+  BellOff,
+  BellRing,
   Bot,
   Check,
   Copy,
@@ -23,8 +25,16 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '../../components/ui/ContextMenu';
+import {
+  MUTE_DURATIONS,
+  dmNotificationActions,
+  useDmMuted,
+} from '../servers/notificationPrefs';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { VoicePanel } from '../voice/VoicePanel';
 import { callActions } from '../voice/callStore';
@@ -105,6 +115,7 @@ function ConversationRow({
   // The open conversation is being read right now, so its own badge would just
   // be noise racing the read receipt.
   const unread = !active && unreadCount > 0;
+  const muted = useDmMuted(conversation.id);
   const [profileOpen, setProfileOpen] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
@@ -170,14 +181,22 @@ function ConversationRow({
               />
             )}
             <span className="min-w-0 flex-1">
-              <span
-                className={cn(
-                  'block truncate text-sm leading-tight',
-                  unread || active ? 'text-ink' : 'text-ink-secondary',
-                  unread ? 'font-semibold' : 'font-medium',
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span
+                  className={cn(
+                    'truncate text-sm leading-tight',
+                    unread || active ? 'text-ink' : 'text-ink-secondary',
+                    unread ? 'font-semibold' : 'font-medium',
+                  )}
+                >
+                  {name}
+                </span>
+                {muted && (
+                  <BellOff
+                    aria-label={t("dmSidebar.muted")}
+                    className="size-3.5 shrink-0 text-ink-muted"
+                  />
                 )}
-              >
-                {name}
               </span>
               {typingLine ? (
                 <span className="block truncate text-xs font-semibold leading-4 text-ink-secondary">
@@ -222,6 +241,32 @@ function ConversationRow({
             <Phone aria-hidden className="size-4" />
             {t("dmSidebar.startACall")}
           </ContextMenuItem>
+
+          <ContextMenuSeparator />
+
+          {muted ? (
+            <ContextMenuItem onSelect={() => dmNotificationActions.unmute(conversation.id)}>
+              <BellRing aria-hidden className="size-4" />
+              {t("dmSidebar.unmuteConversation")}
+            </ContextMenuItem>
+          ) : (
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>
+                <BellOff aria-hidden className="size-4" />
+                {t("dmSidebar.muteConversation")}
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                {MUTE_DURATIONS.map(({ labelKey, ms }) => (
+                  <ContextMenuItem
+                    key={labelKey}
+                    onSelect={() => dmNotificationActions.mute(conversation.id, ms)}
+                  >
+                    {t(labelKey)}
+                  </ContextMenuItem>
+                ))}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          )}
 
           {other && isFriend && (
             <>

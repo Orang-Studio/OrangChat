@@ -28,6 +28,15 @@ export const en = {
   "common.download": "Download",
   "common.upload": "Upload",
   "common.unknown": "Unknown",
+  "common.online": "Online",
+  "common.idle": "Idle",
+  "common.doNotDisturb": "Do not disturb",
+  "common.offline": "Offline",
+  "common.desktopApp": "Desktop app",
+  "common.browser": "Browser",
+  "common.mobile": "Mobile",
+  "common.playing": "Playing",
+  "common.listeningTo": "Listening to",
 
   "language.title": "Language",
   "language.description":
@@ -290,6 +299,8 @@ export const en = {
   "dmSidebar.directMessages": "Direct Messages",
   "dmSidebar.friends": "Friends",
   "dmSidebar.markAsRead": "Mark As Read",
+  "dmSidebar.muteConversation": "Mute Conversation",
+  "dmSidebar.muted": "Muted",
   "dmSidebar.newDirectMessage": "New direct message",
   "dmSidebar.newGroup": "New group",
   "dmSidebar.noConversationsYetHitToMessage": "No conversations yet - hit + to message someone.",
@@ -298,6 +309,7 @@ export const en = {
   "dmSidebar.startACall": "Start a Call",
   "dmSidebar.theyllBeRemovedFromYourFriends":
     "They'll be removed from your friends, and you'll need a new request to reconnect. Your message history stays.",
+  "dmSidebar.unmuteConversation": "Unmute Conversation",
   "dmSidebar.unreadMessages": "unread messages",
 
   "downloadTab.getTheApp": "Get the app",
@@ -916,9 +928,14 @@ export const en = {
 
   "profileCard.aboutMe": "About me",
   "profileCard.memberSince": "Member since",
+  "profileCard.defaultName": "-",
+  "profileCard.username": "username",
 
   "profileDialog.accept": "Accept",
+  "profileDialog.addFriend": "Add friend",
   "profileDialog.message": "Message",
+  "profileDialog.profileTitle": "{name}'s profile",
+  "profileDialog.requestSent": "Request sent",
 
   "profileThemesTab.install": "Install",
   "profileThemesTab.installed": "Installed",
@@ -1098,6 +1115,12 @@ export const en = {
   "serverContextMenu.privacySettings": "Privacy Settings",
   "serverContextMenu.serverSettings": "Server Settings",
   "serverContextMenu.unmuteServer": "Unmute Server",
+
+  "notificationPrefs.for15Minutes": "For 15 minutes",
+  "notificationPrefs.for1Hour": "For 1 hour",
+  "notificationPrefs.for8Hours": "For 8 hours",
+  "notificationPrefs.for24Hours": "For 24 hours",
+  "notificationPrefs.untilTurnedBackOn": "Until I turn it back on",
 
   "serverRail.addAServer": "Add a server",
   "serverRail.home": "Home",
@@ -1303,6 +1326,7 @@ export const en = {
   "updateGate.updateRequired": "Update required",
 
   "userFooter.userSettings": "User settings",
+  "userFooter.setStatus": "Set status",
 
   "userSettingsDialog.about": "About",
   "userSettingsDialog.aboutMe": "About me",

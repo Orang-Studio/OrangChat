@@ -56,6 +56,8 @@ interface MessageListProps {
 
 const JUMP_MAX_PAGES = 12;
 
+const JUMP_VIEWPORT_FRACTION = 0.28;
+
 
 const RENDER_CAP = 600;
 const RENDER_CAP_STEP = 400;
@@ -249,7 +251,15 @@ export function MessageList({
         `[data-message-id="${CSS.escape(messageId)}"]`,
       );
       if (target) {
-        target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        const el = scroller.current!;
+        el.scrollTo({
+          top:
+            el.scrollTop +
+            target.getBoundingClientRect().top -
+            el.getBoundingClientRect().top -
+            el.clientHeight * JUMP_VIEWPORT_FRACTION,
+          behavior: 'smooth',
+        });
         setFlashId(messageId);
         clearTimeout(flashTimer.current);
         flashTimer.current = setTimeout(() => setFlashId(null), 2000);

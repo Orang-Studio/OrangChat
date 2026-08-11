@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Check, Menu, MessageSquare, UserPlus, UserX, X } from "lucide-react";
 import type { Friend, FriendRequest, User } from "@orangchat/shared";
-import { Avatar, STATUS_LABEL } from "../../components/Avatar";
+import { Avatar, statusLabel } from "../../components/Avatar";
 import { DeviceIndicators } from "../../components/DeviceIndicators";
 import { ActivityStatus } from "../../components/ActivityStatus";
 import { Button } from "../../components/ui/Button";
@@ -63,7 +63,7 @@ function RowShell({
         <span className="min-w-0">
           <span className="block truncate text-sm font-semibold">{user.displayName}</span>
           <span className="flex min-w-0 items-center gap-1.5 text-xs text-ink-muted">
-            <span className="truncate">@{user.username} · {STATUS_LABEL[user.status]}</span>
+            <span className="truncate">@{user.username} · {statusLabel(user.status)}</span>
             <DeviceIndicators status={user.status} devices={user.devices} />
           </span>
           <ActivityStatus activities={user.activities} className="mt-0.5" />

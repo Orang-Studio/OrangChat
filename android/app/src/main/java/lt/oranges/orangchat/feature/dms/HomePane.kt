@@ -29,6 +29,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.GroupAdd
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PersonRemove
@@ -63,8 +65,11 @@ import lt.oranges.orangchat.feature.unread.UnreadCountBadge
 import lt.oranges.orangchat.ui.components.ActivityStatus
 import lt.oranges.orangchat.ui.components.Avatar
 import lt.oranges.orangchat.ui.components.GroupIcon
+import lt.oranges.orangchat.notifications.MuteDuration
+import lt.oranges.orangchat.notifications.isActiveMute
 import lt.oranges.orangchat.ui.components.MenuItem
 import lt.oranges.orangchat.ui.components.OrangDropdownMenu
+import lt.oranges.orangchat.ui.components.muteDurationItems
 import lt.oranges.orangchat.ui.components.UserFooter
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
@@ -79,6 +84,7 @@ fun HomePane(
     onOpenFriends: () -> Unit,
     onOpenConversation: (Conversation) -> Unit,
     onOpenSettings: () -> Unit,
+    onStatusChange: (PresenceStatus) -> Unit = {},
     onSearch: () -> Unit,
     onNewGroup: () -> Unit,
     onMarkRead: (String) -> Unit,
@@ -89,6 +95,9 @@ fun HomePane(
     modifier: Modifier = Modifier,
     unreads: Map<String, UnreadState> = emptyMap(),
     typing: Map<String, Set<String>> = emptyMap(),
+    mutes: Map<String, Long> = emptyMap(),
+    onMute: (String, MuteDuration) -> Unit = { _, _ -> },
+    onUnmute: (String) -> Unit = {},
 ) {
         val context = LocalContext.current
     val c = OrangTheme.colors
@@ -147,6 +156,9 @@ fun HomePane(
                     unreadCount = unreads[convo.id]?.unreadCount ?: 0,
                     typingUserIds = typing[convo.id].orEmpty() - self.id,
                     friendIds = friendIds,
+                    muted = mutes[convo.id].isActiveMute(),
+                    onMute = onMute,
+                    onUnmute = onUnmute,
                     onClick = onOpenConversation,
                     onMarkRead = onMarkRead,
                     onOpenProfile = onOpenProfile,
@@ -157,7 +169,11 @@ fun HomePane(
             }
         }
 
-        UserFooter(self = self, onOpenSettings = onOpenSettings)
+        UserFooter(
+            self = self,
+            onOpenSettings = onOpenSettings,
+            onStatusChange = onStatusChange,
+        )
     }
 }
 
@@ -200,6 +216,9 @@ private fun ConversationRow(
     unreadCount: Int,
     typingUserIds: Set<String>,
     friendIds: Set<String>,
+    muted: Boolean,
+    onMute: (String, MuteDuration) -> Unit,
+    onUnmute: (String) -> Unit,
     onClick: (Conversation) -> Unit,
     onMarkRead: (String) -> Unit,
     onOpenProfile: (User) -> Unit,
@@ -218,6 +237,7 @@ private fun ConversationRow(
     val haptics = LocalHapticFeedback.current
     val clipboard = LocalClipboardManager.current
     var menuOpen by remember { mutableStateOf(false) }
+    var muteMenuOpen by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier
@@ -258,14 +278,26 @@ private fun ConversationRow(
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                color = if (unread) c.ink else c.inkSecondary,
-                fontWeight = if (unread) FontWeight.Bold else FontWeight.Medium,
-                fontSize = 15.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = title,
+                    color = if (unread) c.ink else c.inkSecondary,
+                    fontWeight = if (unread) FontWeight.Bold else FontWeight.Medium,
+                    fontSize = 15.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (muted) {
+                    Spacer(Modifier.width(6.dp))
+                    Icon(
+                        Icons.Default.NotificationsOff,
+                        contentDescription = AppStrings.get(context, R.string.catalog_muted_b9e78ced),
+                        tint = c.inkMuted,
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
+            }
             if (typingLine != null) {
                 Text(
                     text = typingLine,
@@ -304,6 +336,21 @@ private fun ConversationRow(
                         add(MenuItem("Profile", Icons.Default.Person) { onOpenProfile(user) })
                     }
                     add(MenuItem(AppStrings.get(context, R.string.catalog_start_a_call_d7f39160), Icons.Default.Call) { onStartCall(convo) })
+                    if (muted) {
+                        add(
+                            MenuItem(
+                                AppStrings.get(context, R.string.catalog_unmute_conversation_2c24b950),
+                                Icons.Default.NotificationsActive,
+                            ) { onUnmute(convo.id) },
+                        )
+                    } else {
+                        add(
+                            MenuItem(
+                                AppStrings.get(context, R.string.catalog_mute_conversation_d261547e),
+                                Icons.Default.NotificationsOff,
+                            ) { muteMenuOpen = true },
+                        )
+                    }
                     if (other != null && other.id in friendIds) {
                         add(
                             MenuItem(AppStrings.get(context, R.string.catalog_remove_friend_b16fc7ff), Icons.Default.PersonRemove, destructive = true) {
@@ -332,6 +379,11 @@ private fun ConversationRow(
                         ) { onLeaveConversation(convo) },
                     )
                 },
+            )
+            OrangDropdownMenu(
+                expanded = muteMenuOpen,
+                onDismiss = { muteMenuOpen = false },
+                items = muteDurationItems(context) { onMute(convo.id, it) },
             )
         }
     }

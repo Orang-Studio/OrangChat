@@ -22,6 +22,7 @@ fun StatusIcon(
     status: PresenceStatus,
     modifier: Modifier = Modifier,
     size: Dp = 12.dp,
+    mobile: Boolean = false,
     contentDescription: String? = null,
 ) {
     val color = statusColor(status)
@@ -38,12 +39,38 @@ fun StatusIcon(
             ),
     ) {
         val u = this.size.minDimension / 12f
+        if (mobile) {
+            drawRoundRect(
+                color = color,
+                topLeft = Offset(3.1f * u, 0.2f * u),
+                size = Size(5.8f * u, 11.6f * u),
+                cornerRadius = CornerRadius(1.5f * u),
+            )
+            if (status != PresenceStatus.ONLINE) {
+                drawRoundRect(
+                    color = Color.Black,
+                    topLeft = Offset(4.3f * u, 1.4f * u),
+                    size = Size(3.4f * u, 9.2f * u),
+                    cornerRadius = CornerRadius(0.7f * u),
+                    blendMode = BlendMode.Clear,
+                )
+            }
+            if (status == PresenceStatus.DND) {
+                drawRoundRect(
+                    color = color,
+                    topLeft = Offset(2.1f * u, 4.9f * u),
+                    size = Size(7.8f * u, 2.2f * u),
+                    cornerRadius = CornerRadius(1.1f * u),
+                )
+            }
+            return@Canvas
+        }
         drawCircle(color = color, radius = 6f * u, center = Offset(6f * u, 6f * u))
         when (status) {
             PresenceStatus.ONLINE -> Unit
             PresenceStatus.IDLE -> drawCircle(
                 color = Color.Black,
-                radius = 5.2f * u,
+                radius = 4.8f * u,
                 center = Offset(4.6f * u, 4.6f * u),
                 blendMode = BlendMode.Clear,
             )

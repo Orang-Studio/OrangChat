@@ -40,7 +40,9 @@ import lt.oranges.orangchat.feature.invite.PendingInviteStore
 import lt.oranges.orangchat.feature.qrlogin.PendingQrLoginStore
 import lt.oranges.orangchat.feature.share.PendingShareStore
 import lt.oranges.orangchat.feature.unread.UnreadStore
+import lt.oranges.orangchat.notifications.MuteDuration
 import lt.oranges.orangchat.notifications.NotificationHelper
+import lt.oranges.orangchat.notifications.NotificationMuteStore
 import lt.oranges.orangchat.notifications.ReplyOutbox
 import lt.oranges.orangchat.realtime.SocketEvent
 import lt.oranges.orangchat.realtime.SocketManager
@@ -65,6 +67,7 @@ class AppViewModel @Inject constructor(
     private val notificationHelper: NotificationHelper,
     private val replyOutbox: ReplyOutbox,
     private val unreadStore: UnreadStore,
+    private val muteStore: NotificationMuteStore,
     private val offlineCache: OfflineCache,
     private val pendingInviteStore: PendingInviteStore,
     private val pendingConversationStore: PendingConversationStore,
@@ -86,6 +89,8 @@ class AppViewModel @Inject constructor(
     )
 
     val unreads = unreadStore.states
+
+    val mutes = muteStore.mutes
 
     val pendingConversation = pendingConversationStore.channelId
 
@@ -505,6 +510,7 @@ class AppViewModel @Inject constructor(
 
     private fun applyServerDetail(detail: ServerDetail, livePresence: Boolean) {
         _serverDetail.value = detail
+        muteStore.indexChannels(detail.server.id, detail.channels.map { it.id })
         _presence.update { m ->
             m + detail.members.associate {
                 it.user.id to if (livePresence) it.user.status else PresenceStatus.OFFLINE
@@ -1167,6 +1173,12 @@ class AppViewModel @Inject constructor(
             .onSuccess { refreshDms(); onDone() }
             .onFailure { _error.value = it.message }
     }
+
+    fun mute(id: String, duration: MuteDuration) = muteStore.mute(id, duration)
+
+    fun unmute(id: String) = muteStore.unmute(id)
+
+    fun isMuted(id: String): Boolean = muteStore.isMuted(id)
 
     fun updateStatus(status: PresenceStatus) = viewModelScope.launch {
         val wire = when (status) {

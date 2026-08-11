@@ -23,7 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { type PresenceStatus } from "@orangchat/shared";
-import { STATUS_LABEL } from "../../components/Avatar";
+import { statusLabel } from "../../components/Avatar";
 import { StatusIcon } from "../../components/StatusIcon";
 import { Button } from "../../components/ui/Button";
 import { ImageField } from "../../components/ImageField";
@@ -309,7 +309,7 @@ function ProfileTab() {
               )}
             >
               <StatusIcon status={option} label={null} className="size-3.5" />
-              {STATUS_LABEL[option]}
+              {statusLabel(option)}
             </button>
           ))}
         </div>

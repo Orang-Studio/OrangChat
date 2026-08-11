@@ -50,6 +50,7 @@ import lt.oranges.orangchat.data.model.Channel
 import lt.oranges.orangchat.data.model.ChannelType
 import lt.oranges.orangchat.data.model.ServerDetail
 import lt.oranges.orangchat.data.model.SelfUser
+import lt.oranges.orangchat.data.model.PresenceStatus
 import lt.oranges.orangchat.data.model.UnreadState
 import lt.oranges.orangchat.data.model.VoiceState
 import lt.oranges.orangchat.feature.unread.MentionBadge
@@ -69,6 +70,7 @@ fun ChannelListPane(
     onSearch: () -> Unit,
     onServerSettings: () -> Unit,
     onOpenUserSettings: () -> Unit,
+    onStatusChange: (PresenceStatus) -> Unit = {},
     modifier: Modifier = Modifier,
     unreads: Map<String, UnreadState> = emptyMap(),
     voiceParticipants: Map<String, Map<String, VoiceState>> = emptyMap(),
@@ -165,7 +167,11 @@ fun ChannelListPane(
                 }
             }
         }
-        UserFooter(self = self, onOpenSettings = onOpenUserSettings)
+        UserFooter(
+            self = self,
+            onOpenSettings = onOpenUserSettings,
+            onStatusChange = onStatusChange,
+        )
     }
 }
 

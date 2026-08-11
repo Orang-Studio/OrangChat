@@ -46,7 +46,7 @@ export function ActivityStatus({
   const activity = activities?.find((item) => item.kind === "spotify") ?? activities?.[0];
   if (!activity) return null;
   const Icon = activity.kind === "spotify" ? Music2 : Gamepad2;
-  const label = activity.kind === "spotify" ? "Listening to" : "Playing";
+  const label = t(activity.kind === "spotify" ? "common.listeningTo" : "common.playing");
   const artwork = activity.imageUrl ? (
     <img
       src={activity.imageUrl}
