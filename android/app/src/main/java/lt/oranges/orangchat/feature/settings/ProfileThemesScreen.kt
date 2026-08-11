@@ -43,12 +43,6 @@ import lt.oranges.orangchat.ui.components.Text
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-/**
- * The profile-theme marketplace: PR-reviewed profile-card CSS bundled with the
- * app. Installing points your profileCss at the theme; the card renderer
- * sanitizes and scopes it exactly as it does hand-written CSS. Mirrors the web
- * client's ProfileThemesTab.
- */
 @Composable
 fun ProfileThemesScreen(
     self: SelfUser,
@@ -120,8 +114,6 @@ fun ProfileThemesScreen(
                         theme = theme,
                         active = self.profileCss == theme.css,
                         saving = state.saving,
-                        // "" clears the field; explicitNulls=false would drop a
-                        // Kotlin null, so an empty string is how a theme comes off.
                         onToggle = { active -> vm.save(profileCss = if (active) "" else theme.css) },
                     )
                 }

@@ -46,8 +46,6 @@ fun AuthScreens(viewModel: AuthViewModel = hiltViewModel()) {
     var showSignup by rememberSaveable { mutableStateOf(false) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val c = OrangTheme.colors
-    // Credential Manager raises its sheet over the Activity, so the ceremony
-    // needs this context rather than the application one.
     val context = LocalContext.current
 
     Box(
@@ -130,10 +128,6 @@ private fun LoginForm(
     var emailCode by rememberSaveable { mutableStateOf("") }
     var reveal by remember { mutableStateOf(false) }
 
-    // The password checked out and the account wants its passkey: hold the
-    // ceremony open, and dive straight into the system sheet - the click that
-    // submitted the password is the gesture, and a second click would only add
-    // a step. Keyed on the token so a retry of the same ceremony doesn't refire.
     if (state.passkeyPrompt != null) {
         LaunchedEffect(state.passkeyPrompt.ceremonyToken) {
             onAnswerPasskey()
@@ -152,8 +146,6 @@ private fun LoginForm(
                 loading = state.loading,
                 modifier = Modifier.fillMaxWidth(),
             )
-            // The way out for someone whose authenticator isn't to hand. It
-            // re-submits the password, so this is a fallback and not a bypass.
             OrangButton(
                 text = AppStrings.get(context, R.string.catalog_email_me_a_code_instead_44cc1833),
                 onClick = { onEmailCodeInstead(email, password) },
@@ -170,8 +162,6 @@ private fun LoginForm(
         return
     }
 
-    // The bottom rung: no passkey, no authenticator (or neither to hand), so the
-    // server mailed a one-time code to finish the sign-in with.
     if (state.loginToken != null) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
             Text(
@@ -212,7 +202,6 @@ private fun LoginForm(
         return
     }
 
-    // The password already checked out; all that's left is the second factor.
     if (state.needsTwoFactor) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
             OrangTextField(
@@ -232,9 +221,6 @@ private fun LoginForm(
                 loading = state.loading,
                 modifier = Modifier.fillMaxWidth(),
             )
-            // A phone left at home must not be a locked account. This drops to
-            // the emailed code, which is weaker - so it is a button somebody has
-            // to reach for, never the default.
             OrangButton(
                 text = AppStrings.get(context, R.string.catalog_lost_your_authenticator_af902070),
                 onClick = { code = ""; onLostAuthenticator(email, password) },
@@ -297,9 +283,6 @@ private fun SignupForm(
     var password by rememberSaveable { mutableStateOf("") }
     var reveal by remember { mutableStateOf(false) }
 
-    // Signup no longer signs anyone in - the account is unusable until the
-    // emailed link is opened, so say that instead of dropping them on a form
-    // that would just answer "verify your email first".
     if (state.verificationSent) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
             Text(

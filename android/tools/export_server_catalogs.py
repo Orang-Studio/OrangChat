@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
+
 """Export Android string catalogs for the server-served i18n mechanism.
 
 Reads every `res/values-*/strings.xml` (plus `res/values/` itself for English)
-and writes `packages/server-rs/i18n/android/<code>.json` — the files the Rust
+and writes `packages/server-rs/i18n/android/<code>.json` - the files the Rust
 backend serves on `/i18n/languages` and `/i18n/catalog`. The APK keeps its
 bundled copies as the offline fallback; these JSON files are what lets a
 translation fix, or an entirely new language, reach devices without an app
@@ -16,7 +16,7 @@ Adding a language:
   4. restart the server (catalogs load at boot)
 
 `rev` is the sha1 of the canonical JSON of the strings map, so it changes
-exactly when a translation does — clients use it to skip unchanged fetches.
+exactly when a translation does - clients use it to skip unchanged fetches.
 """
 
 from __future__ import annotations
@@ -27,13 +27,10 @@ import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[2]  # android/tools/x.py -> repo root
+REPO = Path(__file__).resolve().parents[2]
 RES = REPO / "android/app/src/main/res"
 OUT = REPO / "packages/server-rs/i18n/android"
 
-# BCP-47 code -> key in the English catalogue holding the picker label for the
-# language, written in its own tongue. New languages add a row here (and a
-# `language_...` string to res/values/strings.xml).
 ENDONYMS = {
     "en": "language_english",
     "lt": "language_lithuanian",
@@ -47,8 +44,6 @@ ENDONYMS = {
     "ru": "language_russian",
     "ur": "language_urdu",
 }
-# Fun-only locales with no `language_*` entry in the English catalogue; their
-# picker label is fixed here.
 FUN_ENDONYMS = {
     "en-x-pirate": "Pirate",
     "en-x-lolcat": "LOLCAT",

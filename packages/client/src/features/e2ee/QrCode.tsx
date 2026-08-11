@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 
-/** Renders any of the OrangChat codes. Generation is lazy - `qrcode` is a
- *  couple of hundred kilobytes and most sessions never show one. */
+
 export function QrCode({ value, label }: { value: string; label: string }) {
   const [svg, setSvg] = useState<string | null>(null);
 

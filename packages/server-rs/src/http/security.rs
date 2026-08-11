@@ -1,4 +1,3 @@
-//! Account-security REST (2FA), mounted under /api/security. Requires auth.
 
 use axum::extract::{Path, State};
 use axum::routing::{delete, get, patch, post};
@@ -32,18 +31,11 @@ pub fn routes() -> Router<AppState> {
         .route("/confirm", post(confirm_identity))
 }
 
-// ── Passkeys ────────────────────────────────────────────────────────────────
-//
-// Enrolment and removal only. The sign-in half lives in http/auth.rs, where the
-// session-issuing machinery is - see services/passkey.rs for why a passkey is
-// allowed to end a login on its own.
 
 fn to_passkey(row: &PasskeyRow) -> Value {
     json!({
         "id": row.id,
         "name": row.name,
-        // Whether the authenticator syncs it to a keychain, which is the
-        // difference between "lose the phone, lose the key" and not.
         "backedUp": row.backed_up,
         "createdAt": iso(row.created_at),
         "lastUsedAt": iso_opt(row.last_used_at),
@@ -58,9 +50,6 @@ async fn list_passkeys(State(state): State<AppState>, user: AuthUser) -> AppResu
     })))
 }
 
-/// Password-gated like every other credential change here. A passkey is a way
-/// in, so a hijacked session must not be able to quietly add one and keep the
-/// account after the password is changed back.
 async fn register_passkey_start(
     State(state): State<AppState>,
     user: AuthUser,
@@ -75,8 +64,6 @@ async fn register_passkey_start(
     Ok(Json(json!({ "challenge": challenge, "ceremonyToken": token })))
 }
 
-/// No password here: the token being finished was only handed out after one, and
-/// it is bound to this account and single-use.
 async fn register_passkey_finish(
     State(state): State<AppState>,
     user: AuthUser,
@@ -95,8 +82,6 @@ async fn register_passkey_finish(
     Ok(Json(json!({ "passkey": to_passkey(&row) })))
 }
 
-/// Cosmetic, so the session alone is enough - the worst a rename can do is
-/// confuse the owner about which key is which.
 async fn rename_passkey(
     State(state): State<AppState>,
     user: AuthUser,
@@ -113,8 +98,6 @@ async fn rename_passkey(
     Ok(Json(json!({ "passkey": to_passkey(&row) })))
 }
 
-/// Gated like `disable`: taking a factor away is exactly what someone who stole
-/// the session would want to do first.
 async fn delete_passkey(
     State(state): State<AppState>,
     user: AuthUser,
@@ -130,10 +113,6 @@ async fn delete_passkey(
     Ok(Json(json!({ "deleted": true })))
 }
 
-/// Proves whoever is holding this session is the account owner, without changing
-/// anything. Used where a setting can only be *relaxed* by a person rather than
-/// by a session - turning off strict verification (docs/E2EE.md §6.5) is the
-/// case it exists for, so a hijacked session cannot quietly lower the bar.
 async fn confirm_identity(
     State(state): State<AppState>,
     user: AuthUser,
@@ -146,9 +125,6 @@ async fn confirm_identity(
     Ok(Json(json!({ "ok": true })))
 }
 
-/// Wipes the user's entire message history everywhere, including servers and
-/// group DMs they've since left. Password-gated: unlike leaving servers, nothing
-/// here can be undone or re-obtained.
 async fn delete_all_messages(
     State(state): State<AppState>,
     user: AuthUser,
@@ -164,8 +140,6 @@ async fn delete_all_messages(
     Ok(Json(json!({ "deleted": deleted })))
 }
 
-/// Bans and live timeouts against the account. Read-only, and cheap enough not
-/// to share the credential rate-limit budget.
 async fn standing(State(state): State<AppState>, user: AuthUser) -> AppResult<Json<Value>> {
     let entries = account::standing(&state, &user.user_id).await?;
     Ok(Json(json!({
@@ -174,9 +148,6 @@ async fn standing(State(state): State<AppState>, user: AuthUser) -> AppResult<Js
     })))
 }
 
-/// Tombstones the account. Gated on the password, a 2FA code when enabled, and
-/// the username typed back - deletion is irreversible, so it asks for something
-/// no accidental click supplies.
 async fn delete_account(
     State(state): State<AppState>,
     user: AuthUser,
@@ -198,9 +169,6 @@ async fn delete_account(
     Ok(Json(json!({ "deleted": true })))
 }
 
-/// A live 6-digit code (or a backup code), required alongside the password on
-/// credential changes whenever 2FA is on. Without it, a stolen password alone
-/// would be enough to take the account over.
 async fn check_totp(state: &AppState, row: &UserRow, body: &Value) -> AppResult<()> {
     if !row.totp_enabled {
         return Ok(());
@@ -215,8 +183,6 @@ async fn check_totp(state: &AppState, row: &UserRow, body: &Value) -> AppResult<
     Ok(())
 }
 
-/// Sets or replaces the password. OAuth-only accounts have none to confirm, so
-/// for them this is "set a password" and the session is the only proof.
 async fn change_password(
     State(state): State<AppState>,
     user: AuthUser,
@@ -240,16 +206,11 @@ async fn change_password(
         .execute(&state.pool)
         .await?;
 
-    // Anyone signed in with the old password keeps a working refresh token
-    // otherwise, which would make the change cosmetic.
     let revoked = crate::auth::revoke_all_refresh_tokens(&state, &user.user_id, None).await?;
 
     Ok(Json(json!({ "ok": true, "sessionsRevoked": revoked })))
 }
 
-/// Changes the address on the account. There's no mail transport in this
-/// deployment, so the new address can't be proven by a confirmation link -
-/// password (plus 2FA when enabled) is the whole gate.
 async fn change_email(
     State(state): State<AppState>,
     user: AuthUser,
@@ -262,7 +223,6 @@ async fn change_email(
     if !valid_email(email) {
         return Err(bad_request("That doesn't look like an email address"));
     }
-    // Canonical lowercase, to agree with the lower(email) index - see signup.
     let email = email.to_lowercase();
 
     check_password(&row, &body)?;
@@ -291,8 +251,6 @@ async fn change_email(
     Ok(Json(json!({ "email": email })))
 }
 
-/// Every route here verifies a password or a 6-digit code, so they all share one
-/// per-user budget rather than each getting its own.
 async fn limit(state: &AppState, user_id: &str) -> AppResult<()> {
     rate_limit::check(state, "2fa", user_id, rate_limit::TOTP_PER_USER).await
 }
@@ -309,7 +267,6 @@ fn field<'a>(body: &'a Value, key: &str) -> Option<&'a str> {
     body.get(key).and_then(Value::as_str)
 }
 
-/// OAuth-only accounts have no password, so the session is the only proof there is.
 fn check_password(user: &UserRow, body: &Value) -> AppResult<()> {
     let Some(hash) = user.password_hash.as_deref() else {
         return Ok(());
@@ -328,8 +285,6 @@ async fn status(State(state): State<AppState>, user: AuthUser) -> AppResult<Json
     })))
 }
 
-/// Stashes a secret but leaves 2FA off until `enable` proves the user can read
-/// codes from it - a mis-scanned QR must never lock someone out.
 async fn setup(
     State(state): State<AppState>,
     user: AuthUser,
@@ -386,7 +341,6 @@ async fn enable(
     Ok(Json(json!({ "enabled": true, "backupCodes": codes })))
 }
 
-/// Password *and* a live code, so a hijacked session can't strip the second factor.
 async fn disable(
     State(state): State<AppState>,
     user: AuthUser,

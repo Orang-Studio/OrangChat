@@ -55,7 +55,6 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.formatDateTime
 
-/** Discord's timeout ladder. The server caps anything above 28 days. */
 private val TIMEOUT_CHOICES = listOf(
     "60 seconds" to 60L,
     "5 minutes" to 300L,
@@ -239,7 +238,6 @@ private fun MemberSheet(
     val canTimeout = Hierarchy.canTimeout(detail, selfId, member.userId)
     val timedOut = member.isTimedOut()
 
-    // @everyone is never assignable, so it never appears in this list.
     val assignable = detail.roles
         .filter { it.position != lt.oranges.orangchat.data.model.Permissions.EVERYONE_POSITION }
         .sortedByDescending { it.position }

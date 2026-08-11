@@ -1,9 +1,9 @@
 import { create } from "zustand";
 
 interface PanelState {
-  /** Mobile-only left drawer (server rail + sidebar). */
+
   left: boolean;
-  /** Below-lg right drawer (member list). */
+
   right: boolean;
 }
 

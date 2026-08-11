@@ -17,16 +17,8 @@ import lt.oranges.orangchat.feature.home.HomeScreen
 import lt.oranges.orangchat.feature.share.ShareScreen
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-/**
- * Root gate: SessionState drives whether we show the loading splash, the
- * auth flow, or the authenticated home shell. The AppViewModel is created here
- * and shared with descendants via its activity-scoped Hilt instance.
- */
 @Composable
 fun OrangChatNavHost(
-    /** A conversation to land in as soon as the shell exists - a bubble's own
-     *  channel, kept out of the process-wide pending store so expanding one
-     *  cannot move the main window. */
     initialChannelId: String? = null,
 ) {
     val appViewModel: AppViewModel = hiltViewModel()

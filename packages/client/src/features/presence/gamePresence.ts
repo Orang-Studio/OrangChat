@@ -4,7 +4,7 @@ import { useAuthStore } from "../../stores/auth";
 
 let registered = false;
 
-/** Connect the account's privacy setting to the desktop-only process watcher. */
+
 export function registerGamePresence(): void {
   if (registered) return;
   registered = true;
@@ -15,11 +15,6 @@ export function registerGamePresence(): void {
 
   const pushEnabled = () => setEnabled?.(useAuthStore.getState().user?.gameActivity === true);
 
-  // The shell only speaks up when the detected game *changes*, so whatever it
-  // said last is the whole truth about right now. Keeping it here is what lets
-  // us answer a reconnect: the server drops game activity once the last desktop
-  // socket goes, and without a replay the line would stay missing until the
-  // player happened to quit into a different game.
   let lastReport: GamePresenceReport = null;
 
   const emit = (report: GamePresenceReport) => {

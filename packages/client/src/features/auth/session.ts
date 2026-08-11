@@ -9,14 +9,7 @@ import {
   restoreOfflineSession,
 } from "../../lib/offlineQueryCache";
 
-/**
- * Session lifecycle. Access token lives in memory only; the refresh token
- * rides in an httpOnly cookie, so restoring a session on reload means calling
- * POST /api/auth/refresh and rebuilding state from the response.
- *
- * Uses raw fetch (not lib/api.ts) so the 401-refresh interceptor can import
- * this module without a cycle.
- */
+
 
 const REFRESH_MARGIN_MS = 30_000;
 const RETRY_DELAY_MS = 5_000;
@@ -28,7 +21,7 @@ let bootstrapped = false;
 let handlersInstalled = false;
 let lastConnectErrorRefresh = 0;
 
-/** Install a session: store, proactive-refresh timer, socket handshake auth. */
+
 export function applySession(user: SelfUser, tokens: AuthTokens): void {
   authStoreActions.setSession(user, tokens.accessToken);
   void activateOfflineQueryCache(user);
@@ -37,10 +30,7 @@ export function applySession(user: SelfUser, tokens: AuthTokens): void {
   connectSocket();
 }
 
-/**
- * Exchange the refresh cookie for a new access token. Single-flight: parallel
- * 401s from the interceptor await one request. Resolves false when guest.
- */
+
 export function refreshSession(): Promise<boolean> {
   refreshInFlight ??= doRefresh().finally(() => {
     refreshInFlight = null;
@@ -56,15 +46,10 @@ async function doRefresh(): Promise<boolean> {
       credentials: "include",
     });
   } catch {
-    // network is down, not a rejected session. keep whatever we have and try
-    // again shortly instead of logging the user out over a dropped wifi.
     await fallBackToOfflineSession();
     return false;
   }
 
-  // 401/403 means the refresh token itself is gone or revoked: really a guest.
-  // other non-ok (5xx, proxy blips) is transient, so treat it like a network
-  // error and retry rather than tearing down the session.
   if (!res.ok) {
     if (res.status === 401 || res.status === 403) {
       endLocalSession();

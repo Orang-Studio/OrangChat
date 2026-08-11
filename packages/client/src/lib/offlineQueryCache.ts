@@ -37,7 +37,7 @@ let client: QueryClient | null = null;
 let currentUser: SelfUser | null = null;
 let writeTimer: ReturnType<typeof setTimeout> | undefined;
 
-/** Only ordinary shell/navigation data is persisted; security and account queries are excluded. */
+
 export function shouldPersistQuery(queryKey: QueryKey): boolean {
   return typeof queryKey[0] === "string" && PERSISTED_ROOTS.has(queryKey[0]);
 }
@@ -53,21 +53,19 @@ export function initOfflineQueryCache(queryClient: QueryClient): void {
   });
 }
 
-/** Select the account cache and hydrate it while fresh requests run normally. */
+
 export async function activateOfflineQueryCache(user: SelfUser): Promise<void> {
   currentUser = user;
   const stored = await readSnapshot();
   if (stored?.user.id === user.id && client) {
     hydrate(client, stored.queries);
     useUnreadStore.setState({ channels: stored.unreads ?? {} });
-    // Message queries deliberately use staleTime=Infinity while realtime is
-    // active. A disk snapshot must still ask for the gap since the last run.
     void client.invalidateQueries({ predicate: (query) => shouldPersistQuery(query.queryKey) });
   }
   scheduleWrite();
 }
 
-/** Cold-start fallback used when the refresh endpoint is unreachable. */
+
 export async function restoreOfflineSession(): Promise<SelfUser | null> {
   const stored = await readSnapshot();
   if (!stored || !client) return null;
@@ -113,8 +111,6 @@ async function writeSnapshot(): Promise<void> {
     const sealed = await sealLocal(encoder.encode(JSON.stringify(body)));
     await putOfflineSnapshot({ id: "app", userId: user.id, ...sealed });
   } catch {
-    // IndexedDB can be disabled or out of quota. The online client remains the
-    // source of truth; losing the acceleration/offline copy is non-fatal.
   }
 }
 
@@ -130,7 +126,7 @@ async function readSnapshot(): Promise<StoredOfflineState | null> {
   }
 }
 
-/** Bound disk use while retaining five newest 50-message pages per conversation. */
+
 export function compactMessageHistory(state: DehydratedState): DehydratedState {
   return {
     ...state,

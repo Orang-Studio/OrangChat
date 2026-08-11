@@ -33,10 +33,6 @@ function normalizeProcessName(value: string): string {
 
 function loadRegistry(): RegistryGame[] {
   try {
-    // games.json is copied in at build time by scripts/copy-assets.mjs, and it
-    // is the generated file rather than a bare array: `{ version, note, games }`.
-    // The server compiles the same file in, so the two always agree on which
-    // process belongs to which id.
     const parsed = JSON.parse(readFileSync(join(__dirname, "games.json"), "utf8")) as unknown;
     const games = (parsed as { games?: unknown })?.games;
     if (!Array.isArray(games)) return [];

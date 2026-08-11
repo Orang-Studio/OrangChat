@@ -16,18 +16,6 @@ import lt.oranges.orangchat.data.remote.PushSubscriptionRequest
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Tells the server which device to push to.
- *
- * This is the single point of failure for the whole push path: a token the
- * server never received is a device it can never reach, and nothing about the
- * app looks broken until somebody notices they stopped getting notifications.
- * The inline attempts here cover a momentary blip; anything longer - signing in
- * on a train, a first launch before wifi associates - is handed to a job the
- * system runs when there is actually a network, because giving up after three
- * seconds and waiting for the next cold start is how a device goes quiet for
- * days.
- */
 @Singleton
 class PushTokenRegistrar @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -44,14 +32,7 @@ class PushTokenRegistrar @Inject constructor(
         if (!registerNow(token)) PushTokenJobService.schedule(context)
     }
 
-    /**
-     * Register the current (or given) token, reporting whether it landed. Never
-     * throws: every caller's next move is to hand the work to the retry job, and
-     * the reason it failed does not change that.
-     */
     suspend fun registerNow(token: String? = null): Boolean {
-        // Not signed in yet - there is no account to attach a device to. Sign-in
-        // calls back here, so this is a no-op rather than a failure to retry.
         if (tokenStore.accessToken == null) return true
         val resolved = token ?: runCatching { FirebaseMessaging.getInstance().token.await() }
             .onFailure { Log.w(TAG, "could not obtain an FCM token", it) }

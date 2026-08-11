@@ -21,7 +21,7 @@ declare global {
   }
 }
 
-/** Resolves with a token, or "" when this deployment has no reCAPTCHA keys. */
+
 export type RecaptchaHandle = { execute: () => Promise<string> };
 
 const CHALLENGE_TIMEOUT_MS = 120_000;
@@ -29,11 +29,7 @@ const ONLOAD_CALLBACK = "__orangchatRecaptchaReady";
 
 let scriptLoad: Promise<void> | undefined;
 
-/**
- * `render=explicit` defines `window.grecaptcha` well before `grecaptcha.render`
- * exists, so keying off `script.onload` throws "render is not a function". The
- * documented `onload` parameter is the only signal that the API is usable.
- */
+
 function loadScript(): Promise<void> {
   scriptLoad ??= new Promise<void>((resolve, reject) => {
     if (window.grecaptcha?.render) return resolve();

@@ -88,8 +88,6 @@ export function registerScreenPicker(session: Session, getParent: () => BrowserW
       try {
         const id = await pickSource(getParent());
         if (!id) {
-          // Empty selection is how Electron signals a user cancel; the
-          // renderer's getDisplayMedia() rejects with NotAllowedError.
           callback({});
           return;
         }

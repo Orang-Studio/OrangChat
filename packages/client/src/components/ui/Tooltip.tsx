@@ -9,7 +9,7 @@ interface TooltipProps {
   children: ReactNode;
 }
 
-/** Small labeled tooltip; children must be a single focusable element. */
+
 export function Tooltip({ label, side = "right", children }: TooltipProps) {
   return (
     <RadixTooltip.Root delayDuration={150}>

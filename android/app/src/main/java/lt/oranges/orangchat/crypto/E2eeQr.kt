@@ -3,15 +3,6 @@ package lt.oranges.orangchat.crypto
 import java.net.URLDecoder
 import java.net.URLEncoder
 
-/**
- * The three QR payloads, mirroring the encoders in `packages/shared/src/e2ee.ts`.
- *
- * There are now three codes in the product - sign-in, device transfer and
- * contact verification - and they look identical. One of them authorises a new
- * device. Every payload therefore carries a domain-separated type tag, and every
- * scanner hard-rejects the wrong type by name, because without that "scan this to
- * add me" eventually gets somebody to scan a transfer code.
- */
 object E2eeQr {
     data class DeviceTransfer(
         val transferId: String,
@@ -86,7 +77,6 @@ object E2eeQr {
 
     private val PREFIX = Regex("^orangchat://([a-z-]+)\\?")
 
-    /** The code's declared kind, or null when it is not an OrangChat code. */
     fun kindOf(raw: String): String? {
         val kind = PREFIX.find(raw.trim())?.groupValues?.getOrNull(1) ?: return null
         return kind.takeIf {

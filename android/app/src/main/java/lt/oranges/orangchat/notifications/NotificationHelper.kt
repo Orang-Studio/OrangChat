@@ -50,11 +50,6 @@ import lt.oranges.orangchat.util.absoluteUrl
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Local (non-push) notifications for incoming messages. Driven by the live
- * Socket.IO 'message:new' event (see AppViewModel). FCM push can layer on top
- * later via the same [notifyMessage] entry point.
- */
 @Singleton
 class NotificationHelper @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -64,8 +59,6 @@ class NotificationHelper @Inject constructor(
     private val history = context.getSharedPreferences("notification_messages", Context.MODE_PRIVATE)
     private val historyLock = Any()
     private val notificationGenerations = mutableMapOf<String, Long>()
-    /** Downloaded portraits, by absolute URL - a chatty conversation would
-     *  otherwise refetch the same face for every message. */
     private val avatarCache = LruCache<String, Bitmap>(32)
     private val initialsCache = LruCache<String, Bitmap>(32)
 
@@ -85,9 +78,6 @@ class NotificationHelper @Inject constructor(
         ).apply { description = "New messages, mentions and direct messages" }
         manager.createNotificationChannel(messages)
 
-        // Calls ring through RingtonePlayer rather than the channel, so the tone
-        // can be cut the instant the call is answered - a channel sound would
-        // play on regardless. Channel sound/vibration are therefore off here.
         val calls = NotificationChannel(
             CHANNEL_CALLS,
             "Calls",
@@ -101,9 +91,6 @@ class NotificationHelper @Inject constructor(
         }
         manager.createNotificationChannel(calls)
 
-        // Deliberately not user-silenceable in the way messages are: these are
-        // about the account itself, and one of them is a warning that somebody
-        // is erasing the keys. IMPORTANCE_HIGH so it arrives as a heads-up.
         val security = NotificationChannel(
             CHANNEL_SECURITY,
             "Account security",
@@ -115,12 +102,7 @@ class NotificationHelper @Inject constructor(
         manager.createNotificationChannel(security)
     }
 
-    /**
-     * An account-level warning. No conversation to collapse against, so [tag]
-     * decides what replaces what: a second warning about a different event must
-     * not overwrite the first.
-     */
-    @SuppressLint("MissingPermission") // hasPermission() gates the call; notify re-checks on the way out.
+    @SuppressLint("MissingPermission")
     fun notifySecurity(tag: String, title: String, body: String) {
         if (!hasPermission()) return
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -150,21 +132,6 @@ class NotificationHelper @Inject constructor(
 
     fun hasPermission(): Boolean = hasNotificationPermission(context)
 
-    /**
-     * Raise a message notification. [title] is the author/DM/channel label,
-     * [body] the rendered message text. Notifications collapse per-channel.
-     *
-     * The notification is on screen before this returns, always. The face on it
-     * is whatever this device already holds; when the sender's portrait has
-     * never been fetched, it goes up with their initial and the portrait
-     * replaces it a moment later without buzzing again.
-     *
-     * Nothing here waits on the network, and that is the whole point. FCM gives
-     * a push a few seconds of process life on a device that may have just woken
-     * up, and the previous version spent them on an avatar download with an
-     * eight-second timeout - so a notification that lost that race was not
-     * delayed, it was never shown at all.
-     */
     fun notifyMessage(
         channelId: String,
         title: String,
@@ -183,36 +150,16 @@ class NotificationHelper @Inject constructor(
         staged.refine?.let { refine -> scope.launch { refine() } }
     }
 
-    /**
-     * What this device is willing to say a message contained.
-     *
-     * The one place the preference is applied, so it holds for both routes a
-     * message can arrive by - the live socket and a push - and for the stored
-     * thread they share, which is redrawn on every later notification. Callers
-     * that can avoid producing the text at all should still check
-     * [previewsEnabled] first; this is the backstop, not the optimisation.
-     */
     private fun preview(body: String, senderName: String, isGroup: Boolean): String = when {
         previewsEnabled -> body
         isGroup -> "New message from $senderName"
         else -> "New message"
     }
 
-    /** Whether a notification may show what a message said. See [TokenStore]. */
     val previewsEnabled: Boolean get() = tokenStore.notificationPreviews
 
-    /**
-     * The notification to put up now, and the better one to follow it with once
-     * the sender's portrait has been fetched. [refine] is null when there is
-     * nothing to improve - no avatar url, or one already on this device.
-     */
     private class Staged(val post: () -> Unit, val refine: (() -> Unit)?)
 
-    /**
-     * Record the message and hand back the work that posts it, or null if this
-     * notification is not to be shown. Recording happens up front so two fast
-     * messages keep their arrival order.
-     */
     private fun stageMessage(
         channelId: String,
         title: String,
@@ -224,11 +171,7 @@ class NotificationHelper @Inject constructor(
         messageId: String?,
     ): Staged? {
         if (!hasPermission()) return null
-        // Muted-for-an-hour channels stay silent until the window lapses.
         if (isMuted(channelId)) return null
-        // The socket and the push both deliver, on purpose - either one alone
-        // has a case it misses. The second one to arrive must not buzz the
-        // phone a second time for a message already sitting in the shade.
         if (messageId != null && synchronized(historyLock) {
                 storedMessages(channelId).any { it.messageId == messageId }
             }
@@ -236,9 +179,6 @@ class NotificationHelper @Inject constructor(
             return null
         }
 
-        // Remember what a background reply needs to rebuild this conversation's
-        // notification without the message that prompted it in hand - including
-        // the face on it, which a reply of our own has no way to know.
         history.edit()
             .putString("meta:$channelId", JSONObject()
                 .put("title", title)
@@ -260,12 +200,6 @@ class NotificationHelper @Inject constructor(
                 channelId, title, body, senderId, senderName, avatar, avatar, isGroup, messages, generation,
             )
         }
-        // Only worth a second pass when some face in it is not already here: a
-        // repost that changes nothing still costs a rebuild of the whole thread.
-        // Every face, not just the sender's - the rest of a group thread is
-        // drawn cache-only, so anyone whose portrait this device has never
-        // fetched keeps their initial for as long as they are not the one who
-        // wrote last, which on a busy channel is indefinitely.
         val refine = if (messages.any { isAvatarPending(it.avatarUrl) }) {
             {
                 val avatar = avatarFor(senderAvatarUrl, senderName)
@@ -280,15 +214,13 @@ class NotificationHelper @Inject constructor(
         return Staged(post, refine)
     }
 
-    /** True when [rawUrl] names a portrait this device has not fetched yet, or
-     *  one old enough that the url may since have been given other bytes. */
     private fun isAvatarPending(rawUrl: String?): Boolean {
         val url = absoluteUrl(rawUrl) ?: return false
         if (isStale(url)) return true
         return avatarCache.get(url) == null && !avatarFile(url).exists()
     }
 
-    @SuppressLint("MissingPermission") // hasPermission() gates every caller; notify is also caught.
+    @SuppressLint("MissingPermission")
     private fun postConversationMessage(
         channelId: String,
         title: String,
@@ -336,8 +268,6 @@ class NotificationHelper @Inject constructor(
 
         val style = NotificationCompat.MessagingStyle(self).setGroupConversation(isGroup)
         messages.forEach { message ->
-            // Every face in the thread is its own author's, so a group reads
-            // the way the chat itself does rather than as one repeated portrait.
             val person = if (message.senderId == SELF_KEY) {
                 self
             } else {
@@ -346,10 +276,6 @@ class NotificationHelper @Inject constructor(
                     .setKey(message.senderId)
                     .setIcon(
                         IconCompat.createWithBitmap(
-                            // Cache-only on the way up: the face that prompted
-                            // this notification is the only one worth holding
-                            // the post back for. The refine pass that follows
-                            // is off the critical path and fetches them all.
                             avatarFor(message.avatarUrl, message.senderName, fetch = fetchAvatars),
                         ),
                     )
@@ -363,9 +289,6 @@ class NotificationHelper @Inject constructor(
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(body)
-            // The small icon must remain the monochrome app glyph on Android,
-            // but the large icon is the sender's portrait - never the app icon
-            // a second time.
             .setLargeIcon(conversationIcon)
             .setStyle(style)
             .setShortcutInfo(shortcut)
@@ -375,12 +298,8 @@ class NotificationHelper @Inject constructor(
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-            // Repost for something the user themselves did - their own reply,
-            // or its delivery catching up - must not buzz the phone again.
             .setOnlyAlertOnce(alertOnce)
             .setContentIntent(pending)
-        // Reply / mark-read / mute live only on DM (non-group-channel)
-        // notifications - the places a one-tap reply actually makes sense.
         if (!isGroup) {
             builder.addAction(replyAction(channelId))
             builder.addAction(markReadAction(channelId))
@@ -397,15 +316,6 @@ class NotificationHelper @Inject constructor(
         }
     }
 
-    /**
-     * What the system needs to float this conversation as a bubble.
-     *
-     * Offering it is all the app can do: the shade shows the bubble affordance,
-     * and only the user's own choice - per conversation - ever promotes one.
-     * Nothing is auto-expanded and the notification is never suppressed in
-     * favour of the bubble, so a conversation the user has not bubbled behaves
-     * exactly as it did before.
-     */
     private fun bubbleMetadata(channelId: String, icon: Bitmap): NotificationCompat.BubbleMetadata {
         val intent = Intent(context, BubbleActivity::class.java).apply {
             action = Intent.ACTION_VIEW
@@ -415,8 +325,6 @@ class NotificationHelper @Inject constructor(
             context,
             BUBBLE_REQUEST_OFFSET + channelId.hashCode(),
             intent,
-            // Mutable by requirement: the system fills in the window's own
-            // launch options before starting the activity.
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
         )
         return NotificationCompat.BubbleMetadata.Builder(pending, IconCompat.createWithBitmap(icon))
@@ -426,45 +334,23 @@ class NotificationHelper @Inject constructor(
             .build()
     }
 
-    /**
-     * The face to put on a notification: the user's own picture when there is
-     * one, otherwise their initial drawn the way the in-app avatar draws it.
-     * Never the app icon - the shade already carries that as the small icon,
-     * and a second copy of it says nothing about who is writing.
-     */
     private fun avatarFor(rawUrl: String?, name: String, fetch: Boolean = true): Bitmap {
         val url = absoluteUrl(rawUrl) ?: return initialsAvatar(name)
-        // A face this device already holds is only worth going back for when the
-        // url it is filed under can now be serving different bytes.
         val refresh = fetch && isStale(url)
         if (!refresh) {
             avatarCache.get(url)?.let { return it }
             loadAvatarFromDisk(url)?.let { return it }
         }
         if (fetch) loadAvatar(url)?.let { return it }
-        // The refetch found no network. Yesterday's portrait still says who
-        // wrote far better than their initial does.
         return avatarCache.get(url) ?: loadAvatarFromDisk(url) ?: initialsAvatar(name)
     }
 
-    /**
-     * Whether a cached portrait may have been replaced under the same url.
-     *
-     * `/uploads/<file>` names one file forever, and so does a third-party cdn
-     * url - cache those and you are done. `/api/media/asset/<kind>/<id>` names a
-     * *row*: changing a picture keeps the url and only changes what it serves
-     * (the server revalidates it rather than pinning it, see media_proxy.rs). A
-     * url-keyed cache with no expiry therefore shows whichever face this device
-     * happened to see first, for as long as the file survives.
-     */
     private fun isStale(url: String): Boolean {
         if (!url.contains(ASSET_ROUTE)) return false
         val modified = avatarFile(url).lastModified()
         return modified > 0L && System.currentTimeMillis() - modified > ASSET_MAX_AGE_MS
     }
 
-    /** Face fetched on an earlier notification, so a phone with no network at
-     *  push time still shows who wrote rather than a bare initial. */
     private fun loadAvatarFromDisk(url: String): Bitmap? {
         val file = avatarFile(url)
         if (!file.exists()) return null
@@ -504,20 +390,11 @@ class NotificationHelper @Inject constructor(
         return circleCrop(bitmap).also { avatarCache.put(url, it) }
     }
 
-    /**
-     * BitmapFactory cannot decode GIF, and avatars can be animated GIFs - a null
-     * decode there silently swapped every such portrait for the initials circle.
-     * ImageDecoder (API 28+, we are on 31) decodes the first frame instead.
-     */
     private fun decodeAvatar(stream: InputStream): Bitmap? {
-        // ImageDecoder has no InputStream overload; the ByteArray overload is
-        // API 31, which is exactly this app's minSdk.
         val bytes = stream.readBytes()
         val source = ImageDecoder.createSource(bytes)
         return runCatching {
             ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
-                // Notifications only need a small portrait; decoding at full
-                // size wastes memory and a CPU pass.
                 decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
                 val size = minOf(info.size.width, info.size.height)
                 if (size > AVATAR_PX * 4) decoder.setTargetSize(AVATAR_PX * 4, AVATAR_PX * 4)
@@ -525,8 +402,6 @@ class NotificationHelper @Inject constructor(
         }.getOrNull() ?: BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
     }
 
-    /** Square-crop, downscale and round off, so the shade shows a portrait and
-     *  not a letterboxed banner. */
     private fun circleCrop(source: Bitmap): Bitmap {
         val edge = minOf(source.width, source.height).coerceAtLeast(1)
         val output = Bitmap.createBitmap(AVATAR_PX, AVATAR_PX, Bitmap.Config.ARGB_8888)
@@ -552,7 +427,6 @@ class NotificationHelper @Inject constructor(
         return output
     }
 
-    /** Mirrors the app's own initial avatar: brand circle, first letter on top. */
     private fun initialsAvatar(name: String): Bitmap {
         val letter = name.trim().take(1).uppercase().ifBlank { "?" }
         initialsCache.get(letter)?.let { return it }
@@ -571,7 +445,6 @@ class NotificationHelper @Inject constructor(
             textAlign = Paint.Align.CENTER
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
-        // Centre on the glyph's own box, not the baseline, or it sits low.
         canvas.drawText(letter, radius, radius - (text.descent() + text.ascent()) / 2f, text)
         initialsCache.put(letter, bitmap)
         return bitmap
@@ -595,7 +468,6 @@ class NotificationHelper @Inject constructor(
         messageId: String?,
     ): List<StoredMessage> = synchronized(historyLock) {
         val messages = (
-            // A message we already hold is being re-notified, not repeated.
             storedMessages(channelId).filterNot { messageId != null && it.messageId == messageId } +
                 StoredMessage(
                     body, System.currentTimeMillis(), senderId, senderName, avatarUrl, messageId,
@@ -637,7 +509,6 @@ class NotificationHelper @Inject constructor(
         return array.toString()
     }
 
-    /** Remove both the visible notification and its grouped message history. */
     fun clearConversationNotifications(channelId: String) {
         synchronized(historyLock) {
             notificationGenerations[channelId] =
@@ -649,12 +520,6 @@ class NotificationHelper @Inject constructor(
         }
     }
 
-    /**
-     * Append the user's own reply - sent straight from the notification, without
-     * opening the app - to the conversation's notification so the shade reflects
-     * it as a message from "You", the same as it would inside the app. Rebuilt
-     * from the persisted meta since the reply path never had the full context.
-     */
     fun appendOwnReply(channelId: String, text: String) {
         if (!hasPermission()) return
         val (messages, generation, isGroup, title, avatarUrl) = synchronized(historyLock) {
@@ -668,8 +533,6 @@ class NotificationHelper @Inject constructor(
                 meta.optString("avatarUrl").ifBlank { null })
         }
         scope.launch {
-            // Our own reply must not repaint the conversation as us: the icon
-            // stays whoever we are talking to, remembered from their message.
             postConversationMessage(
                 channelId, title, text, SELF_KEY, "You", null, avatarFor(avatarUrl, title),
                 isGroup, messages, generation, alertOnce = true,
@@ -677,16 +540,10 @@ class NotificationHelper @Inject constructor(
         }
     }
 
-    /**
-     * Say in the shade that a quick reply has not gone out yet. Silence would
-     * read as "sent" - the reply is already sitting there in the thread - and
-     * the user would only find out it never arrived by asking the other side.
-     */
     fun markReplyUnsent(channelId: String) {
         appendOwnReply(channelId, UNSENT_MARKER)
     }
 
-    /** Drop that warning once the retry gets the reply out after all. */
     fun clearUnsentMarkers(channelId: String) {
         if (!hasPermission()) return
         val key = "conversation:$channelId"
@@ -720,7 +577,6 @@ class NotificationHelper @Inject constructor(
         val avatarUrl: String?,
     )
 
-    /** Silence a channel's notifications for [millis] from now. */
     fun muteFor(channelId: String, millis: Long) {
         history.edit().putLong("mute:$channelId", System.currentTimeMillis() + millis).commit()
     }
@@ -730,7 +586,6 @@ class NotificationHelper @Inject constructor(
 
     private fun replyAction(channelId: String): NotificationCompat.Action {
         val remoteInput = RemoteInput.Builder(KEY_REPLY).setLabel("Reply").build()
-        // FLAG_MUTABLE: the system fills the reply text into this intent.
         val pending = PendingIntent.getBroadcast(
             context,
             channelId.hashCode() xor REPLY_SALT,
@@ -774,18 +629,11 @@ class NotificationHelper @Inject constructor(
     private fun actionIntent(action: String, channelId: String): Intent =
         Intent(context, NotificationActionReceiver::class.java).apply {
             this.action = action
-            // Explicit component + package so the broadcast is deliverable while
-            // the app is in the background.
             setPackage(context.packageName)
             putExtra(EXTRA_CHANNEL_ID, channelId)
         }
 
-    /**
-     * Ring for an inbound call. Uses a full-screen intent so it takes over the
-     * screen (and shows over the lockscreen) the way a phone call does, falling
-     * back to a heads-up notification when the system declines to launch it.
-     */
-    @SuppressLint("MissingPermission") // guarded below and resilient to permission revocation.
+    @SuppressLint("MissingPermission")
     fun notifyIncomingCall(call: DmCall) {
         if (!hasPermission()) return
 
@@ -803,7 +651,6 @@ class NotificationHelper @Inject constructor(
         val kind = if (call.video) "video call" else "voice call"
         val notification = NotificationCompat.Builder(context, CHANNEL_CALLS)
             .setSmallIcon(R.drawable.ic_notification)
-            // Cache-only: a ringing call must go up now, not after a download.
             .setLargeIcon(
                 avatarFor(call.caller.avatarUrl, call.caller.displayName, fetch = false),
             )
@@ -825,7 +672,7 @@ class NotificationHelper @Inject constructor(
         }
     }
 
-    @SuppressLint("MissingPermission") // guarded below and resilient to permission revocation.
+    @SuppressLint("MissingPermission")
     fun notifyPushCall(
         channelId: String,
         title: String,
@@ -863,10 +710,6 @@ class NotificationHelper @Inject constructor(
             }
             Unit
         }
-        // A ring is the one notification that is worthless late: the caller
-        // hangs up long before an avatar download would have finished. It goes
-        // up with whatever face is already here, and gains the real one only if
-        // the fetch beats the call being answered.
         ring(avatarFor(callerAvatarUrl, callerName, fetch = false))
         if (isAvatarPending(callerAvatarUrl)) {
             scope.launch { ring(avatarFor(callerAvatarUrl, callerName)) }
@@ -879,7 +722,6 @@ class NotificationHelper @Inject constructor(
         }
     }
 
-    /** The persistent notification CallService runs its foreground state on. */
     fun buildOngoingCallNotification(): android.app.Notification {
         val pending = PendingIntent.getActivity(
             context,
@@ -914,30 +756,17 @@ class NotificationHelper @Inject constructor(
         private const val MARK_READ_SALT = 0x4EAD
         private const val MUTE_SALT = 0x3B7E
         const val ONGOING_CALL_ID = 0x0CA11
-        /** Keeps a call's id off the message notification for the same channel. */
         private const val CALL_ID_SALT = 0x7C_A11
         private const val CONVERSATION_CATEGORY = "lt.oranges.orangchat.CONVERSATION"
-        /** Namespaces a conversation's shortcut id. Shared with the share sheet,
-         *  which hands the id back as the destination the user picked. */
         const val CONVERSATION_SHORTCUT_PREFIX = "conversation:"
-        /** Keeps a bubble's PendingIntent distinct from the tap-to-open one for
-         *  the same conversation - they differ only in mutability, and a
-         *  collision would hand one of them the other's target. */
         private const val BUBBLE_REQUEST_OFFSET = 0x0B0B
-        /** Tall enough for a few messages and the composer, per the bubble docs. */
         private const val BUBBLE_HEIGHT_DP = 600
         private const val MAX_CONVERSATION_MESSAGES = 10
         private const val HISTORY_SCHEMA = 3
-        /** Portrait edge in px: what the shade asks for at the largest density. */
         private const val AVATAR_PX = 128
         private const val AVATAR_TIMEOUT_MS = 8_000
-        /** The api route whose bytes can change without its url changing. */
         private const val ASSET_ROUTE = "/api/media/asset/"
-        /** How long a portrait fetched from [ASSET_ROUTE] is trusted before it
-         *  is fetched again. Long enough that a chatty channel refetches
-         *  nothing; short enough that a new picture shows up the same day. */
         private const val ASSET_MAX_AGE_MS = 12L * 60 * 60 * 1000
-        /** The brand orange the in-app initial avatar uses. */
         private const val AVATAR_FALLBACK_COLOR = 0xFFFF6A1A.toInt()
     }
 }

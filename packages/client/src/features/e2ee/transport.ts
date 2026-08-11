@@ -3,24 +3,11 @@ import type { TransferSlot } from './api';
 import { putTransferBlob, takeTransferBlob } from './api';
 import { socket } from '../../lib/socket';
 
-/**
- * The transport for a device transfer (docs/E2EE.md §4.1/§4.3).
- *
- * The QR scan is the actual proximity proof - a camera needs line of sight, and
- * the pairing secret inside it never touches the network. This restricts the
- * data channel to the local network on top of that: no ICE servers are
- * configured, and the selected candidate pair is checked to be host/prflx (or an
- * mDNS `.local` address) before a single byte is sent.
- *
- * Honest about what that is: a strong heuristic, not a proof. Two machines on
- * one corporate VPN can look local. The QR plus the six-digit comparison is the
- * guarantee; this is defence in depth and the reason the UI can say "bring them
- * together".
- */
+
 
 const CONNECT_TIMEOUT_MS = 10_000;
 
-/** Candidate types that mean "we did not leave this network". */
+
 const LOCAL_CANDIDATES = new Set(['host', 'prflx']);
 
 type Signal = { transferId: string; kind: 'offer' | 'answer' | 'ice' | 'ready'; data: unknown };
@@ -41,9 +28,6 @@ export function onSignal(
 }
 
 function newConnection(): RTCPeerConnection {
-  // Empty on purpose: with no STUN and no TURN there are no reflexive or relayed
-  // candidates to select, so a connection that establishes at all did so across
-  // the local network.
   return new RTCPeerConnection({ iceServers: [] });
 }
 
@@ -169,7 +153,6 @@ async function connect(transferId: string, role: 'offer' | 'answer'): Promise<Ch
     } else {
       pc.ondatachannel = (event) => {
         event.channel.onopen = () => settle(event.channel);
-        // Firefox fires ondatachannel with the channel already open.
         if (event.channel.readyState === 'open') settle(event.channel);
       };
     }
@@ -190,13 +173,7 @@ async function connect(transferId: string, role: 'offer' | 'answer'): Promise<Ch
 export const openOfferer = (transferId: string) => connect(transferId, 'offer');
 export const openAnswerer = (transferId: string) => connect(transferId, 'answer');
 
-/**
- * The §4.3 fallback, for captive portals and access points with client
- * isolation - which is to say, precisely the hostile networks worth hardening
- * against. The server holds a ciphertext for ninety seconds, hands it over once,
- * and deletes it. Losing the race gains an attacker nothing: the blob is sealed
- * under a key derived from the pairing secret, which only ever existed on the QR.
- */
+
 export async function relayPut(
   transferId: string,
   slot: TransferSlot,
@@ -218,7 +195,5 @@ export async function relayTake(
       await new Promise((resolve) => setTimeout(resolve, everyMs));
     }
   }
-  // A burned transfer surfaces as a failure, never as a silent retry: a blob
-  // fetched by someone else is one the real device will never receive.
   throw new Error('The transfer did not arrive. Start it again on both devices.');
 }

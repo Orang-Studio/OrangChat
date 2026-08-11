@@ -1,18 +1,7 @@
 import { api } from "../../lib/api";
 import { isEncrypted } from "../e2ee/store";
 
-/**
- * Composer drafts. Written to localStorage first so an unsent message survives
- * a reload or an offline moment, then mirrored to the server (debounced) so it
- * follows the user to another device. The server copy is authoritative only
- * when this device has no local draft, e.g. a fresh login.
- *
- * Encrypted conversations opt out of the server half entirely (docs/E2EE.md §9).
- * A plaintext draft of a message we are about to encrypt would hand the server
- * the very thing the encryption exists to withhold, and it would do it before
- * the message was even sent. Drafts there are local to the device that typed
- * them; following you to another device is not worth that.
- */
+
 
 const SYNC_DEBOUNCE_MS = 800;
 const keyFor = (channelId: string) => `oc:draft:${channelId}`;

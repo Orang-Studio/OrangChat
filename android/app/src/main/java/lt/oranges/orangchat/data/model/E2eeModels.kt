@@ -2,14 +2,6 @@ package lt.oranges.orangchat.data.model
 
 import kotlinx.serialization.Serializable
 
-/**
- * Wire DTOs for end-to-end encryption, mirroring the `E2ee*` types in
- * `packages/shared/src/types.ts` and the Rust DTOs in `dto.rs`.
- *
- * Everything here is public material or server-opaque ciphertext. The private
- * keys these describe never appear on the wire in any direction, which is the
- * property the whole design exists to preserve.
- */
 
 @Serializable
 data class E2eeDevice(
@@ -125,11 +117,6 @@ data class E2eeRevokeRequest(
     val log: E2eeLogEntryInput,
 )
 
-/**
- * Erasing the account's whole encryption identity, signed by a device that still
- * holds a key. The signature is the authorization, which is why there is no
- * waiting period behind this one - see E2ee.eraseKeysStatementBytes.
- */
 @Serializable
 data class E2eeEraseKeysRequest(
     val deviceId: String,
@@ -150,7 +137,6 @@ data class E2eeMintEpochRequest(
     val id: String,
     val createdBy: String,
     val envelopes: List<E2eeEnvelopeInput>,
-    /** Say on the conversation that the key was reset. Only for a reset somebody asked for. */
     val announce: Boolean = false,
 )
 
@@ -170,7 +156,6 @@ data class E2eeTransferGrantRequest(
     val ikSigPub: String,
     val ikDhPub: String,
     val code: String,
-    /** Set when the account has no authenticator: token from requestE2eeTransferEmailCode. */
     val loginToken: String? = null,
 )
 
@@ -183,13 +168,11 @@ data class E2eeBlobRequest(val blob: String, val slot: String)
 @Serializable
 data class E2eeBlob(val blob: String)
 
-/** Verify-before-messaging for one conversation; `null` returns it to the account setting. */
 @Serializable
 data class E2eeStrictRequest(val on: Boolean? = null)
 
 @Serializable
 data class E2eeStrictResponse(val channelId: String, val e2eeStrict: Boolean? = null)
 
-/** Every conversation this account has an override for. */
 @Serializable
 data class E2eeStrictOverrides(val overrides: Map<String, Boolean> = emptyMap())

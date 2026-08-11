@@ -3,35 +3,24 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde_json::json;
 
-/// Application error, mapped to HTTP status codes the same way app.ts does.
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
-    /// PermissionError in the TS server → 403.
     #[error("{0}")]
     Permission(String),
-    /// UsernameTakenError → 409.
     #[error("{0}")]
     UsernameTaken(String),
     #[error("{0}")]
     BadRequest(String),
     #[error("{0}")]
     Unauthorized(String),
-    /// Credentials were correct but the account has 2FA on and no valid code
-    /// was supplied. Carries a `code` in the body so clients can tell this
-    /// apart from a plain bad-password 401 and prompt for the second factor.
     #[error("{0}")]
     TwoFactorRequired(String),
     #[error("{0}")]
     NotFound(String),
     #[error("{0}")]
     Conflict(String),
-    /// Carries the seconds until the window resets, sent both as a `Retry-After`
-    /// header and in the body so socket acks can surface it too.
     #[error("{message}")]
     TooManyRequests { message: String, retry_after: u64 },
-    /// The client build is below this server's minimum for its platform → 426.
-    /// Carries the newest version so the client can name it in the wall it
-    /// draws, without needing a second request it is not allowed to make.
     #[error("{message}")]
     UpgradeRequired {
         message: String,
@@ -55,7 +44,6 @@ impl AppError {
         }
     }
 
-    /// Message string used both for HTTP bodies and socket ack errors.
     pub fn message(&self) -> String {
         self.to_string()
     }
@@ -71,8 +59,6 @@ impl IntoResponse for AppError {
             body["code"] = json!("2fa_required");
         }
         if let AppError::UpgradeRequired { ref latest, .. } = self {
-            // A distinct code so the client can tell a retired build apart from
-            // an ordinary refusal and draw the wall instead of a toast.
             body["code"] = json!("upgrade_required");
             body["severity"] = json!("required");
             body["latest"] = json!(latest);

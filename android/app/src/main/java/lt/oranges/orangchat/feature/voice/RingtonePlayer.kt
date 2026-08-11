@@ -13,17 +13,6 @@ import lt.oranges.orangchat.data.local.TokenStore
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Call audio. Inbound calls ring with the user's chosen tone from settings, or
- * the device ringtone if they have not picked one. Everything the app generates
- * itself - the outgoing ringback and the join/leave/decline cues - is
- * synthesised by [CallTones] to match the web client, deliberately in place of
- * Android's own ToneGenerator call sounds.
- *
- * Deliberately independent of the notification permission - a call is happening
- * now and must be audible to be answerable, and the full-screen popup is the
- * fallback if audio is unavailable.
- */
 @Singleton
 class RingtonePlayer @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -32,7 +21,6 @@ class RingtonePlayer @Inject constructor(
     private var ringtone: Ringtone? = null
     private var ringback: AudioTrack? = null
 
-    /** The user's pick, else the device default. */
     private fun ringtoneUri(): Uri? =
         tokenStore.ringtoneUri?.let(Uri::parse)
             ?: RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_RINGTONE)
@@ -45,8 +33,6 @@ class RingtonePlayer @Inject constructor(
     @Synchronized
     fun startIncoming() {
         stop()
-        // A custom tone can rot - the file gets deleted, or the persisted URI
-        // permission is lost on restore. Never let that mean a silent call.
         if (play(ringtoneUri())) return
         val fallback = defaultUri()
         if (tokenStore.ringtoneUri != null && fallback != null) {
@@ -55,7 +41,6 @@ class RingtonePlayer @Inject constructor(
         }
     }
 
-    /** Returns true when the tone actually started. */
     private fun play(uri: Uri?): Boolean {
         if (uri == null) return false
         return runCatching {
@@ -71,13 +56,6 @@ class RingtonePlayer @Inject constructor(
         }.getOrDefault(false)
     }
 
-    /**
-     * Ringback while our own outbound call waits to be picked up.
-     *
-     * Synthesised rather than ToneGenerator's TONE_SUP_RINGTONE: that is
-     * Android's own call sound, and hearing it layered under ours was the whole
-     * complaint. This matches the web client's ringback instead.
-     */
     @Synchronized
     fun startOutgoing() {
         stop()
@@ -90,19 +68,12 @@ class RingtonePlayer @Inject constructor(
         }
     }
 
-    /** Someone joined the call. Fire-and-forget; never cancelled. */
     fun playJoin() = cue(CallTones.joinCue())
 
-    /** Someone left the call. */
     fun playLeave() = cue(CallTones.leaveCue())
 
-    /** Our callee refused, as distinct from a plain hang-up. */
     fun playDecline() = cue(CallTones.declineCue())
 
-    /**
-     * One-shot cue. Released on its own completion rather than tracked, so a cue
-     * that lands as the call ends still finishes rather than being cut off.
-     */
     private fun cue(pcm: ShortArray) {
         runCatching {
             val track = CallTones.track(pcm, AudioAttributes.USAGE_VOICE_COMMUNICATION, loop = false)
@@ -132,7 +103,6 @@ class RingtonePlayer @Inject constructor(
         ringback = null
     }
 
-    /** Play the current ringtone briefly so the user can hear their pick. */
     @Synchronized
     fun preview() {
         startIncoming()

@@ -15,14 +15,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import lt.oranges.orangchat.ui.theme.LocalOrangColors
 
-/**
- * The `BOT` label shown beside an automated account's name.
- *
- * A drawn label rather than text appended to the display name: the flag comes
- * from the account itself, so nobody can put "BOT" in a nickname and pass as
- * one. The content description spells it out, since the visible text is an
- * all-caps abbreviation a screen reader would otherwise read letter by letter.
- */
 @Composable
 fun BotTag(modifier: Modifier = Modifier) {
         val context = LocalContext.current

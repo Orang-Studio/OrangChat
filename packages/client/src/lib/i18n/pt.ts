@@ -190,7 +190,7 @@ export const pt: Catalog = {
   "composer.holdToRecordAVoiceMessage": "Segure para gravar uma mensagem de voz",
   "composer.lockedSendWhenYoureDone": "Bloqueado - envie quando terminar",
   "composer.mentionSuggestions": "Mencionar sugestões",
-  "composer.pasteCutOff": "Colar cortado — máximo de caracteres {max}",
+  "composer.pasteCutOff": "Colar cortado - máximo de caracteres {max}",
   "composer.pasteItAnyway": "Cole mesmo assim",
   "composer.replyingTo": "Respondendo a",
   "composer.sendMessage": "Enviar mensagem",

@@ -28,13 +28,7 @@ export interface PinnedPeer {
   verifiedAt: string | null;
   headSeq: number;
   headHash: string;
-  /**
-   * Every entry hash this device has replayed for the account, indexed by
-   * sequence. Keeping the whole (very short) list is what lets a head gossiped
-   * by somebody else be checked at *its* sequence rather than only at ours - a
-   * server that equivocated at seq 2 and then moved on would otherwise be
-   * invisible once our own head passed it.
-   */
+
   entryHashes: string[];
 }
 
@@ -87,9 +81,6 @@ function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(OFFLINE)) {
         db.createObjectStore(OFFLINE, { keyPath: 'id' });
       }
-      // Device-local preferences the service worker has to be able to read.
-      // A worker cannot see localStorage, so anything that has to hold while
-      // the app is closed - which is exactly when a push arrives - lives here.
       if (!db.objectStoreNames.contains(SETTINGS)) {
         db.createObjectStore(SETTINGS, { keyPath: 'key' });
       }
@@ -146,15 +137,7 @@ export async function saveIdentity(identity: LocalIdentity): Promise<void> {
   await run(IDENTITY, 'readwrite', (s) => s.put(record));
 }
 
-/**
- * Throws away this device's own identity, leaving the browser able to enrol
- * again from scratch.
- *
- * Only ever right when the key it points at is already dead on the server -
- * after an erasure, or after this device was revoked. Holding on to a private
- * key whose public half is gone from the log is what makes the settings screen
- * insist this is still an enrolled device and refuse to set one up.
- */
+
 export async function deleteIdentity(): Promise<void> {
   await run(IDENTITY, 'readwrite', (s) => s.delete('self'));
 }
@@ -168,20 +151,12 @@ export async function getPin(userId: string): Promise<PinnedPeer | null> {
   return pin ?? null;
 }
 
-/**
- * Drops everything this device had committed to about an account, putting it
- * back to first-contact state. The only legitimate caller is someone accepting
- * an identity change out loud - a pin is a commitment, and quietly discarding
- * one is indistinguishable from losing the memory that catches a server out.
- */
+
 export async function deletePin(userId: string): Promise<void> {
   await run(PINS, 'readwrite', (s) => s.delete(userId));
 }
 
-/**
- * The AES key that seals conversation keys at rest. Non-extractable, so an
- * exfiltrated IndexedDB dump is inert without this origin's key handles.
- */
+
 async function vaultKey(): Promise<CryptoKey> {
   const existing = await run<{ id: string; key: CryptoKey } | undefined>(HEADS, 'readonly', (s) =>
     s.get('vault'),

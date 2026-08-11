@@ -17,12 +17,6 @@ import lt.oranges.orangchat.data.repository.E2eeRepository
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
-/**
- * Handles the DM notification quick actions without ever opening the app. Reply
- * sends over REST (there is no live socket from a background broadcast) and
- * echoes the text back into the notification; mark-read and mute-1h resolve
- * entirely on-device plus, for read, a server round-trip.
- */
 @AndroidEntryPoint
 class NotificationActionReceiver : BroadcastReceiver() {
     @Inject lateinit var apiService: ApiService
@@ -42,17 +36,11 @@ class NotificationActionReceiver : BroadcastReceiver() {
                     ?.trim()
                     .orEmpty()
                 if (text.isEmpty()) return
-                // Reflect it in the shade at once; the send just confirms it.
                 notificationHelper.appendOwnReply(channelId, text)
                 val pending = goAsync()
                 scope.launch {
                     try {
                         if (!sendWithRetry(channelId, text)) {
-                            // A background send fails for reasons that have
-                            // nothing to do with the message - no signal, a
-                            // sleeping radio. Hand it to the retry job, which
-                            // the system runs the moment there is a network,
-                            // rather than swallowing it or waiting on the app.
                             replyOutbox.add(channelId, text)
                             notificationHelper.markReplyUnsent(channelId)
                             ReplyRetryJobService.schedule(context)
@@ -77,17 +65,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
         }
     }
 
-    /**
-     * A broadcast gets ten seconds of process life, so one immediate retry fits
-     * comfortably and covers the common case: a radio that was asleep when the
-     * notification was tapped.
-     */
     private suspend fun sendWithRetry(channelId: String, text: String): Boolean {
-        // A quick reply into an encrypted conversation is sealed here, from the
-        // broadcast, exactly as the app would seal it. Sending it in the clear
-        // instead would hand the server the one thing the conversation exists to
-        // withhold, and the server refuses plaintext into a latched channel
-        // anyway - so this is what makes the shade reply work at all.
         val body = runCatching {
             if (e2eeRepository.isEncrypted(channelId)) {
                 val sealed = e2eeRepository.seal(channelId, text)
@@ -108,8 +86,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
         repeat(SEND_ATTEMPTS) { attempt ->
             val result = runCatching { apiService.sendMessage(channelId, body) }
             if (result.isSuccess) return true
-            // The one place this failure is visible: a reply sent from the shade
-            // has no UI of its own to report into.
             Log.w(TAG, "quick reply attempt ${attempt + 1} failed", result.exceptionOrNull())
             if (attempt < SEND_ATTEMPTS - 1) delay(RETRY_DELAY_MS)
         }

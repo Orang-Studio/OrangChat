@@ -5,14 +5,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-/**
- * OrangChat design tokens, ported 1:1 from packages/client/src/styles/index.css.
- * The CSS carries these as --oc-* custom properties that flip on [data-theme];
- * here they live as two [OrangColors] instances (dark default + light) exposed
- * through a CompositionLocal so any composable can read theme-aware surfaces.
- */
 data class OrangColors(
-    // Surfaces, deepest (server rail) -> highest (popovers)
     val surface0: Color,
     val surface1: Color,
     val surface2: Color,
@@ -20,22 +13,15 @@ data class OrangColors(
     val surface4: Color,
     val border: Color,
     val borderStrong: Color,
-    /** Plate under a message group when the conversation has a background
-     *  picture (--oc-plate). Opaque enough that even muted text keeps roughly
-     *  the contrast it has on a plain surface; the picture reads in the gutters
-     *  and in the gaps between groups instead. */
     val plate: Color,
-    // Text
     val ink: Color,
     val inkSecondary: Color,
     val inkMuted: Color,
     val inkOnPrimary: Color,
-    // Brand
     val primary: Color,
     val primaryHover: Color,
     val primaryActive: Color,
     val primarySoft: Color,
-    // Status
     val success: Color,
     val warning: Color,
     val danger: Color,
@@ -43,7 +29,6 @@ data class OrangColors(
     val isDark: Boolean,
 )
 
-// Dark - the default. Cool graphite base, vivid tangerine accent.
 val DarkOrangColors = OrangColors(
     surface0 = Color(0xFF08090C),
     surface1 = Color(0xFF0E0F13),
@@ -94,7 +79,6 @@ val LightOrangColors = OrangColors(
 
 val LocalOrangColors = staticCompositionLocalOf { DarkOrangColors }
 
-/** Ergonomic accessor: `OrangTheme.colors.primary` from any composable. */
 object OrangTheme {
     val colors: OrangColors
         @Composable

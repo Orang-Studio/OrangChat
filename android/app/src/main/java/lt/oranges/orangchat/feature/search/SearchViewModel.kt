@@ -33,7 +33,6 @@ data class SearchState(
     val loading: Boolean = false,
     val error: String? = null,
     val hasMore: Boolean = false,
-    /** True for a DM search or when an unreachable server fell back to disk. */
     val searchedLocally: Boolean = false,
 )
 
@@ -122,9 +121,6 @@ class SearchViewModel @Inject constructor(
             )
         } catch (error: Exception) {
             if (error is CancellationException) throw error
-            // The cached history is useful both as an offline fallback and for
-            // encrypted rows the server cannot inspect. It is intentionally a
-            // substring search, matching the browser's local index.
             val fallback = localResults(query, channelIds)
             _state.value = _state.value.copy(
                 results = fallback,
@@ -158,7 +154,6 @@ class SearchViewModel @Inject constructor(
     }
 }
 
-/** Offset pages can overlap when the index changes between requests. */
 internal fun mergeSearchResults(
     existing: List<SearchResult>,
     page: List<SearchResult>,
@@ -174,7 +169,6 @@ private fun Message.toSearchResult() = SearchResult(
     createdAt = createdAt,
 )
 
-/** Full offline rows replace legacy text-only E2EE hits with the same id. */
 internal fun mergeLocalResults(
     decrypted: List<SearchResult>,
     offline: List<SearchResult>,

@@ -1,6 +1,6 @@
 import type { Catalog } from "./en";
 
-/** Modern Standard Arabic translation. Generated from the complete English catalogue. */
+
 export const ar: Catalog = {
   "common.save": "يحفظ",
   "common.cancel": "يلغي",
@@ -311,7 +311,7 @@ export const ar: Catalog = {
   "encryptionTab.yourDirectMessagesAreLockedOn":
     "يتم قفل رسائلك المباشرة على أجهزتك الخاصة قبل إرسالها. المفتاح مصنوع هنا ولا يمكن نسخه من هذا الجهاز، لذلك لا يمكن لأي شخص يقوم بتشغيل OrangChat - ولا أي شخص يحصل على قاعدة بياناتنا - قراءته.",
   "errorBoundary.orangchatHitAnUnexpectedErrorAnd":
-    "حدث خطأ غير متوقع في OrangChat ولم يتمكن من الاستمرار في عرض هذه الصفحة. رسائلك آمنة — أعد التحميل للمحاولة مرة أخرى.",
+    "حدث خطأ غير متوقع في OrangChat ولم يتمكن من الاستمرار في عرض هذه الصفحة. رسائلك آمنة - أعد التحميل للمحاولة مرة أخرى.",
   "errorBoundary.reloadOrangchat": "إعادة تحميل OrangChat",
   "errorBoundary.somethingWentWrong": "حدث خطأ ما",
   "eventsDialog.aLinkAnAddressAnywhere": "رابط، عنوان، في أي مكان",

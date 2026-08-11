@@ -3,12 +3,7 @@ import { FcGoogle } from "react-icons/fc";
 import { FaDiscord } from "react-icons/fa";
 import type { OAuthProvider } from "@orangchat/shared";
 
-/**
- * OAuth starts with a full-page navigation to the backend, which runs the
- * provider flow, sets the refresh cookie, and redirects back to the client;
- * bootstrapSession() then picks the session up. Assumed backend paths:
- * /api/auth/oauth/:provider (confirm with backend).
- */
+
 const PROVIDERS: { id: OAuthProvider; label: string; Icon: IconType; iconClass?: string }[] = [
   { id: "google", label: "Continue with Google", Icon: FcGoogle },
   { id: "discord", label: "Continue with Discord", Icon: FaDiscord, iconClass: "text-[#5865F2]" },

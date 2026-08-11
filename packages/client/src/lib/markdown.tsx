@@ -3,46 +3,29 @@ import { EMOJI_SHORTCODE_SOURCE, EMOJI_TOKEN_SOURCE } from "@orangchat/shared";
 import { cn } from "./cn";
 import { t } from "./i18n";
 
-// Anchored forms of the shared emoji grammar, so the renderer and the send-time
-// normalizer can never drift on what a token is. The token rule runs before the
-// shortcode rule below, so `<:name:id>` is matched whole and its inner `:name:`
-// is never re-read as a shortcode.
 const EMOJI_TOKEN_RE = new RegExp("^" + EMOJI_TOKEN_SOURCE, "i");
 const EMOJI_SHORTCODE_RE = new RegExp("^" + EMOJI_SHORTCODE_SOURCE, "i");
 
-/**
- * Discord-style markdown, rendered to React nodes (never raw HTML - safe from
- * injection by construction). Supports the subset people actually use:
- *   **bold**  *italic* / _italic_  __underline__  ~~strike~~  `code`
- *   ||spoiler||  ```fenced code```  > blockquote  [label](url)  bare http(s) links
- *   @username and <@userId> mentions  @everyone / @here
- * Mentions resolve display names via `mentions` and highlight when they target
- * the current user (`selfId` or an @everyone/@here in a server context).
- *
- * Two mention encodings are live at once. The composer writes plain `@username`
- * so the raw text stays readable, but `<@id>` predates it and still sits in
- * every older message, so both resolve here. `<@id>` survives a rename and
- * `@username` does not; that is the cost of readable text, not a bug to fix.
- */
 
-/** Just enough of a custom emoji to draw it; mirrors the shared `Emoji` type. */
+
+
 export interface EmojiRef {
   name: string;
   url: string;
 }
 
 export interface MentionContext {
-  /** userId -> display name, for resolving <@id> tokens. */
+
   names?: Record<string, string>;
-  /** username (lowercased) -> user, for resolving @username tokens. */
+
   usernames?: Record<string, { id: string; name: string }>;
-  /** The viewer, so mentions of them render highlighted. */
+
   selfId?: string;
-  /** Called when a mention is present so callers can theme @everyone/@here. */
+
   everyoneHighlights?: boolean;
-  /** Open the mentioned user's profile. Group-wide mentions remain plain text. */
+
   onMentionClick?: (userId: string) => void;
-  /** emojiId -> emoji, for resolving <:name:id> tokens. */
+
   emojis?: Record<string, EmojiRef>;
 }
 
@@ -51,10 +34,7 @@ const nextKey = () => `md${keySeq++}`;
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/**
- * True when `content` pings the viewer: a `<@id>` for them, their `@username`,
- * or an `@everyone`/`@here`. Used to highlight the whole message row.
- */
+
 export function mentionsViewer(
   content: string,
   selfId: string | undefined,
@@ -156,7 +136,6 @@ const INLINE_RULES: {
     re: /^_([^_\n]+?)_/,
     render: (m, ctx) => <em key={nextKey()}>{parseInline(m[1] ?? "", ctx)}</em>,
   },
-  // [label](url)
   {
     re: /^\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/,
     render: (m, ctx) => (
@@ -171,7 +150,6 @@ const INLINE_RULES: {
       </a>
     ),
   },
-  // bare autolink
   {
     re: /^(https?:\/\/[^\s<]+[^\s<.,:;"')\]}])/,
     render: (m) => (
@@ -186,13 +164,11 @@ const INLINE_RULES: {
       </a>
     ),
   },
-  // <:name:id> / <a:name:id> custom emoji
   {
     re: EMOJI_TOKEN_RE,
     render: (m, ctx) => {
       const name = m[2] ?? "";
       const emoji = ctx.emojis?.[m[3] ?? ""];
-      // Deleted emoji show their raw name rather than a broken image.
       if (!emoji) return <Fragment key={nextKey()}>:{name}:</Fragment>;
       return (
         <img

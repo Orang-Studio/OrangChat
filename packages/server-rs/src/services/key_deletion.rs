@@ -1,25 +1,3 @@
-//! Erasing an account's encryption identity when nobody can sign for it.
-//!
-//! Every other way out of a lost key is cryptographic: a device that still holds
-//! the key signs a revocation, or signs a new device in. This is the case where
-//! that is impossible - the last keyed device is gone, so no such signature will
-//! ever exist again. Without an escape hatch the account is stuck forever
-//! (`enroll_genesis` refuses while devices are listed, `revoke_device` refuses
-//! without a signer), which is exactly the state that had operators reaching for
-//! `DELETE FROM "Device"` by hand.
-//!
-//! The whole design is therefore about the *other* person holding the account:
-//! whoever stole the password can file this request too. Three things stand in
-//! their way, and none of them is a secret they can steal:
-//!
-//! 1. A delay, so the request is never a single irreversible click.
-//! 2. Notification at request time with a cancel link, so the real owner hears
-//!    about it while stopping it still means something.
-//! 3. An automatic abort if any device still holding the key checks in during
-//!    the wait - the account answering the question for itself.
-//!
-//! Only (3) was in the original sketch. It is the weakest of the three on its
-//! own: presence is trivially waited out by filing while somebody sleeps.
 
 use chrono::{Duration, NaiveDateTime, Utc};
 use sqlx::Row;
@@ -30,21 +8,9 @@ use crate::ids::cuid;
 use crate::services::{email, push};
 use crate::state::AppState;
 
-/// With a TOTP code behind it the request is already something an attacker had
-/// to defeat 2FA to file, so it does not need to survive a night's sleep as
-/// well. Without one, a stolen password is the *only* thing between them and the
-/// keys, and the wait has to be long enough that the owner is awake for part of
-/// it.
 pub const DELAY_WITH_2FA: i64 = 3;
 pub const DELAY_WITHOUT_2FA: i64 = 24;
 
-/// How stale a device's erasure signature may be, in seconds.
-///
-/// The signature is the authorization, so it has to be spent close to when it
-/// was made: otherwise one captured off a device today is a wipe that can be
-/// fired at any point in the future. Five minutes is wide enough for a clock
-/// that is not quite set and narrow enough that the window has to be exploited
-/// on the spot.
 pub const PROOF_MAX_AGE_SECONDS: i64 = 300;
 
 pub struct PendingRequest {
@@ -68,11 +34,6 @@ pub async fn pending(state: &AppState, user_id: &str) -> AppResult<Option<Pendin
     }))
 }
 
-/// Files the request and tells every channel the account has. The warning email
-/// is not a courtesy - it is the control that makes the waiting period mean
-/// something - so a request that could not be announced is withdrawn rather than
-/// left standing. Scheduling a silent destruction because the mail server was
-/// down is the one outcome this whole module exists to prevent.
 pub async fn request(
     state: &AppState,
     user_id: &str,
@@ -91,9 +52,6 @@ pub async fn request(
     } else {
         DELAY_WITHOUT_2FA
     };
-    // Naive UTC throughout: Prisma emits `timestamp without time zone`, so a
-    // `DateTime<Utc>` would not decode back out of these columns at all. The
-    // database runs in UTC, which is what makes `now()` comparable to this.
     let execute_after = Utc::now().naive_utc() + Duration::hours(hours);
     let token = random_token();
     let id = cuid();
@@ -143,8 +101,6 @@ pub async fn request(
     })
 }
 
-/// Called from the emailed link and from the settings screen alike. Returns the
-/// owning user so the caller can confirm what was stopped.
 pub async fn cancel_by_token(state: &AppState, token: &str) -> AppResult<String> {
     let row = sqlx::query(
         r#"UPDATE "KeyDeletionRequest" SET "cancelledAt" = now()
@@ -191,17 +147,6 @@ pub async fn cancel_for_user(state: &AppState, user_id: &str) -> AppResult<()> {
     Ok(())
 }
 
-/// Called the moment a device holding the key checks in, rather than leaving the
-/// question to the sweep at the end of the wait.
-///
-/// Both orderings reach the same outcome, but only this one is honest to the
-/// user: the request says any surviving device cancels it, so a device that
-/// checks in and changes nothing on screen for another three hours reads as the
-/// promise not being kept. It also means the "nothing was erased" mail lands
-/// while the person is still holding the phone that sent it.
-///
-/// A no-op when nothing is pending, which is the overwhelmingly common case -
-/// `/e2ee/seen` is on the startup path of every client.
 pub async fn abort_on_device_seen(state: &AppState, user_id: &str) -> AppResult<()> {
     let done = sqlx::query(
         r#"UPDATE "KeyDeletionRequest" SET "abortedAt" = now()
@@ -247,13 +192,7 @@ pub async fn abort_on_device_seen(state: &AppState, user_id: &str) -> AppResult<
     Ok(())
 }
 
-/// The wipe itself. Both tables have to go: revoking the devices alone leaves
-/// the log head in place, and `enroll_genesis` only accepts an entry at seq 0
-/// with no previous hash, so the account would still be unable to start over.
-/// `KeyEnvelope` follows the devices by cascade.
 async fn erase(state: &AppState, user_id: &str) -> AppResult<()> {
-    // Read before the delete, because afterwards there is nobody left to ask
-    // who was wrapping keys to this account.
     let rooms = crate::services::e2ee::peer_rooms(state, user_id)
         .await
         .unwrap_or_default();
@@ -269,10 +208,6 @@ async fn erase(state: &AppState, user_id: &str) -> AppResult<()> {
         .await?;
     tx.commit().await?;
 
-    // Every device the account had is gone at once, which to a peer is the same
-    // news a revocation carries: stop wrapping conversation keys to them and
-    // re-read the list. Without this a peer keeps sealing to devices that no
-    // longer exist until something else makes it look.
     let payload = serde_json::json!({ "userId": user_id, "deviceId": null });
     for room in rooms {
         let _ = state.io().to(room).emit("e2ee:device:revoked", &payload);
@@ -280,20 +215,6 @@ async fn erase(state: &AppState, user_id: &str) -> AppResult<()> {
     Ok(())
 }
 
-/// The wipe with no wait in front of it, for a caller who signed for it with a
-/// device key.
-///
-/// Everything in the scheduled path - the delay, the mail with the cancel link,
-/// the abort when a keyed device checks in - is there because the request itself
-/// proves nothing: a stolen password can file it. A signature under a device
-/// that is still in the log is the opposite case. Whoever produced it already
-/// holds the key the wait was protecting, so waiting three hours protects
-/// nobody; it only leaves someone who has decided to start over staring at a
-/// countdown, on a device that would abort its own request the next time it
-/// checked in.
-///
-/// Any request already pending is closed out as executed rather than left
-/// dangling, since what it was waiting to do has now happened.
 pub async fn erase_now(state: &AppState, user_id: &str, email_address: &str) -> AppResult<()> {
     erase(state, user_id).await?;
 
@@ -306,9 +227,6 @@ pub async fn erase_now(state: &AppState, user_id: &str, email_address: &str) -> 
     .execute(&state.pool)
     .await?;
 
-    // Still announced on every channel. The person who pressed the button knows
-    // what they did; the mail and the push are for the case where they did not,
-    // and a wipe that happened instantly is exactly the one worth hearing about.
     if let Err(e) = email::send_key_deletion_done(&state.config, email_address).await {
         tracing::warn!(user = %user_id, error = %e, "could not send key erasure notice");
     }
@@ -325,9 +243,6 @@ pub async fn erase_now(state: &AppState, user_id: &str, email_address: &str) -> 
     Ok(())
 }
 
-/// Walks the requests whose wait is up. Runs on a timer, so it is written to
-/// survive being late: a request that came due an hour ago is still handled, and
-/// each one is independent of the others' failures.
 pub async fn sweep(state: &AppState) -> AppResult<u64> {
     let due = sqlx::query(
         r#"SELECT k.id, k."userId", k."requestedAt", u.email
@@ -345,11 +260,6 @@ pub async fn sweep(state: &AppState) -> AppResult<u64> {
         let requested_at: NaiveDateTime = row.get("requestedAt");
         let address: String = row.get("email");
 
-        // The condition the whole feature turns on. `lastSeenAt` is only moved
-        // by `/e2ee/seen`, which a device can only call once it has loaded a
-        // local identity - so this is not "did somebody log in", it is "does a
-        // working key still exist". Anything else here would let the attacker's
-        // own session cancel the request they filed.
         let alive: i64 = sqlx::query_scalar(
             r#"SELECT count(*) FROM "Device"
                WHERE "userId" = $1 AND "revokedAt" IS NULL AND "lastSeenAt" > $2"#,

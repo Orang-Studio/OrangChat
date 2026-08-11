@@ -43,10 +43,6 @@ import lt.oranges.orangchat.util.MentionUser
 import lt.oranges.orangchat.util.absoluteUrl
 import lt.oranges.orangchat.util.parseMarkdown
 
-/**
- * Renders Discord-subset markdown. Compose counterpart of the web client's
- * <RichText>: same parser grammar (util/Markdown.kt), styled with theme tokens.
- */
 @Composable
 fun MessageText(
     content: String,
@@ -56,11 +52,6 @@ fun MessageText(
     selfId: String? = null,
     emojis: Map<String, EmojiRef> = emptyMap(),
     fontSize: androidx.compose.ui.unit.TextUnit = 14.sp,
-    /**
-     * Overrides the theme's body colour. For rows that are not ordinary
-     * messages - one the server refused reads in [OrangColors.danger], so the
-     * words themselves carry the failure rather than only the label under them.
-     */
     color: androidx.compose.ui.graphics.Color? = null,
     onMentionClick: (String) -> Unit = {},
 ) {
@@ -81,7 +72,6 @@ fun MessageText(
                         .background(c.surface1, RoundedCornerShape(OrangRadius.md))
                         .padding(10.dp),
                 ) {
-                    // Long lines scroll rather than wrap, as in the web <pre>.
                     Text(
                         text = block.body,
                         color = bodyColor,
@@ -120,10 +110,6 @@ fun MessageText(
 
 private const val EMOJI_INLINE_PREFIX = "emoji:"
 
-/**
- * Sized in sp rather than dp so custom emoji track the accessibility font-scale
- * preference along with the text they sit in.
- */
 private fun emojiSize(fontSize: androidx.compose.ui.unit.TextUnit) = fontSize * 2.3f
 
 private fun collectEmojis(blocks: List<MdBlock>): List<MdNode.CustomEmoji> {
@@ -241,7 +227,6 @@ private fun androidx.compose.ui.text.AnnotatedString.Builder.appendNodes(
                 ),
             ) { append("@${node.name}") }
 
-            // @everyone always reads as aimed at you, so it uses the self style.
             is MdNode.Everyone -> withStyle(
                 SpanStyle(
                     color = c.primary,
@@ -250,7 +235,6 @@ private fun androidx.compose.ui.text.AnnotatedString.Builder.appendNodes(
                 ),
             ) { append("@${node.keyword}") }
 
-            // The alternate text is what copy and TalkBack get.
             is MdNode.CustomEmoji -> appendInlineContent(
                 EMOJI_INLINE_PREFIX + node.id,
                 ":${node.name}:",

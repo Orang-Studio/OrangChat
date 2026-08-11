@@ -53,12 +53,6 @@ import javax.inject.Named
 import javax.inject.Provider
 import javax.inject.Singleton
 
-/**
- * Owns the single Socket.IO connection. JWT is passed on the handshake via
- * `auth.token`, exactly as socket.rs reads it (TryData<AuthPayload{ token }>).
- * Incoming server->client events are decoded into [SocketEvent] and emitted on
- * [events]; client->server actions are exposed as emit/ack helpers.
- */
 @Singleton
 class SocketManager @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -122,16 +116,12 @@ class SocketManager @Inject constructor(
         socket = null
     }
 
-    /** Call after a token refresh so the next connect uses the new JWT (auth is
-     *  captured from options at handshake time, so we rebuild the socket). */
     @Synchronized
     fun reauthenticate() {
         disconnect()
         connect()
     }
 
-    /** Nudge a reconnect after the network or the app comes back, when socket.io
-     *  hasn't recovered on its own. Idempotent. */
     @Synchronized
     fun reconnectIfNeeded() {
         if (!shouldKeepSocket()) return
@@ -140,8 +130,6 @@ class SocketManager @Inject constructor(
         if (s == null) connect() else if (!s.connected()) s.connect()
     }
 
-    /** Mint a fresh access token off the refresh cooldown and hand it to the
-     *  token store, whose listener rebuilds the socket with it. */
     private fun maybeRefreshAuth() {
         val now = System.currentTimeMillis()
         if (now - lastAuthRefresh < AUTH_REFRESH_COOLDOWN_MS) return
@@ -151,8 +139,6 @@ class SocketManager @Inject constructor(
         }
     }
 
-    /** Blocking POST /auth/refresh, mirroring TokenAuthenticator. Null on any
-     *  failure, including a network that is simply still down. */
     private fun refreshAccessTokenBlocking(): String? = try {
         val url = baseUrl.trimEnd('/') + "/auth/refresh"
         val req = Request.Builder().url(url).post(ByteArray(0).toRequestBody(null)).build()
@@ -171,8 +157,6 @@ class SocketManager @Inject constructor(
         cm?.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) = reconnectIfNeeded()
         })
-        // Coming back to the foreground is the other moment a dead socket needs a
-        // kick. Lifecycle observers must be added on the main thread.
         Handler(Looper.getMainLooper()).post {
             val lifecycle = ProcessLifecycleOwner.get().lifecycle
             if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
@@ -242,9 +226,6 @@ class SocketManager @Inject constructor(
             val msg = args.firstOrNull()?.toString().orEmpty()
             Log.w(TAG, "connect_error: $msg")
             emit(SocketEvent.ConnectionState(false, "connect_error"))
-            // an expired access token rejects the handshake as "unauthorized".
-            // mint a fresh one, which reauthenticates the socket via the token
-            // listener; without this the socket stays down until relaunch.
             if (msg.contains("unauthorized", ignoreCase = true) ||
                 msg.contains("auth", ignoreCase = true)
             ) {
@@ -335,7 +316,6 @@ class SocketManager @Inject constructor(
         }
     }
 
-    // ── client -> server ────────────────────────────────
     fun joinChannel(channelId: String) {
         activeChannelId = channelId
         socket?.emit("channel:join", channelId)
@@ -353,22 +333,11 @@ class SocketManager @Inject constructor(
     fun removeReaction(channelId: String, messageId: String, emoji: String) =
         socket?.emit("reaction:remove", payload("channelId" to channelId, "messageId" to messageId, "emoji" to emoji))
 
-    /**
-     * message:send with ack -> the created Message (or throws on error string).
-     *
-     * [attachmentIds] come from AttachmentUploader; the server resolves each to
-     * the file it staged, so nothing about the file travels in this payload.
-     */
     suspend fun sendMessage(
         channelId: String,
         content: String,
         replyToId: String? = null,
         attachmentIds: List<String> = emptyList(),
-        /**
-         * Set for an end-to-end encrypted conversation. `content` then goes as
-         * the empty string the server stores, and the real text only exists
-         * inside this envelope (docs/E2EE.md §2).
-         */
         ciphertext: String? = null,
         encEpoch: Int? = null,
         encVersion: Int? = null,
@@ -410,8 +379,6 @@ class SocketManager @Inject constructor(
         })
     }
 
-    // ── voice + calls ───────────────────────────────────
-    /** voice:join takes a bare channel id string and acks LiveKit credentials. */
     suspend fun joinVoice(channelId: String): VoiceCredentials =
         emitWithAck("voice:join", channelId) {
             VoiceCredentials(it.getString("token"), it.getString("url"))
@@ -419,10 +386,6 @@ class SocketManager @Inject constructor(
 
     fun leaveVoice(channelId: String) { socket?.emit("voice:leave", channelId) }
 
-    /**
-     * Fire a clip at everyone in the voice channel. The rate limit rejects via
-     * the ack, so a refusal surfaces rather than silently doing nothing.
-     */
     suspend fun playSound(channelId: String, soundId: String) {
         emitWithAckUnit("soundboard:play", buildJson {
             put("channelId", channelId); put("soundId", soundId)
@@ -443,19 +406,16 @@ class SocketManager @Inject constructor(
         })
     }
 
-    /** Ring everyone else in a DM / group DM. */
     suspend fun startCall(channelId: String, video: Boolean): DmCall =
         emitWithAck("dm:call:start", buildJson {
             put("channelId", channelId); put("video", video)
         }) { decode(it) }
 
-    /** Answer the call ringing at us; acks the call's updated roster. */
     suspend fun acceptCall(channelId: String): DmCall =
         emitWithAck("dm:call:respond", buildJson {
             put("channelId", channelId); put("accept", true)
         }) { decode(it) }
 
-    /** Decline acks void, so it cannot share [acceptCall]'s decoding path. */
     suspend fun declineCall(channelId: String) {
         emitWithAckUnit("dm:call:respond", buildJson {
             put("channelId", channelId); put("accept", false)
@@ -465,17 +425,10 @@ class SocketManager @Inject constructor(
     fun cancelCall(channelId: String) { socket?.emit("dm:call:cancel", channelId) }
     fun endCall(channelId: String) { socket?.emit("dm:call:end", channelId) }
 
-    // ── helpers ─────────────────────────────────────────
     private fun emit(e: SocketEvent) { _events.tryEmit(e) }
 
     private fun obj(args: Array<out Any?>): JSONObject? = args.firstOrNull() as? JSONObject
 
-    /**
-     * A decode failure here used to surface as a bare kotlinx message - a model
-     * class name and nothing about which field or which payload - and the actual
-     * body was gone by the time anyone looked. Log the body that failed so the
-     * mismatch is one logcat line away, then rethrow unchanged.
-     */
     private inline fun <reified T> decode(o: JSONObject): T =
         try {
             json.decodeFromString(o.toString())
@@ -498,15 +451,6 @@ class SocketManager @Inject constructor(
     private inline fun buildJson(block: JSONObject.() -> Unit): JSONObject =
         JSONObject().apply(block)
 
-    /**
-     * Emit with a Socket.IO ack of shape { ok, data } / { ok:false, error }.
-     * [payload] is Any because not every event takes an object - voice:join and
-     * the call cancel/end events send a bare channel-id string.
-     *
-     * Failures resume with an exception rather than cancelling the continuation:
-     * cancellation surfaces as CancellationException, which would tear down the
-     * caller's coroutine instead of letting it report "already on a call".
-     */
     private suspend inline fun <T> emitWithAck(
         event: String,
         payload: Any,

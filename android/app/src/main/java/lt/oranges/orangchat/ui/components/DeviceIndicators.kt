@@ -16,7 +16,6 @@ import lt.oranges.orangchat.data.model.PresenceDevice
 import lt.oranges.orangchat.data.model.PresenceStatus
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-/** Device kinds currently keeping an online user connected. */
 @Composable
 fun DeviceIndicators(
     status: PresenceStatus,

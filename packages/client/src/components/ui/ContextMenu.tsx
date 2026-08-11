@@ -3,11 +3,7 @@ import { ChevronRight } from "lucide-react";
 import type { ComponentPropsWithoutRef } from "react";
 import { cn } from "../../lib/cn";
 
-/**
- * Right-click menu, styled to match the click-triggered DropdownMenu so both
- * read as the same surface. Radix handles cursor positioning, focus trapping
- * and dismissal (Escape / outside click / scroll).
- */
+
 export const ContextMenu = RadixContextMenu.Root;
 export const ContextMenuTrigger = RadixContextMenu.Trigger;
 

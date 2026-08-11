@@ -30,11 +30,7 @@ export function removeFriendFromCache(client: QueryClient, userId: string): void
   );
 }
 
-/**
- * A friend edited their profile. `status` is presence, which rides its own
- * events and is not part of the edited profile, so the cached one is kept.
- * Re-sorts because the list is ordered by display name.
- */
+
 export function updateFriendUser(client: QueryClient, user: User): void {
   client.setQueryData<Friend[]>(friendKeys.list, (list) => {
     if (!list?.some((f) => f.user.id === user.id)) return list;
@@ -68,7 +64,7 @@ export function removeRequest(client: QueryClient, id: string): void {
   );
 }
 
-/** Drop any pending request (either direction) involving `userId`. */
+
 export function removeRequestByUser(client: QueryClient, userId: string): void {
   client.setQueryData<FriendRequests>(friendKeys.requests, (reqs) =>
     reqs

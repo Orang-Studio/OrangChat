@@ -10,7 +10,7 @@ export function useConversations() {
   return useQuery({ queryKey: dmKeys.list, queryFn: listConversations });
 }
 
-/** Display name: explicit group name, else the other participants' names. */
+
 export function conversationName(conversation: Conversation, selfId: string | undefined): string {
   if (conversation.name) return conversation.name;
   const others = conversation.participants.filter((p) => p.id !== selfId);
@@ -18,11 +18,7 @@ export function conversationName(conversation: Conversation, selfId: string | un
   return others.map((p) => p.displayName).join(', ');
 }
 
-/**
- * A conversation seen as a Channel, the shape ChatView and the call actions
- * consume. A DM has no moderator, so every channel-settings field takes its
- * "off" value - the same ones the server stores for a text-shaped DM.
- */
+
 export function conversationToChannel(
   conversation: Conversation,
   selfId: string | undefined,
@@ -44,7 +40,7 @@ export function conversationToChannel(
   };
 }
 
-/** Everyone in the conversation except the current user. */
+
 export function otherParticipants(conversation: Conversation, selfId: string | undefined) {
   return conversation.participants.filter((p) => p.id !== selfId);
 }
@@ -60,11 +56,7 @@ export function upsertConversation(client: QueryClient, conversation: Conversati
   });
 }
 
-/**
- * A message landed in `channelId`. If it's a known conversation, bump it to the
- * top; if we've never seen the channel (fresh incoming DM), refetch the list.
- * Returns true when the channel was a conversation (known or refetched).
- */
+
 export function touchConversation(client: QueryClient, channelId: string, at: string): void {
   const list = client.getQueryData<Conversation[]>(dmKeys.list);
   if (!list) return;
@@ -78,7 +70,7 @@ export function touchConversation(client: QueryClient, channelId: string, at: st
   }
 }
 
-/** Keep the sidebar preview in step with a message received over the socket. */
+
 export function setConversationLatest(client: QueryClient, message: Message): void {
   client.setQueryData<Conversation[]>(dmKeys.list, (list) => {
     if (!list?.some((conversation) => conversation.id === message.channelId)) return list;
@@ -96,7 +88,7 @@ export function setConversationLatest(client: QueryClient, message: Message): vo
   });
 }
 
-/** Update a preview only when the edited message is the one shown there. */
+
 export function replaceConversationLatest(client: QueryClient, message: Message): void {
   client.setQueryData<Conversation[]>(dmKeys.list, (list) =>
     list?.map((conversation) =>

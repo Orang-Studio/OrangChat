@@ -15,21 +15,14 @@ import lt.oranges.orangchat.data.repository.ServerRepository
 import lt.oranges.orangchat.util.InviteLink
 import javax.inject.Inject
 
-/** What the join sheet knows about the code currently typed or deep-linked. */
 data class InviteUiState(
     val resolving: Boolean = false,
     val preview: InvitePreview? = null,
-    /** The invite doesn't resolve at all - expired, revoked, or never existed. */
     val invalid: Boolean = false,
     val joining: Boolean = false,
     val error: String? = null,
 )
 
-/**
- * Resolving and accepting one invite code. Backs both the Join tab of the
- * add-server sheet and the sheet a deep link raises, so a tapped link and a
- * pasted link behave identically.
- */
 @HiltViewModel
 class InviteViewModel @Inject constructor(
     private val serverRepository: ServerRepository,
@@ -40,11 +33,6 @@ class InviteViewModel @Inject constructor(
     private var resolveJob: Job? = null
     private var resolvedCode: String? = null
 
-    /**
-     * Resolve a code, or clear back to empty when the input isn't one yet.
-     * Re-resolving the same code is a no-op so that typing in the field doesn't
-     * re-hit the API on every keystroke once it already matches.
-     */
     fun resolve(code: String?) {
         if (code == null) {
             resolveJob?.cancel()
@@ -64,7 +52,6 @@ class InviteViewModel @Inject constructor(
         }
     }
 
-    /** Accept the resolved invite. [onJoined] receives the server to open. */
     fun join(onJoined: (Server) -> Unit) {
         val code = resolvedCode ?: return
         if (_state.value.joining) return
@@ -83,6 +70,5 @@ class InviteViewModel @Inject constructor(
 
     fun reset() = resolve(null)
 
-    /** Convenience for the text field: parse then resolve in one step. */
     fun onInputChanged(input: String) = resolve(InviteLink.parseInput(input))
 }

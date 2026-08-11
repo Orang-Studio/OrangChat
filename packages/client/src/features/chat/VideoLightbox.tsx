@@ -8,7 +8,7 @@ import { MediaSenderBar, type MediaContext } from "./MediaSenderBar";
 import { useMediaZoom, type MediaOrigin } from "./useMediaZoom";
 import { t } from "../../lib/i18n";
 
-/** Full-screen player for a video attachment, with downloading kept explicit. */
+
 export function VideoLightbox({
   attachment,
   context,
@@ -18,9 +18,9 @@ export function VideoLightbox({
   onOpenChange,
 }: {
   attachment: Attachment;
-  /** The message this clip came on, for the bar under the controls. */
+
   context?: MediaContext;
-  /** The inline player's box, so the viewer grows out of it. */
+
   origin?: MediaOrigin | null;
   open: boolean;
   startTime: number;

@@ -49,12 +49,7 @@ async function identityOrThrow(): Promise<LocalIdentity> {
   return identity;
 }
 
-/**
- * Every active device of every participant, but only after each participant's
- * own log has been replayed and verified. A device the server invented has no
- * authorization signature, so it never reaches this list and never receives a
- * conversation key.
- */
+
 async function verifiedRecipients(
   state: E2eeChannelState,
   identity: LocalIdentity,
@@ -93,11 +88,7 @@ async function wrapForEveryone(
   return envelopes;
 }
 
-/**
- * Mints a fresh conversation key and wraps it to every verified device. The
- * epoch id is generated here rather than by the server, because every wrapping
- * is bound to it as the HKDF salt before the server ever sees the request.
- */
+
 export async function rotate(channelId: string, options: { announce?: boolean } = {}): Promise<number> {
   const identity = await identityOrThrow();
   const state = await getChannelE2eeState(channelId);
@@ -118,9 +109,6 @@ export async function rotate(channelId: string, options: { announce?: boolean } 
     id: epochId,
     createdBy: identity.deviceId,
     envelopes,
-    // The notice, when there is one, is written by the server off the back of
-    // this same request - so it says a key was started because one was, not
-    // because a client said so.
     ...(options.announce ? { announce: true } : {}),
   });
 
@@ -161,7 +149,7 @@ export async function conversationKeyFor(channelId: string, epoch: number): Prom
   return fetched;
 }
 
-/** Pulls down and caches every epoch key this device is entitled to. */
+
 export async function syncEpochKeys(channelId: string): Promise<number[]> {
   const identity = await identityOrThrow();
   const { keys } = await getEpochKeys(channelId, identity.deviceId);
@@ -180,9 +168,6 @@ export async function syncEpochKeys(channelId: string): Promise<number[]> {
       );
       await saveEpochKey(channelId, key.epoch.epoch, conversationKey);
     } catch {
-      // An envelope this device cannot open is not fatal: it belongs to an
-      // epoch minted before this device existed, and that history is simply
-      // unreadable here rather than an error to raise.
     }
   }
   return knownEpochs(channelId);
@@ -217,19 +202,12 @@ export interface OutgoingPayload {
   attachments?: MessagePayload['attachments'];
 }
 
-/**
- * Seals a whole payload rather than a bare string. The server assigns the
- * message id after this runs, so it cannot be bound into the AAD - which is why
- * the payload carries its own timestamp, reply target and client id, and why
- * clients render those instead of the server's copy.
- */
+
 export async function seal(channelId: string, outgoing: OutgoingPayload): Promise<SealedMessage> {
   const identity = await identityOrThrow();
   let epoch = await currentEpoch(channelId);
   let seq = await reserveSeq(channelId, epoch);
 
-  // A counter that has run past the epoch's budget gets a new key rather than a
-  // longer run under the old one.
   if (seq >= EPOCH_MAX_MESSAGES) {
     epoch = await rotate(channelId);
     seq = await reserveSeq(channelId, epoch);
@@ -249,8 +227,6 @@ export async function seal(channelId: string, outgoing: OutgoingPayload): Promis
     clientId: outgoing.clientId,
     replyTo: outgoing.replyTo ?? null,
     ...(outgoing.attachments?.length ? { attachments: outgoing.attachments } : {}),
-    // Heads ride inside the ciphertext, so a server cannot see which of its
-    // claims are being cross-checked, let alone tailor them per recipient.
     heads: await headsToGossip(state.memberDevices.map((d) => d.userId)),
   };
 
@@ -275,13 +251,7 @@ export async function seal(channelId: string, outgoing: OutgoingPayload): Promis
   };
 }
 
-/**
- * Opens a message and, crucially, checks who wrote it. Everyone in the
- * conversation holds the same conversation key, so a valid GCM tag only proves
- * *someone* here wrote it; the per-sender signature is what makes authorship
- * mean anything, and an unsigned message is a hard failure rather than a
- * degraded render.
- */
+
 export async function open(channelId: string, message: Message): Promise<MessagePayload> {
   if (!message.ciphertext) {
     throw new IdentityError('This message carries no ciphertext.');
@@ -289,9 +259,6 @@ export async function open(channelId: string, message: Message): Promise<Message
   const envelope = decodeEnvelope(fromBase64(message.ciphertext));
   const conversationKey = await conversationKeyFor(channelId, envelope.epoch);
 
-  // Our own devices get the same treatment as anyone else's. Skipping the chain
-  // replay here would let the server invent a device on *our* account and
-  // attribute a message to it, which is the same attack from the inside.
   const identity = await identityOrThrow();
   let devices: E2eeDevice[];
   if (envelope.senderUserId === identity.userId) {
@@ -314,19 +281,12 @@ export async function open(channelId: string, message: Message): Promise<Message
   const plaintext = await openMessage(conversationKey, channelId, envelope, verifyingKey);
   const payload = decodeMessagePayload(plaintext);
 
-  // Cross-checking the sender's view of everyone's device log is the gossip half
-  // of §6.1. It never blocks rendering - the message is already authenticated -
-  // but a disagreement raises the hard failure on its own.
   if (payload.heads?.length) void checkGossip(payload.heads);
 
   return payload;
 }
 
-/**
- * Material for a deliberate abuse report. This is one HKDF-derived AES key,
- * never the conversation key; it lets the server authenticate and open only
- * the original ciphertext named by this message.
- */
+
 export async function reportKeyFor(
   channelId: string,
   message: Message,

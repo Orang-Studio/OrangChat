@@ -18,13 +18,7 @@ import {
 } from './api';
 import { t } from "../../lib/i18n";
 
-/**
- * Passkeys on the account: what they are, and adding or removing one.
- *
- * Both of those are credential changes, so both are gated the same way the rest
- * of this tab gates them - password, plus a live 2FA code when the account has
- * 2FA. Renaming isn't; the worst it can do is mislabel a row.
- */
+
 export function PasskeysSection() {
   const queryClient = useQueryClient();
   const supported = passkeysSupported();
@@ -51,8 +45,6 @@ export function PasskeysSection() {
 
   const addMutation = useMutation({
     mutationFn: async () => {
-      // The password is checked here, on `start`, rather than on `finish`: it is
-      // what buys the ceremony token, and the token is what finish trusts.
       const started = await startPasskeyRegistration(password, code);
       const response = await createPasskey(started.challenge);
       return finishPasskeyRegistration(started.ceremonyToken, name.trim(), response);

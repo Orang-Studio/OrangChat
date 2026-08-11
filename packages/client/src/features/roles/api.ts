@@ -14,7 +14,6 @@ export interface Ban {
   createdAt: string;
 }
 
-// ── Roles ─────────────────────────────────────────────
 export const createRole = (serverId: string, input: CreateRoleInput) =>
   api<Role>(`/servers/${serverId}/roles`, { method: "POST", json: input });
 

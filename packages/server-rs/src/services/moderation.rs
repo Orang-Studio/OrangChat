@@ -1,4 +1,3 @@
-//! Kick / ban moderation. Mirrors moderation-service.ts.
 
 use crate::error::{AppError, AppResult};
 use crate::ids::cuid;
@@ -26,8 +25,6 @@ async fn assert_targetable(
     if target_user_id == actor_user_id {
         return Err(AppError::Permission("Cannot moderate yourself".into()));
     }
-    // KICK_MEMBERS/BAN_MEMBERS say the actor may moderate, not whom: without this
-    // any member holding either bit could kick an admin.
     membership::assert_outranks(state, server_id, actor_user_id, target_user_id).await?;
     Ok(())
 }

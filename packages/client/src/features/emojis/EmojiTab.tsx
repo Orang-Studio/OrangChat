@@ -6,11 +6,7 @@ import { MAX_EMOJI_BYTES, deleteEmoji, renameEmoji, uploadEmoji } from "./api";
 import { emojiKeys, useServerEmojis } from "./queries";
 import { t } from "../../lib/i18n";
 
-/**
- * A filename is the best guess at a name, and usually a good one: `blob_wave.png`
- * wants to be `blob_wave`. Strip the extension and anything the server would
- * reject rather than making the user retype it.
- */
+
 function nameFromFile(file: File): string {
   const base = file.name.replace(/\.[^.]+$/, "");
   const cleaned = base.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 32);
@@ -34,7 +30,6 @@ function EmojiRow({ server, emoji }: { server: Server; emoji: Emoji }) {
       invalidate();
     },
     onError: (err: Error) => {
-      // Put the rejected name back so the row keeps matching the server.
       setName(emoji.name);
       setError(err.message);
     },

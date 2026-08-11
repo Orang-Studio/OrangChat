@@ -16,7 +16,7 @@ export async function listConversations(): Promise<Conversation[]> {
   return Promise.all(conversations.map(hydrateConversation));
 }
 
-/** One userId → dm (idempotent per pair); several → group_dm. */
+
 export async function createDm(userIds: string[]): Promise<Conversation> {
   return hydrateConversation(
     await api<Conversation>('/dms', { method: 'POST', json: { userIds } }),

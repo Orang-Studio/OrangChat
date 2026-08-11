@@ -1,6 +1,3 @@
-//! Spotify rich presence. Linked users are polled only while they have a live
-//! OrangChat socket; tokens stay encrypted in Postgres and are never sent to a
-//! client. The cached activity rides the ordinary presence fan-out.
 
 use std::time::Duration as StdDuration;
 
@@ -173,8 +170,6 @@ fn activity_from_playback(body: &Value) -> Option<ActivityDto> {
     let timestamp = body.get("timestamp").and_then(Value::as_i64);
     let progress = body.get("progress_ms").and_then(Value::as_i64).unwrap_or(0);
     let duration = item.get("duration_ms").and_then(Value::as_i64);
-    // Progress advances every poll; round the derived start to a second so
-    // harmless API timing jitter does not broadcast an identical track again.
     let started_ms = timestamp
         .map(|value| value.saturating_sub(progress))
         .map(|value| value.div_euclid(1000) * 1000);

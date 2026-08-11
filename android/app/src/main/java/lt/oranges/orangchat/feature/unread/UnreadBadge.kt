@@ -17,11 +17,6 @@ import androidx.compose.ui.unit.sp
 import lt.oranges.orangchat.data.model.UNREAD_COUNT_CAP
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-/**
- * Red count pill. Mirrors the web client's UnreadBadge - capped so a runaway
- * number cannot stretch the row. Renders nothing at zero, so callers can drop it
- * in unconditionally.
- */
 @Composable
 fun CountBadge(count: Int, modifier: Modifier = Modifier) {
     if (count <= 0) return
@@ -43,15 +38,12 @@ fun CountBadge(count: Int, modifier: Modifier = Modifier) {
     }
 }
 
-/** How many times the user was @mentioned in a channel they haven't opened. */
 @Composable
 fun MentionBadge(count: Int, modifier: Modifier = Modifier) = CountBadge(count, modifier)
 
-/** How many unread messages a conversation holds. */
 @Composable
 fun UnreadCountBadge(count: Int, modifier: Modifier = Modifier) = CountBadge(count, modifier)
 
-/** The plain "there is something new here" dot. */
 @Composable
 fun UnreadDot(modifier: Modifier = Modifier) {
     val c = OrangTheme.colors

@@ -14,17 +14,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * Gets this device's FCM token to the server after the app itself could not.
- *
- * Registration fails for reasons that have nothing to do with the device being
- * reachable - no signal at sign-in, a radio still associating on first launch -
- * and the cost of losing that race is total: the server has no way to push to a
- * token it was never told about, so notifications simply never arrive, with
- * nothing on screen to suggest why. Scheduled with a network requirement and an
- * exponential backoff, so the system runs it the moment there is a connection
- * and keeps running it until the token lands.
- */
 @AndroidEntryPoint
 class PushTokenJobService : JobService() {
     @Inject lateinit var registrar: PushTokenRegistrar
@@ -35,8 +24,6 @@ class PushTokenJobService : JobService() {
     override fun onStartJob(params: JobParameters?): Boolean {
         work = scope.launch {
             val landed = registrar.registerNow()
-            // Rescheduling on failure is the whole point: the alternative is a
-            // device that stays unreachable until somebody reopens the app.
             jobFinished(params, !landed)
         }
         return true
@@ -50,13 +37,8 @@ class PushTokenJobService : JobService() {
     companion object {
         private const val JOB_ID = 0x0F04
 
-        /** Queue (or re-queue) the registration. Replaces any pending copy. */
         fun schedule(context: Context) {
             val scheduler = context.getSystemService(JobScheduler::class.java) ?: return
-            // Expedited so a sign-in on a bad connection is not left waiting for
-            // the system's next batch - but the quota for it can be spent, and a
-            // refused schedule would leave the device unreachable, so an
-            // ordinary job is the fallback rather than nothing.
             val accepted =
                 runCatching { scheduler.schedule(buildJob(context, expedited = true)) }
                     .getOrDefault(JobScheduler.RESULT_FAILURE) == JobScheduler.RESULT_SUCCESS

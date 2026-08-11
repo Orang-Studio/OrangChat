@@ -19,7 +19,6 @@ import lt.oranges.orangchat.ui.components.OrangButton
 import lt.oranges.orangchat.ui.components.OrangDialog
 import lt.oranges.orangchat.ui.components.OrangTextField
 
-/** Simple single-field create dialog reused for servers and channels. */
 @Composable
 fun CreateEntityDialog(
     title: String,

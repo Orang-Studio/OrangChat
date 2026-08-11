@@ -17,14 +17,7 @@ function nameFromFile(file: File): string {
   return base.slice(0, 32) || "sound";
 }
 
-/**
- * Measure the clip in the browser so an over-long file is refused before it is
- * uploaded. The server measures it again and is the one that decides - this is
- * only here to save the round trip.
- *
- * Resolves null when the browser cannot decode it: that is not a verdict, and
- * the server is better placed to give one.
- */
+
 function probeDuration(file: File): Promise<number | null> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
@@ -72,8 +65,6 @@ function SoundRow({ server, sound }: { server: Server; sound: Sound }) {
     <li className="flex items-center gap-3 rounded-lg border border-border bg-surface-2 p-2">
       <button
         type="button"
-        // A local preview, not a broadcast: auditioning a clip should not fire
-        // it at everyone in the channel.
         onClick={() => {
           const audio = new Audio(sound.url);
           audio.volume = sound.volume;
@@ -112,8 +103,6 @@ function SoundRow({ server, sound }: { server: Server; sound: Sound }) {
           max={1}
           step={0.05}
           defaultValue={sound.volume}
-          // Commit on release: dragging fires continuously and each tick would
-          // be its own PATCH.
           onPointerUp={(e) => save.mutate({ volume: Number(e.currentTarget.value) })}
           onKeyUp={(e) => save.mutate({ volume: Number(e.currentTarget.value) })}
           className="w-20 accent-primary"

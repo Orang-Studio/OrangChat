@@ -9,15 +9,7 @@ import { QrCode } from './QrCode';
 import { QrScanner } from './QrScanner';
 import { t } from "../../lib/i18n";
 
-/**
- * Adding someone in person by scanning their code (§6.6, item 1). This is the
- * highest-value place verification can live, because it is free: the user is
- * already pointing a camera at their friend's phone, so the identity gets pinned
- * inside a gesture they were making anyway. No security chore, no explanation.
- *
- * The friend request and the verification are one action deliberately. Splitting
- * them would turn the second half into a prompt, and prompts get dismissed.
- */
+
 export function AddByCode() {
   const client = useQueryClient();
   const [mode, setMode] = useState<'idle' | 'scan' | 'show'>('idle');
@@ -28,8 +20,6 @@ export function AddByCode() {
   const add = useMutation({
     mutationFn: async (raw: string) => {
       const scanned = decodeContactVerifyQr(raw);
-      // Verify first. If the code and the server disagree about who this is,
-      // that has to surface before a friendship is built on top of it.
       await acceptScannedContact(raw);
       const result = await sendFriendRequestById(scanned.userId);
       return result;

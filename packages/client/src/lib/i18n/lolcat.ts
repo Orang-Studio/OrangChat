@@ -1,7 +1,7 @@
 import { en } from "./en";
 import type { Catalog } from "./en";
 
-/** Generated full catalogue: exact Android matches plus style rules for web-only strings. */
+
 const OVERRIDES: Record<string, string> = {
   "common.loading": "loadin…",
   "language.title": "langwij",

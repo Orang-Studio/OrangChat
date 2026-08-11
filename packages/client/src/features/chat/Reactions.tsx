@@ -7,18 +7,11 @@ import { QUICK_EMOJIS } from "./emoji-data";
 import { toggleReaction } from "./socket-actions";
 import { t } from "../../lib/i18n";
 
-/**
- * Shared geometry for everything on a message's reactions strip. The fixed
- * height is what keeps the counts and the add button the same size; centring
- * both axes is what keeps their contents on one line.
- */
+
 export const REACTION_CHIP =
   "flex h-7 items-center justify-center rounded-md border transition-colors";
 
-/**
- * Where the strip is drawn. `surface` is a message row in the list; `dark` is
- * chrome over media, where the surface tokens would sink into the black.
- */
+
 export type ReactionTone = "surface" | "dark";
 
 const CHIP_TONE: Record<ReactionTone, { mine: string; theirs: string; picker: string }> = {
@@ -34,11 +27,7 @@ const CHIP_TONE: Record<ReactionTone, { mine: string; theirs: string; picker: st
   },
 };
 
-/**
- * `className` lets the same picker be the icon in the hover toolbar or, with
- * `REACTION_CHIP`, the trailing chip on the reactions strip - where it has to
- * measure exactly like the count chips beside it.
- */
+
 export function ReactionPicker({
   message,
   className,
@@ -46,7 +35,7 @@ export function ReactionPicker({
 }: {
   message: Message;
   className?: string;
-  /** Label beside the icon, for the places that spell the action out. */
+
   children?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -96,15 +85,7 @@ export function ReactionPicker({
   );
 }
 
-/**
- * The counts and the trailing add button as one strip, so they share
- * REACTION_CHIP's height and shape - letting each size to its own content left
- * the add button sitting a few pixels off the row it belongs to.
- *
- * In a message row the strip is nothing at all until someone reacts; over media
- * there is no hover toolbar to reach for, so `alwaysPicker` keeps a labelled
- * "React" chip there as the only way in.
- */
+
 export function ReactionStrip({
   message,
   tone = "surface",

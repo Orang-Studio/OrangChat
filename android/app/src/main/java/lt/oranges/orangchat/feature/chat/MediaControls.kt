@@ -28,7 +28,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-/** Rendered length of a clip: `m:ss`, or `h:mm:ss` once it earns the hours. */
 internal fun formatDuration(ms: Long): String {
     val total = (ms / 1000).coerceAtLeast(0L)
     val h = total / 3600
@@ -37,19 +36,6 @@ internal fun formatDuration(ms: Long): String {
     return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
 }
 
-/**
- * A seek bar that keeps its gestures to itself.
- *
- * Every attachment sits inside two things that also want horizontal drags:
- * swipe-to-reply on the message row, and the navigation drawer. This claims the
- * pointer on the way down and consumes every move; both of those detectors bail
- * once they see a consumed change.
- *
- * It claims the pointer even when [enabled] is false. An unopened clip has no
- * length to seek within, but a drag across it is still a scrub and must not
- * fall through to the row - that case is exactly where the bar looks inert and
- * the reply swipe used to fire instead.
- */
 @Composable
 internal fun Scrubber(
     positionMs: Long,
@@ -66,8 +52,6 @@ internal fun Scrubber(
     val thumb = 12.dp
     val thumbPx = with(LocalDensity.current) { thumb.toPx() }
 
-    // Inset by half a thumb at each end so the thumb's centre tracks the finger
-    // and the far end is actually reachable.
     fun fractionAt(x: Float): Float {
         val usable = (widthPx - thumbPx).coerceAtLeast(1f)
         return ((x - thumbPx / 2f) / usable).coerceIn(0f, 1f)
@@ -131,8 +115,6 @@ internal fun Scrubber(
             ) {
                 Box(
                     Modifier
-                        // coerceAtLeast: the first frame measures 0 wide, and a
-                        // clip resumed part-way through would offset negative.
                         .padding(
                             start = with(LocalDensity.current) {
                                 (played * (widthPx - thumbPx)).coerceAtLeast(0f).toDp()
@@ -146,11 +128,6 @@ internal fun Scrubber(
     }
 }
 
-/**
- * Claim taps for this element and nothing else: `clickable` lets the press
- * through to the message row underneath, so a tap on a player control also
- * opens the message menu. Fires only if the finger lifts inside the bounds.
- */
 internal fun Modifier.tapToToggle(onTap: () -> Unit): Modifier = pointerInput(onTap) {
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false)
@@ -169,7 +146,6 @@ internal fun Modifier.tapToToggle(onTap: () -> Unit): Modifier = pointerInput(on
     }
 }
 
-/** A round, dark, tappable glyph - the video overlay's only button shape. */
 @Composable
 internal fun OverlayIconButton(
     onClick: () -> Unit,

@@ -3,21 +3,9 @@ import { Download, Pause, Play } from 'lucide-react';
 import type { Attachment } from '@orangchat/shared';
 import { formatBytes, formatTime } from './attachments';
 
-/**
- * Inline player for an audio attachment.
- *
- * Custom controls rather than `<audio controls>`: the native widget is a
- * different size, font, and colour in every browser, and it can't carry the
- * filename or expiry that every other attachment shows.
- *
- * `Content-Disposition: attachment` on the served file doesn't apply to media
- * elements - only to navigations - so this plays without loosening nginx.
- */
 
-/**
- * The element that's currently playing, if any. Two clips talking over each
- * other is never what was meant, and the browser won't arbitrate on its own.
- */
+
+
 let playing: HTMLAudioElement | null = null;
 
 export function AudioPlayer({
@@ -26,22 +14,16 @@ export function AudioPlayer({
   onError,
 }: {
   attachment: Attachment;
-  /** Rendered under the scrubber when the file is on OrangMove. */
+
   expiryLabel?: string;
-  /** Fall back to a plain file card - the browser can't decode this one. */
+
   onError: () => void;
 }) {
   const ref = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
-  // The sender measured the length at upload; show it before the file's own
-  // headers arrive rather than sitting at "0:00" until play is pressed.
   const [duration, setDuration] = useState(attachment.duration ?? 0);
 
-  // Switching channels shouldn't leave a clip running out of sight. Browsers do
-  // pause a media element once it's out of the document, but only after a trip
-  // through a stable state - and an element left in `playing` would meanwhile
-  // block the next clip from starting.
   useEffect(() => {
     const el = ref.current;
     return () => {
@@ -69,8 +51,6 @@ export function AudioPlayer({
     setCurrent(to);
   };
 
-  // Streamed files can report Infinity until fully buffered; a scrubber with no
-  // known end is worse than none, so it stays disabled rather than lying.
   const seekable = duration > 0 && Number.isFinite(duration);
 
   return (

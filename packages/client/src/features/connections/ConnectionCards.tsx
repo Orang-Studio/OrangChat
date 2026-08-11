@@ -3,7 +3,7 @@ import type { Connection } from "@orangchat/shared";
 import { PROVIDER_LABEL, ProviderIcon } from "./icons";
 import { t } from "../../lib/i18n";
 
-/** Host of a link, for the subtitle on custom (unverified) entries. */
+
 function hostOf(url: string | null) {
   if (!url) return null;
   try {
@@ -27,8 +27,6 @@ function ConnectionCard({ connection }: { connection: Connection }) {
         <span className="flex items-center gap-1">
           <span className="oc-pf-connection-name truncate text-sm font-medium">{name}</span>
           {verified && (
-            // The check is the only signal separating an OAuth-proven account
-            // from a link someone typed in, so it needs a real label.
             <BadgeCheck
               aria-label={t("connectionCards.verified")}
               className="oc-pf-connection-verified size-3.5 shrink-0 text-primary"

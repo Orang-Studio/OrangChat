@@ -8,25 +8,7 @@ import { eraseKeysNow } from '../e2ee/identity';
 import { SectionTitle } from './controls';
 import { t } from "../../lib/i18n";
 
-/**
- * The way out for somebody locked out of their own encryption: every device that
- * held the key is gone, so no signature that could revoke them will ever exist,
- * and the account can neither add a device nor start over. Until this existed
- * the only fix was an operator deleting rows by hand.
- *
- * It is written to be slow and hard to miss rather than hard to reach. Whoever
- * stole a password can ask for this too, so the protection is not the button
- * being hidden - it is the wait, the mail that goes out the moment it is asked
- * for, and the fact that any surviving keyed device cancels it just by opening
- * the app.
- *
- * `keyed` is the other case entirely: this device still holds a key, so it can
- * sign for the erasure, and none of that machinery applies. Somebody who can
- * produce the signature already has what the wait was protecting - and would
- * abort their own request the next time this tab checked in - so they get the
- * same erasure without one. It is still two clicks and still says what it
- * destroys.
- */
+
 export function KeyErasureSection({ stuck, keyed }: { stuck: boolean; keyed: boolean }) {
   const queryClient = useQueryClient();
   const [confirming, setConfirming] = useState(false);
@@ -36,10 +18,6 @@ export function KeyErasureSection({ stuck, keyed }: { stuck: boolean; keyed: boo
   const status = useQuery({
     queryKey: ['e2ee', 'key-deletion'],
     queryFn: getKeyDeletion,
-    // While one is pending the answer can change without this tab doing
-    // anything - another device checking in aborts it server-side. Leaving a
-    // stale "scheduled to be erased" banner up after that has been resolved is
-    // alarming for no reason.
     refetchInterval: (query) => (query.state.data?.pending ? 15_000 : false),
   });
 
@@ -47,8 +25,6 @@ export function KeyErasureSection({ stuck, keyed }: { stuck: boolean; keyed: boo
     setError(null);
     setConfirming(false);
     setCode('');
-    // The whole tab: an erasure takes the device list and this browser's own
-    // identity with it, and both are read from other queries on this screen.
     void queryClient.invalidateQueries({ queryKey: ['e2ee'] });
   };
 
@@ -72,16 +48,9 @@ export function KeyErasureSection({ stuck, keyed }: { stuck: boolean; keyed: boo
 
   const pending = status.data?.pending ?? false;
 
-  // Somebody who followed the cancel link out of a warning email arrives here
-  // needing to be told it worked. The request is already gone by then, so there
-  // is nothing left in the status to say so.
   const justCancelled =
     !pending && new URLSearchParams(window.location.search).get('keyErasure') === 'cancelled';
 
-  // Hidden for the ordinary case: somebody whose encryption is working has no
-  // business here, and a destructive control that is always on screen gets
-  // clicked eventually. A request already in flight always shows, on every
-  // device, because being told is the entire point of the waiting period.
   if (!pending && !stuck && !keyed && !justCancelled) return null;
 
   return (

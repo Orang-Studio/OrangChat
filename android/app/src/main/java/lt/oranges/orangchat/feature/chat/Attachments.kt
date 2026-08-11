@@ -61,15 +61,6 @@ import lt.oranges.orangchat.util.absoluteUrl
 import java.time.Instant
 import java.time.format.DateTimeParseException
 
-/**
- * Attachment rendering, both in the composer (uploads in flight) and on sent
- * messages.
- *
- * Anything over 10MB lives on OrangMove, which deletes it within the hour, so
- * those carry an `expiresAt`. That deadline is shown rather than hidden: a
- * countdown that ends in "Expired" explains itself, where a download that
- * silently starts failing does not.
- */
 
 fun formatBytes(bytes: Long): String {
     if (bytes < 1024) return "$bytes B"
@@ -99,7 +90,6 @@ internal fun expiryLabel(expiresAt: Instant, now: Instant): String {
     return if (minutes < 1) "Expires in under a minute" else "Expires in $minutes min"
 }
 
-/** Ticks while a countdown is live so it doesn't sit at a stale number. */
 @Composable
 private fun rememberNow(active: Boolean): Instant {
     var now by remember { mutableStateOf(Instant.now()) }
@@ -112,7 +102,6 @@ private fun rememberNow(active: Boolean): Instant {
     return now
 }
 
-// ── Composer: uploads in flight ─────────────────────────
 
 @Composable
 fun ComposerAttachments(
@@ -153,8 +142,6 @@ private fun UploadChip(
                     model = upload.previewUri,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    // Clipped, not merely backed: the rounded background sits
-                    // behind the bitmap, which would otherwise cover it square.
                     modifier = Modifier
                         .size(36.dp)
                         .clip(RoundedCornerShape(OrangRadius.md))
@@ -205,7 +192,6 @@ private fun UploadChip(
             Text(it, color = c.danger, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
 
-        // Say this while they can still change their mind, not after it's gone.
         if (upload.error == null && upload.ephemeral) {
             Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -217,7 +203,6 @@ private fun UploadChip(
     }
 }
 
-// ── Sent messages ───────────────────────────────────────
 
 @Composable
 fun MessageAttachments(attachments: List<Attachment>, modifier: Modifier = Modifier) {
@@ -229,8 +214,6 @@ fun MessageAttachments(attachments: List<Attachment>, modifier: Modifier = Modif
 
     Column(modifier = modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         for (attachment in attachments) {
-            // Supporting preview blobs ride along with the message, claimed but
-            // not separate files - a sealed thumbnail renders under its video.
             if (keystore.isSealedThumbnail(attachment.id)) continue
             val expiresAt = expiryInstant(attachment)
             when {
@@ -245,7 +228,6 @@ fun MessageAttachments(attachments: List<Attachment>, modifier: Modifier = Modif
     }
 }
 
-/** Keep moderated pixels unloaded until this viewer explicitly opts in. */
 @Composable
 private fun FlaggedAttachment(attachment: Attachment, expiresAt: Instant?, now: Instant) {
         val context = LocalContext.current
@@ -322,15 +304,6 @@ internal fun FileCard(attachment: Attachment, expiresAt: Instant?, now: Instant)
             .widthIn(max = 280.dp)
             .background(c.surface1, shape)
             .border(1.dp, c.border, shape)
-            // Straight to the download manager rather than out to the browser:
-            // the URL is served as a download either way, so the round trip
-            // through a second app bought nothing but a lost place in the chat.
-            //
-            // Deliberately not gated on the inline source resolving. That source
-            // is null for a sealed file past the inline cap - which is every
-            // large OrangMove upload - yet the downloader opens exactly those by
-            // streaming and decrypting them. Gating on it disabled the button on
-            // the files that needed it most.
             .clickable { download(attachment) }
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -363,24 +336,14 @@ private fun ImagePreview(attachment: Attachment, expiresAt: Instant?, now: Insta
     val c = OrangTheme.colors
     val context = LocalContext.current
     val view = LocalView.current
-    // The viewer opens by growing out of this thumbnail, so its box has to be
-    // known by the time the tap happens.
     val origin = rememberMediaOrigin()
     var broken by remember(attachment.id) { mutableStateOf(false) }
     val source = rememberAttachmentSource(attachment)
-    // A sealed image has no url until it has been decrypted. Only a real failure
-    // falls back to the download card - handing the loader a null model and
-    // reading the error it raises would condemn every encrypted image on sight.
     if (broken || source.unavailable) {
         FileCard(attachment, expiresAt, now)
         return
     }
     val href = source.url
-    // `background(shape)` only rounds what is painted behind the bitmap - the
-    // image itself was still drawn square over the top of it, so the corners
-    // have to be clipped rather than merely tinted. Media takes the dialog
-    // radius rather than the control one: 5dp is invisible across 280dp of
-    // photo, and a picture is the one thing in a row big enough to show it.
     val shape = RoundedCornerShape(OrangRadius.xl2)
 
     Column {
@@ -394,8 +357,6 @@ private fun ImagePreview(attachment: Attachment, expiresAt: Instant?, now: Insta
                     .background(c.surface1),
                 contentAlignment = Alignment.Center,
             ) {
-                // Determinate once bytes are moving: a large encrypted image
-                // takes long enough that a still spinner looks like a failure.
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     if (source.progress > 0f) {
                         CircularProgressIndicator(
@@ -422,9 +383,6 @@ private fun ImagePreview(attachment: Attachment, expiresAt: Instant?, now: Insta
                     .clip(shape)
                     .background(c.surface1)
                     .mediaOrigin(origin)
-                    // Expands in place: the file's own URL is served as a
-                    // download, so handing it to the browser is the one thing a
-                    // tap must not do.
                     .clickable {
                         openMediaPreview(context, view, origin, attachment)
                     },
@@ -438,17 +396,11 @@ private fun ImagePreview(attachment: Attachment, expiresAt: Instant?, now: Insta
 
 }
 
-/**
- * An audio attachment, playable where it sits. Loading is deferred to the first
- * tap - a channel with a dozen clips in it should not open a dozen streams.
- */
 @Composable
 internal fun AudioCard(attachment: Attachment, expiresAt: Instant?, now: Instant) {
     val c = OrangTheme.colors
     val shape = RoundedCornerShape(OrangRadius.lg)
     val download = rememberAttachmentDownloader()
-    // Same rule as video: a sealed clip is fetched when it is played, not when
-    // it scrolls past.
     var requested by remember(attachment.id) { mutableStateOf(false) }
     val source = rememberAttachmentSource(attachment, wanted = requested)
     val href = source.url
@@ -469,8 +421,6 @@ internal fun AudioCard(attachment: Attachment, expiresAt: Instant?, now: Instant
             MediaPlayback.toggle(context, attachment.id, href) { broken = true }
         }
     }
-    // The sender measured the length at upload, so it is shown before the clip
-    // is ever fetched. The player's own number takes over once it is open.
     val durationMs = if (active) {
         MediaPlayback.durationMs
     } else {
@@ -478,8 +428,6 @@ internal fun AudioCard(attachment: Attachment, expiresAt: Instant?, now: Instant
     }
     val seekable = active && MediaPlayback.ready
 
-    // The player is the only one who knows where it's got to, so ask it - but
-    // only while it's actually moving.
     LaunchedEffect(active, isPlaying) {
         while (active && isPlaying) {
             MediaPlayback.syncPosition()
@@ -487,8 +435,6 @@ internal fun AudioCard(attachment: Attachment, expiresAt: Instant?, now: Instant
         }
     }
 
-    // Held locally while the thumb is down: seeking on every pixel would fight
-    // the poll above and stutter the clip.
     var scrub by remember(attachment.id) { mutableStateOf<Long?>(null) }
     val positionMs = if (active) MediaPlayback.positionMs else 0L
 
@@ -558,9 +504,6 @@ internal fun AudioCard(attachment: Attachment, expiresAt: Instant?, now: Instant
             )
         }
         Spacer(Modifier.width(6.dp))
-        // Unlike the other cards, the row itself doesn't download here - tapping
-        // it is how you scrub - so this icon is the only way out and needs to be
-        // big enough to actually hit.
         Box(
             modifier = Modifier.size(32.dp).tapToToggle { download(attachment) },
             contentAlignment = Alignment.Center,

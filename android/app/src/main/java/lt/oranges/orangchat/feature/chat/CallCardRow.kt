@@ -45,18 +45,8 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.formatTime
 
-/** How many faces fit on the card before the rest are a count. */
 private const val CALL_FACES = 5
 
-/**
- * A call, as it appears in the history.
- *
- * One card per call, rewritten by the server as the call runs, rather than a
- * message per state change - so a conversation that has been called a lot reads
- * as a list of calls instead of a transcript of ringing. While it is live the
- * card is the way into the call; afterwards it is the record of one: who was on
- * it, when, and for how long, or that nobody picked up.
- */
 @Composable
 fun CallCardRow(
     message: Message,
@@ -78,8 +68,6 @@ fun CallCardRow(
     val title = when {
         notice.live && notice.joined.size > 1 -> AppStrings.get(context, R.string.catalog_ongoing_call_5ae739b8)
         notice.live -> "$caller is calling"
-        // "No answer" from our side, "Missed call" from theirs: the same call,
-        // but only one of them is something the reader failed to pick up.
         notice.missed && notice.callerId == selfId -> AppStrings.get(context, R.string.catalog_no_answer_a9c16dd0)
         notice.missed -> AppStrings.get(context, R.string.catalog_missed_call_0200c293)
         notice.video -> "$caller started a video call"
@@ -104,9 +92,6 @@ fun CallCardRow(
         else -> c.inkMuted
     }
 
-    // A live card is a way into the call; a finished one has nothing to rejoin,
-    // so tapping it offers to start a new call instead - which is what anyone
-    // reaching for an old call actually wants.
     val clickable = onStartCall != null && (!notice.live || !onCall)
     val onClick: () -> Unit = {
         if (notice.live) onStartCall?.invoke(notice.video) else menuOpen = true

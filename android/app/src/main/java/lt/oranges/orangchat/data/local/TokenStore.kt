@@ -7,12 +7,6 @@ import androidx.security.crypto.MasterKey
 import lt.oranges.orangchat.ui.theme.ThemePreference
 import java.util.concurrent.CopyOnWriteArraySet
 
-/**
- * Persists the access token, the refresh cookie (via [cookiePrefs]), and app
- * preferences in EncryptedSharedPreferences. The access token is also mirrored
- * in memory so interceptors read it without disk hits on every request.
- * Constructed once by AppModule (@Provides @Singleton).
- */
 class TokenStore(context: Context) {
     private val tokenListeners = CopyOnWriteArraySet<(String?) -> Unit>()
 
@@ -29,7 +23,6 @@ class TokenStore(context: Context) {
         )
     }
 
-    /** Separate encrypted store the CookieJar owns for persisted cookies. */
     val cookiePrefs: SharedPreferences = prefs
 
     @Volatile
@@ -49,12 +42,6 @@ class TokenStore(context: Context) {
         tokenListeners += listener
     }
 
-    /**
-     * The last signed-in profile, as JSON. Lets a cold start with no network
-     * restore the session instead of falling back to the sign-in screen: the
-     * refresh cookie is still on disk, so the account has not gone anywhere -
-     * only the server is unreachable.
-     */
     var cachedUser: String?
         get() = prefs.getString(KEY_USER, null)
         set(value) = prefs.edit().apply {
@@ -71,27 +58,19 @@ class TokenStore(context: Context) {
             .getOrDefault(ThemePreference.DARK)
         set(value) = prefs.edit().putString(KEY_THEME, value.name).apply()
 
-    /**
-     * A content:// URI for a user-picked call ringtone, or null for the device
-     * default. Device-local by design - the file is never uploaded, and only
-     * this URI is stored, so nothing about it reaches the server.
-     */
     var ringtoneUri: String?
         get() = prefs.getString(KEY_RINGTONE, null)
         set(value) = prefs.edit().apply {
             if (value == null) remove(KEY_RINGTONE) else putString(KEY_RINGTONE, value)
         }.apply()
 
-    /** Display name for the picked ringtone, cached so settings need no query. */
     var ringtoneName: String?
         get() = prefs.getString(KEY_RINGTONE_NAME, null)
         set(value) = prefs.edit().apply {
             if (value == null) remove(KEY_RINGTONE_NAME) else putString(KEY_RINGTONE_NAME, value)
         }.apply()
 
-    // ── Device-local preferences (never sent to the server) ──
 
-    /** UI scale factor for accessibility, clamped 0.85–1.5 by the settings UI. */
     var fontScale: Float
         get() = prefs.getFloat(KEY_FONT_SCALE, 1f)
         set(value) = prefs.edit().putFloat(KEY_FONT_SCALE, value).apply()
@@ -104,36 +83,18 @@ class TokenStore(context: Context) {
         get() = prefs.getBoolean(KEY_COMPACT, false)
         set(value) = prefs.edit().putBoolean(KEY_COMPACT, value).apply()
 
-    /** Start calls with the mic muted. */
     var joinMuted: Boolean
         get() = prefs.getBoolean(KEY_JOIN_MUTED, false)
         set(value) = prefs.edit().putBoolean(KEY_JOIN_MUTED, value).apply()
 
-    /** Start calls with the camera already publishing. */
     var joinWithVideo: Boolean
         get() = prefs.getBoolean(KEY_JOIN_VIDEO, false)
         set(value) = prefs.edit().putBoolean(KEY_JOIN_VIDEO, value).apply()
 
-    /**
-     * Whether a notification may show what a message actually said.
-     *
-     * Off, the shade shows who wrote and nothing else, and an encrypted push is
-     * never opened at all - the keys stay unused rather than producing text this
-     * device has been told not to display. Device-local by design: which screens
-     * are safe to read over is a property of the phone, not of the account.
-     */
     var notificationPreviews: Boolean
         get() = prefs.getBoolean(KEY_NOTIFICATION_PREVIEWS, true)
         set(value) = prefs.edit().putBoolean(KEY_NOTIFICATION_PREVIEWS, value).apply()
 
-    /**
-     * Whether this install has already put the notification question to the user.
-     *
-     * The platform cannot answer this on its own:
-     * shouldShowRequestPermissionRationale is false both before the first ask and
-     * after a permanent denial, so without a flag of our own we cannot tell a new
-     * user from one who has already said no twice - and would nag the second.
-     */
     var notificationPermissionAsked: Boolean
         get() = prefs.getBoolean(KEY_NOTIFICATION_ASKED, false)
         set(value) = prefs.edit().putBoolean(KEY_NOTIFICATION_ASKED, value).apply()

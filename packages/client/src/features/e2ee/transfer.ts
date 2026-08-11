@@ -32,24 +32,12 @@ import {
 } from './keystore';
 import { openAnswerer, openOfferer, relayPut, relayTake, type Channel } from './transport';
 
-/**
- * Moving to a second device (docs/E2EE.md §4).
- *
- * The identity key is not what moves - it cannot, it is non-extractable, and
- * that is the point. The new device makes its own, and what crosses the room is
- * the history bundle: the conversation keys that make old messages readable
- * there. Two devices are therefore never the same principal, so one can be
- * revoked without touching the other.
- */
+
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-/**
- * What the new device tells the old one about itself. The self-signature is in
- * here because only the new device holds the key that can make it - the old
- * device relays it, it does not forge it.
- */
+
 interface Hello {
   name: string;
   platform: E2eePlatform;
@@ -86,7 +74,7 @@ async function openJson<T>(key: CryptoKey, bytes: Uint8Array): Promise<T> {
   return JSON.parse(decoder.decode(new Uint8Array(plaintext))) as T;
 }
 
-/** Everything the new device shows and holds while it waits to be adopted. */
+
 export interface PendingEnrolment {
   transferId: string;
   qr: string;
@@ -98,20 +86,13 @@ export interface PendingEnrolment {
   bundleSig: Uint8Array;
 }
 
-/**
- * The new device's first step: generate its own keys and publish a code that
- * carries only public material plus a pairing secret that never touches the
- * network.
- */
+
 export async function beginEnrolment(userId: string): Promise<PendingEnrolment> {
   const { ikSig, ikDh, ikSigPub, ikDhPub } = await generateKeys();
   const bundleSig = await sign(ikSig.privateKey, deviceBundleBytes({ userId, ikSigPub, ikDhPub }));
   const { transferId } = await startTransfer();
   const pairSecret = randomBytes(PAIR_SECRET_BYTES);
 
-  // The old device needs a name for the device list and this device's own
-  // bundle signature, and the QR payload is a fixed shape (§6.7), so they go
-  // over a relay slot the moment the code is shown. Both are public.
   const hello: Hello = {
     name: deviceName(),
     platform: platform(),
@@ -137,23 +118,18 @@ async function channelOrRelay(open: () => Promise<Channel>): Promise<Channel | n
   try {
     return await open();
   } catch {
-    // Captive portals and client-isolating access points; §4.3 exists for this.
     return null;
   }
 }
 
 export interface NewDeviceHandshake {
   sas: string;
-  /** Adopts the bundle once a human has confirmed the digits match. */
+
   finish: () => Promise<void>;
   cancel: () => void;
 }
 
-/**
- * The new device's half of the handshake: derive the same six digits the old
- * device is showing, then - only after a person says they match - take the
- * history bundle and become a real device.
- */
+
 export async function awaitAdoption(
   pending: PendingEnrolment,
   userId: string,
@@ -189,8 +165,6 @@ export async function awaitAdoption(
       }
       channel?.close();
 
-      // The old device publishes the row; this device finds itself in the list
-      // by its own public key rather than being told which id it got.
       const mine = toBase64(pending.ikSigPub);
       let deviceId: string | null = null;
       for (let attempt = 0; attempt < 30 && deviceId === null; attempt += 1) {
@@ -205,17 +179,12 @@ export async function awaitAdoption(
       await saveIdentity({
         userId,
         deviceId,
-        // Only the genesis device mints a generation; a child device inherits
-        // the identity it was signed into and never claims one of its own.
         identityGeneration: '',
         ikSig: pending.ikSig,
         ikDh: pending.ikDh,
         ikSigPub: pending.ikSigPub,
         ikDhPub: pending.ikDhPub,
       });
-      // Anything this device remembered about the account belongs to whatever
-      // it was before this transfer, and the digits just compared say more
-      // about the identity it is joining than that memory does.
       await forgetOwnPin(userId);
       await selfMonitor(userId);
       await markDeviceSeenSafely(deviceId);
@@ -225,27 +194,19 @@ export async function awaitAdoption(
 
 export interface OldDeviceHandshake {
   sas: string;
-  /**
-   * Sends the bundle and signs the new device into the log. `code` is a fresh
-   * TOTP code when the account has an authenticator, otherwise the one-time
-   * email code (with the `loginToken` it was issued with).
-   */
+
   finish: (code: string, loginToken?: string) => Promise<void>;
   cancel: () => void;
 }
 
-/** The code an authorized desktop shows for the new phone to scan. */
+
 export interface PendingInvitation {
   transferId: string;
   pairSecret: Uint8Array;
   qr: string;
 }
 
-/**
- * Desktop-first transfer. The invitation contains no identity material: after
- * scanning it, the phone creates its own Keystore keys and sends only their
- * public halves back through the short-lived relay.
- */
+
 export async function beginDesktopInvitation(): Promise<PendingInvitation> {
   if (!(await loadIdentity())) {
     throw new Error('This device has no encryption identity to copy from.');
@@ -323,7 +284,7 @@ async function oldDeviceHandshake(input: {
   };
 }
 
-/** Wait for the phone to scan the desktop QR and publish its public bundle. */
+
 export async function awaitInvitedDevice(pending: PendingInvitation): Promise<OldDeviceHandshake> {
   const hello = await readHello(pending.transferId, 45);
   if (!hello.ikSigPub || !hello.ikDhPub) {
@@ -339,17 +300,7 @@ export async function awaitInvitedDevice(pending: PendingInvitation): Promise<Ol
   });
 }
 
-/**
- * The old device's half: it scanned the code, so it holds the pairing secret and
- * can prove proximity. It derives the digits, and once a person confirms them it
- * spends a second-factor code (TOTP, or a one-time email code when the account
- * has no authenticator), hands over the history, and - the part that actually
- * matters - signs the new device's bundle into the append-only log.
- *
- * The grant proves the second factor and server policy. The signature is the
- * authority. No amount of database access substitutes for it, which is why
- * peers re-check it themselves before wrapping anything to the new device.
- */
+
 export async function adoptScannedDevice(raw: string): Promise<OldDeviceHandshake> {
   const scanned = decodeDeviceTransferQr(raw);
   const hello = await readHello(scanned.transferId);

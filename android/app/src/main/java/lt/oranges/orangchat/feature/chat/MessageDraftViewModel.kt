@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
-/** Thin composer-facing wrapper over [MessageDraftStore]. */
 @HiltViewModel
 class MessageDraftViewModel @Inject constructor(
     private val store: MessageDraftStore,

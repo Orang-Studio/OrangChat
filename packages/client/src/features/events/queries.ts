@@ -21,10 +21,7 @@ export function upsertEvent(client: QueryClient, event: ScheduledEvent): void {
   });
 }
 
-/**
- * Apply a server broadcast. `interested` on the wire is whoever triggered the
- * change, so the viewer's own flag is kept from cache rather than overwritten.
- */
+
 export function applyEventBroadcast(client: QueryClient, event: ScheduledEvent): void {
   client.setQueryData<ScheduledEvent[]>(eventKeys.server(event.serverId), (list) => {
     const existing = (list ?? []).find((e) => e.id === event.id);

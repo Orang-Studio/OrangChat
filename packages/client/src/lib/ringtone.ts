@@ -1,33 +1,24 @@
-/**
- * Call audio - ring patterns plus the short join/leave/decline cues - all
- * synthesised with WebAudio so no audio asset ships.
- *
- * Deliberately not gated on the notification permission or the `oc-notifications`
- * preference: those cover background message alerts, whereas a call is happening
- * right now and must be audible to be answerable. The visible popup is the
- * fallback - browsers block audio until the page has been interacted with, and
- * every failure path here is swallowed rather than surfaced.
- */
+
 
 type Pattern = {
-  /** Frequencies layered for the tone, in Hz. */
+
   tones: number[];
-  /** Seconds the tone sounds for. */
+
   on: number;
-  /** Seconds of silence before it repeats. */
+
   off: number;
   gain: number;
 };
 
-/** Classic US ring: a 440+480 Hz pair, two seconds on, four off. */
+
 const INCOMING: Pattern = { tones: [440, 480], on: 2, off: 4, gain: 0.12 };
-/** Ringback for the caller: quieter, so it sits under conversation. */
+
 const OUTGOING: Pattern = { tones: [440, 480], on: 1, off: 3, gain: 0.05 };
 
 let ctx: AudioContext | null = null;
 let timer: ReturnType<typeof setInterval> | null = null;
 let active: "incoming" | "outgoing" | null = null;
-/** Oscillators already scheduled, so answering can cut the tone mid-burst. */
+
 let voices: OscillatorNode[] = [];
 
 function context(): AudioContext | null {
@@ -42,7 +33,7 @@ function context(): AudioContext | null {
   return ctx;
 }
 
-/** One burst of the pattern, with short fades so it does not click. */
+
 function burst(pattern: Pattern): void {
   const audio = context();
   if (!audio) return;
@@ -74,32 +65,26 @@ function play(kind: "incoming" | "outgoing", pattern: Pattern): void {
 
   const audio = context();
   if (!audio) return;
-  // Autoplay policy parks the context until a gesture; resuming is best-effort
-  // and the popup still shows if it never unblocks.
   void audio.resume().catch(() => {});
 
   burst(pattern);
   timer = setInterval(() => burst(pattern), (pattern.on + pattern.off) * 1000);
 }
 
-/** Ring for an inbound call until answered, declined, or cancelled. */
+
 export function startIncomingRing(): void {
   play("incoming", INCOMING);
 }
 
-/** Ringback while our own outbound call waits to be picked up. */
+
 export function startOutgoingRing(): void {
   play("outgoing", OUTGOING);
 }
 
-/** One note in a cue, scheduled `at` seconds after the cue starts. */
+
 type Note = { freq: number; at: number; dur: number };
 
-/**
- * A short, non-repeating sequence. Unlike the ring patterns these are fire-and-
- * forget: they are never cancelled, so they stay out of `voices` and a call that
- * ends mid-cue still lets the cue finish.
- */
+
 function cue(notes: Note[], gain: number): void {
   const audio = context();
   if (!audio) return;
@@ -122,7 +107,7 @@ function cue(notes: Note[], gain: number): void {
   }
 }
 
-/** Someone joined the call: a rising two-note chirp. */
+
 export function playJoinSound(): void {
   cue(
     [
@@ -133,7 +118,7 @@ export function playJoinSound(): void {
   );
 }
 
-/** Someone left the call: the join chirp inverted. */
+
 export function playLeaveSound(): void {
   cue(
     [
@@ -144,7 +129,7 @@ export function playLeaveSound(): void {
   );
 }
 
-/** Our callee refused: a flat low double-blip, distinct from a plain hang-up. */
+
 export function playDeclineSound(): void {
   cue(
     [
@@ -160,13 +145,10 @@ export function stopRinging(): void {
     clearInterval(timer);
     timer = null;
   }
-  // Silence the burst already in flight rather than letting it ring on for its
-  // remaining couple of seconds after the call is answered.
   for (const osc of voices) {
     try {
       osc.stop();
     } catch {
-      // Already stopped; nothing to do.
     }
   }
   voices = [];

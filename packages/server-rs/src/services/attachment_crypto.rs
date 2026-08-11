@@ -1,8 +1,3 @@
-//! Authenticated encryption for Cloudinary-backed message attachments.
-//!
-//! Cloudinary receives only this versioned envelope, never the original media
-//! bytes. The attachment's storage id is authenticated as associated data so a
-//! blob copied over a different id cannot be decrypted successfully.
 
 use aes_gcm::aead::{Aead, AeadCore, KeyInit, OsRng, Payload};
 use aes_gcm::{Aes256Gcm, Nonce};
@@ -30,7 +25,6 @@ impl AttachmentCipher {
             })
     }
 
-    /// `ORANGAE1 || random 96-bit nonce || ciphertext || 128-bit GCM tag`.
     pub fn encrypt(&self, plaintext: &[u8], storage_id: &str) -> AppResult<Vec<u8>> {
         let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
         let ciphertext = self

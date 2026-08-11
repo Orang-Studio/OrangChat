@@ -8,7 +8,7 @@ interface ConfirmDialogProps {
   onOpenChange: (open: boolean) => void;
   title: string;
   description?: string;
-  /** Extra content between the description and the buttons (e.g. a reason field). */
+
   children?: ReactNode;
   confirmLabel: string;
   danger?: boolean;
@@ -17,7 +17,7 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
 }
 
-/** Reusable confirm/cancel dialog for destructive or irreversible actions. */
+
 export function ConfirmDialog({
   open,
   onOpenChange,

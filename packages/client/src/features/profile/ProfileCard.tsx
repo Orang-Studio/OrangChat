@@ -22,11 +22,11 @@ export interface ProfileCardData {
   devices?: PresenceDevice[];
   activities?: UserActivity[];
   createdAt?: string;
-  /** Awarded badge slugs; unknown ones are dropped at render. */
+
   badges?: readonly string[];
-  /** Public user CSS; sanitized + scoped to this card before it's applied. */
+
   profileCss?: string | null;
-  /** Linked external accounts. Already filtered to the visible ones. */
+
   connections?: Connection[];
 }
 

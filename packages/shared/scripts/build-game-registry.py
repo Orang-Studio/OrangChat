@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 """Regenerate packages/shared/games.json - the game-presence detection registry.
 
 The executable data comes from Discord's public `applications/detectable`
@@ -43,8 +43,6 @@ USER_AGENT = "orangchat-game-registry/2.0 (https://chat.oranges.lt)"
 
 DETECTABLE = "https://discord.com/api/v9/applications/detectable"
 
-# Names too generic to attribute to one title even after collision pruning,
-# because the *next* refresh of the feed could add a second claimant.
 AMBIGUOUS = {
     "game.exe",
     "launcher.exe",
@@ -68,7 +66,6 @@ AMBIGUOUS = {
     "steam.exe",
 }
 
-# Support processes that ship beside a game without being it.
 SKIP_EXECUTABLE = re.compile(
     r"(anticheat|battleye|easyanti|crashhandler|crashreport|unins|setup"
     r"|redist|benchmark|dedicated|-server\b|_server\b|\bserver\.exe$)",
@@ -104,7 +101,6 @@ def normalize_executable(raw: str) -> str | None:
     name = re.split(r"[\\/]", raw)[-1].strip().lower()
     if not name or any(character in name for character in "?=&"):
         return None
-    # A macOS bundle's running process carries the bundle's own name.
     if name.endswith(".app"):
         name = name[: -len(".app")]
     if name in AMBIGUOUS or SKIP_EXECUTABLE.search(name):
@@ -206,8 +202,6 @@ def apply_overrides(entries: list[dict]) -> list[dict]:
         for executable in override["executables"]:
             if executable not in existing["executables"]:
                 existing["executables"].append(executable)
-        # The feed omits the appid for a good few titles it otherwise describes
-        # well, and without one the tile falls back to a monogram.
         if override.get("steamAppId") and not existing.get("steamAppId"):
             existing["steamAppId"] = override["steamAppId"]
     return entries

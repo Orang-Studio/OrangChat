@@ -5,24 +5,11 @@ use base64::Engine as _;
 
 use crate::services::update_policy::{PlatformPolicy, UpdatePolicy};
 
-/// Validated process configuration, loaded once at boot. Mirrors env.ts.
 #[derive(Clone)]
 pub struct Config {
     pub node_env: String,
     pub port: u16,
     pub client_origin: String,
-    /// Extra WebAuthn origins the Android app signs its passkey ceremonies with.
-    ///
-    /// A native app has no web origin, so Credential Manager puts
-    /// `android:apk-key-hash:<base64url sha256 of the signing certificate>` in
-    /// the client data instead of `https://chat.oranges.lt`. That is not a URL
-    /// the relying party can guess, so unless the app's signing key is listed
-    /// here every ceremony from the phone is rejected as a foreign origin - the
-    /// same key that has to appear in `/.well-known/assetlinks.json` for the
-    /// device half to work at all. Configured as SHA-256 fingerprints
-    /// (`ANDROID_CERT_FINGERPRINTS`, comma-separated, colons optional) so the
-    /// value can be copied straight out of assetlinks.json; add the debug
-    /// keystore's fingerprint there to test a debug build.
     pub android_origins: Vec<String>,
     pub database_url: String,
     pub redis_url: String,
@@ -30,10 +17,8 @@ pub struct Config {
     pub jwt_refresh_secret: String,
     pub access_ttl_seconds: i64,
     pub refresh_ttl_seconds: i64,
-    /// Optional Google reCAPTCHA v2 keys. Both are required to enable it.
     pub recaptcha_site_key: Option<String>,
     pub recaptcha_secret_key: Option<String>,
-    /// Resend is used for account-verification and email sign-in codes.
     pub resend_api_key: Option<String>,
     pub email_from: String,
     pub google_client_id: Option<String>,
@@ -41,9 +26,6 @@ pub struct Config {
     pub discord_client_id: Option<String>,
     pub discord_client_secret: Option<String>,
     pub oauth_redirect_base: String,
-    // ── Profile connections (see connections.rs). All optional: an unconfigured
-    // provider is simply not offered in the UI. Google's pair above doubles as
-    // YouTube's, and Steam needs only the Web API key.
     pub github_client_id: Option<String>,
     pub github_client_secret: Option<String>,
     pub gitlab_client_id: Option<String>,
@@ -62,49 +44,18 @@ pub struct Config {
     pub livekit_url: Option<String>,
     pub livekit_api_key: Option<String>,
     pub livekit_api_secret: Option<String>,
-    /// Blob storage for avatars, banners, and attachments under 10 MB. All three
-    /// must be set to take effect; with any missing, uploads keep landing on
-    /// local disk under UPLOAD_DIR / ATTACHMENT_DIR.
     pub cloudinary_cloud_name: Option<String>,
     pub cloudinary_api_key: Option<String>,
     pub cloudinary_api_secret: Option<String>,
-    /// AES-256-GCM key used before message attachments are sent to Cloudinary.
-    /// Profile images remain ordinary Cloudinary images so they can be resized.
     pub attachment_encryption_key: Option<[u8; 32]>,
-    /// Enables omni-moderation on uploaded images. Unset means no image is ever
-    /// checked or flagged - see services::image_moderation.
     pub openai_api_key: Option<String>,
-    // ── Push notifications (see services::push) ──
-    /// VAPID keypair identifying this server to the browser push services, and
-    /// the contact `sub` claim they require (a mailto: or https: URL). All three
-    /// together enable Web Push; with them unset the browser half is inert and
-    /// the client never offers to subscribe.
     pub vapid_public_key: Option<String>,
     pub vapid_private_key: Option<String>,
     pub vapid_subject: Option<String>,
-    /// Google service-account credentials for FCM's HTTP v1 API, as the raw JSON
-    /// or a path to it. Unset means the Android half is inert.
     pub fcm_service_account: Option<String>,
-    /// Base of the OrangMove file API, used server-side to verify an upload
-    /// token before trusting the filename/size that came with it. Defaults to
-    /// the loopback port OrangMove listens on rather than the public host:
-    /// verification shouldn't depend on DNS or TLS, and the token is a bearer
-    /// secret better kept off the public internet.
     pub orangmove_api_url: String,
-    /// Path to the JSON file mapping each hand-awarded badge to the user IDs
-    /// that hold it, reconciled at boot. A badge key present in the file is the
-    /// whole truth for that badge (grant to the listed users, revoke from the
-    /// rest); a key that's absent - or a missing file - leaves the badge alone.
-    /// See services::badge.
     pub badges_file: String,
-    /// Directory of server-served string catalogs (`<dir>/<platform>/*.json`),
-    /// authored by android/tools/export_server_catalogs.py and loaded at boot.
-    /// See http::i18n.
     pub i18n_dir: String,
-    /// Which client builds are still allowed in, per platform. Unset thresholds
-    /// mean that platform is never nagged and never blocked, so a fresh
-    /// deployment enforces nothing until someone opts in. See
-    /// services::update_policy.
     pub update_policy: UpdatePolicy,
 }
 
@@ -204,8 +155,6 @@ impl Config {
     }
 }
 
-/// Reads the three update thresholds for one platform, e.g.
-/// `ANDROID_LATEST_VERSION`, `ANDROID_MIN_RECOMMENDED`, `ANDROID_MIN_SUPPORTED`.
 fn platform_policy(prefix: &str) -> PlatformPolicy {
     PlatformPolicy {
         latest: opt(&format!("{prefix}_LATEST_VERSION")),
@@ -234,16 +183,9 @@ fn parse_attachment_encryption_key(encoded: &str) -> Result<[u8; 32], String> {
     })
 }
 
-/// SHA-256 of the certificate the published OrangChat Android app is signed
-/// with, and the same fingerprint deploy/assetlinks.json publishes. It is the
-/// default rather than a required env var so a stock deployment accepts the
-/// store build; anything else (a debug keystore, a fork's own key) has to be
-/// named explicitly.
 const DEFAULT_ANDROID_FINGERPRINT: &str =
     "D7:25:35:7E:07:C4:E5:7F:E5:40:38:1E:5E:DC:AA:A3:E1:B1:C7:30:C5:5D:18:C2:35:15:05:CA:D6:F9:41:45";
 
-/// Turns the configured signing-certificate fingerprints into the origins the
-/// Android platform actually puts in client data. See `Config::android_origins`.
 fn android_origins() -> Result<Vec<String>, String> {
     opt("ANDROID_CERT_FINGERPRINTS")
         .unwrap_or_else(|| DEFAULT_ANDROID_FINGERPRINT.to_string())
@@ -280,12 +222,6 @@ fn opt(key: &str) -> Option<String> {
     env::var(key).ok().filter(|v| !v.is_empty())
 }
 
-/// Returns (public_key, private_key, subject), or None when Web Push is simply
-/// unconfigured. Both keys are base64url (unpadded) as generated by every VAPID
-/// tool; the subject defaults to the mailto: form RFC 8292 expects.
-///
-/// Half-configured is a hard error for the same reason as Cloudinary's: a push
-/// server that quietly never pushes looks identical to one nobody subscribed to.
 fn vapid_credentials() -> Result<Option<(String, String, String)>, String> {
     match (opt("VAPID_PUBLIC_KEY"), opt("VAPID_PRIVATE_KEY")) {
         (Some(public), Some(private)) => {
@@ -308,14 +244,6 @@ fn vapid_credentials() -> Result<Option<(String, String, String)>, String> {
     }
 }
 
-/// Cloudinary's dashboard hands out one `CLOUDINARY_URL=cloudinary://key:secret@cloud`
-/// string, and that's what every official SDK reads, so accept it as-is. The three
-/// discrete vars still work and win if both are set.
-///
-/// Returns (cloud_name, api_key, api_secret), or None when Cloudinary is simply
-/// unconfigured - callers then fall back to local disk. A CLOUDINARY_URL that is
-/// present but unusable is a hard error instead: silently writing to disk because
-/// a credential was fat-fingered is the kind of thing you'd only notice much later.
 fn cloudinary_credentials() -> Result<Option<(String, String, String)>, String> {
     let (mut cloud_name, mut api_key, mut api_secret) = (
         opt("CLOUDINARY_CLOUD_NAME"),
@@ -335,8 +263,6 @@ fn cloudinary_credentials() -> Result<Option<(String, String, String)>, String> 
             Ok(Some((cloud_name, api_key, api_secret)))
         }
         (None, None, None) => Ok(None),
-        // A partial set is always a mistake, and one that would otherwise look
-        // like "Cloudinary is off" rather than "Cloudinary is broken".
         _ => Err(
             "Cloudinary is half-configured: set CLOUDINARY_URL, or all three \
                   of CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET, \
@@ -361,8 +287,6 @@ fn parse_cloudinary_url(raw: &str) -> Result<(String, String, String), String> {
         if part.is_empty() {
             return Err(malformed());
         }
-        // The docs show the shape with <angle brackets>; pasting it unedited is
-        // the single easiest way to get this wrong.
         if part.starts_with('<') || part.ends_with('>') {
             return Err(format!(
                 "CLOUDINARY_URL still contains the placeholder {part:?} - copy the real \
@@ -377,7 +301,6 @@ fn parse_cloudinary_url(raw: &str) -> Result<(String, String, String), String> {
     ))
 }
 
-/// Parse a duration like "15m", "30d", "45s", "12h" into seconds. Matches tokens.ts.
 pub fn duration_to_seconds(input: &str) -> Result<i64, String> {
     let s = input.trim();
     let (num, unit) = s.split_at(s.len().saturating_sub(1));
@@ -408,7 +331,6 @@ mod cloudinary_url_tests {
         assert_eq!(secret, "aBcD-eFgH_iJkL");
     }
 
-    /// Secrets may contain '@'; the cloud name may not, so the split is from the right.
     #[test]
     fn splits_on_the_last_at_sign() {
         let (cloud, _, secret) = parse_cloudinary_url("cloudinary://123:se@cret@mycloud").unwrap();
@@ -451,10 +373,6 @@ mod cloudinary_url_tests {
 mod android_origin_tests {
     use super::{android_origin, DEFAULT_ANDROID_FINGERPRINT};
 
-    /// The encoding is fixed by Android, not by us: base64url of the raw
-    /// fingerprint bytes with the padding stripped. Getting it subtly wrong
-    /// (standard base64, or padding kept) rejects every ceremony from the app
-    /// with nothing but "invalid origin" to go on, so it is pinned here.
     #[test]
     fn encodes_the_release_fingerprint() {
         assert_eq!(

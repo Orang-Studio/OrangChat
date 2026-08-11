@@ -27,8 +27,6 @@ pub fn routes() -> Router<AppState> {
             "/e2ee/transfers/:transferId/blob",
             get(fetch_blob).post(store_blob),
         )
-        // The last resort for an account whose every keyed device is gone. GET
-        // on the cancel route because it is opened from an email.
         .route(
             "/e2ee/keys/deletion",
             get(deletion_status)
@@ -36,8 +34,6 @@ pub fn routes() -> Router<AppState> {
                 .delete(cancel_deletion),
         )
         .route("/e2ee/keys/deletion/cancel", get(cancel_deletion_link))
-        // The same erasure with no wait in front of it, for a caller who can
-        // sign as a device that is still in the log.
         .route("/e2ee/keys/deletion/now", post(erase_keys_now))
         .route("/e2ee/channels/:channelId/state", get(channel_state))
         .route("/e2ee/channels/:channelId/epochs", post(mint_epoch))
@@ -150,10 +146,6 @@ async fn seen(
     Ok(Json(json!({ "ok": true })))
 }
 
-/// A transfer id has to be unguessable, not merely unique: on the §4.3 relay
-/// path it is the only thing between an on-path attacker and a fetch race. A
-/// cuid embeds a counter and a timestamp, so the id is minted here from the
-/// CSPRNG rather than by whichever client happens to be enrolling.
 async fn new_transfer(State(state): State<AppState>, user: AuthUser) -> AppResult<Json<Value>> {
     rate_limit::check(
         &state,
@@ -173,16 +165,10 @@ struct TransferGrantBody {
     ik_dh_pub: String,
     #[serde(default)]
     code: Option<String>,
-    /// Set when the account has no authenticator: the one-time email code
-    /// issued by /e2ee/transfer-grant/email-code and the token it came with.
     #[serde(default)]
     login_token: Option<String>,
 }
 
-/// The fallback for accounts without an authenticator app: mints a one-time
-/// email code exactly like a sign-in code and hands back the opaque token the
-/// client must present alongside the code. One code per account at a time; a
-/// fresh request burns the previous one.
 async fn request_transfer_email_code(
     State(state): State<AppState>,
     user: AuthUser,
@@ -205,9 +191,6 @@ async fn request_transfer_email_code(
             "This account is locked down, so no new device can be added".into(),
         ));
     }
-    // TOTP accounts never take this path - they already have a code they can
-    // produce themselves - but refusing it here keeps the invariant that a
-    // transfer grant is always gated by one of the two second factors.
     if row.totp_enabled {
         return Err(bad_request(
             "This account has two-factor authentication; enter a code from your authenticator app instead",
@@ -248,9 +231,6 @@ async fn deletion_status(State(state): State<AppState>, user: AuthUser) -> AppRe
     }))
 }
 
-/// Schedules the erasure. The 2FA check is not what authorizes the wipe - the
-/// wait and the notifications are - but passing it is what earns the shorter
-/// wait, because an attacker who cleared it had to beat more than a password.
 async fn request_deletion(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
@@ -270,8 +250,6 @@ async fn request_deletion(
         .fetch_one(&state.pool)
         .await?;
 
-    // Lockdown exists to freeze an account somebody else got into. Honouring a
-    // request to destroy its keys while it is frozen would defeat the point.
     if row.lockdown_at.is_some() {
         return Err(AppError::Permission(
             "This account is locked down, so its keys cannot be erased".into(),
@@ -286,9 +264,6 @@ async fn request_deletion(
         ));
     }
 
-    // Offered rather than demanded: an account without 2FA is precisely the one
-    // that cannot produce a code, and refusing it here would leave the people
-    // this feature exists for with no way out at all. They wait longer instead.
     if row.totp_enabled {
         rate_limit::check(&state, "2fa", &user.user_id, rate_limit::TOTP_PER_USER).await?;
         let code = body.code.as_deref().unwrap_or_default();
@@ -320,20 +295,10 @@ async fn request_deletion(
 #[serde(rename_all = "camelCase")]
 struct EraseNowBody {
     device_id: String,
-    /// RFC 3339, and recent - see key_deletion::PROOF_MAX_AGE_SECONDS.
     issued_at: String,
-    /// Over erase_keys_statement_bytes, by the device's identity signing key.
     signature: String,
 }
 
-/// Erases straight away for a caller holding a device key.
-///
-/// No second factor and no waiting period, and neither is an oversight. The
-/// delay on the scheduled path buys time for the real owner to hear about a
-/// request an attacker filed with nothing but a password; a signature under a
-/// device that is still in the log is made by something an attacker with the
-/// password does not have. Asking that person to also produce a TOTP code, and
-/// then to wait, would gate the strong proof behind the weak one.
 async fn erase_keys_now(
     State(state): State<AppState>,
     user: AuthUser,
@@ -358,8 +323,6 @@ async fn erase_keys_now(
         ));
     }
 
-    // Owned, and not revoked: a device that was thrown out of the account must
-    // not be able to destroy the identity that threw it out.
     let device = e2ee::owned_active_device(&state, &user.user_id, &body.device_id).await?;
 
     let issued_at = chrono::DateTime::parse_from_rfc3339(&body.issued_at)
@@ -391,9 +354,6 @@ async fn cancel_deletion(State(state): State<AppState>, user: AuthUser) -> AppRe
     Ok(Json(json!({ "pending": false })))
 }
 
-/// Opened straight from the warning email, so it authenticates on the token
-/// alone - the recipient of that mailbox is exactly who this is for, and
-/// requiring a login would lock out the person whose account was taken over.
 async fn cancel_deletion_link(
     State(state): State<AppState>,
     Query(params): Query<std::collections::HashMap<String, String>>,
@@ -406,9 +366,6 @@ async fn cancel_deletion_link(
     )))
 }
 
-/// The old device's half of §4.4: a fresh TOTP buys a 60-second grant bound to
-/// the new device's keys. Policy only - the authorization signature is the
-/// cryptographic authority, and nothing here can substitute for it.
 async fn transfer_grant(
     State(state): State<AppState>,
     user: AuthUser,
@@ -427,10 +384,6 @@ async fn transfer_grant(
         ));
     }
 
-    // A fresh second-factor code, either kind: TOTP when the account has an
-    // authenticator, otherwise the one-time email code this endpoint's sibling
-    // issued. Neither is the authority - the old device's signature is - but
-    // both stand between a stolen session and the device log.
     let code = body.code.as_deref().unwrap_or_default();
     if row.totp_enabled {
         let secret = row.totp_secret.as_deref().unwrap_or_default();
@@ -466,9 +419,6 @@ async fn transfer_grant(
     )
     .await?;
 
-    // A grant does not itself authorize a device (the old device's signature
-    // does), but spending TOTP on one is still a security event. Record it in
-    // structured logs and alert every registered endpoint plus email.
     tracing::info!(
         user_id = %user.user_id,
         transfer_id = %body.transfer_id,
@@ -513,7 +463,6 @@ async fn transfer_grant(
 #[derive(Deserialize)]
 struct BlobBody {
     blob: String,
-    /// "handshake" or "bundle"; see services::e2ee::valid_blob_slot.
     #[serde(default)]
     slot: Option<String>,
 }
@@ -551,9 +500,6 @@ async fn store_blob(
     Ok(Json(json!({ "expiresIn": ttl })))
 }
 
-/// Single-use by construction: the read deletes. A blob fetched by anyone but
-/// the waiting device is a burned transfer the user must restart, which is loud
-/// on purpose.
 async fn fetch_blob(
     State(state): State<AppState>,
     user: AuthUser,
@@ -649,9 +595,6 @@ fn base64_bytes(label: &str, value: &str) -> AppResult<Vec<u8>> {
         .map_err(|_| bad_request(&format!("{label} is not valid base64")))
 }
 
-/// A new device on the account is a security event for every peer who might
-/// wrap a key to it, and for the account's own other sessions. Peers hear about
-/// it because it is what forces them to rotate the conversation key.
 async fn announce_device(state: &AppState, user_id: &str, device: &crate::dto::DeviceDto) {
     let payload = json!({ "userId": user_id, "device": device });
     let rooms = e2ee::peer_rooms(state, user_id).await.unwrap_or_default();

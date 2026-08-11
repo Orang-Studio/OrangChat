@@ -10,11 +10,7 @@ export class OrangChatApiError extends Error {
   }
 }
 
-/**
- * Thin typed wrapper over the same `/api` a person's client uses. Bots are
- * ordinary `User` rows server-side, so there is no separate bot API to learn -
- * the only difference is the `Bot` authorization scheme.
- */
+
 export class Rest {
   constructor(
     private readonly baseUrl: string,

@@ -26,10 +26,6 @@ contextBridge.exposeInMainWorld("orangchatDesktop", {
   },
 });
 
-// The page already calls the Notification API for DMs and mentions. Wrapping it
-// in the main world lets the shell flash the taskbar without any client change.
-// DOM events cross world boundaries; the CustomEvent detail deliberately does
-// not, so nothing from the page is trusted here beyond "a notification fired".
 const NOTIFY_EVENT = "orangchat:notification-shown";
 
 void webFrame.executeJavaScript(`
@@ -48,8 +44,6 @@ void webFrame.executeJavaScript(`
       window.Notification = Wrapped;
     }
 
-    // The page surfaces DMs and mentions through the service worker, so the
-    // constructor above never fires for the notifications that actually appear.
     const Original = ServiceWorkerRegistration.prototype.showNotification;
     ServiceWorkerRegistration.prototype.showNotification = function (...args) {
       try { window.dispatchEvent(new Event(mark)); } catch {}

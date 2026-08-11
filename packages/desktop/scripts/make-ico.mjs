@@ -2,8 +2,6 @@ import { readFileSync, writeFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Packs build/icon-<size>.png into a PNG-embedded multi-resolution .ico.
-// Sizes come from packages/client/public/icon.svg; see README for re-rendering.
 const SIZES = [16, 24, 32, 48, 64, 128, 256];
 const build = join(dirname(fileURLToPath(import.meta.url)), "..", "build");
 

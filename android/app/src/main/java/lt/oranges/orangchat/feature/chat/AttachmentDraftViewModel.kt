@@ -20,14 +20,6 @@ import lt.oranges.orangchat.crypto.SealedAttachmentRef
 import java.util.UUID
 import javax.inject.Inject
 
-/**
- * The attachments on the message being composed, from pick through to upload.
- *
- * Uploading starts the moment a file is picked rather than at send: a large file
- * is usually already up by the time the user finishes typing, and a failure
- * shows up while they can still do something about it instead of after they hit
- * send.
- */
 @HiltViewModel
 class AttachmentDraftViewModel @Inject constructor(
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
@@ -39,18 +31,12 @@ class AttachmentDraftViewModel @Inject constructor(
         val key: String,
         val name: String,
         val size: Long,
-        /** Headed for OrangMove, so it expires an hour after it's sent. */
         val ephemeral: Boolean,
-        /** 0–1 while the bytes go out. */
         val progress: Float = 0f,
-        /** Set once uploaded; its id is what the message references. */
         val attachment: Attachment? = null,
-        /** Present only for E2EE uploads; sealed into the message payload. */
         val sealed: SealedAttachmentRef? = null,
         val error: String? = null,
-        /** The content uri, for thumbnailing images before they're up. */
         val previewUri: Uri? = null,
-        /** Temporary composer files, such as recordings or camera captures. */
         val sourceUri: Uri? = null,
         val deleteSourceOnCleanup: Boolean = false,
     ) {
@@ -60,7 +46,6 @@ class AttachmentDraftViewModel @Inject constructor(
     private val _uploads = MutableStateFlow<List<PendingUpload>>(emptyList())
     val uploads: StateFlow<List<PendingUpload>> = _uploads.asStateFlow()
 
-    /** Surfaced for things that fail before an upload starts (too many files). */
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
@@ -76,12 +61,6 @@ class AttachmentDraftViewModel @Inject constructor(
 
     fun dismissError() { _error.value = null }
 
-    /**
-     * Queues [uris] for upload and returns the keys of the drafts created, in the
-     * order they were accepted. Callers that just want a chip on screen can ignore
-     * the result; the voice composer needs it to follow one specific upload and
-     * send it the moment it settles.
-     */
     fun add(
         uris: List<Uri>,
         channelId: String?,
@@ -105,8 +84,6 @@ class AttachmentDraftViewModel @Inject constructor(
         val created = mutableListOf<String>()
         for (uri in accepted) {
             val key = UUID.randomUUID().toString()
-            // describe() touches the content resolver but only reads a metadata
-            // row, so it's cheap enough to do before showing the chip.
             val info = runCatching { uploader.describe(uri) }.getOrNull()
             if (info == null) {
                 _error.value = "Could not read that file"
@@ -149,14 +126,7 @@ class AttachmentDraftViewModel @Inject constructor(
                         }
                     }
                     .onFailure { cause ->
-                        // Cancelling is the user's own doing; remove() already
-                        // dropped the chip, so there's nothing to report.
                         if (cause is CancellationException) return@onFailure
-                        // A kotlinx failure's message is a model class name,
-                        // which tells the user nothing and hides the real
-                        // cause; AttachmentUploader has already logged the
-                        // body that failed. Everything else here is written
-                        // for people and worth showing.
                         Log.e("OrangChatUpload", "upload failed for ${info.name}", cause)
                         val shown = if (cause is kotlinx.serialization.SerializationException) {
                             "Upload failed"
@@ -177,7 +147,6 @@ class AttachmentDraftViewModel @Inject constructor(
         _uploads.update { list -> list.filterNot { it.key == key } }
     }
 
-    /** Drop the whole draft - sent, or the channel changed under it. */
     fun clear() {
         jobs.values.forEach { it.cancel() }
         jobs.clear()

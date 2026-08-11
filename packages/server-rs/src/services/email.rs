@@ -1,4 +1,3 @@
-//! Transactional-email delivery through Resend's HTTPS API.
 
 use serde_json::json;
 
@@ -41,9 +40,6 @@ pub async fn send_login_code(config: &Config, to: &str, code: &str) -> AppResult
     )).await
 }
 
-/// Sent the moment a wipe is requested, not when it runs. The cancel link is the
-/// whole point of the wait: somebody who lost their key ignores this mail, and
-/// somebody who did not lose it stops the wipe before anything is destroyed.
 pub async fn send_key_deletion_requested(
     config: &Config,
     to: &str,
@@ -69,8 +65,6 @@ pub async fn send_key_deletion_done(config: &Config, to: &str) -> AppResult<()> 
     .await
 }
 
-/// The happy accident: a device nobody thought was still alive checked in, so
-/// the account answered for itself and the wipe was called off.
 pub async fn send_key_deletion_aborted(config: &Config, to: &str) -> AppResult<()> {
     send(
         config,
@@ -91,9 +85,6 @@ pub async fn send_device_transfer_notice(config: &Config, to: &str) -> AppResult
     .await
 }
 
-/// The one-time code that stands in for an authenticator app when the account
-/// has no TOTP enrolled. Same 10-minute lifetime and one-code-per-account rule
-/// as the sign-in code.
 pub async fn send_device_transfer_code(config: &Config, to: &str, code: &str) -> AppResult<()> {
     send(
         config,

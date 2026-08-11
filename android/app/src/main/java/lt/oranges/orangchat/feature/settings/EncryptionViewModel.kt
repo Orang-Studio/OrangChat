@@ -17,12 +17,6 @@ import lt.oranges.orangchat.data.repository.E2eeRepository
 import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.R
 
-/**
- * Backs the Encryption settings screen. The device list is *verified* here
- * rather than displayed as received: showing a list the server handed over
- * without replaying its log would make the screen a place a fake device could
- * hide in plain sight.
- */
 @HiltViewModel
 class EncryptionViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -45,27 +39,13 @@ class EncryptionViewModel @Inject constructor(
         val transferQr: String? = null,
         val transferSas: String? = null,
         val transferError: String? = null,
-        /**
-         * True when this account has an authenticator app enrolled, so the
-         * transfer takes a TOTP code; false means an emailed one-time code.
-         */
         val hasTwoFactor: Boolean = true,
-        /**
-         * Non-null once an email code has been requested for this transfer;
-         * the value is the token the code must be presented with.
-         */
         val transferLoginToken: String? = null,
         val requestingEmailCode: Boolean = false,
         val revokingDeviceId: String? = null,
         val notice: String? = null,
-        /**
-         * This phone still holds an identity, but the account's own log no
-         * longer authorizes it - another device revoked it. Until that is
-         * cleared out this phone cannot do anything as an encryption device.
-         */
         val revokedHere: Boolean = false,
         val resetting: Boolean = false,
-        /** An erasure is in flight; see [eraseKeysNow]. */
         val erasing: Boolean = false,
     )
 
@@ -87,9 +67,6 @@ class EncryptionViewModel @Inject constructor(
         )
         runCatching {
             val list = api.getMyE2eeDevices()
-            // The verified set is the answer to "is this phone still a device?".
-            // Reading revokedAt off the list instead would trust the server on
-            // the one question the log exists to settle.
             e2ee.verifyList(list) to list
         }.onSuccess { (verified, list) ->
             _state.value = _state.value.copy(
@@ -103,11 +80,6 @@ class EncryptionViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Clears out an identity this account no longer authorizes and goes
-     * straight into adding this phone again - the two are one action to the
-     * person holding a phone that just stopped working.
-     */
     fun setUpThisPhoneAgain() {
         _state.value = _state.value.copy(resetting = true, error = null, notice = null)
         viewModelScope.launch {
@@ -115,9 +87,6 @@ class EncryptionViewModel @Inject constructor(
                 .onSuccess { forgotten ->
                     _state.value = _state.value.copy(resetting = false)
                     if (forgotten) {
-                        // With no authorized device left there is nothing to
-                        // transfer from, and this phone starts a new identity
-                        // rather than waiting on a device that cannot come.
                         val userId = auth.currentUser?.id
                         val canTransfer = _state.value.devices.any { it.revokedAt == null }
                         if (!canTransfer && userId != null) {
@@ -131,7 +100,6 @@ class EncryptionViewModel @Inject constructor(
                             openAddThisDevice()
                         }
                     } else {
-                        // The log says it is still authorized after all.
                         _state.value = _state.value.copy(revokedHere = false)
                         refresh()
                     }
@@ -145,10 +113,8 @@ class EncryptionViewModel @Inject constructor(
         }
     }
 
-    /** This phone has no identity: show its QR, then wait for the PC to scan. */
     fun addThisDevice() = startNewDevice(null)
 
-    /** Explain the preferred PC-shows/phone-scans flow before offering fallback. */
     fun openAddThisDevice() {
         _state.value = _state.value.copy(
             transferRole = TransferRole.NEW,
@@ -161,7 +127,6 @@ class EncryptionViewModel @Inject constructor(
         )
     }
 
-    /** Preferred desktop flow: this phone scanned the one-time code on the PC. */
     fun handleScannedTransfer(raw: String) {
         if (lt.oranges.orangchat.crypto.E2eeQr.isDeviceTransferInvite(raw)) {
             startNewDevice(raw)
@@ -212,7 +177,6 @@ class EncryptionViewModel @Inject constructor(
         }
     }
 
-    /** Existing Android device: accept the new device's scanned/pasted QR. */
     fun addAnotherDevice(raw: String) {
         _state.value = _state.value.copy(
             transferRole = TransferRole.OLD,
@@ -242,7 +206,6 @@ class EncryptionViewModel @Inject constructor(
         )
     }
 
-    /** No authenticator app on this account: email a one-time code to use instead. */
     fun requestTransferEmailCode() {
         if (_state.value.requestingEmailCode) return
         _state.value = _state.value.copy(requestingEmailCode = true, transferError = null)
@@ -289,19 +252,6 @@ class EncryptionViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Throws the account's encryption identity away and starts this phone over.
-     *
-     * The wait on the server's scheduled erasure protects an account whose keys
-     * are gone from whoever only has the password. This phone has a key and
-     * signs for the erasure with it, so there is nothing left to wait for - and
-     * nothing to wait *with*, since a keyed device checking in cancels a pending
-     * erasure anyway.
-     *
-     * A new identity follows immediately: an account with no devices left is one
-     * this phone can enrol into directly, and leaving the person on an
-     * encryption screen with nothing on it would just be a second thing to do.
-     */
     fun eraseKeysNow() {
         _state.value = _state.value.copy(erasing = true, error = null, notice = null)
         viewModelScope.launch {
@@ -327,7 +277,6 @@ class EncryptionViewModel @Inject constructor(
         }
     }
 
-    /** Human confirmation is the security boundary; do not advance without it. */
     fun confirmSas() {
         when (_state.value.transferRole) {
             TransferRole.NEW -> {

@@ -14,15 +14,12 @@ import lt.oranges.orangchat.R
 import lt.oranges.orangchat.util.AppStrings
 import javax.inject.Inject
 
-/** Where the About screen's update row is in its little lifecycle. */
 sealed interface UpdateUiState {
     data object Idle : UpdateUiState
     data object Checking : UpdateUiState
-    /** Checked, and this build is the newest published one. */
     data object UpToDate : UpdateUiState
     data class Available(val manifest: UpdateManifest) : UpdateUiState
     data class Downloading(val manifest: UpdateManifest, val progress: Float) : UpdateUiState
-    /** Downloaded and handed to the installer; the system takes it from here. */
     data class ReadyToInstall(val manifest: UpdateManifest) : UpdateUiState
     data class Failed(val message: String) : UpdateUiState
 }
@@ -36,7 +33,6 @@ class UpdateViewModel @Inject constructor(
     private val _state = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
     val state: StateFlow<UpdateUiState> = _state.asStateFlow()
 
-    /** True once the user has allowed OrangChat to install APKs. */
     fun canInstall(): Boolean = updateManager.canInstall()
 
     fun installPermissionIntent() = updateManager.installPermissionIntent()
@@ -70,9 +66,6 @@ class UpdateViewModel @Inject constructor(
             }.fold(
                 onSuccess = { apk ->
                     _state.value = UpdateUiState.ReadyToInstall(manifest)
-                    // Straight into the installer: having just watched a
-                    // progress bar fill, a second "install?" tap is friction.
-                    // The system still shows its own confirmation.
                     runCatching { updateManager.install(apk) }.onFailure { e ->
                         Log.w(TAG, "install failed", e)
                         _state.value = UpdateUiState.Failed(e.message ?: AppStrings.get(context, R.string.catalog_could_not_open_the_installer_a59d8717))

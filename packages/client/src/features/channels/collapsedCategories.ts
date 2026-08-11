@@ -29,7 +29,7 @@ export function toggleCategoryCollapsed(serverId: string, categoryId: string): v
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {
-    /* storage unavailable - collapse just won't persist */
+
   }
   useCollapsedCategories.setState({ byServer: next });
 }

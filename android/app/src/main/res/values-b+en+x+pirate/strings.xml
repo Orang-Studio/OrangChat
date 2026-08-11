@@ -178,7 +178,7 @@
     <string name="catalog_could_not_start_the_call_925e1fa3" formatted="false">Could not start th’ call</string>
     <string name="catalog_couldn_t_decrypt_this_file_08287a15" formatted="false">Couldn\'t unlock this file</string>
     <string name="catalog_couldn_t_load_gifs_e47c284a" formatted="false">Couldn\'t haul in GIFs</string>
-    <string name="catalog_couldn_t_reach_that_message_it_may_896fe39d" formatted="false">Couldn\'t find that message — it be too far astern or scuttled.</string>
+    <string name="catalog_couldn_t_reach_that_message_it_may_896fe39d" formatted="false">Couldn\'t find that message - it be too far astern or scuttled.</string>
     <string name="catalog_create_a_channel_3ac48642" formatted="false">Make a channel</string>
     <string name="catalog_create_a_server_3a0ab422" formatted="false">Make a server</string>
     <string name="catalog_create_account_aaf37447" formatted="false">Make account</string>
@@ -273,7 +273,7 @@
     <string name="catalog_have_them_open_their_code_in_orangchat_9428c129" formatted="false">Have ’em open their code in OrangChat an’ point this phone\'s camera at it. Yer phone then remembers th’ lock ye actually saw, so a swapped one no longer matches. One scan proves one direction - show ’em yours too.</string>
     <string name="catalog_hide_my_code_835d9e98" formatted="false">Hide me code</string>
     <string name="catalog_hide_password_e40123b4" formatted="false">Hide secret word</string>
-    <string name="catalog_hold_steady_scanning_happens_automatically_ae832ed2" formatted="false">Hold steady — scanning happens on its own</string>
+    <string name="catalog_hold_steady_scanning_happens_automatically_ae832ed2" formatted="false">Hold steady - scanning happens on its own</string>
     <string name="catalog_hold_the_mic_to_record_then_let_48d81b83" formatted="false">Hold th’ mic t’ record, then let go t’ send</string>
     <string name="catalog_hold_to_record_a_voice_message_06b1b5f5" formatted="false">Hold t’ record a voice message</string>
     <string name="catalog_how_does_this_work_1ae14530" formatted="false">How does this work, matey?</string>
@@ -536,7 +536,7 @@
     <string name="catalog_status_bae7d5be" formatted="false">Status</string>
     <string name="catalog_still_yours_1_s_42da6dc4" formatted="true"> Still yours: %1$s.</string>
     <string name="catalog_stop_9e253470" formatted="false">Stop</string>
-    <string name="catalog_stored_on_this_device_only_never_uploaded_1373e7ad" formatted="false">Stowed on this device alone — never sent ashore.</string>
+    <string name="catalog_stored_on_this_device_only_never_uploaded_1373e7ad" formatted="false">Stowed on this device alone - never sent ashore.</string>
     <string name="catalog_style_your_card_for_everyone_who_views_08c9bf5c" formatted="false">Style yer card fer all hands who views it. Every part has a hook: </string>
     <string name="catalog_synced_to_your_device_s_keychain_4f237bce" formatted="false">Synced t’ yer device\'s keychain.</string>
     <string name="catalog_system_bc0792d8" formatted="false">System</string>

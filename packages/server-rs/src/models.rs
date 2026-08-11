@@ -1,5 +1,3 @@
-//! Database row structs (sqlx FromRow) mirroring the Prisma models. Column names
-//! are camelCase in Postgres, so fields are renamed accordingly.
 
 use chrono::NaiveDateTime;
 use serde_json::Value as Json;
@@ -51,24 +49,17 @@ pub struct UserRow {
     pub totp_enabled: bool,
     #[sqlx(rename = "emailVerifiedAt")]
     pub email_verified_at: Option<NaiveDateTime>,
-    /// Awarded badge slugs; see services::badge for the catalog.
     pub badges: Vec<String>,
-    /// A bot account rather than a person; see services::bot.
     #[sqlx(rename = "isBot")]
     pub is_bot: bool,
-    /// Set while the account is locked down; see services::account.
     #[sqlx(rename = "lockdownAt")]
     pub lockdown_at: Option<NaiveDateTime>,
-    /// Set on a tombstoned account; see services::account.
     #[sqlx(rename = "deletedAt")]
     pub deleted_at: Option<NaiveDateTime>,
     #[sqlx(rename = "createdAt")]
     pub created_at: NaiveDateTime,
 }
 
-/// A friendship/friend-request row joined with the *other* party's user record.
-/// `friendship_id`/`friendship_created_at` are explicit aliases so they don't
-/// collide with the flattened user's own `id`/`createdAt`.
 #[derive(Debug, Clone, FromRow)]
 pub struct FriendJoinRow {
     pub friendship_id: String,
@@ -232,8 +223,6 @@ pub struct MessageRow {
     #[sqlx(rename = "authorId")]
     pub author_id: String,
     pub content: String,
-    /// Set only by the server, from an action it carried out itself. See
-    /// `services::system_message`.
     #[sqlx(rename = "systemNotice")]
     pub system_notice: Option<String>,
     #[sqlx(rename = "systemData")]
@@ -392,12 +381,9 @@ pub struct PasskeyRow {
     pub id: String,
     #[sqlx(rename = "userId")]
     pub user_id: String,
-    /// Looked up by SQL rather than read in Rust - it is how a discoverable
-    /// sign-in finds the account - but the column is part of the row.
     #[allow(dead_code)]
     #[sqlx(rename = "credentialId")]
     pub credential_id: String,
-    /// webauthn-rs's own serialised credential; see prisma/schema.prisma.
     pub credential: Json,
     pub name: String,
     #[sqlx(rename = "backedUp")]

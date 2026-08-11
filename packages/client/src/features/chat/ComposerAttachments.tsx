@@ -3,28 +3,25 @@ import type { Attachment, SealedAttachmentRef } from "@orangchat/shared";
 import { formatBytes } from "./attachments";
 import { t } from "../../lib/i18n";
 
-/** A file the user picked, from selection through to a finished upload. */
+
 export interface PendingUpload {
   key: string;
   name: string;
   size: number;
-  /** Headed for OrangMove, so it will expire an hour after it's sent. */
+
   ephemeral: boolean;
-  /** 0–1 while uploading. */
+
   progress: number;
-  /** Send it behind a spoiler cover. Chosen any time before send, not at pick. */
+
   spoiler: boolean;
-  /** Set once the upload finishes; its id is what message:send references. */
+
   attachment?: Attachment;
-  /** Opaque support blobs that must be claimed with the visible attachment. */
+
   supportingAttachments?: Attachment[];
-  /**
-   * Set instead of a readable descriptor in an encrypted conversation: the key
-   * and the real filename go inside the message, never beside the upload.
-   */
+
   sealed?: SealedAttachmentRef;
   error?: string;
-  /** Local object URL for image previews; revoked when the entry goes away. */
+
   preview?: string;
   abort: () => void;
 }

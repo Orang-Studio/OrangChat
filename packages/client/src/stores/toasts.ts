@@ -18,15 +18,12 @@ export const useToastsStore = create<ToastsState>(() => ({
 
 let nextId = 1;
 
-/** A burst - e.g. an outbox flush rejecting several queued rows at once -
- * shouldn't stack the surface past what's readable. */
+
 const MAX_TOASTS = 4;
 
 export const toastActions = {
   show(message: string, type: ToastType): number {
     const existing = useToastsStore.getState().toasts;
-    // Repeated identical feedback (the same failure hitting several rows)
-    // collapses into the one already on screen instead of stacking.
     const dup = existing.find((t) => t.message === message && t.type === type);
     if (dup) return dup.id;
     const id = nextId++;
@@ -41,7 +38,7 @@ export const toastActions = {
   },
 };
 
-/** Imperative API for surfacing one-off feedback from anywhere in the app. */
+
 export const toast = {
   info: (message: string) => toastActions.show(message, "info"),
   success: (message: string) => toastActions.show(message, "success"),

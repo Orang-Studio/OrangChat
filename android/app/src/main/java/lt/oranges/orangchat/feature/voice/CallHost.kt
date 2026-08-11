@@ -22,7 +22,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import lt.oranges.orangchat.data.model.User
 import javax.inject.Inject
 
-/** Thin Compose-facing wrapper over the singleton [CallManager]. */
 @HiltViewModel
 class CallViewModel @Inject constructor(
     private val callManager: CallManager,
@@ -37,10 +36,8 @@ class CallViewModel @Inject constructor(
     val audioOutputs = callManager.audioOutputs
     val selectedAudioOutputId = callManager.selectedAudioOutputId
 
-    /** channelId -> who is in that voice channel. */
     val voiceParticipants = voiceParticipantStore.participants
 
-    /** The live LiveKit room, needed by VideoTrackView to render tiles. */
     val room get() = callManager.room
 
     fun seedVoiceChannels(channelIds: List<String>) = voiceParticipantStore.seedAll(channelIds)
@@ -67,18 +64,11 @@ class CallViewModel @Inject constructor(
 private fun callPermissions(video: Boolean): Array<String> = buildList {
     add(Manifest.permission.RECORD_AUDIO)
     if (video) add(Manifest.permission.CAMERA)
-    // Optional: denial never blocks the call, but Bluetooth routes cannot be
-    // discovered on Android 12+ without it.
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         add(Manifest.permission.BLUETOOTH_CONNECT)
     }
 }.toTypedArray()
 
-/**
- * Returns a `launch(video)` function that secures mic (and camera) access before
- * running [onGranted]. RECORD_AUDIO is declared in the manifest but was never
- * requested at runtime until calls existed, so this is the first ask.
- */
 @Composable
 fun rememberCallPermissionGate(
     onGranted: (video: Boolean) -> Unit,
@@ -91,7 +81,6 @@ fun rememberCallPermissionGate(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { grants ->
         if (grants[Manifest.permission.RECORD_AUDIO] == true) {
-            // Camera refused on a video call still leaves a usable voice call.
             onGranted(wantedVideo && grants[Manifest.permission.CAMERA] == true)
         } else {
             onMicDenied()
@@ -108,11 +97,6 @@ fun rememberCallPermissionGate(
     }
 }
 
-/**
- * App-wide call surface: the ringing popup. Mounted in MainActivity above the
- * whole nav tree so it shows over any screen, and over the lockscreen via the
- * full-screen intent that NotificationHelper raises alongside it.
- */
 @Composable
 fun CallHost(modifier: Modifier = Modifier) {
     val vm: CallViewModel = hiltViewModel()
@@ -122,7 +106,6 @@ fun CallHost(modifier: Modifier = Modifier) {
 
     val requestAndAccept = rememberCallPermissionGate(
         onGranted = { video -> vm.accept(video) },
-        // Without a microphone there is no call to answer.
         onMicDenied = { vm.decline() },
     )
 
@@ -135,9 +118,6 @@ fun CallHost(modifier: Modifier = Modifier) {
         )
     }
 
-    // "Already on a call", "Everyone else is busy" - otherwise the ack error is
-    // swallowed and tapping call just appears to do nothing. An outright failure
-    // to start is the more actionable of the two, so it wins the banner slot.
     val banner = error ?: notice?.message
     val dismiss = if (error != null) vm::dismissError else vm::dismissNotice
     banner?.let { message ->

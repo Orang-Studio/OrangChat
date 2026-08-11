@@ -1,6 +1,6 @@
 import type { Catalog } from "./en";
 
-/** Simplified Mandarin Chinese translation. */
+
 export const zh: Catalog = {
   "common.save": "节省",
   "common.cancel": "取消",
@@ -179,7 +179,7 @@ export const zh: Catalog = {
   "composer.holdToRecordAVoiceMessage": "按住可录制语音消息",
   "composer.lockedSendWhenYoureDone": "锁定 - 完成后发送",
   "composer.mentionSuggestions": "提及建议",
-  "composer.pasteCutOff": "粘贴剪切 — 最多 {max} 个字符",
+  "composer.pasteCutOff": "粘贴剪切 - 最多 {max} 个字符",
   "composer.pasteItAnyway": "还是贴一下吧",
   "composer.replyingTo": "正在回复",
   "composer.sendMessage": "发送消息",
@@ -213,7 +213,7 @@ export const zh: Catalog = {
   "developersPage.bot": "机器人",
   "developersPage.bots": "机器人",
   "developersPage.botsIntro":
-    "使用适用于 JavaScript 的 {js} 包或适用于 Python 的 {py} 包在 OrangChat 上构建。机器人是一个真实的帐户：邀请它到服务器并像其他人一样赋予它角色。机器人无法读取 DM——这些是端到端加密的。",
+    "使用适用于 JavaScript 的 {js} 包或适用于 Python 的 {py} 包在 OrangChat 上构建。机器人是一个真实的帐户：邀请它到服务器并像其他人一样赋予它角色。机器人无法读取 DM--这些是端到端加密的。",
   "developersPage.copyThisTokenNow": "立即复制此令牌",
   "developersPage.developers": "开发商",
   "developersPage.displayName": "显示名称",
@@ -368,7 +368,7 @@ export const zh: Catalog = {
   "howEncryptionWorks.ifYouLoseYourOnlyDevice": "如果您丢失了唯一的设备",
   "howEncryptionWorks.inPlainLanguageWithNoJargon": "语言通俗易懂，没有任何行话需要先了解。",
   "howEncryptionWorks.itIsNotAlwaysAnAttack":
-    "这并不总是一种攻击——当有人丢失所有设备并必须重新开始时也会发生这种情况。在应用程序内部无法区分这些人，这就是为什么它要求您在发送其他任何内容之前直接与该人核实。",
+    "这并不总是一种攻击--当有人丢失所有设备并必须重新开始时也会发生这种情况。在应用程序内部无法区分这些人，这就是为什么它要求您在发送其他任何内容之前直接与该人核实。",
   "howEncryptionWorks.notInTheSameRoomYou":
     "不在同一个房间？你们每个人都会看到相同的短行数字，称为安全代码。让他们通过电话读出它，或者通过您已经信任的另一个应用程序发送它，然后将其输入到代码下方的框中 - 该应用程序会比较所有 60 位数字，这比任何人通过肉眼管理的都要多。如果匹配，则没有人处于中间。不重要的一件事是 OrangChat 语音通话 - 音频通过此检查要测试的相同服务器。",
   "howEncryptionWorks.onlyThePeopleInTheConversation":
@@ -379,7 +379,7 @@ export const zh: Catalog = {
   "howEncryptionWorks.standardIsWhatEveryConversationGets":
     "标准是每次谈话所得到的。首先验证是额外的步骤，只有对于您可以实际见到或打电话的人才值得打开。",
   "howEncryptionWorks.thatIsAlsoWhyAddingA":
-    "这也是为什么添加第二台设备是一个小仪式，而不是复制和粘贴。你的旧设备必须先看到新设备——屏幕上的代码，摄像头对准它——然后才能进行任何操作。",
+    "这也是为什么添加第二台设备是一个小仪式，而不是复制和粘贴。你的旧设备必须先看到新设备--屏幕上的代码，摄像头对准它--然后才能进行任何操作。",
   "howEncryptionWorks.theHardPartIsItReally": "困难的部分：这真的是他们的锁吗？",
   "howEncryptionWorks.theMessagesOnlyThatDeviceCould":
     "只有该设备可以打开的消息会永久锁定。我们无法为您恢复它们 - 如果我们可以的话，上述情况都不会是真的。",
@@ -430,7 +430,7 @@ export const zh: Catalog = {
   "keyErasureSection.ifYouDidNotAskForThis":
     "如果您没有要求这样做，请立即取消并更改您的密码 - 其他人已登录到您的帐户。",
   "keyErasureSection.leaveThisEmptyIfYouDo":
-    "如果您没有打开双因素，请将此项留空。它只是缩短了等待时间——三个小时而不是一天。",
+    "如果您没有打开双因素，请将此项留空。它只是缩短了等待时间--三个小时而不是一天。",
   "keyErasureSection.neverMind": "没关系",
   "keyErasureSection.stoppedYourEncryptionKeysAreStaying":
     "停了。您的加密密钥保留在原处。如果您一开始就没有要求删除，请立即更改您的密码 - 其他人已登录。",
@@ -968,7 +968,7 @@ export const zh: Catalog = {
   "securityTab.yourAccountIsLockedDown": "您的帐户已被锁定",
   "securityTab.yourCurrentPassword": "您当前的密码",
   "securityTab.yourMessagesStayInTheConversations":
-    "您的消息保留在它们所属的对话中，显示为来自已删除的用户。其他一切——个人资料、联系、朋友、服务器会员资格——都被删除。这无法撤消。",
+    "您的消息保留在它们所属的对话中，显示为来自已删除的用户。其他一切--个人资料、联系、朋友、服务器会员资格--都被删除。这无法撤消。",
   "securityTab.yourPassword": "您的密码",
   "serverContextMenu.copyServerId": "复制服务器 ID",
   "serverContextMenu.createCategory": "创建类别",

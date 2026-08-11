@@ -1,4 +1,3 @@
-//! Scheduled server events, mounted under /api.
 
 use axum::extract::{Path, State};
 use axum::http::StatusCode;

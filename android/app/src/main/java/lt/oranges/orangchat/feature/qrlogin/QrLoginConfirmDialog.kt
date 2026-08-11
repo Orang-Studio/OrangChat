@@ -22,11 +22,6 @@ import lt.oranges.orangchat.ui.components.OrangDialog
 import lt.oranges.orangchat.ui.components.Text
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-/**
- * Raised when the app is opened by scanning a web sign-in QR. Approving here is
- * what turns a scan into a session: the confirm tap is the security step, so a
- * code that's only been scanned never signs anyone in.
- */
 @Composable
 fun QrLoginConfirmDialog(
     token: String,

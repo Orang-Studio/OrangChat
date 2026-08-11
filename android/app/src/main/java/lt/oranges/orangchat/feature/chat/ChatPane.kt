@@ -199,33 +199,18 @@ import kotlin.time.Duration
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 
-/** How far a message must slide left before it becomes a reply. */
 private val REPLY_TRIGGER = 64.dp
 
-/** Keep pulling your own message past this and it opens for editing instead. */
 private val EDIT_TRIGGER = 148.dp
 
-/** What a swipe of the current length would do if the finger lifted now. */
 private enum class SwipeAction { NONE, REPLY, EDIT }
 
-/**
- * Leftward drags only, and only once past touch slop.
- *
- * Rightward drags are deliberately left unclaimed so they reach the navigation
- * drawer, which then tracks the finger. Anything a child has already consumed -
- * a media scrubber, above all - is that child's gesture and never a swipe:
- * dragging the playhead must not also arm a reply.
- */
 private suspend fun PointerInputScope.detectSwipeToReply(
     onDelta: (Float) -> Unit,
     onRelease: () -> Unit,
     onCancel: () -> Unit,
 ) {
     awaitEachGesture {
-        // Not requireUnconsumed, and the down's own consumed flag is ignored:
-        // this row's combinedClickable claims every down it sees. Movement is
-        // what tells a swipe apart from a child's gesture, so that is what gets
-        // checked below.
         val down = awaitFirstDown(requireUnconsumed = false)
         val slop = viewConfiguration.touchSlop
         var travel = Offset.Zero
@@ -233,8 +218,6 @@ private suspend fun PointerInputScope.detectSwipeToReply(
         while (true) {
             val event = awaitPointerEvent()
             val change = event.changes.firstOrNull { it.id == down.id } ?: break
-            // The lift is checked before consumption: who consumed the up does
-            // not matter, only how far this row actually travelled.
             if (!change.pressed) {
                 if (claimed) onRelease()
                 return@awaitEachGesture
@@ -244,99 +227,55 @@ private suspend fun PointerInputScope.detectSwipeToReply(
                 return@awaitEachGesture
             }
             if (claimed) {
-                // Read the delta before consuming: positionChange() reports zero
-                // once the change is marked consumed.
                 val dx = change.positionChange().x
                 change.consume()
                 onDelta(dx)
                 continue
             }
             travel += change.positionChange()
-            // Scrolling the list, or heading for the drawer: not ours.
             if (abs(travel.y) > slop || travel.x > slop) return@awaitEachGesture
             if (travel.x < -slop) {
                 claimed = true
                 change.consume()
-                // Only the distance past slop, so the row starts from rest
-                // instead of jumping by the slop it took to get here.
                 onDelta(travel.x + slop)
             }
         }
     }
 }
 
-/** Consecutive messages within this window from the same author are grouped. */
 private const val GROUP_WINDOW_MS = 5 * 60 * 1000L
 
-/**
- * Shortest gap between two typing packets from this device. Matches the web
- * composer; receivers hold the indicator for a window plus grace, so a sender
- * who backgrounds the app fades out instead of sticking.
- */
 private const val TYPING_THROTTLE_MS = 4_000L
 
-/**
- * Longest message the composer will accept. Matches the web composer's own cap
- * so the same draft is sendable from either client; the server's limit is far
- * higher and byte-based, so this is a UX ceiling rather than a validation one.
- */
 private const val MESSAGE_MAX_LENGTH = 4_000
 
-/**
- * How close to [MESSAGE_MAX_LENGTH] the draft has to get before the running
- * count appears. A counter that is always on is noise on a one-line reply.
- */
 private const val MESSAGE_LENGTH_WARNING_THRESHOLD = MESSAGE_MAX_LENGTH - 400
 
-/** How long a jumped-to message stays lit before fading back. */
 private const val HIGHLIGHT_MS = 1_600L
 
-/** How long the neutral "that was a tap, not a hold" hint stays up. */
 private const val VOICE_HINT_MS = 2_500L
 
-/**
- * Older pages a jump is allowed to pull in before it gives up. 12 pages of 50
- * is six hundred messages back - far enough for a search hit anyone actually
- * meant to open, and short of quietly downloading an entire channel.
- */
 private const val JUMP_MAX_PAGES = 12
 
-/** Gap between checks while a page is in flight. */
 private const val JUMP_POLL_MS = 200L
 
-/** Roughly ten seconds of waiting for a channel's own first page to arrive. */
 private const val JUMP_MAX_INITIAL_WAITS = 50
 
 private const val JUMP_MISSING_NOTICE_MS = 4_000L
 
-/** A message plus its grouping flag, decided chronologically before the list is
- * reversed for display. [isNotice] is true for anything the server authored;
- * [notice] is the kind, when it is one this build knows how to word itself. */
 private data class MessageRowData(
     val message: Message,
     val grouped: Boolean,
     val isNotice: Boolean = false,
     val notice: SystemNotice? = null,
-    /** Last row of its run - the next message chronologically starts one of its
-     *  own, or there is no next message. Only the two ends of a run are needed
-     *  to round the group plate, and [grouped] already marks the first: a row
-     *  that continues nothing is where a run begins. */
     val groupEnd: Boolean = true,
 )
 
-/** Namespaced so a local client id can never collide with a server message id. */
 private fun messageRowKey(message: Message): String =
     message.clientId?.let { "client:$it" } ?: "server:${message.id}"
 
-/**
- * Whether [message] should hide its avatar and header because it continues
- * [previous]'s run - same author, close in time, and not a reply (a reply needs
- * its own context line, so it always starts a fresh block).
- */
 private fun isGrouped(previous: Message?, message: Message): Boolean {
     if (previous == null) return false
-    // A notice is a break in the conversation, not a line of it: letting the
-    // message after one keep its run would hide its header behind a divider.
     if (message.isSystemNotice()) return false
     if (previous.isSystemNotice()) return false
     if (previous.author.id != message.author.id) return false
@@ -350,11 +289,9 @@ private fun isGrouped(previous: Message?, message: Message): Boolean {
 fun ChatPane(
     title: String,
     topic: String?,
-    /** Identifies the draft: switching channels drops any staged attachments. */
     channelId: String,
     messages: List<Message>,
     pendingMessageIds: Set<String> = emptySet(),
-    /** Rows the server refused; shown in place with a retry, not deleted. */
     failedMessageIds: Set<String> = emptySet(),
     onRetryMessage: (String) -> Unit = {},
     onDiscardMessage: (String) -> Unit = {},
@@ -376,66 +313,36 @@ fun ChatPane(
     onTyping: () -> Unit,
     onSearch: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    /** Fetch the page before the oldest message held. */
     onLoadOlder: () -> Unit = {},
     loadingOlder: Boolean = false,
-    /** False once history has been read back to the very first message. */
     hasOlder: Boolean = true,
-    /**
-     * A message to scroll to on arrival - a search hit, or any other deep link
-     * into the middle of a conversation. Pages history in until it is loaded.
-     */
     jumpToMessageId: String? = null,
-    /** Called once the jump has landed or been given up on, so it fires once. */
     onJumpHandled: () -> Unit = {},
-    /** Accessibility: tighter row spacing. */
     compact: Boolean = false,
-    /** Accessibility: jump instead of animating the scroll-to-bottom. */
     reducedMotion: Boolean = false,
-    /** Non-null only for DMs / group DMs, which are the only callable channels. */
     onStartCall: ((video: Boolean) -> Unit)? = null,
-    /** Non-null only for group DMs: opens the friend picker to add people. */
     onAddPeople: (() -> Unit)? = null,
-    /** True while we are already on this conversation's call. */
     onCall: Boolean = false,
-    /** The other DM participant, shown beside the conversation title. */
     headerUser: User? = null,
-    /** Live activity for the other DM participant. */
     headerActivities: List<UserActivity> = emptyList(),
-    /** Open someone's profile card. Hoisted, because the actions it offers -
-     *  message, add friend - are the host's to perform, not the chat's. */
     onOpenProfile: (User) -> Unit = {},
-    /** emojiId -> emoji, for resolving `<:name:id>` in message text and for the picker. */
     emojis: Map<String, EmojiRef> = emptyMap(),
     encryptionInfo: AppViewModel.ConversationEncryptionInfo? = null,
     onResetEncryption: (() -> Unit)? = null,
     onSetStrict: ((Boolean) -> Unit)? = null,
     onVerifyContact: ((String, String, (Boolean, String?) -> Unit) -> Unit)? = null,
-    /** Verification for people who are not in the same room (§6.6). */
     onCompareSafetyNumber: (
         (String, (AppViewModel.SafetyNumberVerdict) -> Unit) -> Unit
     )? = null,
-    /** DM-only: shared chat background shown behind the messages. */
     backgroundUrl: String? = null,
-    /** Non-null only for DMs / group DMs: pick an image for the background. */
     onSetBackground: ((Uri) -> Unit)? = null,
-    /** Clear the shared background. Shown only while one is set. */
     onRemoveBackground: (() -> Unit)? = null,
-    /** Group DMs only: the group's own picture, shown in place of the glyph. */
     iconUrl: String? = null,
-    /** Non-null only for group DMs: pick an image for the group icon. */
     onSetIcon: ((Uri) -> Unit)? = null,
-    /** Clear the group icon. Shown only while one is set. */
     onRemoveIcon: (() -> Unit)? = null,
 ) {
     val customEmojis = remember(emojis) { emojis.values.sortedBy { it.name.lowercase() } }
     val c = OrangTheme.colors
-    // Inside a group plate the surface ramp shifts up a step, so the cards, code
-    // blocks and chips drawn on surface1/surface2 stay visibly raised instead of
-    // dissolving into it - the same remap the web client makes with CSS custom
-    // properties on `.oc-plate`. Remembered because LocalOrangColors is a static
-    // local: handing it a fresh instance per recomposition would invalidate
-    // every row's subtree.
     val rowColors = remember(c, backgroundUrl != null) {
         if (backgroundUrl == null) c else c.copy(surface1 = c.surface3, surface2 = c.surface4)
     }
@@ -458,24 +365,13 @@ fun ChatPane(
         ActivityResultContracts.PickVisualMedia(),
     ) { uri -> if (uri != null) onSetIcon?.invoke(uri) }
 
-    // A full-screen file is shown by another activity, which only receives the
-    // attachment; this is how it finds the message that file came on.
     DisposableEffect(Unit) { onDispose { MediaPreviewHost.unbind() } }
     LaunchedEffect(messages, onReact) { MediaPreviewHost.bind(messages, onReact) }
 
-    // Rendered newest-first into a reverseLayout list, so index 0 is the visual
-    // bottom. This is what pins the view to the newest message and keeps the
-    // viewport still when an older page is prepended - the browser client gets
-    // the same property from `flex-col-reverse`. Grouping is decided on the
-    // chronological order first, then the rows are flipped for display.
     val rows = remember(messages) {
-        // History and a socket ack can overlap while a page is loading. Keep one
-        // row per server id, then guard the UI key against namespace collisions.
         val deduped = messages
             .distinctBy { it.id }
             .distinctBy(::messageRowKey)
-        // Resolved for the whole list first so a row can also see whether the
-        // message after it continues its run, which is what closes the plate.
         val grouped = deduped.mapIndexed { i, m -> isGrouped(deduped.getOrNull(i - 1), m) }
         deduped
             .mapIndexed { i, m ->
@@ -490,10 +386,6 @@ fun ChatPane(
             .asReversed()
     }
 
-    // Ask for the page before the oldest row once it comes into view. Driven by
-    // the *last* visible index (the visual top under reverseLayout) rather than
-    // by messages.size, so a prepended page cannot retrigger the load that
-    // produced it - that feedback loop used to pull the whole channel in at once.
     LaunchedEffect(listState, rows.size) {
         snapshotFlow {
             val last = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
@@ -503,8 +395,6 @@ fun ChatPane(
             .collect { nearOldest -> if (nearOldest) onLoadOlder() }
     }
 
-    // Follow the conversation only when already at the bottom; someone reading
-    // back through history should not be yanked forward by a new arrival.
     val newestId = messages.lastOrNull()?.id
     val awayFromBottom by remember(listState) {
         derivedStateOf { listState.firstVisibleItemIndex > 2 }
@@ -529,9 +419,6 @@ fun ChatPane(
         if (!awayFromBottom) hasNewMessages = false
     }
 
-    // Landing on a message you did not scroll to is disorienting without it
-    // saying which one it was. Keyed on the id, so a second jump restarts the
-    // fade rather than being cut short by the first one's timer.
     var highlightedId by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(highlightedId) {
         if (highlightedId != null) {
@@ -540,14 +427,6 @@ fun ChatPane(
         }
     }
 
-    /**
-     * A search hit is usually older than the page a channel opens on, so the
-     * message being jumped to is very often not loaded yet - which is why
-     * tapping a result used to do nothing but open the channel at the bottom.
-     * Pull older pages in until it appears, the same walk the browser client
-     * does, and give up rather than read a whole channel back to its first
-     * message.
-     */
     var jumpMissing by remember(channelId) { mutableStateOf(false) }
     val liveRows by rememberUpdatedState(rows)
     val liveHasOlder by rememberUpdatedState(hasOlder)
@@ -561,18 +440,12 @@ fun ChatPane(
         while (pagesAsked <= JUMP_MAX_PAGES) {
             val index = liveRows.indexOfFirst { it.message.id == target }
             if (index >= 0) {
-                // Snap rather than animate: the hit is usually several pages up,
-                // and scrolling there flings the whole conversation past the
-                // reader for no gain. The highlight flash is what points it out.
                 listState.scrollToItem(index)
                 highlightedId = target
                 landed = true
                 break
             }
             if (liveRows.isEmpty()) {
-                // The channel's own first page is still in flight. Waiting for
-                // it is not one of our page budget - there is nothing to page
-                // back from yet.
                 if (waitedForFirstPage++ >= JUMP_MAX_INITIAL_WAITS) break
                 delay(JUMP_POLL_MS)
                 continue
@@ -584,7 +457,6 @@ fun ChatPane(
             }
             delay(JUMP_POLL_MS)
         }
-        // Deleted, or further back than we are willing to walk.
         if (!landed) jumpMissing = true
         onJumpHandled()
     }
@@ -599,12 +471,10 @@ fun ChatPane(
         members.firstOrNull { it.userId == uid }?.let { it.nickname ?: it.user.displayName }
     }
 
-    // <@id> resolution for the markdown renderer.
     val mentionNames = remember(members) {
         members.associate { it.userId to (it.nickname ?: it.user.displayName) }
     }
 
-    // @username resolution for the markdown renderer.
     val mentionUsers = remember(members) {
         members.associate {
             it.user.username.lowercase() to
@@ -612,7 +482,6 @@ fun ChatPane(
         }
     }
 
-    // Swipe-to-reply target, cleared once the reply is sent or dismissed.
     var replyTo by remember { mutableStateOf<Message?>(null) }
     var encryptionOpen by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -622,9 +491,6 @@ fun ChatPane(
         if (result.resultCode == Activity.RESULT_OK) onSetStrict?.invoke(false)
     }
 
-    // Tapping a reply's quoted line jumps to what it answers. Only messages
-    // already loaded can be reached - an unloaded parent renders no quote line
-    // to tap in the first place, so there is nothing to jump to.
     val jumpScope = rememberCoroutineScope()
     val jumpToMessage: (String) -> Unit = { id ->
         val index = rows.indexOfFirst { it.message.id == id }
@@ -642,14 +508,11 @@ fun ChatPane(
         }
     }
 
-    // The soft keyboard is handled by the root safeDrawing inset in MainActivity,
-    // which lifts this whole pane; a second imePadding here would double it.
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(c.surface2),
     ) {
-        // Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -663,9 +526,6 @@ fun ChatPane(
                 tint = c.inkSecondary,
                 modifier = Modifier.clickable(onClick = onBack).padding(4.dp),
             )
-            // Only a group DM is handed the icon actions, so that is also what
-            // says to draw the group's own picture here instead of whichever
-            // member happens to come first.
             if (onSetIcon != null) {
                 GroupIcon(
                     iconUrl = iconUrl,
@@ -676,8 +536,6 @@ fun ChatPane(
                 Avatar(
                     user = headerUser,
                     size = 28.dp,
-                    // A DM participant's embedded status is their saved
-                    // preference; absent live presence must read as offline.
                     status = presence[headerUser.id] ?: PresenceStatus.OFFLINE,
                     modifier = Modifier.padding(horizontal = 4.dp),
                 )
@@ -727,10 +585,6 @@ fun ChatPane(
                         .size(20.dp),
                 )
             }
-            // Everything that isn't a call or a state indicator goes behind one
-            // menu. A phone header fits about four taps before the title starts
-            // truncating, and a row of anonymous glyphs - a bare X for "remove
-            // the background" among them - is not readable at any width.
             val overflow = buildList {
                 if (onSearch != null) {
                     add(MenuItem(AppStrings.get(context, R.string.catalog_search_messages_abea65ae), Icons.Default.Search, onClick = onSearch))
@@ -787,8 +641,6 @@ fun ChatPane(
                     }
                 }
             }
-            // A channel header carries search alone rather than hiding the one
-            // thing in it behind a second tap.
             if (overflow.size == 1) {
                 val only = overflow.first()
                 Icon(
@@ -821,9 +673,6 @@ fun ChatPane(
         }
         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(c.border))
 
-        // A jump that could not reach its message has to say so. Silently
-        // sitting at the bottom of the channel is indistinguishable from the
-        // tap having been ignored, which is exactly how this read before.
         if (jumpMissing) {
             Text(
                 text = AppStrings.get(context, R.string.catalog_couldn_t_reach_that_message_it_may_896fe39d),
@@ -836,19 +685,7 @@ fun ChatPane(
             )
         }
 
-        // The return affordance floats over history; giving it a row of its own
-        // would shorten the conversation precisely when someone is reading it.
         Box(modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
-            // Shared DM background, under everything else. Plaintext, like
-            // avatars: everyone in the conversation sees the same image.
-            //
-            // Readability is the group plates' job now (see MessageRow), so the
-            // picture keeps almost all of its strength here. What is left is a
-            // light tint to pull a blown-out photo back towards the surface
-            // colour, and a slight blur so fine detail stops fighting the
-            // unplated text - the system notices - that does sit straight on it.
-            // The blur bleeds transparent pixels in from the edges; the
-            // overscale pushes them past the clip.
             if (backgroundUrl != null) {
                 AsyncImage(
                     model = absoluteUrl(backgroundUrl),
@@ -858,16 +695,12 @@ fun ChatPane(
                 )
                 Box(Modifier.fillMaxSize().background(c.surface2.copy(alpha = 0.3f)))
             }
-            // Messages. reverseLayout: first item = visual bottom = newest.
             LazyColumn(
                 state = listState,
                 reverseLayout = true,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp),
             ) {
-                // Key on the local id where there is one: a message's `id` changes
-                // when the server confirms it, and keying on that alone disposes the
-                // row and builds a new one, replaying the insert animation.
                 items(rows, key = { messageRowKey(it.message) }) { row ->
                     val message = row.message
                     if (row.isNotice) {
@@ -917,7 +750,6 @@ fun ChatPane(
                         )
                     }
                 }
-                // Last in a reversed list = the visual top, where older history loads.
                 if (loadingOlder) {
                     item(key = "loading-older") {
                         Box(
@@ -967,9 +799,6 @@ fun ChatPane(
             }
         }
 
-        // A conversation still in plaintext says so, and names who it is waiting
-        // on, rather than just showing no padlock and letting people assume
-        // (docs/E2EE.md §10.1).
         encryptionInfo?.waitingOn?.takeIf { it.isNotEmpty() }?.let { waiting ->
             val names = waiting.mapNotNull(nameOf)
             val who = when (names.size) {
@@ -1012,7 +841,6 @@ fun ChatPane(
             }
         }
 
-        // Typing indicator
         val typers = typingUserIds.mapNotNull { nameOf(it) }
         if (typers.isNotEmpty()) {
             Text(
@@ -1026,14 +854,11 @@ fun ChatPane(
             )
         }
 
-        // Reply banner: what you swiped, and a way out of it.
         replyTo?.let { target ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(c.surface3)
-                    // Vertical padding dropped: the 48dp cancel target now sets the
-                    // bar's height, so the bar grows once rather than twice over.
                     .padding(start = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -1305,17 +1130,6 @@ fun ChatPane(
     }
 }
 
-/**
- * A system notice travels as an ordinary message because there is no
- * system-message channel to carry it, but reading it as one of the sender's
- * remarks gets it wrong - it is a fact about the conversation. So it is drawn
- * centred and unbubbled, keeping the name, since who changed what is the whole
- * point of sending it.
- *
- * [notice] is null for a kind this build has never heard of, and then the
- * sentence the server wrote stands in - which already names the actor, so a new
- * notice on an old build reads plainly rather than not at all.
- */
 @Composable
 private fun SystemNoticeRow(notice: SystemNotice?, message: Message, selfId: String) {
     val c = OrangTheme.colors
@@ -1341,29 +1155,21 @@ private fun SystemNoticeRow(notice: SystemNotice?, message: Message, selfId: Str
 private fun MessageRow(
     message: Message,
     pending: Boolean,
-    /** The server refused this one. It keeps its place, with a way to act on it. */
     failed: Boolean,
     onRetry: () -> Unit,
     onDiscard: () -> Unit,
     selfId: String,
     presence: PresenceStatus?,
     grouped: Boolean,
-    /** The conversation has a background picture, so the row draws itself as
-     *  part of an inset, rounded group plate instead of a full-width band. */
     plated: Boolean,
-    /** Last row of its run, so the plate closes and rounds off underneath it. */
     groupEnd: Boolean,
     compact: Boolean,
     nameOf: (String) -> String?,
     mentionNames: Map<String, String>,
     mentionUsers: Map<String, MentionUser>,
-    /** Members offered by @mention autocomplete while editing this message. */
     members: List<ServerMember>,
-    /** The message this one replies to, if it is loaded. */
     repliedTo: Message?,
-    /** Briefly tinted, because someone just jumped here. */
     highlighted: Boolean,
-    /** The row selected by the reply composer. */
     replyingTo: Boolean,
     onJumpToMessage: (String) -> Unit,
     onReply: (Message) -> Unit,
@@ -1388,20 +1194,16 @@ private fun MessageRow(
     var emojiOpen by remember { mutableStateOf(false) }
     val isMine = message.author.id == selfId
     val clipboard = LocalClipboardManager.current
-    // Tint the whole row when the message pings us (never our own messages).
     val pinged = !isMine && lt.oranges.orangchat.util.mentionsSelf(
         message.content,
         lt.oranges.orangchat.util.MentionContext(mentionNames, mentionUsers, selfId),
     )
 
-    // Swipe right-to-left to reply; on your own messages, keep going and it
-    // becomes an edit instead. Springs back either way.
     val dragScope = rememberCoroutineScope()
     val dragX = remember(message.id) { Animatable(0f) }
     val density = LocalDensity.current
     val replyPx = with(density) { REPLY_TRIGGER.toPx() }
     val editPx = with(density) { EDIT_TRIGGER.toPx() }
-    // Only your own messages have anywhere to go past the reply threshold.
     val maxDrag = if (isMine) editPx * 1.2f else replyPx * 1.4f
     val haptics = LocalHapticFeedback.current
 
@@ -1410,16 +1212,7 @@ private fun MessageRow(
         dragX.value <= -replyPx -> SwipeAction.REPLY
         else -> SwipeAction.NONE
     }
-    // A tick as each threshold is crossed, so the swipe says what it will do
-    // before the finger commits to it. Gated on the finger still being down:
-    // the spring back to rest re-crosses every threshold on its way, and those
-    // are not crossings the user made.
 
-    // The row used to paint one opaque colour, which is why a chat background
-    // was invisible behind the conversation however light its scrim was: every
-    // message covered it. The surface and the state tint are separate layers
-    // now, so the plate underneath can be translucent and still carry the
-    // reply/ping/jump cues on top of it at full strength.
     val plateShape = if (!plated) {
         RectangleShape
     } else {
@@ -1431,10 +1224,6 @@ private fun MessageRow(
         )
     }
     val rowSurface = if (plated) c.plate else c.surface2
-    // Fades back to no tint at all once the highlight lapses, so the jump draws
-    // the eye without leaving the message looking permanently marked. The rest
-    // state keeps the primary hue at zero alpha rather than using
-    // Color.Transparent, whose black would darken the row mid-animation.
     val restTint = when {
         replyingTo -> c.primary.copy(alpha = 0.11f)
         pinged -> c.primary.copy(alpha = 0.08f)
@@ -1454,7 +1243,6 @@ private fun MessageRow(
     }
 
     Box(modifier = Modifier.fillMaxWidth()) {
-        // Affordance revealed at the right edge as the row slides left.
         Icon(
             if (armed == SwipeAction.EDIT) Icons.Default.Edit else Icons.AutoMirrored.Filled.Reply,
             contentDescription = null,
@@ -1470,8 +1258,6 @@ private fun MessageRow(
             .fillMaxWidth()
             .alpha(if (pending) 0.5f else 1f)
             .offset { IntOffset(dragX.value.roundToInt(), 0) }
-            // Outside the plate: the gutter the picture shows through at the
-            // sides, and the gap that separates one group from the next.
             .then(
                 if (plated) {
                     Modifier.padding(
@@ -1496,12 +1282,8 @@ private fun MessageRow(
                     Modifier
                 },
             )
-            // Keeps the long-press ripple inside the plate's rounded corners.
             .then(if (plated) Modifier.clip(plateShape) else Modifier)
             .pointerInput(message.id, isMine, pending, failed) {
-                // Replying to or editing a message that never reached the
-                // server is meaningless - the actions a failed row offers are
-                // its own retry and delete.
                 if (!pending && !failed) detectSwipeToReply(
                     onDelta = { amount ->
                         dragging = true
@@ -1509,8 +1291,6 @@ private fun MessageRow(
                             dragX.snapTo((dragX.value + amount).coerceIn(-maxDrag, 0f))
                         }
                     },
-                    // Read dragX here rather than closing over `armed`: this
-                    // lambda is captured once, but the Animatable is live.
                     onRelease = {
                         val x = dragX.value
                         dragging = false
@@ -1536,8 +1316,6 @@ private fun MessageRow(
             }
             .background(rowSurface, plateShape)
             .background(rowTint, plateShape)
-            // Long-press, not tap: a tap lands on a message constantly while
-            // reading, and every one of them used to open this menu.
             .combinedClickable(
                 enabled = !pending && !failed,
                 onClick = {},
@@ -1547,31 +1325,17 @@ private fun MessageRow(
                 },
             )
             .padding(
-                // Gives back most of what the plate's own gutter takes, so the
-                // text column barely moves when a background is set - a phone
-                // has no width to spare for both insets.
                 start = if (plated) 12.dp else 16.dp,
                 end = if (plated) 12.dp else 16.dp,
-                // Vertical padding belongs to the group, not to each row in it:
-                // a run of grouped messages is meant to read as one block, and
-                // padding on both sides of every internal seam opened a visible
-                // step between the lead and the first message under it.
                 top = if (grouped) 0.dp else if (compact) 2.dp else 4.dp,
                 bottom = if (!groupEnd) 0.dp else if (compact) 1.dp else 2.dp,
             ),
         verticalAlignment = Alignment.Top,
     ) {
-        // A grouped message keeps the avatar column's width so text stays aligned,
-        // but shows the timestamp there on hover-free mobile it stays blank.
-        // The avatar column is 48dp so the tap target is, while the avatar is drawn
-        // top-left at its old 38dp; the gap below shrinks by the same 10dp, so text
-        // still starts 50dp in and grouped rows still line up with ungrouped ones.
         if (grouped) {
             Spacer(Modifier.width(48.dp))
         } else {
             Box(
-                // Takes the tap before the row's own click, so opening a profile
-                // does not also open the message menu behind it.
                 modifier = Modifier.size(48.dp).clickable { onOpenProfile(message.author) },
                 contentAlignment = Alignment.TopStart,
             ) {
@@ -1580,12 +1344,9 @@ private fun MessageRow(
         }
         Spacer(Modifier.width(2.dp))
         Column(modifier = Modifier.weight(1f)) {
-            // Reply context, as a single quoted line above the message.
             repliedTo?.let { parent ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    // Takes the tap ahead of the row's long-press menu: this
-                    // quote is a link back to what it answers.
                     modifier = Modifier
                         .clickable { onJumpToMessage(parent.id) }
                         .padding(vertical = 2.dp),
@@ -1664,7 +1425,6 @@ private fun MessageRow(
                     },
                 )
             } else {
-                // Attachment-only messages have no text to draw.
                 if (message.content.isNotBlank()) {
                     MessageText(
                         content = message.content,
@@ -1683,11 +1443,6 @@ private fun MessageRow(
             }
             if (message.reactions.isNotEmpty()) {
                 Spacer(Modifier.height(4.dp))
-                // The chips and the add button are one control strip, so they
-                // share a height and a shape. The add button used to claim a
-                // 48dp touch target beside ~26dp chips, which stretched the
-                // strip, floated the icon out of line with the counts, and left
-                // the chips looking undersized next to it.
                 val chipShape = RoundedCornerShape(OrangRadius.xl)
                 val chipHeight = 28.dp
                 Row(
@@ -1730,8 +1485,6 @@ private fun MessageRow(
                     }
                 }
             }
-            // The row stayed on screen instead of being deleted, so it has to
-            // say why it is still here and what can be done about it.
             if (failed) {
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1785,10 +1538,6 @@ private fun MessageRow(
     }
 }
 
-/**
- * A text action on a failed message. Small type, but a full 48dp target - these
- * are the only two things that row can do, so neither may be a near-miss.
- */
 @Composable
 private fun FailedMessageAction(label: String, tint: Color, onClick: () -> Unit) {
     Text(
@@ -1906,7 +1655,6 @@ private fun EmojiPicker(expanded: Boolean, onDismiss: () -> Unit, onPick: (Strin
 
 }
 
-/** A `@query` fragment ending at the caret, at line start or after whitespace. */
 private data class MentionQuery(val start: Int, val query: String)
 
 private val MENTION_QUERY = Regex("(^|\\s)@([^\\s@]{0,32})$")
@@ -1918,10 +1666,6 @@ private fun activeMentionQuery(text: String, caret: Int): MentionQuery? {
     return MentionQuery(caret - q.length - 1, q)
 }
 
-/**
- * The message box. [channelId] non-null turns on attachments - it's null when
- * this is reused to edit an existing message, which can only change text.
- */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun Composer(
@@ -1934,35 +1678,21 @@ private fun Composer(
     initial: String = "",
     submitLabel: String? = null,
     channelId: String? = null,
-    /**
-     * Lets the box be submitted with nothing in it. Set when editing a message
-     * that has attachments: they carry it on their own, so deleting the text is
-     * a real edit rather than an empty message, and requiring a character left
-     * no way to make one.
-     */
     allowEmpty: Boolean = false,
     customEmojis: List<EmojiRef> = emptyList(),
-    /** Members offered by @mention autocomplete (empty in DMs). */
     members: List<ServerMember> = emptyList(),
     drafts: AttachmentDraftViewModel = hiltViewModel(),
     textDrafts: MessageDraftViewModel = hiltViewModel(),
 ) {
     val c = OrangTheme.colors
-    // TextFieldState rather than a plain String: keyboard content (GIFs,
-    // stickers, pasted screenshots) arrives through commitContent, and only the
-    // state-based BasicTextField wires that up - see contentReceiver below.
     val textState = rememberTextFieldState(initial)
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     var emojiOpen by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val voiceRecorder = remember(context) { VoiceMessageRecorder(context) }
-    // A press too brief to be a hold gets a neutral hint - it is a
-    // misunderstanding, not a failure. recordingError stays reserved for
-    // permission denials and dead microphones.
     var recordingHint by remember(channelId) { mutableStateOf<String?>(null) }
     var recordingError by remember(channelId) { mutableStateOf<String?>(null) }
-    /** Key of the voice upload that sends itself the moment its file settles. */
     var autoSendVoiceKey by remember(channelId) { mutableStateOf<String?>(null) }
     val voiceColors = orangVoiceRecorderColors()
     var attachmentMenuOpen by remember(channelId) { mutableStateOf(false) }
@@ -1992,11 +1722,6 @@ private fun Composer(
             runCatching { context.contentResolver.delete(uri, null, null) }
         }
     }
-    /**
-     * Opens the microphone. Wired in as the state machine's onStart, which
-     * fires once a press has survived long enough to count as a hold; the cap
-     * is the state machine's own tick delivering the clip at [VoiceRecorderDefaults.MaxDuration].
-     */
     fun openMic() {
         recordingError = null
         runCatching {
@@ -2006,12 +1731,6 @@ private fun Composer(
         }
     }
 
-    /**
-     * The release was the send: stop the recorder and hand the file to the
-     * upload pipeline, which delivers the message itself the moment the file
-     * settles. The duration only matters for the cap; the message carries the
-     * file, not a timecode.
-     */
     fun sendVoice(duration: Duration) {
         val uri = voiceRecorder.stop() ?: run {
             if (channelId != null) recordingError = "Could not record the voice message"
@@ -2021,16 +1740,11 @@ private fun Composer(
         val keys = drafts.add(listOf(uri), channelId, temporaryUris = setOf(uri))
         autoSendVoiceKey = keys.firstOrNull()
         if (autoSendVoiceKey == null) {
-            // add() rejected the file (it couldn't be read); nothing would ever
-            // clean it up, and the 24h sweeper is no excuse to leave it lying around.
             runCatching { context.contentResolver.delete(uri, null, null) }
             recordingError = "Could not record the voice message"
         }
     }
 
-    // Keyed on the channel so switching away drops the in-flight gesture along
-    // with the channel's drafts; rememberUpdatedState inside keeps the callbacks
-    // pointing at the current channel within that lifetime.
     val voiceState = key(channelId) {
         rememberVoiceRecorderState(
             onStart = { openMic() },
@@ -2044,9 +1758,6 @@ private fun Composer(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         if (granted) {
-            // The finger that asked for this is long gone - it went to the
-            // permission dialog - so there is nothing left holding the mic down.
-            // Start locked rather than recording into a void.
             voiceState.start()
             voiceState.lock()
         } else {
@@ -2054,12 +1765,6 @@ private fun Composer(
         }
     }
 
-    /**
-     * Whether a press may open the mic, consulted once the hold has lasted long
-     * enough. Returning false abandons the press silently: it only means a
-     * permission dialog just went up, and the launcher starts the recording
-     * itself (locked) when the user says yes.
-     */
     val canStartMic: () -> Boolean = {
         if (channelId == null) {
             false
@@ -2072,8 +1777,6 @@ private fun Composer(
         }
     }
 
-    // Ticks the running time and pumps amplitude readings while the mic is open.
-    // The phase is the key so the loop wakes up the moment recording starts.
     LaunchedEffect(voiceState.phase) {
         while (voiceState.phase.isRecording) {
             voiceState.tick()
@@ -2097,7 +1800,6 @@ private fun Composer(
         }
     }
 
-    // Hydrate the box with this channel's saved draft on open (edit mode has none).
     LaunchedEffect(channelId) {
         if (channelId != null) {
             val saved = textDrafts.load(channelId)
@@ -2107,16 +1809,11 @@ private fun Composer(
         }
     }
 
-    // A sent message starts a new sentence, but the IME has no way to know that
-    // and stays on whatever symbol or emoji page it was left on. restartInput is
-    // what makes it re-read the field and fall back to its letter layout.
     val view = LocalView.current
     val resetKeyboard: () -> Unit = {
         view.context.getSystemService(InputMethodManager::class.java)?.restartInput(view)
     }
 
-    // @mention autocomplete. Derived straight from the field rather than kept in
-    // its own state, so it can never disagree with what is actually typed.
     val mention = if (members.isEmpty()) null else {
         activeMentionQuery(textState.text.toString(), textState.selection.end)
     }
@@ -2128,7 +1825,6 @@ private fun Composer(
         }.take(MENTION_LIMIT)
     }
 
-    /** Swap the typed `@query` for the picked handle - that is the wire format. */
     val pickMention: (ServerMember) -> Unit = { m ->
         val q = mention
         if (q != null) {
@@ -2142,13 +1838,8 @@ private fun Composer(
 
     val uploads by drafts.uploads.collectAsState()
     val draftError by drafts.error.collectAsState()
-    // The auto-sent voice message keeps its own slot outside the shared draft:
-    // it must neither block a text send nor ride along on one, and it renders
-    // as a "sending" row instead of a removable chip.
     val visibleUploads = uploads.filter { it.key != autoSendVoiceKey }
 
-    // The release was already the send. Deliver the clip on its own the moment
-    // its file settles, before any other send can sweep it up.
     LaunchedEffect(autoSendVoiceKey, uploads) {
         val key = autoSendVoiceKey ?: return@LaunchedEffect
         val upload = uploads.firstOrNull { it.key == key } ?: return@LaunchedEffect
@@ -2169,7 +1860,6 @@ private fun Composer(
         }
     }
 
-    // The picker returns content uris; uploading starts immediately.
     val picker = rememberLauncherForActivityResult(
         ActivityResultContracts.GetMultipleContents(),
     ) { uris -> drafts.add(uris, channelId) }
@@ -2192,13 +1882,7 @@ private fun Composer(
         }
     }
 
-    // Was an onValueChange side effect before the state migration. Also persists
-    // the draft as it's typed. Keyed on channelId so a channel switch routes
-    // saves to the right channel.
     LaunchedEffect(channelId) {
-        // One packet per window while they are actually typing, none in a window
-        // they typed nothing in. Per-keystroke emits were both needlessly chatty
-        // and enough to trip the server's typing rate limit on a fast typist.
         var lastTypingSent = 0L
         snapshotFlow { textState.text.toString() }
             .drop(1)
@@ -2212,21 +1896,11 @@ private fun Composer(
             }
     }
 
-    /**
-     * Images handed over by the keyboard. Declaring this is also what tells the
-     * IME we take them at all - without a receiver, Gboard greys out its GIF and
-     * sticker tabs with "this app does not support images here".
-     *
-     * Compose has already called requestPermission() on the IME's content uri by
-     * the time this runs, so it can be read like any other pick.
-     */
     val contentListener = remember(drafts) {
         object : ReceiveContentListener {
             override fun onReceive(transferableContent: TransferableContent): TransferableContent? {
                 if (!transferableContent.hasMediaType(MediaType.Image)) return transferableContent
                 val received = mutableListOf<Uri>()
-                // Take only the items that are actually files; anything left over
-                // goes back so the text field can handle it (pasted text, say).
                 val remaining = transferableContent.consume { item ->
                     val uri = item.uri
                     if (uri == null) false else { received.add(uri); true }
@@ -2237,9 +1911,6 @@ private fun Composer(
         }
     }
 
-    // A recording must not outlive the app's visibility: with the screen locked
-    // or the app backgrounded, the mic would stay hot and the file keep growing
-    // with nothing on screen saying so.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -2249,12 +1920,9 @@ private fun Composer(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // A draft belongs to its channel. Switching away cancels anything still
-    // uploading rather than carrying it to wherever we land next.
     if (channelId != null) {
         DisposableEffect(channelId) {
             onDispose {
-                // Persist whatever is in the box for the channel we're leaving.
                 textDrafts.saveNow(channelId, textState.text.toString().trim())
                 voiceState.forceCancel()
                 voiceRecorder.cancel()
@@ -2326,20 +1994,12 @@ private fun Composer(
             }
         }
 
-    // Attachments can carry a message on their own, so blank text is fine as
-    // long as something is going with it - but not while it's still uploading.
-    // Both the sealed file and the sealed preview beside it: an attachment id
-    // the message never claims is swept as an abandoned upload, which took the
-    // thumbnail out from under every ref that pointed at it.
     val ready = visibleUploads.flatMap { upload ->
         listOfNotNull(upload.attachment?.id, upload.sealed?.thumb?.attachmentId)
     }
     val enabled = (textState.text.isNotBlank() || ready.isNotEmpty() || allowEmpty) &&
         visibleUploads.none { !it.settled } &&
         visibleUploads.none { it.error != null }
-    // A pasted login or bot token is a credential, not conversation text: ask
-    // before sending it, since Android's paste goes straight into the field.
-    // Schema match only; whether the token is live is never asked.
     val sendDraft: () -> Unit = {
         val content = textState.text.toString().trim()
         val kind = findPastedTokenKind(content)
@@ -2353,19 +2013,12 @@ private fun Composer(
             )
             textState.setTextAndPlaceCursorAtEnd("")
             drafts.dismissError()
-            // Only the files that went with this send; an in-flight voice
-            // message keeps its own key and delivers itself when its upload
-            // settles.
             visibleUploads.forEach { drafts.remove(it.key) }
             channelId?.let { textDrafts.clear(it) }
             resetKeyboard()
         }
     }
 
-    // Once the cap is in reach, say where the draft stands - the transformation
-    // above simply stops accepting characters, and silence at the limit reads as
-    // a broken keyboard. Sits above the row so the input never shifts under a
-    // thumb that is mid-sentence.
     val draftLength = textState.text.length
     if (draftLength >= MESSAGE_LENGTH_WARNING_THRESHOLD) {
         val atLimit = draftLength >= MESSAGE_MAX_LENGTH
@@ -2405,8 +2058,6 @@ private fun Composer(
                     textState.edit { append(emoji) }
                     onTyping()
                 },
-                // GIFs are standalone messages. Any text or attachment draft
-                // stays in place for the user's next send.
                 onGif = { url -> onSend(url, emptyList(), emptyList()) },
             )
         }
@@ -2450,12 +2101,7 @@ private fun Composer(
                     textStyle = TextStyle(color = c.ink, fontSize = 15.sp),
                     cursorBrush = SolidColor(c.primary),
                     lineLimits = TextFieldLineLimits.MultiLine(),
-                    // Rejects the overflowing edit rather than truncating after
-                    // the fact, so a paste that doesn't fit leaves the existing
-                    // draft alone instead of replacing it with a clipped version.
                     inputTransformation = InputTransformation.maxLength(MESSAGE_MAX_LENGTH),
-                    // BasicTextField defaults to no capitalization - that default is
-                    // why Gboard auto-capitalized everywhere but here.
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Sentences,
                         keyboardType = KeyboardType.Text,
@@ -2463,8 +2109,6 @@ private fun Composer(
                     modifier = Modifier
                         .focusRequester(focusRequester)
                         .fillMaxWidth()
-                        // Editing a sent message can't gain attachments, so it has
-                        // no receiver and the IME hides its image tabs there.
                         .then(
                             if (channelId != null) Modifier.contentReceiver(contentListener)
                             else Modifier,
@@ -2473,10 +2117,6 @@ private fun Composer(
             }
         }
         Spacer(Modifier.width(8.dp))
-        // The delete button stands in for the mic only once the recording is
-        // locked, when no finger is in flight; between idle, held and cancelling
-        // the mic keeps one stable slot, because a re-mount there would tear
-        // down the press gesture mid-flight.
         if (channelId != null) {
             if (voiceState.phase == VoicePhase.RecordingLocked) {
                 VoiceDeleteButton(
@@ -2492,10 +2132,6 @@ private fun Composer(
                 )
             }
         }
-        // Permanently mounted, and the last thing in the row: its presence is
-        // what keeps the mic's slot stable across the idle-to-recording
-        // transition - a send button that vanished mid-recording is exactly
-        // what broke the old swipe-to-delete, by shoving the mic sideways.
         val sendingVoice = voiceState.phase == VoicePhase.RecordingLocked
         val sendEnabled = when {
             sendingVoice -> true
@@ -2566,15 +2202,10 @@ private fun Composer(
     }
 }
 
-/** How many members the @mention menu offers at once. Matches the web client. */
 private const val MENTION_LIMIT = 8
 
 private enum class PastedTokenKind { LOGIN, BOT }
 
-/**
- * Schema match only - nothing here is checked against the server. A login token
- * is a v4 UUID; a bot token is `<base64url(bot id)>.<32 random bytes, base64url>`.
- */
 private fun findPastedTokenKind(text: String): PastedTokenKind? {
     val login = Regex(
         "\\b[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\b",
@@ -2586,11 +2217,6 @@ private fun findPastedTokenKind(text: String): PastedTokenKind? {
     return null
 }
 
-/**
- * The @mention picker, shown above the composer while a `@query` is being typed.
- * Both the label and the handle are listed: the label is what people recognise,
- * the handle is what actually gets inserted.
- */
 @Composable
 private fun MentionSuggestions(
     matches: List<ServerMember>,

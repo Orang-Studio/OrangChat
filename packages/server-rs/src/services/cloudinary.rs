@@ -1,12 +1,3 @@
-//! Cloudinary-backed blob storage for avatars, banners, and local attachments.
-//!
-//! Optional: with no credentials configured the callers fall back to writing
-//! under UPLOAD_DIR / ATTACHMENT_DIR exactly as before, so dev and any
-//! deployment that never sets the vars keep working untouched.
-//!
-//! Legacy rows do not store a `public_id` alongside the URL, so cleanup recovers
-//! it with `public_id_from_url`. Encrypted attachment URLs are handled separately
-//! by the attachment service; every upload still uses an explicit public id.
 
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -62,9 +53,6 @@ impl Cloudinary {
         })
     }
 
-    /// Cloudinary signs the alphabetically sorted `k=v&k=v` of every parameter
-    /// except file/api_key/resource_type, with the secret appended (not a keyed
-    /// HMAC - the secret is plain suffix input to SHA-1).
     fn sign(&self, params: &[(&str, &str)]) -> String {
         let mut sorted: Vec<&(&str, &str)> = params.iter().collect();
         sorted.sort_by_key(|(k, _)| *k);
@@ -87,8 +75,6 @@ impl Cloudinary {
             .to_string()
     }
 
-    /// `public_id` must already carry its extension for `raw`, and must not for
-    /// `image`/`video` - Cloudinary appends the format itself for the latter two.
     pub async fn upload(
         &self,
         bytes: Vec<u8>,
@@ -98,9 +84,6 @@ impl Cloudinary {
         let timestamp = Self::timestamp();
         let signature = self.sign(&[("public_id", public_id), ("timestamp", &timestamp)]);
 
-        // The filename is never stored (public_id names the asset) but must be
-        // present: a `file` part without one is read as a string, and Cloudinary
-        // then tries to fetch the bytes as a remote URL - "Invalid URL for upload".
         let form = reqwest::multipart::Form::new()
             .part(
                 "file",
@@ -142,8 +125,6 @@ impl Cloudinary {
         })
     }
 
-    /// Fetch an opaque raw asset back for server-side decryption. The public id
-    /// is minted by us, not accepted from a URL, so it is safe to interpolate.
     pub async fn download_raw(&self, public_id: &str) -> AppResult<Vec<u8>> {
         let response = self
             .client
@@ -193,20 +174,8 @@ impl Cloudinary {
     }
 }
 
-/// Every id we mint lives under this prefix, which is what lets the parser below
-/// skip Cloudinary's version and transformation segments without having to model
-/// their grammar.
 const ID_PREFIX: &str = "orangchat/";
 
-/// `raw` is whatever bytes the user picked - never decoded, never re-encoded, so
-/// it must never render. nginx forces the local copies down with
-/// `Content-Disposition: attachment` and a sandbox CSP.
-///
-/// Cloudinary already defaults raw delivery to `attachment` (verified against the
-/// API: an uploaded .html comes back `content-type: text/html` but disposition
-/// `attachment`). This states it explicitly rather than resting a security
-/// property on someone else's default. Images and video are left inline on
-/// purpose: chat previews them.
 fn force_download_if_raw(secure_url: &str, resource_type: &str) -> String {
     match secure_url.split_once("/raw/upload/") {
         Some((head, tail)) if resource_type == "raw" => {
@@ -216,13 +185,6 @@ fn force_download_if_raw(secure_url: &str, resource_type: &str) -> String {
     }
 }
 
-/// Recover the `public_id` and resource type from a delivery url.
-///
-/// Sound only because we always upload with an explicit `public_id` under
-/// `ID_PREFIX`: everything from that marker to the extension is exactly the id,
-/// whatever version or transformation segments Cloudinary put in front of it.
-/// Cloudinary's own auto-generated ids would break this, so never store a url
-/// this module didn't build.
 pub fn public_id_from_url(url: &str) -> Option<(String, String)> {
     let rest = url.strip_prefix("https://res.cloudinary.com/")?;
     let (_cloud, rest) = rest.split_once('/')?;
@@ -234,8 +196,6 @@ pub fn public_id_from_url(url: &str) -> Option<(String, String)> {
 
     let marker = rest.find(ID_PREFIX)?;
     let rest = &rest[marker..];
-    // Only image/video carry a Cloudinary-appended format; a raw id keeps the
-    // extension it was uploaded with.
     let public_id = if resource_type == "raw" {
         rest.to_string()
     } else {
@@ -279,8 +239,6 @@ mod tests {
         assert_eq!(id, "orangchat/a/b");
     }
 
-    /// The url the sweeper reads back is the one `upload` rewrote, so the
-    /// fl_attachment segment has to survive the round trip.
     #[test]
     fn recovers_id_past_a_transformation_segment() {
         let url = force_download_if_raw(
@@ -308,8 +266,6 @@ mod tests {
         assert!(public_id_from_url("https://example.com/image/upload/v1/a.png").is_none());
     }
 
-    /// A cloudinary-hosted url that isn't ours has no id to destroy; the sweeper
-    /// must not guess one.
     #[test]
     fn rejects_urls_outside_our_prefix() {
         assert!(public_id_from_url(
@@ -318,9 +274,6 @@ mod tests {
         .is_none());
     }
 
-    /// Round-trips a real asset. Ignored by default - needs live credentials and
-    /// the network. Run with the same env the server uses:
-    ///   cargo test --bin orangchat-server -- --ignored round_trips_against_live_api
     #[tokio::test]
     #[ignore]
     async fn round_trips_against_live_api() {
@@ -351,8 +304,6 @@ mod tests {
             .await
             .expect("destroy");
 
-        // The attachment path uploads only a non-image AES-GCM envelope, then
-        // can recover the original bytes after fetching it through raw delivery.
         let storage_id = crate::ids::cuid();
         let encrypted_id = format!("orangchat/attachments/{storage_id}.ocf");
         let cipher = crate::services::attachment_crypto::AttachmentCipher::from_config(&config)
@@ -371,8 +322,6 @@ mod tests {
             cipher.decrypt(&downloaded, &storage_id).expect("decrypt"),
             png
         );
-        // Optional deployed-server check: the running backend must use the same
-        // production key and return the original media through its proxy route.
         if let Ok(base_url) = std::env::var("LIVE_ATTACHMENT_BASE_URL") {
             let delivered = reqwest::get(format!(
                 "{}/api/attachments/encrypted/{storage_id}.png",
@@ -392,8 +341,6 @@ mod tests {
             .await
             .expect("encrypted raw destroy");
 
-        // The raw path carries its extension in the id and must come back marked
-        // for download - that's the whole reason un-decoded bytes are safe to host.
         let raw_id = format!("orangchat/attachments/selftest-{}.html", crate::ids::cuid());
         let raw = cloudinary
             .upload(b"<script>alert(1)</script>".to_vec(), &raw_id, "raw")
@@ -437,7 +384,6 @@ mod tests {
             api_secret: "abcd".into(),
             client: reqwest::Client::new(),
         };
-        // sha1("public_id=sample&timestamp=1315060510" + "abcd")
         let sig = c.sign(&[("timestamp", "1315060510"), ("public_id", "sample")]);
         let mut expected = Sha1::new();
         expected.update(b"public_id=sample&timestamp=1315060510abcd");

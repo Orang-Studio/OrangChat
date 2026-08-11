@@ -23,7 +23,6 @@ class User:
     status: str = "offline"
     bio: str | None = None
     badges: list[str] = field(default_factory=list)
-    #: True for a bot account. Absent on rows written before bots existed.
     bot: bool = False
     created_at: str = ""
 
@@ -74,8 +73,6 @@ class Message:
     reply_to_id: str | None = None
     attachments: list[Attachment] = field(default_factory=list)
     pinned: bool = False
-    #: Set on end-to-end encrypted messages, which in practice means DMs. A bot
-    #: holds no key for these and cannot read them; see docs/BOTS.md.
     ciphertext: str | None = None
 
     _client: Client | None = field(default=None, repr=False, compare=False)

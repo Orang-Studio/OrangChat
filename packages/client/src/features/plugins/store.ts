@@ -8,11 +8,7 @@ import {
   type PluginSettingValues,
 } from "./types";
 
-/**
- * Which plugins are on, and what their settings hold. Device-local, like the
- * rest of prefs: a plugin toggle describes this browser, not the account, so it
- * never reaches the server.
- */
+
 interface PersistedState {
   enabled: string[];
   settings: Record<string, PluginSettingValues>;
@@ -38,15 +34,14 @@ function write(state: PersistedState): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
-    // Storage unavailable (private mode) - choices just won't persist.
   }
 }
 
-/** Teardowns for the currently-running plugins, so a toggle-off is clean. */
+
 const running = new Map<string, () => void>();
 let active = false;
 
-/** Settings a plugin will see, falling back to catalog defaults per key. */
+
 function resolvedSettings(pluginId: string, stored: PersistedState): PluginSettingValues {
   const plugin = pluginById(pluginId);
   if (!plugin) return {};
@@ -72,7 +67,6 @@ function startPlugin(pluginId: string, stored: PersistedState): void {
     setting: <T extends string | boolean>(key: string) => values[key] as T | undefined,
   };
 
-  // A plugin that throws on start must not take the whole app down with it.
   try {
     const teardown = plugin.start(ctx);
     if (teardown) disposers.push(teardown);

@@ -1,4 +1,3 @@
-//! User profile + OAuth account resolution. Mirrors user-service.ts.
 
 use sqlx::QueryBuilder;
 
@@ -33,21 +32,14 @@ pub struct UserPatch {
     pub game_activity: Option<bool>,
 }
 
-/// A patch value that is really this api's own output handed back to it. `None`
-/// is the client clearing the field, which is a genuine edit.
 fn is_wire_form(value: Option<&str>) -> bool {
     value.is_some_and(is_asset_url)
 }
 
-// Every one of these columns is a Postgres `text`, so without a check here a
-// scripted client can store megabytes in a field that is then served to anyone
-// who opens the profile.
 const MAX_DISPLAY_NAME: usize = 100;
 const MAX_STATUS: usize = 200;
 const MAX_BIO: usize = 4000;
 const MAX_PRONOUNS: usize = 100;
-/// Matches MAX_LEN in the client's lib/profileCss.ts, which truncates at the
-/// same point before injecting the stylesheet.
 const MAX_CSS: usize = 100_000;
 const MAX_URL: usize = 2048;
 
@@ -60,15 +52,6 @@ fn check_len(value: Option<&str>, field: &str, max: usize) -> AppResult<()> {
     Ok(())
 }
 
-/// Rejects an image url a client would be unsafe to render.
-///
-/// Two forms are legitimate: an absolute http(s) url (an oauth provider's cdn,
-/// or Cloudinary when it is configured) and a same-origin `/uploads/` path,
-/// which is what `store_media` returns without Cloudinary. Anything else -
-/// `javascript:`, `data:`, a protocol-relative `//evil.tld` - is refused. An
-/// `<img src>` will not execute a javascript: url, but this value is also read
-/// by the Android profile card and by CSS `url()` in profile themes, and it
-/// only has to be dangerous in one of those places.
 pub(crate) fn check_image_url(value: Option<&str>, field: &str) -> AppResult<()> {
     let Some(url) = value else { return Ok(()) };
     if url.is_empty() {
@@ -77,8 +60,6 @@ pub(crate) fn check_image_url(value: Option<&str>, field: &str) -> AppResult<()>
     check_len(Some(url), field, MAX_URL)?;
 
     let ok = if let Some(rest) = url.strip_prefix('/') {
-        // A single leading slash only: `//host` is protocol-relative and would
-        // resolve off-origin.
         !rest.starts_with('/') && url.starts_with("/uploads/")
     } else {
         let lower = url.to_ascii_lowercase();
@@ -107,8 +88,6 @@ fn validate_patch(patch: &UserPatch) -> AppResult<()> {
     Ok(())
 }
 
-/// Outer `None` is "field absent", inner `None` is "clear it" - neither needs
-/// checking, so both flatten to nothing to validate.
 fn flat(value: &Option<Option<String>>) -> Option<&str> {
     value.as_ref().and_then(|v| v.as_deref())
 }
@@ -141,10 +120,6 @@ pub async fn update_profile(
     if let Some(dn) = patch.display_name {
         sep.push(r#""displayName" = "#).push_bind_unseparated(dn);
     }
-    // A client that round-trips the user object sends back the wire form the api
-    // gave it, which is this row's own asset route; storing it would erase the
-    // real url. Nothing else is a legitimate reason to send one, so drop the
-    // field rather than fail the whole save.
     if let Some(av) = patch.avatar_url.filter(|v| !is_wire_form(v.as_deref())) {
         sep.push(r#""avatarUrl" = "#).push_bind_unseparated(av);
     }
@@ -221,17 +196,9 @@ pub async fn get_shared_server_ids(state: &AppState, user_id: &str) -> AppResult
     )
 }
 
-/// Every socket room that should hear about `user_id`'s profile changing.
-///
-/// Sharing a server is only one of the ways to be looking at someone's name and
-/// avatar: friends and DM partners render them too, and often share no server at
-/// all - so fanning out to `server:*` alone leaves them on a stale profile until
-/// they reload. The user's own `user:<id>` room is included so their other tabs
-/// and their phone follow an edit made anywhere.
 pub async fn get_profile_audience_rooms(state: &AppState, user_id: &str) -> AppResult<Vec<String>> {
     let server_ids = get_shared_server_ids(state, user_id).await?;
 
-    // Friends (accepted, either direction) and everyone sharing a DM / group DM.
     let peer_ids: Vec<String> = sqlx::query_scalar(
         r#"SELECT DISTINCT "addresseeId" AS id FROM "Friendship"
              WHERE "requesterId" = $1 AND status = 'accepted'
@@ -252,8 +219,6 @@ pub async fn get_profile_audience_rooms(state: &AppState, user_id: &str) -> AppR
         .into_iter()
         .map(|id| format!("server:{id}"))
         .collect();
-    // The DM query returns the user themselves; that is wanted (own tabs), and
-    // dedupe keeps it to one room either way.
     rooms.extend(peer_ids.into_iter().map(|id| format!("user:{id}")));
     rooms.push(format!("user:{user_id}"));
     rooms.sort();
@@ -319,15 +284,7 @@ pub async fn find_or_create_oauth_user(
             .await?);
     }
 
-    // Matching on an address the provider has *not* verified would hand the
-    // account to whoever typed it in: sign up at the provider with the victim's
-    // email, leave it unconfirmed, and this lookup adopts their account -
-    // password and TOTP never consulted. Unverified means "no address": fall
-    // through and create a separate account instead.
     if let Some(ref email) = profile.email.as_ref().filter(|_| profile.email_verified) {
-        // Case-insensitively, or a provider that hands back a differently-cased
-        // address silently forks a second account instead of linking to the one
-        // the person already has.
         let by_email: Option<UserRow> =
             sqlx::query_as(r#"SELECT * FROM "User" WHERE lower(email) = lower($1)"#)
                 .bind(email)
@@ -344,10 +301,6 @@ pub async fn find_or_create_oauth_user(
             .bind(&user.id)
             .execute(&state.pool)
             .await?;
-            // The provider just proved this address belongs to them, which is
-            // exactly what our own verification mail asks for. Sending one
-            // anyway would strand an account that has no password to log in
-            // with and re-request it.
             let user: UserRow = sqlx::query_as(
                 r#"UPDATE "User" SET "emailVerifiedAt" = COALESCE("emailVerifiedAt", now()) WHERE id = $1 RETURNING *"#,
             )
@@ -364,9 +317,6 @@ pub async fn find_or_create_oauth_user(
         profile.email.clone().unwrap_or_else(|| "user".into())
     };
     let username = generate_unique_username(state, &seed).await?;
-    // Stored canonically, the same as a password signup: the placeholder for a
-    // provider that gives us no address has to be lowercase too, or it collides
-    // with the lower(email) index on a re-link it should have matched.
     let email = profile
         .email
         .clone()
@@ -378,11 +328,6 @@ pub async fn find_or_create_oauth_user(
         })
         .to_lowercase();
 
-    // Signing in through the provider already proved the address (or there is
-    // no real address to prove, for a provider that hands back none), so these
-    // accounts skip our verification mail. Without this every OAuth signup is
-    // locked out by the email-verified check on the way back in, and having no
-    // password there is no other route in.
     let email_verified = profile.email_verified || profile.email.is_none();
 
     let user_id = cuid();
@@ -424,10 +369,8 @@ mod image_url_tests {
 
     #[test]
     fn accepts_the_two_forms_this_server_stores() {
-        // Cloudinary and the oauth provider cdns.
         assert!(accepts("https://cdn.discordapp.com/avatars/1/a.png"));
         assert!(accepts("http://example.test/a.png"));
-        // What store_media returns when Cloudinary is not configured.
         assert!(accepts("/uploads/abc.jpg"));
     }
 
@@ -448,9 +391,7 @@ mod image_url_tests {
 
     #[test]
     fn rejects_paths_that_leave_this_origin() {
-        // Protocol-relative: the browser resolves this against evil.tld, not us.
         assert!(!accepts("//evil.tld/a.png"));
-        // A same-origin path, but not one this server ever hands out.
         assert!(!accepts("/api/admin"));
     }
 

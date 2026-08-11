@@ -1,9 +1,3 @@
-// A complete OrangChat bot.
-//
-//   BOT_TOKEN=... node examples/ping.mjs
-//
-// Create the bot and its token on the Developers page in OrangChat (sidebar,
-// beside Friends), then invite it to a server from the same screen.
 
 import { Client } from '@orangchat/bot';
 

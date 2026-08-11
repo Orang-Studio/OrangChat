@@ -1,7 +1,3 @@
-//! Bot management REST, mounted under /api. This is the *developer* surface -
-//! creating and administering bots you own - and is reachable only with a human
-//! credential. A bot cannot manage bots: `deny_bots` covers these routes so a
-//! leaked token cannot mint itself fresh ones or spawn siblings.
 
 use axum::extract::{Path, State};
 use axum::routing::{get, post};
@@ -15,10 +11,6 @@ use crate::state::AppState;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        // The one route on this module a bot itself may call: "who am I".
-        // Bots cannot reach /auth/me - that lives behind `deny_bots` with the
-        // rest of the account surface - but they still need their own identity
-        // to recognise their own messages and to fill in `ready`.
         .route("/bot/me", get(bot_me))
         .route("/me/bots", get(list_bots).post(create_bot))
         .route(
@@ -40,8 +32,6 @@ fn bot_json(b: &bot::BotRow) -> Value {
     })
 }
 
-/// The calling bot's own user record. Requires a bot token specifically - a
-/// person hitting this has `/auth/me` and no business here.
 async fn bot_me(State(state): State<AppState>, caller: AuthUser) -> AppResult<Json<Value>> {
     if !caller.is_bot() {
         return Err(AppError::Permission(
@@ -86,9 +76,6 @@ async fn create_bot(
 
     let created = bot::create(&state, &user.user_id, &username, &display_name).await?;
 
-    // A bot with no token cannot do anything, and the panel would immediately
-    // have to ask for one. Mint the first alongside it - this is the single
-    // response that will ever carry a token in the clear.
     let token = bot::mint_token(&state, &user.user_id, &created.id).await?;
 
     Ok(Json(json!({
@@ -122,9 +109,6 @@ async fn patch_bot(
         None => None,
     };
 
-    // Empty string clears, same as JSON null. The Android client serialises with
-    // `explicitNulls = false`, so a null field never reaches the wire at all -
-    // "" is the only clear signal it can send.
     let avatar_url = match obj.get("avatarUrl") {
         Some(Value::Null) => Some(None),
         Some(Value::String(s)) if s.trim().is_empty() => Some(None),
@@ -173,9 +157,6 @@ async fn list_tokens(
     Ok(Json(json!({ "tokens": items })))
 }
 
-/// Mints a token and returns it in the clear. This is the only response in the
-/// API that ever does; the digest is all that is kept, so it cannot be shown
-/// again and the panel has to say so at the point of display.
 async fn mint_token(
     State(state): State<AppState>,
     user: AuthUser,
@@ -198,8 +179,6 @@ async fn revoke_token(
     Ok(Json(json!({ "ok": true })))
 }
 
-/// DELETE with a body is awkward from some HTTP clients, so revocation is also
-/// reachable by POST. Same handler, same ownership check.
 async fn revoke_token_post(
     state: State<AppState>,
     user: AuthUser,

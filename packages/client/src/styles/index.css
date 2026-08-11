@@ -1,30 +1,10 @@
 @import "tailwindcss";
 
-/*
- * OrangChat design tokens.
- *
- * Runtime CSS variables (--oc-*) carry the actual values and flip with
- * [data-theme]; Tailwind utilities reference them via @theme inline, so
- * `bg-surface-1`, `text-ink`, `bg-primary` etc. are theme-aware for free.
- *
- * Direction: cool graphite neutrals so the single warm tangerine accent reads
- * as the hero, plus a tight, architectural corner scale (edges are crisp, not
- * bubbly). Change the feel of the whole app from the two blocks below.
- *
- * The token blocks live in a cascade layer on purpose. User CSS (an uploaded
- * theme, or a marketplace install) is injected unlayered, and unlayered rules
- * outrank every layer regardless of specificity - so a plain
- * `:root { --oc-primary: ... }` override actually lands. Without the layer it
- * loses to `:root[data-theme="dark"]`, which is always on <html>, and nothing
- * the user writes appears to do anything.
- */
 @layer oc-tokens {
-/* Dark - the default. Cool graphite base, vivid tangerine accent. */
 :root,
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  /* Surfaces, deepest (server rail) → highest (popovers) */
   --oc-surface-0: #08090c;
   --oc-surface-1: #0e0f13;
   --oc-surface-2: #14151b;
@@ -34,24 +14,18 @@
   --oc-border: #21232c;
   --oc-border-strong: #353845;
 
-  /* Plate under a message group when the conversation has a background
-   * picture. Opaque enough that even muted text keeps roughly the contrast it
-   * has on a plain surface; see `.oc-plate`. */
   --oc-plate: color-mix(in srgb, var(--oc-surface-1) 88%, transparent);
 
-  /* Text */
   --oc-ink: #f3f4f7;
   --oc-ink-secondary: #b0b3bf;
   --oc-ink-muted: #71747f;
   --oc-ink-on-primary: #1c0e02;
 
-  /* Brand - Oranges.LT family orange (matches icon.svg / OrangMate / OrangMove) */
   --oc-primary: #ff6a1a;
   --oc-primary-hover: #ff8340;
   --oc-primary-active: #ee5d0e;
   --oc-primary-soft: rgba(255, 106, 26, 0.16);
 
-  /* Status */
   --oc-success: #3fbd6e;
   --oc-warning: #e2ab35;
   --oc-danger: #f0554c;
@@ -116,8 +90,6 @@
     "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     sans-serif;
 
-  /* Tight, architectural corner scale - overrides Tailwind's soft defaults so
-   * every rounded-* utility across the app reads crisp instead of bubbly. */
   --radius-xs: 0.125rem;
   --radius-sm: 0.1875rem;
   --radius-md: 0.25rem;
@@ -125,17 +97,11 @@
   --radius-xl: 0.4375rem;
   --radius-2xl: 0.625rem;
   --radius-3xl: 0.875rem;
-  /* Crisp rounded-square for server icons - not a circle-morph. */
   --radius-squircle: 0.5rem;
 }
 
-/* Dark-variant utilities keyed off data-theme rather than media query */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-/* The `color-scheme` meta declares both schemes, so the browser's default
- * canvas is white. Theme the canvas itself: any moment the body's box is
- * shorter than the viewport - a suspending lazy route chunk swapping the
- * tree, an overscroll, a collapsed root - would otherwise flash white. */
 html {
   background-color: var(--oc-surface-0);
 }
@@ -150,16 +116,11 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Visible keyboard focus everywhere, brand-colored */
 :focus-visible {
   outline: 2px solid var(--oc-primary);
   outline-offset: 2px;
 }
 
-/* ── Accessibility preferences (see lib/prefs.ts) ────────
- * Set on <html> so they cascade over everything, including portalled
- * dialogs. Font scale rides on the root font-size, not a variable here.
- */
 
 :root[data-reduce-motion="true"],
 :root[data-reduce-motion="true"] *,
@@ -175,7 +136,6 @@ body {
   --oc-border: var(--oc-border-strong);
   --oc-ink-secondary: var(--oc-ink);
   --oc-ink-muted: var(--oc-ink-secondary);
-  /* Nothing shows through behind the words at all. */
   --oc-plate: var(--oc-surface-1);
 }
 
@@ -188,10 +148,6 @@ body {
   text-decoration: underline;
 }
 
-/* Floating menus start invisible and fade in once Radix has measured where the
- * cursor is. Radix pins `animation: none` on the content until it is positioned,
- * so during that first frame the opacity below is what renders - no flash in the
- * top-left corner before the menu jumps to the pointer. */
 @keyframes oc-menu-in {
   from {
     opacity: 0;
@@ -208,10 +164,6 @@ body {
   animation: oc-menu-in 90ms ease-out forwards;
 }
 
-/* A media viewer opens by growing out of the thumbnail that was clicked (the
- * FLIP in useMediaZoom). Its chrome is not part of that move, so it arrives
- * from the edge it lives on - the bar at the top from above, the sender bar and
- * transport from below - rather than fading in over the middle of the picture. */
 @keyframes oc-chrome-in-top {
   from {
     opacity: 0;
@@ -255,7 +207,6 @@ body {
   animation: oc-backdrop-in 160ms ease-out both;
 }
 
-/* Compact density tightens the gaps only; nothing reflows or disappears. */
 :root[data-density="compact"] .oc-message {
   padding-top: 0;
   padding-bottom: 0;
@@ -265,19 +216,6 @@ body {
   margin-top: 0.375rem;
 }
 
-/* A chat background used to sit under a near-opaque scrim spanning the whole
- * pane, which hid the picture and still left every embed and attachment card
- * punching a fully opaque hole through what was left of it. Each message group
- * carries its own plate instead: the words keep a near-solid surface under
- * them, and the picture reads at full strength in the gutters, in the gaps
- * between groups, and behind the system notices - which is where you actually
- * want to see a wallpaper.
- *
- * The surface ramp shifts up a step inside a plate so the cards and chips
- * drawn on `bg-surface-1`/`bg-surface-2` stay visibly raised instead of
- * dissolving into it. `--oc-plate` is resolved on :root, so the remap below
- * cannot feed back into the plate's own colour.
- */
 .oc-plate {
   background-color: var(--oc-plate);
   --oc-surface-1: var(--oc-surface-3);
@@ -291,8 +229,6 @@ body {
   padding-bottom: 0.125rem;
 }
 
-/* Persistent context cues should be visible without competing with the short
- * animated flash used for search jumps. The soft token keeps these theme-aware. */
 .oc-message-pinged {
   box-shadow: inset 2px 0 0 var(--oc-primary), 0 0 12px var(--oc-primary-soft);
 }

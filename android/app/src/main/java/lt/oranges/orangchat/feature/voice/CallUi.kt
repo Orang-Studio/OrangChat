@@ -50,10 +50,6 @@ import lt.oranges.orangchat.ui.components.OrangDropdownMenu
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-/**
- * Full-screen ringing popup. Rendered above everything (see MainActivity) so a
- * call reaches the user whatever screen they are on.
- */
 @Composable
 fun IncomingCallOverlay(
     call: DmCall,
@@ -109,7 +105,6 @@ fun IncomingCallOverlay(
                     onClick = { onAccept(call.video) },
                 )
             }
-            // Answering a video call with the camera off is a normal choice.
             if (call.video) {
                 Text(
                     text = AppStrings.get(context, R.string.catalog_answer_without_camera_979e59f8),
@@ -147,7 +142,6 @@ private fun CallActionButton(
     }
 }
 
-/** Why a call could not start. Auto-dismisses; a stale call error is noise. */
 @Composable
 fun CallErrorBanner(
     message: String,
@@ -171,10 +165,6 @@ fun CallErrorBanner(
     }
 }
 
-/**
- * The in-call strip: status plus mute / deafen / camera / hang-up. Mirrors the
- * web client's VoicePanel.
- */
 @Composable
 fun CallBar(
     state: ActiveCall,
@@ -187,7 +177,6 @@ fun CallBar(
     onSelectAudioOutput: (String) -> Unit,
     onHangUp: () -> Unit,
     onOpen: (() -> Unit)? = null,
-    /** Null in DMs - the soundboard belongs to a server. */
     onSoundboard: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {

@@ -4,12 +4,9 @@ import { Rest } from './rest.js';
 import type { BotMessage, ClientEvents, Message, ReactionEvent, TypingEvent, User } from './types.js';
 
 export interface ClientOptions {
-  /** Bot token, from the developer panel. Treat it like a password. */
+
   token: string;
-  /**
-   * Where OrangChat lives. Defaults to the hosted instance; point it at your
-   * own deployment for self-hosting or at localhost while developing.
-   */
+
   baseUrl?: string;
 }
 
@@ -17,22 +14,7 @@ const DEFAULT_BASE_URL = 'https://orangchat.lt';
 
 type Handler = (...args: never[]) => void;
 
-/**
- * An OrangChat bot.
- *
- * REST for the things a bot asks for, a realtime gateway for the things that
- * happen to it. The gateway is the same Socket.IO namespace people's clients
- * use - a bot is a `User` row server-side, so it joins the rooms of every
- * server it has been invited to and receives that traffic with no extra setup.
- *
- * ```ts
- * const client = new Client({ token: process.env.BOT_TOKEN! });
- * client.on('messageCreate', (msg) => {
- *   if (msg.content === '!ping') void msg.reply('pong');
- * });
- * await client.login();
- * ```
- */
+
 export class Client {
   readonly rest: Rest;
   private readonly baseUrl: string;

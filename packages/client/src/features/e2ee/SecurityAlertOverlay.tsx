@@ -7,15 +7,7 @@ import { dismissSecurityAlert, useSecurityAlerts, type SecurityAlert } from './a
 import { acceptIdentityChange } from './identity';
 import { t } from "../../lib/i18n";
 
-/**
- * The escalation moment from §6.6, and the only loud one in the product. An
- * identity reset, an unauthorized device or a forked log are not notices to be
- * swiped away: they are the difference between the server having been caught and
- * the server getting away with it, so they take the screen.
- *
- * Someone who never thought about verification meets the concept here first, so
- * the copy has to stand on its own without any of it.
- */
+
 
 const HEADLINE: Record<SecurityAlert['kind'], string> = {
   'identity-changed': "This account's encryption identity changed",
@@ -43,11 +35,7 @@ export function SecurityAlertOverlay() {
   const queryClient = useQueryClient();
   const [failure, setFailure] = useState<string | null>(null);
 
-  /**
-   * Accepting is the recoverable path, so it is a real action rather than a
-   * second dismiss - but it stays the quieter of the two buttons. Somebody who
-   * has not yet made the phone call should find "I understand" first.
-   */
+
   const accept = useMutation({
     mutationFn: (userId: string) => acceptIdentityChange(userId),
     onSuccess: (_result, userId) => {

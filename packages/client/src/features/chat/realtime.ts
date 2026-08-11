@@ -57,12 +57,7 @@ import { noteEpoch, refreshChannelState, useE2eeStore } from '../e2ee/store';
 
 let registered = false;
 
-/**
- * A device joining or leaving any account we share a conversation with
- * invalidates the current epoch for those conversations: the key would be
- * readable by a device that should no longer have it, or unreadable by one that
- * should. Refreshing state is enough - the next send mints the new epoch.
- */
+
 async function onDeviceGraphChanged(client: QueryClient, userId: string): Promise<void> {
   void client;
   void userId;
@@ -70,10 +65,7 @@ async function onDeviceGraphChanged(client: QueryClient, userId: string): Promis
   await Promise.all(channels.map((id) => refreshChannelState(id).catch(() => undefined)));
 }
 
-/**
- * Wire server→client socket events into the TanStack Query caches. Called once
- * at startup; idempotent so StrictMode/HMR can't double-subscribe.
- */
+
 export function registerRealtime(client: QueryClient): void {
   if (registered) return;
   registered = true;
@@ -91,41 +83,30 @@ export function registerRealtime(client: QueryClient): void {
     );
   };
 
-  /** True when the channel belongs to a cached server (not a DM). */
+
   const isServerChannel = (channelId: string) => {
     const details = client.getQueriesData<ServerDetail>({ queryKey: ['server'] });
     return details.some(([, d]) => d?.channels.some((c) => c.id === channelId));
   };
 
-  // ── Messages ──────────────────────────────────────────
   socket.on('message:new', (message) => {
-    // Matched before the open: the row has to be stamped with the local id it
-    // replaces, so it renders under the same key and the pending styling simply
-    // falls away instead of the row being swapped out.
     const localId = matchPendingLocalId(message);
     void decryptMessage(message.channelId, message).then((decrypted) => {
       appendMessage(client, localId ? { ...decrypted, clientId: localId } : decrypted);
       if (!isServerChannel(message.channelId)) setConversationLatest(client, decrypted);
-      // Do not remove the optimistic plaintext until its confirmed replacement
-      // is renderable. Otherwise a slower E2EE open leaves a blank gap.
       if (localId) resolvePending(localId);
     });
-    // Their message landed - stop showing them as typing.
     clearTyping(message.channelId, message.author.id);
-    // DM traffic reorders the conversation list.
     if (!isServerChannel(message.channelId)) {
       touchConversation(client, message.channelId, message.createdAt);
     }
   });
 
-  // Unread dots, mention badges, and notifications. Delivered via server/user
-  // rooms so it fires even for channels the user isn't actively viewing.
   socket.on('unread:activity', (p) => {
     const me = selfId();
     if (!me || p.authorId === me) return;
     const mentioned = p.mentions.includes(me);
 
-    // Already looking at it (and the tab is focused) - keep it read.
     if (getActiveChannel() === p.channelId && !document.hidden) {
       void markChannelRead(p.channelId).catch(() => {});
       return;
@@ -133,8 +114,6 @@ export function registerRealtime(client: QueryClient): void {
 
     unreadActions.bump(p.channelId, p.serverId, mentioned);
 
-    // DMs always alert. A server alerts per its own notification setting, which
-    // defaults to @mentions only - and a muted server never does.
     const isDm = p.serverId === null;
     const prefs = isDm ? null : getServerNotificationPrefs(p.serverId!);
     const shouldNotify = isDm

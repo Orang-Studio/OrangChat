@@ -22,7 +22,6 @@ import javax.inject.Named
 import javax.inject.Singleton
 import kotlin.coroutines.coroutineContext
 
-/** What the server publishes next to the APK; see app/build.gradle.kts. */
 @Serializable
 data class UpdateManifest(
     val versionCode: Int,
@@ -31,36 +30,18 @@ data class UpdateManifest(
     val changelogUrl: String = "",
     val size: Long = 0,
     val sha256: String = "",
-    /** Loaded from [changelogUrl] after the manifest; never persisted in it. */
     val changelog: String = "",
 )
 
-/**
- * OrangChat ships outside any store, so it updates itself: fetch a small
- * manifest, compare version codes, download the APK, hand it to the system
- * installer.
- *
- * The install itself is not silent and cannot be - the user grants "install
- * unknown apps" once, and the system installer still shows its own confirmation
- * every time. Android also refuses an APK signed with a different key than the
- * installed app, which is the real integrity guarantee here; the sha256 check
- * below only catches a corrupt or truncated download earlier and with a clearer
- * message than the installer's generic parse error.
- */
 @Singleton
 class UpdateManager @Inject constructor(
     @ApplicationContext private val context: Context,
     @Named("download") private val client: OkHttpClient,
     private val json: Json,
 ) {
-    /** Cleared and re-downloaded each time; an update is worth no cache. */
     private val downloadDir: File
         get() = File(context.cacheDir, "updates")
 
-    /**
-     * The published version, or null when it is not newer than what is running.
-     * Throws on a network or parse failure so the UI can say what went wrong.
-     */
     suspend fun check(): UpdateManifest? = withContext(Dispatchers.IO) {
         val request = Request.Builder().url(BuildConfig.UPDATE_MANIFEST_URL).build()
         val body = client.newCall(request).execute().use { response ->
@@ -69,9 +50,6 @@ class UpdateManager @Inject constructor(
         }
         val manifest = json.decodeFromString<UpdateManifest>(body)
         if (manifest.versionCode <= BuildConfig.VERSION_CODE) return@withContext null
-        // Changelogs are deliberately standalone text files: a release can
-        // correct its notes without rewriting the APK manifest. A missing note
-        // must not hide an otherwise valid update.
         val changelog = manifest.changelogUrl.takeIf { it.isNotBlank() }?.let { url ->
             runCatching {
                 client.newCall(Request.Builder().url(url).build()).execute().use { response ->
@@ -82,16 +60,10 @@ class UpdateManager @Inject constructor(
         manifest.copy(changelog = changelog)
     }
 
-    /**
-     * Download [manifest]'s APK, reporting 0–1 as the bytes land. Cancelling the
-     * calling coroutine abandons the download and leaves nothing behind.
-     */
     suspend fun download(
         manifest: UpdateManifest,
         onProgress: (Float) -> Unit = {},
     ): File = withContext(Dispatchers.IO) {
-        // A half-written APK from a previous attempt would fail to parse and
-        // read as "the update is broken" rather than "the download stopped".
         downloadDir.deleteRecursively()
         downloadDir.mkdirs()
         val target = File(downloadDir, "orangchat-${manifest.versionName}.apk")
@@ -100,8 +72,6 @@ class UpdateManager @Inject constructor(
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) error("Download failed: HTTP ${response.code}")
             val body = response.body ?: error("Download failed: no body")
-            // Content-Length is the honest total; the manifest's size is a hint
-            // that goes stale if the APK is republished.
             val total = body.contentLength().takeIf { it > 0 } ?: manifest.size
             val digest = MessageDigest.getInstance("SHA-256")
 
@@ -131,26 +101,15 @@ class UpdateManager @Inject constructor(
         target
     }
 
-    /**
-     * Whether the user has already allowed OrangChat to install APKs. Required
-     * from API 26 on, and it is a per-app toggle in system settings - there is
-     * no runtime dialog we can raise for it.
-     */
     fun canInstall(): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
             context.packageManager.canRequestPackageInstalls()
 
-    /** Send the user to the toggle that [canInstall] is reporting false for. */
     fun installPermissionIntent(): Intent =
         Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
             .setData(Uri.parse("package:${context.packageName}"))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
-    /**
-     * Hand [apk] to the system installer. Returns once the installer is showing;
-     * whether the user goes through with it is between them and the system, and
-     * the app is killed and replaced if they do.
-     */
     fun install(apk: File) {
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", apk)
         val intent = Intent(Intent.ACTION_VIEW)

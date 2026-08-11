@@ -14,10 +14,6 @@ export type LegalDocument =
 const EFFECTIVE_DATE = "25 July 2026";
 const CONTACT_EMAIL = "admin@oranges.lt";
 
-// A function, not a module-level const: `t()` reads the currently active
-// language, and this module is only ever evaluated once. A plain array here
-// would freeze these labels in whichever language was active on first
-// import, and never update when the user switches languages.
 function documents(): Array<{ id: LegalDocument; label: string; path: string }> {
   return [
     { id: "terms", label: t("legalPage.navTerms"), path: "/terms" },

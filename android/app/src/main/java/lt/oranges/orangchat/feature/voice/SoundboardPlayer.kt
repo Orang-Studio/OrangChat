@@ -11,14 +11,6 @@ import lt.oranges.orangchat.util.absoluteUrl
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Plays soundboard clips over the voice call rather than through LiveKit: the
- * server broadcasts the url to everyone in the room and each client plays it
- * locally, so the clip never competes with the microphone for a publish slot.
- *
- * Clips are capped at 3 seconds server-side, so overlapping players are bounded
- * and each one is released on completion.
- */
 @Singleton
 class SoundboardPlayer @Inject constructor(
     @ApplicationContext private val context: android.content.Context,
@@ -30,9 +22,6 @@ class SoundboardPlayer @Inject constructor(
         scope.launch {
             runCatching {
                 val player = MediaPlayer().apply {
-                    // USAGE_MEDIA rather than VOICE_COMMUNICATION: the clip is
-                    // content, and routing it as call audio would duck it into
-                    // the earpiece while a call is up.
                     setAudioAttributes(
                         AudioAttributes.Builder()
                             .setUsage(AudioAttributes.USAGE_MEDIA)

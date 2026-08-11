@@ -5,7 +5,7 @@ import { LogoMark } from "../../components/LogoMark";
 import { useServers } from "../servers/queries";
 import { t } from "../../lib/i18n";
 
-/** The `/app` home pane inside the shell - greets and points at the rail. */
+
 export function HomePane() {
   const status = useConnectionStore((s) => s.status);
   const { data: servers } = useServers();

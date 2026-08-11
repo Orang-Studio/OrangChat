@@ -10,15 +10,6 @@ import lt.oranges.orangchat.data.repository.E2eeRepository
 import lt.oranges.orangchat.util.AppForegroundState
 import javax.inject.Inject
 
-/**
- * Where a push becomes a notification.
- *
- * The governing constraint is time. FCM hands this thread a message and gives
- * the process a few seconds of life around it; whatever has not been posted by
- * then is not late, it is gone. So every path here is bounded, and the
- * notification goes up with whatever is known rather than waiting for anything
- * that would make it better.
- */
 @AndroidEntryPoint
 class FcmService : FirebaseMessagingService() {
     @Inject lateinit var notificationHelper: NotificationHelper
@@ -28,9 +19,6 @@ class FcmService : FirebaseMessagingService() {
     override fun onNewToken(token: String) = tokenRegistrar.register(token).let { Unit }
 
     override fun onMessageReceived(message: RemoteMessage) {
-        // Account-level, so it has no conversation to hang off and no reason to
-        // wait for the app to be backgrounded - the whole point is reaching
-        // somebody who is looking at something else.
         if (message.data["kind"] == "security") {
             notificationHelper.notifySecurity(
                 tag = message.data["tag"] ?: "security",
@@ -40,17 +28,10 @@ class FcmService : FirebaseMessagingService() {
             return
         }
         val channelId = message.data["channelId"] ?: return
-        // A read elsewhere: dismiss this channel's notification even if the app
-        // is foreground or was asleep - the point is to clear a stale banner.
         if (message.data["kind"] == "read") {
             notificationHelper.clearConversationNotifications(channelId)
             return
         }
-        // The only thing worth suppressing is a notification for the very
-        // conversation on screen. Dropping every push while the app happens to
-        // be foreground - trusting the socket to have delivered it - is silent
-        // loss whenever the socket is reconnecting, which is exactly when a
-        // push is the only thing that arrives.
         if (AppForegroundState.isOnScreen(channelId)) return
 
         val title = message.data["title"] ?: "OrangChat"
@@ -67,11 +48,6 @@ class FcmService : FirebaseMessagingService() {
             )
         } else {
             val senderName = message.data["senderName"] ?: title
-            // Nothing to gain from opening an envelope whose plaintext this
-            // device has been told not to show - and something to lose: the
-            // decrypt is the most expensive thing on this path, and it is spent
-            // inside the few seconds FCM gives the process to post at all.
-            // NotificationHelper substitutes the placeholder either way.
             val text = message.data["ciphertext"]
                 ?.takeIf { it.isNotBlank() && notificationHelper.previewsEnabled }
                 ?.let { ciphertext -> openEnvelope(channelId, ciphertext, message.data) }
@@ -89,18 +65,6 @@ class FcmService : FirebaseMessagingService() {
         }
     }
 
-    /**
-     * Open an encrypted push envelope (docs/E2EE.md §8), or fall back to a
-     * placeholder.
-     *
-     * Bounded, because it has to be: the keys are local, but a repository that
-     * decides it needs to reach the server for an epoch it has never seen would
-     * otherwise sit here on a dead radio until the process is killed - taking
-     * the notification with it. A timeout costs this one message its text; no
-     * timeout costs it the notification entirely.
-     *
-     * Failure is a placeholder, never nothing.
-     */
     private fun openEnvelope(
         channelId: String,
         ciphertext: String,
@@ -110,9 +74,6 @@ class FcmService : FirebaseMessagingService() {
             runCatching {
                 e2eeRepository.open(channelId, ciphertext, data["senderId"].orEmpty()).text
             }.onFailure { throwable ->
-                // The placeholder is deliberate, but the reason must not vanish
-                // with it - this is the only window we ever get into why a push
-                // would not open.
                 Log.w(TAG, "push envelope for $channelId did not open", throwable)
             }.getOrNull()
         } ?: run {
@@ -124,10 +85,6 @@ class FcmService : FirebaseMessagingService() {
     companion object {
         private const val TAG = "FcmService"
 
-        /**
-         * Long enough for a local unwrap on a cold-started process, short enough
-         * to leave room to actually post inside FCM's window.
-         */
         private const val DECRYPT_TIMEOUT_MS = 3_000L
     }
 }

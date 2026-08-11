@@ -7,7 +7,7 @@ export interface Presence {
   activities: UserActivity[];
 }
 
-/** Live presence by user id, for anything holding a user object that never refetches. */
+
 export const usePresenceStore = create<Record<string, Presence>>(() => ({}));
 
 export const presenceActions = {

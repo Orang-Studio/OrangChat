@@ -1,4 +1,3 @@
-//! Channel + overwrite persistence and access checks. Mirrors channel-service.ts.
 
 use sqlx::QueryBuilder;
 
@@ -16,8 +15,6 @@ pub struct NewChannel {
     pub parent_category_id: Option<String>,
 }
 
-/// PATCH semantics: outer None = field absent; Some(inner) = set to inner
-/// (inner None clears the column).
 #[derive(Default)]
 pub struct ChannelPatch {
     pub name: Option<String>,
@@ -68,9 +65,6 @@ pub async fn get_channel(state: &AppState, channel_id: &str) -> AppResult<Option
 
 pub async fn delete_channel(state: &AppState, channel_id: &str) -> AppResult<()> {
     let mut tx = state.pool.begin().await?;
-    // systemChannelId/afkChannelId are soft pointers with no FK, so nothing else
-    // clears them. Leaving a dangling id would make the setting silently inert
-    // and show a blank in the settings UI.
     sqlx::query(r#"UPDATE "Server" SET "systemChannelId" = NULL WHERE "systemChannelId" = $1"#)
         .bind(channel_id)
         .execute(&mut *tx)
@@ -129,10 +123,6 @@ pub async fn update_channel(
         .await?)
 }
 
-/// Set or clear a DM conversation's shared background image (Messenger-style).
-/// Callers enforce that the channel is a DM and the user a participant; the
-/// url itself is an upload result (origin-relative `/uploads/...` or a
-/// Cloudinary `https://...`), which the endpoint validates.
 pub async fn set_channel_background(
     state: &AppState,
     channel_id: &str,
@@ -148,9 +138,6 @@ pub async fn set_channel_background(
     .await?)
 }
 
-/// Set or clear a group DM's icon. Callers enforce that the channel is a group
-/// DM and the user a participant; the url is an upload result the endpoint has
-/// already validated, exactly as for the background above.
 pub async fn set_channel_icon(
     state: &AppState,
     channel_id: &str,
@@ -166,10 +153,6 @@ pub async fn set_channel_icon(
     .await?)
 }
 
-/// Bulk reorder / re-parent, for drag-and-drop channel lists. One transaction, so
-/// a rejected entry cannot leave the sidebar half-rewritten. Ids are checked
-/// against `serverId` first: otherwise a caller could drag a channel out of a
-/// server they merely share a room with.
 pub async fn reorder_channels(
     state: &AppState,
     server_id: &str,
@@ -194,8 +177,6 @@ pub async fn reorder_channels(
             if target.channel_type != "category" {
                 return Err(AppError::BadRequest("Parent must be a category".into()));
             }
-            // A category inside a category has no meaning in the sidebar, and a
-            // category parented to itself would render as a cycle.
             if ch.channel_type == "category" {
                 return Err(AppError::BadRequest(
                     "A category cannot be nested in another category".into(),
@@ -241,7 +222,6 @@ pub async fn reorder_channels(
     )
 }
 
-// ── Overwrites ──────────────────────────────────────────
 
 pub async fn list_overwrites(
     state: &AppState,
@@ -298,22 +278,11 @@ pub async fn delete_overwrite(
     Ok(())
 }
 
-/// Enforce a channel's slowmode for one member, consuming their allowance.
-///
-/// Distinct from services::rate_limit, which protects the server from abuse with
-/// fixed windows and fails open. This is a *product* rule the moderator set, so
-/// it uses a strict per-member cooldown key and, on a Redis outage, is skipped
-/// rather than allowed to lock a channel down harder than configured.
-///
-/// Members who can manage the channel or its messages are exempt, matching
-/// Discord: slowmode is a crowd-control tool, not a rule for the people holding
-/// the tool.
 pub async fn enforce_slowmode(
     state: &AppState,
     channel: &ChannelRow,
     user_id: &str,
 ) -> AppResult<()> {
-    // DMs have no moderator to set slowmode in the first place.
     if channel.rate_limit_per_user <= 0 || channel.server_id.is_none() {
         return Ok(());
     }
@@ -328,8 +297,6 @@ pub async fn enforce_slowmode(
 
     let key = format!("slowmode:{}:{}", channel.id, user_id);
     let mut conn = state.redis.clone();
-    // SET NX EX: the key's own expiry is the cooldown, so it cannot be refreshed
-    // into a permanent block by repeated attempts.
     let acquired: Option<String> = redis::cmd("SET")
         .arg(&key)
         .arg("1")
@@ -348,8 +315,6 @@ pub async fn enforce_slowmode(
         .query_async(&mut conn)
         .await
         .unwrap_or(channel.rate_limit_per_user as i64);
-    // A negative TTL means the key vanished between the SET and the TTL; treat it
-    // as a full wait rather than reporting a nonsensical countdown.
     let wait = if ttl > 0 {
         ttl as u64
     } else {
@@ -361,7 +326,6 @@ pub async fn enforce_slowmode(
     })
 }
 
-/// Resolve a channel and confirm the user may access it. Mirrors requireChannelAccess.
 pub async fn require_channel_access(
     state: &AppState,
     channel_id: &str,

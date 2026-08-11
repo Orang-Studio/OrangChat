@@ -1,26 +1,3 @@
-/*
- * Copyright 2026 Nadeem Iqbal
- * Copyright 2026 OrangChat
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- * Adapted from github.com/NadeemIqbal/voice-message @ 671085b (v0.3.1).
- * See VoicePhase.kt for why this is vendored rather than depended on.
- *
- * Local changes: OrangChat design tokens instead of MaterialTheme, the app's own
- * Material icons instead of upstream's hand-drawn glyphs, a lock target that
- * fills as the finger rises, and a strip that slides with the cancel gesture.
- */
 package lt.oranges.orangchat.feature.chat.voicemessage
 
 import androidx.compose.ui.platform.LocalContext
@@ -95,36 +72,19 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 
 object VoiceRecorderDefaults {
-    /** Most bars the live strip will draw; narrow strips simply fit fewer. */
     const val BarCount: Int = 48
     val BarWidth: Dp = 3.dp
     val BarSpacing: Dp = 2.dp
     val BarMinHeight: Dp = 3.dp
 
-    /**
-     * Upward travel that locks the recording. Short, because it is a flick with
-     * a thumb that is already committed to the gesture.
-     */
     val LockThreshold: Dp = 64.dp
 
-    /**
-     * Leftward travel that arms cancel. Longer than the lock: throwing the clip
-     * away should take a deliberate move, and there is a whole composer's width
-     * to do it in.
-     */
     val CancelThreshold: Dp = 88.dp
 
-    /**
-     * How long the mic has to be held before recording actually starts. Well
-     * under the platform long-press timeout, which at 500ms makes hold-to-talk
-     * feel broken, but long enough that a stray tap never opens the microphone.
-     */
     val PressToStart: Duration = 200.milliseconds
 
-    /** Releases shorter than this are a tap, not a hold, and are inaudible anyway. */
     val MinDuration: Duration = 600.milliseconds
 
-    /** Upper bound on one clip; it finishes and sends itself at the cap. */
     val MaxDuration: Duration = 10.minutes
 }
 
@@ -156,20 +116,11 @@ fun orangVoiceRecorderColors(): VoiceRecorderColors {
     )
 }
 
-/** Rendered length of the clip so far: `m:ss`. */
 internal fun formatVoiceDuration(duration: Duration): String {
     val totalSeconds = duration.inWholeSeconds.coerceAtLeast(0)
     return "${totalSeconds / 60}:${(totalSeconds % 60).toString().padStart(2, '0')}"
 }
 
-/**
- * The strip that replaces the text field while recording: a pulsing dot, the
- * running time, the live waveform, and whichever hint applies.
- *
- * The whole thing slides left with the cancel gesture and bleeds toward danger
- * as the threshold approaches, so the swipe shows its own progress instead of
- * silently snapping at the end.
- */
 @Composable
 fun VoiceRecordingStrip(
     state: VoiceRecorderState,
@@ -187,7 +138,6 @@ fun VoiceRecordingStrip(
         animationSpec = infiniteRepeatable(tween(durationMillis = 700), RepeatMode.Reverse),
         label = "voice-dot-alpha",
     )
-    // Tracks the finger while held; springs back to rest once the gesture ends.
     val slide by animateFloatAsState(
         targetValue = if (locked) 0f else state.cancelProgress,
         animationSpec = tween(durationMillis = if (locked) 180 else 60),
@@ -244,23 +194,6 @@ fun VoiceRecordingStrip(
     }
 }
 
-/**
- * The hold-to-record mic.
- *
- * Two things here are load-bearing and easy to undo by accident. First, this
- * composable has to keep one stable slot across idle, held and cancelling: if it
- * moved between `when` branches Compose would dispose and re-mount it mid-press,
- * tearing down the pointer loop and resolving the gesture as a too-short tap one
- * frame after it started. Second, the drag is accumulated from
- * [positionChange] deltas rather than read off `change.position`, which is
- * node-local and therefore lies the moment anything in the row changes width.
- *
- * @param canStart consulted once the press has been held long enough, immediately
- *   before the mic would open. Returning false abandons the press silently, which
- *   is what a host that just put a permission dialog on screen wants.
- * @param onTapTooShort the press ended before it became a hold. Distinct from a
- *   blocked start: here the user meant to do something and nothing happened.
- */
 @Composable
 fun VoiceMicButton(
     state: VoiceRecorderState,
@@ -277,8 +210,6 @@ fun VoiceMicButton(
     val lockThresholdPx = with(density) { lockThreshold.toPx() }
     val cancelThresholdPx = with(density) { cancelThreshold.toPx() }
     val pressToStartMs = VoiceRecorderDefaults.PressToStart.inWholeMilliseconds
-    // In RTL the mic sits at the left edge, so cancelling is physically rightward;
-    // the state machine only ever knows "leftward", so the sign is flipped here.
     val dragSign = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1f else 1f
 
     val recording = state.phase.isRecording
@@ -299,8 +230,6 @@ fun VoiceMicButton(
         },
         label = "voice-mic-tint",
     )
-    // A mic that swells with your voice is the clearest possible signal that it
-    // is actually listening.
     val level = state.capturedSamples.lastOrNull() ?: 0f
     val swell by animateFloatAsState(
         targetValue = if (recording) 1f + level * 0.25f else 1f,
@@ -329,13 +258,6 @@ fun VoiceMicButton(
                     cancelThresholdPx,
                     dragSign,
                 ) {
-                    // The press timer is owned here rather than delegated to
-                    // detectDragGesturesAfterLongPress, which cancels itself on
-                    // the slightest movement - fatal for a gesture whose whole
-                    // point is to be dragged. Starting from the launched
-                    // coroutine keeps awaitPointerEvent suspended throughout, so
-                    // the pointer scope is never torn down between the press
-                    // landing and the drag beginning.
                     coroutineScope {
                         val scope = this
                         awaitEachGesture {
@@ -403,10 +325,6 @@ fun VoiceMicButton(
     }
 }
 
-/**
- * The slide-up-to-lock target, floating above the mic. It rises and fills as the
- * finger climbs, so the gesture is discoverable without a caption explaining it.
- */
 @Composable
 private fun VoiceLockTarget(
     progress: Float,
@@ -449,7 +367,6 @@ private fun VoiceLockTarget(
     }
 }
 
-/** The delete button that stands in for the mic once a recording is locked. */
 @Composable
 fun VoiceDeleteButton(
     onClick: () -> Unit,
@@ -477,12 +394,6 @@ fun VoiceDeleteButton(
     }
 }
 
-/**
- * Vertical pill bars, one per pooled amplitude, scrolling in from the right.
- *
- * Bars keep a fixed width and the leftovers become padding, so a wide strip
- * draws more bars rather than fatter ones.
- */
 @Composable
 fun VoiceWaveform(
     samples: List<Float>,

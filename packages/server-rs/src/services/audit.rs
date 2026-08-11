@@ -1,10 +1,3 @@
-//! Server audit log - who changed what, and when.
-//!
-//! Recording is deliberately best-effort: `record` swallows its own errors and
-//! returns nothing. An audit write failing must never roll back or 500 the action
-//! it describes, because the alternative is a moderator unable to ban someone
-//! during an incident because the log table is unhappy. The trade-off is that a
-//! failed write is a silently missing entry, so it is logged at warn.
 
 use serde_json::{json, Value};
 
@@ -40,7 +33,6 @@ pub struct Entry<'a> {
     pub reason: Option<&'a str>,
 }
 
-/// Write one entry. Never fails the caller - see the module note.
 pub async fn record(state: &AppState, entry: Entry<'_>) {
     let res = sqlx::query(
         r#"INSERT INTO "AuditLog" (id, "serverId", "actorId", action, "targetId", "targetType", changes, reason)
@@ -62,8 +54,6 @@ pub async fn record(state: &AppState, entry: Entry<'_>) {
     }
 }
 
-/// Build a `{ field: { old, new } }` diff, skipping unchanged fields so an entry
-/// records what actually moved rather than the whole object.
 pub fn diff(pairs: Vec<(&str, Value, Value)>) -> Value {
     let mut out = serde_json::Map::new();
     for (field, old, new) in pairs {
@@ -74,7 +64,6 @@ pub fn diff(pairs: Vec<(&str, Value, Value)>) -> Value {
     Value::Object(out)
 }
 
-/// Newest first, offset-paginated. Actor is None once that account is deleted.
 pub async fn list(
     state: &AppState,
     server_id: &str,

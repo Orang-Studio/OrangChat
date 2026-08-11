@@ -4,16 +4,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-/**
- * What actually gets encrypted, mirroring `MessagePayload` in
- * `packages/shared/src/e2ee.ts`.
- *
- * The server assigns the message id after the client has already sealed, so it
- * cannot be bound into the AAD. The payload therefore carries its own timestamp,
- * reply target and client id, and clients render *those* rather than the
- * server's copy. The server can still lie about ordering; it cannot lie about
- * content or authorship.
- */
 @Serializable
 data class SealedAttachmentRef(
     val fileId: String,
@@ -27,22 +17,7 @@ data class SealedAttachmentRef(
     val width: Int? = null,
     val height: Int? = null,
     val spoiler: Boolean? = null,
-    /**
-     * A postage-stamp JPEG, base64, carried inside the payload itself.
-     *
-     * [thumb] below is a second uploaded blob, and everything that can go wrong
-     * with an upload can go wrong with it - so on a large share of messages it
-     * simply isn't there, and the receiver is left with a black rectangle. This
-     * one travels with the text: no row to claim, no fetch, no decrypt, present
-     * offline. Renderers blow it up and blur it; it is far too small to look at
-     * directly.
-     */
     val blur: String? = null,
-    /**
-     * The sharp preview: a fetch and a decrypt away, and absent on anything sent
-     * before [blur] existed - which is why [blur] is what stands behind the play
-     * button until this arrives.
-     */
     val thumb: Thumb? = null,
 ) {
     @Serializable
@@ -56,7 +31,6 @@ data class SealedAttachmentRef(
     )
 }
 
-/** A log head as one participant saw it, cross-checked on receipt (§6.1). */
 @Serializable
 data class GossipedHead(val userId: String, val seq: Int, val entryHash: String)
 
@@ -94,11 +68,6 @@ object E2eePayloads {
             value,
         )
 
-    /**
-     * Messages sealed before the payload format existed are bare UTF-8 text.
-     * Reading them as text rather than failing is the difference between old
-     * history rendering and old history looking corrupted.
-     */
     fun decode(bytes: ByteArray): MessagePayload {
         val text = String(bytes, Charsets.UTF_8)
         if (!text.startsWith("{")) return MessagePayload(text = text)

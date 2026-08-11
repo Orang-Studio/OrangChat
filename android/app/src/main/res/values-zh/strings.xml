@@ -124,8 +124,8 @@
 <string name="catalog_check_them_first_a_swap_cannot_happen_82229615" formatted="false">先检查；这样就无法偷偷替换锁。在发送任何内容之前，您要亲自当面或通话时检查对方的锁。在此之前，您输入的消息会留在此手机上，处于锁定状态，不会发送到任何地方。替换的锁没有可打开的内容。</string>
 <string name="catalog_checking_820d6004" formatted="false">正在检查…</string>
 <string name="catalog_checking_someone_in_person_437f86fe" formatted="false">当面检查某人</string>
-<string name="catalog_checking_someone_s_code_is_a_one_b6951560" formatted="false">核对某人的代码是一对一进行的，所以会在您与对方的私信中完成——您在那边核对过的人在这里也会显示为已核对。要求群组中的每个人都先被核对，会耽误那些根本没要求这样做的人。</string>
-<string name="catalog_checking_them_here_is_safer_than_reading_faa9c2e1" formatted="false">在这里核对比逐个念数字更可靠——60 位数字超过任何人靠眼睛真正能比较的数量。</string>
+<string name="catalog_checking_someone_s_code_is_a_one_b6951560" formatted="false">核对某人的代码是一对一进行的，所以会在您与对方的私信中完成--您在那边核对过的人在这里也会显示为已核对。要求群组中的每个人都先被核对，会耽误那些根本没要求这样做的人。</string>
+<string name="catalog_checking_them_here_is_safer_than_reading_faa9c2e1" formatted="false">在这里核对比逐个念数字更可靠--60 位数字超过任何人靠眼睛真正能比较的数量。</string>
 <string name="catalog_choose_78b7c9f6" formatted="false">选择</string>
 <string name="catalog_choose_files_5910acf0" formatted="false">选择文件</string>
 <string name="catalog_clear_css_6a933bda" formatted="false">清除 CSS</string>
@@ -247,7 +247,7 @@
 <string name="catalog_erasing_fd30764f" formatted="false">正在删除…</string>
 <string name="catalog_every_device_added_or_removed_is_written_ec8b50d8" formatted="false">添加或删除的每个设备都会写入日志中，该日志只能添加，而不能编辑或删除。您的设备每次启动时都会读取它，因此您未添加的设备无法安静地出现在此处 - 您会被告知，并且该条目会保留在书中。</string>
 <string name="catalog_every_direct_message_is_encrypted_always_and_bacae7ec" formatted="false">每条私信始终加密，且无法关闭。此设置只决定在把您的消息发送给对方前，对方的加密锁会被核对得多仔细。</string>
-<string name="catalog_every_message_already_in_your_encrypted_conversations_ae9912e3" formatted="false">加密对话中已有的每条消息都将永久无法读取——无论是您、我们还是其他任何人。谁也无法恢复它们。</string>
+<string name="catalog_every_message_already_in_your_encrypted_conversations_ae9912e3" formatted="false">加密对话中已有的每条消息都将永久无法读取--无论是您、我们还是其他任何人。谁也无法恢复它们。</string>
 <string name="catalog_everyone_930575f5" formatted="false">@everyone</string>
 <string name="catalog_everyone_applies_to_every_member_it_has_12e47659" formatted="false">@everyone 适用于所有成员。它没有颜色，不能分配或删除。</string>
 <string name="catalog_everyone_c756f6af" formatted="false">Everyone</string>
@@ -368,7 +368,7 @@
 <string name="catalog_nobody_new_can_message_you_d72cdf15" formatted="false">Nobody new can message you.</string>
 <string name="catalog_none_set_4bf72e7e" formatted="false">未设置</string>
 <string name="catalog_not_in_call_32010878" formatted="false">不在通话中</string>
-<string name="catalog_not_in_the_same_room_you_will_d53e345b" formatted="false">不在同一个房间？你们都会看到同一串短数字，也就是安全代码。请让对方通过电话念出来，或用另一款你已信任的应用发给你，再输入到代码下方的框中。应用会核对全部 60 位数字——这比任何人靠眼睛比较都可靠。若数字一致，说明中间没有人拦截。有一点不算：OrangChat 语音通话，因为音频会经过这项检查正要核对的同一批服务器。</string>
+<string name="catalog_not_in_the_same_room_you_will_d53e345b" formatted="false">不在同一个房间？你们都会看到同一串短数字，也就是安全代码。请让对方通过电话念出来，或用另一款你已信任的应用发给你，再输入到代码下方的框中。应用会核对全部 60 位数字--这比任何人靠眼睛比较都可靠。若数字一致，说明中间没有人拦截。有一点不算：OrangChat 语音通话，因为音频会经过这项检查正要核对的同一批服务器。</string>
 <string name="catalog_not_me_1ad9a1eb" formatted="false">不是我</string>
 <string name="catalog_not_now_e4571490" formatted="false">现在不要</string>
 <string name="catalog_not_sent_587c501e" formatted="false">未发送</string>
@@ -549,7 +549,7 @@
 <string name="catalog_that_code_isn_t_right_e78cef5d" formatted="false">That code isn\'t right</string>
 <string name="catalog_that_didn_t_work_try_again_9ae914fa" formatted="false">That didn\'t work. Try again.</string>
 <string name="catalog_that_invite_is_expired_revoked_or_never_752c9ac3" formatted="false">此邀请已过期、被撤销或从未存在。</string>
-<string name="catalog_that_is_also_why_adding_a_second_4bac217f" formatted="false">这也是为什么添加第二台设备是一个小仪式，而不是复制和粘贴。你的旧设备必须先看到新设备——屏幕上的代码，摄像头对准它——然后才能进行任何操作。</string>
+<string name="catalog_that_is_also_why_adding_a_second_4bac217f" formatted="false">这也是为什么添加第二台设备是一个小仪式，而不是复制和粘贴。你的旧设备必须先看到新设备--屏幕上的代码，摄像头对准它--然后才能进行任何操作。</string>
 <string name="catalog_that_was_cancelled_b8e83864" formatted="false">That was cancelled.</string>
 <string name="catalog_the_camera_could_not_start_you_can_a181859b" formatted="false">无法启动相机。您可以重试，或使用系统相机应用。</string>
 <string name="catalog_the_device_could_not_be_revoked_8f71eb6b" formatted="false">The device could not be revoked.</string>
@@ -678,7 +678,7 @@
 <string name="catalog_your_old_keys_are_gone_this_phone_be322585" formatted="false">Your old keys are gone. This phone has fresh ones.</string>
 <string name="catalog_your_password_26d745d4" formatted="false">您的密码</string>
 <string name="catalog_your_phone_and_pc_show_six_digits_07bd977d" formatted="false">Your phone and PC show six digits. Compare them and cancel if they differ.</string>
-<string name="catalog_your_phone_and_your_computer_each_make_ade9350c" formatted="false">当您第一次在手机或电脑上使用加密时，它们都会在设备本身生成各自的密钥。密钥存放在设备专门保护密钥的部分，设计上无法被导出——OrangChat、其他应用和您自己都无法读取。没有东西可泄露，也没有东西可交出。</string>
+<string name="catalog_your_phone_and_your_computer_each_make_ade9350c" formatted="false">当您第一次在手机或电脑上使用加密时，它们都会在设备本身生成各自的密钥。密钥存放在设备专门保护密钥的部分，设计上无法被导出--OrangChat、其他应用和您自己都无法读取。没有东西可泄露，也没有东西可交出。</string>
 <string name="catalog_your_phone_puts_the_message_in_a_10625561" formatted="false">您的手机会把消息放进盒子并锁上。对话中的每台设备，而且只有这些设备，持有该盒子的密钥。我们的服务器存储并转发这个锁定的盒子。</string>
 </resources>
 

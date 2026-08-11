@@ -18,7 +18,6 @@ import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.buildImagePart
 import javax.inject.Inject
 
-/** Which image slot an upload is filling. */
 enum class ImageKind(val wire: String) { AVATAR("avatar"), BANNER("banner") }
 
 data class ProfileEditState(
@@ -27,11 +26,6 @@ data class ProfileEditState(
     val error: String? = null,
 )
 
-/**
- * Profile editing: bio, pronouns, accent colour, and avatar/banner uploads.
- * Mirrors the web client's UserSettingsDialog Profile tab. The upload endpoint
- * re-encodes and resizes server-side, so we send the raw bytes as picked.
- */
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -67,7 +61,6 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    /** Upload a picked image and point the matching profile field at it. */
     fun uploadImage(uri: Uri, kind: ImageKind) {
         viewModelScope.launch {
             _state.value = _state.value.copy(uploading = kind, error = null)
@@ -88,7 +81,6 @@ class ProfileViewModel @Inject constructor(
     fun removeImage(kind: ImageKind) {
         viewModelScope.launch {
             runCatching {
-                // "" clears the field; null would mean "leave unchanged".
                 when (kind) {
                     ImageKind.AVATAR -> authRepository.updateProfile(avatarUrl = "")
                     ImageKind.BANNER -> authRepository.updateProfile(bannerUrl = "")

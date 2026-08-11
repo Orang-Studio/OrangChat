@@ -14,8 +14,7 @@ interface DialogContentProps {
   className?: string;
 }
 
-/** Dialog shell that takes over the whole viewport instead of floating over it.
- * Opaque by design: nothing of the app behind it stays visible. */
+
 export function DialogFullScreenContent({
   title,
   description,
@@ -37,7 +36,6 @@ export function DialogFullScreenContent({
             {description}
           </RadixDialog.Description>
         ) : (
-          // Radix warns when Content has no Description; opt out explicitly.
           <RadixDialog.Description className="sr-only">
             {title}
           </RadixDialog.Description>
@@ -48,7 +46,7 @@ export function DialogFullScreenContent({
   );
 }
 
-/** Styled Radix dialog shell: overlay, centered card, title bar with close. */
+
 export function DialogContent({
   title,
   description,
@@ -73,7 +71,6 @@ export function DialogContent({
             {description}
           </RadixDialog.Description>
         ) : (
-          // Radix warns when Content has no Description; opt out explicitly.
           <RadixDialog.Description className="sr-only">
             {title}
           </RadixDialog.Description>

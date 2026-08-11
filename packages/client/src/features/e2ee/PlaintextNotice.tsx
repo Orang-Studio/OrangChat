@@ -4,15 +4,7 @@ import { HowEncryptionWorksLink } from './HowEncryptionWorks';
 import { useE2eeStore } from './store';
 import { t, tCount } from "../../lib/i18n";
 
-/**
- * The banner docs/E2EE.md §10.1 asks for: a conversation that is still plaintext
- * says so, names who it is waiting on, and is never dressed up as "encrypted,
- * pending".
- *
- * It only appears while somebody else has no device that can hold a key. If the
- * only account missing one is the viewer's, ChatView's own blocker banner
- * already says so and two banners saying the same thing is worse than one.
- */
+
 export function PlaintextNotice({ channelId, peers }: { channelId: string; peers: User[] }) {
   const state = useE2eeStore((s) => s.channels[channelId]);
   const latched = useE2eeStore((s) => s.latched[channelId] === true);

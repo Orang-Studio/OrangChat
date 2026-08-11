@@ -31,9 +31,6 @@ android {
 
     defaultConfig {
         applicationId = "lt.oranges.orangchat"
-        // Android Keystore gained non-extractable ECDH (PURPOSE_AGREE_KEY) in
-        // API 31. E2EE promises that identity private keys never become app
-        // bytes, so older releases cannot honestly implement that contract.
         minSdk = 31
         targetSdk = 35
         versionCode = 70
@@ -57,7 +54,6 @@ android {
 
     buildTypes {
         debug {
-            // live backend
             buildConfigField("String", "API_BASE_URL", "\"https://chat.oranges.lt/api/\"")
             buildConfigField("String", "SOCKET_URL", "\"https://chat.oranges.lt\"")
             buildConfigField("String", "UPDATE_MANIFEST_URL", "\"$updateBaseUrl/update.json\"")
@@ -84,9 +80,6 @@ android {
         buildConfig = true
     }
     packaging {
-        // API 31 defaults to storing dex/native libraries uncompressed. That
-        // makes a universal sideload APK ~43 MB larger on the wire for no
-        // functional gain; the installer can extract them as older releases did.
         dex {
             useLegacyPackaging = true
         }
@@ -98,9 +91,6 @@ android {
         }
     }
     lint {
-        // AGP 8.7's Kotlin FIR analyzer crashes while resolving E2eeTest.
-        // Unit tests are compiled and run by `test`; keep lint focused on the
-        // shipped sources until that upstream analyzer bug is gone.
         checkTestSources = false
     }
 }

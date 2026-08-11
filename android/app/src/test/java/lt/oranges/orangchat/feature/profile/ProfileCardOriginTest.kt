@@ -9,10 +9,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * This feeds the card's CSP img-src. Too narrow and avatars silently vanish;
- * too broad and a profile could name a host we never intended to allow.
- */
 class ProfileCardOriginTest {
 
     @Test
@@ -23,7 +19,6 @@ class ProfileCardOriginTest {
         )
     }
 
-    /** A non-default port is part of the origin - dropping it would block the load. */
     @Test
     fun `keeps an explicit port`() {
         assertEquals("http://localhost:3000", originOf("http://localhost:3000/uploads/a.png"))

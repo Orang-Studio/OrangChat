@@ -74,7 +74,6 @@ internal fun extractEmbedUrls(content: String): List<String> {
     return urls.toList()
 }
 
-/** Standalone media links show the media itself without repeating the raw URL. */
 internal fun isDirectMediaMessage(content: String): Boolean {
     val trimmed = content.trim()
     if (trimmed.any(Char::isWhitespace)) return false
@@ -126,8 +125,6 @@ fun LinkEmbeds(
             val youtube = remember(uri) { youtubeVideo(uri) }
             val invite = remember(url) { InviteLink.codeFrom(url) }
             when {
-                // Our own invite links resolve against our API, so they get a
-                // real card instead of a scraped og:title of the login page.
                 invite != null -> ChatInviteEmbed(invite)
                 youtube != null -> YoutubeEmbed(youtube)
                 IMAGE_PATH.containsMatchIn(uri.path.orEmpty()) -> LinkedImageEmbed(url)
@@ -165,13 +162,8 @@ private fun YoutubeEmbed(video: YoutubeVideo) {
         factory = { context ->
             WebView(context).apply {
                 setBackgroundColor(Color.BLACK)
-                // The YouTube player needs a WebChromeClient for its media
-                // surface; a bare WebViewClient is the classic black-square
-                // cause, because the video never gets a compositing surface.
                 webViewClient = WebViewClient()
                 webChromeClient = WebChromeClient()
-                // Hardware-composited video on top of the Compose canvas; with
-                // software rendering the player paints nothing at all.
                 setLayerType(View.LAYER_TYPE_HARDWARE, null)
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
@@ -237,17 +229,10 @@ private fun linkedAttachment(url: String, contentType: String): Attachment {
     )
 }
 
-/**
- * A link the server resolved to a video of its own - an Instagram post, today.
- * Shown as the video, because that is what the link is; the caption and a way
- * back to the post sit underneath.
- */
 @Composable
 private fun ResolvedVideoEmbed(url: String, preview: LinkPreviewData, videoUrl: String) {
     val c = OrangTheme.colors
     val uriHandler = LocalUriHandler.current
-    // Both urls are origin-relative proxy paths; VideoAttachment absolutises
-    // them, so they are handed over as they arrived.
     val attachment = remember(videoUrl, preview.imageUrl) {
         Attachment(
             id = "link-${url.hashCode()}",
@@ -302,8 +287,6 @@ private fun PageEmbed(url: String, host: String, viewModel: LinkPreviewViewModel
             .clickable { uriHandler.openUri(url) },
     ) {
         preview?.imageUrl?.let { imageUrl ->
-            // The server hands back an origin-relative signed proxy path, which
-            // Coil can't fetch on its own.
             AsyncImage(
                 model = absoluteUrl(imageUrl),
                 contentDescription = null,

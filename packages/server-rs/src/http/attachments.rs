@@ -1,26 +1,3 @@
-//! Message attachments. Two ways in, one way out:
-//!
-//! * **≤ 10 MB** - the client posts the bytes here (`/uploads/attachment`) and
-//!   they go to Cloudinary, or to OrangChat's own disk when Cloudinary is
-//!   unconfigured. Either way they live as long as the message.
-//! * **> 10 MB** - the client uploads straight to OrangMove and posts only the
-//!   resulting token here (`/uploads/attachment/external`). The bytes never
-//!   transit this process; a 1 GB file would otherwise be paid for twice.
-//!   Cloudinary does not participate: it is not a general file host and its
-//!   raw-upload ceiling sits below what OrangMove is here to carry.
-//!
-//! Either way the response is a descriptor with an id. Nothing is attached to a
-//! message yet: the id names a `PendingAttachment` row that `message:send`
-//! claims later (see services::message). That indirection is what keeps a client
-//! from inventing its own url/size or pointing an attachment at someone else's
-//! upload - the server only ever serializes rows it wrote itself.
-//!
-//! Caveat worth knowing: OrangMove reaps files within an hour, so attachments
-//! over 10 MB carry an `expiresAt` and will 404 afterwards. Clients surface it.
-//!
-//! Images are moderated on the way in (services::image_moderation) and carry the
-//! verdict as `flagged`. It rides on the descriptor rather than blocking the
-//! upload; clients withhold the pixels.
 
 use std::io::Cursor;
 use std::path::PathBuf;
@@ -50,26 +27,12 @@ use crate::services::rate_limit;
 use crate::state::AppState;
 use crate::timefmt::iso_opt;
 
-/// The local/OrangMove split. Clients apply the same threshold when choosing
-/// which endpoint to call, so keep the three copies in sync (web:
-/// features/chat/attachments.ts, Android: AttachmentUploader.kt).
-///
-/// 10 MB because that is Cloudinary's ceiling for `image` and `raw` on the Free
-/// plan (queried from its /usage endpoint: image_max_size_bytes = raw_max_size_bytes
-/// = 10485760). Anything larger would be accepted here and then rejected by the
-/// upload, after the user had already waited for the transfer. Raise this the day
-/// the plan changes, not before.
 pub const MAX_LOCAL_ATTACHMENT: usize = 10 * 1024 * 1024 - ENVELOPE_OVERHEAD;
 
-/// Mirrors `attachmentIds.max(10)` in shared/schemas.ts.
 pub const MAX_PER_MESSAGE: usize = 10;
 
-/// An OrangMove token is 32 random bytes as base64url - see its token.rs. Check
-/// the shape before spending a request on it.
 const ORANGMOVE_TOKEN_LEN: usize = 43;
 
-/// Upper bound on a media duration, in seconds. Prevents a lying client from
-/// freezing a number on every receiver that fits whatever it wants there.
 const MAX_MEDIA_SECS: f64 = 24.0 * 60.0 * 60.0;
 
 pub fn routes() -> Router<AppState> {
@@ -77,7 +40,6 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/uploads/attachment",
             post(upload_attachment)
-                // Per-route: the sibling image route keeps its own smaller cap.
                 .layer(DefaultBodyLimit::max(MAX_LOCAL_ATTACHMENT + 1024 * 1024)),
         )
         .route("/uploads/attachment/external", post(register_external))
@@ -88,23 +50,12 @@ pub fn routes() -> Router<AppState> {
         .route("/attachments/sealed/:asset", get(deliver_sealed_attachment))
 }
 
-/// Both delivery routes are keyed by a storage id that is minted once and never
-/// names different bytes, so a copy a client already holds cannot go stale - it
-/// can only be evicted. An hour was leaving every re-opened conversation
-/// re-downloading (and, for encrypted blobs, re-decrypting) the same files.
-/// `private` still keeps plaintext out of shared proxies and CDNs.
 const IMMUTABLE_CACHE_CONTROL: &str = "private, max-age=31536000, immutable";
 
-/// The storage id already identifies the bytes uniquely, so it is the entity
-/// tag. Worth having even alongside `immutable`: a client that revalidates
-/// anyway - after eviction, on a forced reload, or because a proxy asked - gets
-/// a 304 from the check below instead of a Cloudinary round trip and a decrypt.
 fn etag_for(storage_id: &str) -> String {
     format!("\"{storage_id}\"")
 }
 
-/// True when the client's `If-None-Match` already covers `etag`. Handles the
-/// comma-separated list and the weak prefix; `*` matches anything we hold.
 fn etag_matches(headers: &HeaderMap, etag: &str) -> bool {
     headers
         .get(IF_NONE_MATCH)
@@ -117,8 +68,6 @@ fn etag_matches(headers: &HeaderMap, etag: &str) -> bool {
         })
 }
 
-/// A 304 carries no body, but must repeat the caching headers so the client can
-/// refresh what it knows about the copy it kept.
 fn not_modified(etag: &str) -> AppResult<Response> {
     let mut headers = HeaderMap::new();
     headers.insert(
@@ -148,11 +97,6 @@ pub fn sealed_storage_id_from_delivery_url(url: &str) -> Option<&str> {
     valid_storage_id(storage_id).then_some(storage_id)
 }
 
-/// Hands back exactly the bytes the client uploaded. An attachment in an
-/// end-to-end encrypted conversation is sealed under a key only the
-/// conversation's devices hold (docs/E2EE.md §7), so there is nothing here to
-/// decrypt and nothing worth guessing a content type for: the real filename and
-/// type travel inside the message, not beside the blob.
 async fn deliver_sealed_attachment(
     State(state): State<AppState>,
     Path(asset): Path<String>,
@@ -164,7 +108,6 @@ async fn deliver_sealed_attachment(
         .filter(|id| valid_storage_id(id))
         .ok_or_else(|| AppError::NotFound("Attachment not found".into()))?;
 
-    // Before the fetch: a hit here costs nothing but the round trip.
     let etag = etag_for(storage_id);
     if etag_matches(&request_headers, &etag) {
         return not_modified(&etag);
@@ -235,10 +178,6 @@ fn valid_storage_id(storage_id: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_'))
 }
 
-/// Decrypt a new Cloudinary attachment. This intentionally retains the old
-/// public, unguessable-link access model: media elements and Android's system
-/// downloader cannot attach OrangChat bearer tokens. Cloudinary itself only
-/// ever receives the encrypted `.ocf` object.
 async fn deliver_encrypted_attachment(
     State(state): State<AppState>,
     Path(asset): Path<String>,
@@ -250,7 +189,6 @@ async fn deliver_encrypted_attachment(
         .filter(|id| valid_storage_id(id))
         .ok_or_else(|| AppError::NotFound("Attachment not found".into()))?;
 
-    // Checked first so a revalidation skips both the download and the decrypt.
     let etag = etag_for(storage_id);
     if etag_matches(&request_headers, &etag) {
         return not_modified(&etag);
@@ -285,8 +223,6 @@ async fn deliver_encrypted_attachment(
         CONTENT_DISPOSITION,
         HeaderValue::from_static(if inline { "inline" } else { "attachment" }),
     );
-    // Browser-private caching avoids repeated decryptions without placing
-    // plaintext in shared proxies or CDNs.
     headers.insert(
         CACHE_CONTROL,
         HeaderValue::from_static(IMMUTABLE_CACHE_CONTROL),
@@ -321,27 +257,18 @@ mod cache_tests {
         assert!(with("*"));
         assert!(with("W/\"abc123\""));
         assert!(with("\"zzz\", \"abc123\""));
-        // A different blob, and a bare id without the quotes, are both misses.
         assert!(!with("\"abc124\""));
         assert!(!with("abc123"));
         assert!(!etag_matches(&HeaderMap::new(), &etag));
     }
 }
 
-/// Attachments live apart from avatars/banners because they're served under
-/// different rules: `/uploads/` hands back re-encoded images, while `/attachments/`
-/// forces a download of bytes we never inspected (see deploy/nginx).
 fn attachments_dir() -> PathBuf {
     std::env::var("ATTACHMENT_DIR")
         .unwrap_or_else(|_| "/var/lib/orangchat/attachments".into())
         .into()
 }
 
-/// Extension → MIME. Only needed for the handful of types worth previewing
-/// inline; everything else downloads, and `application/octet-stream` is the
-/// right answer for bytes we haven't validated. This is also the only source of
-/// a content type for OrangMove files, which report every upload as
-/// `application/octet-stream` regardless of what it is.
 fn content_type_for(filename: &str) -> &'static str {
     let ext = filename
         .rsplit_once('.')
@@ -374,18 +301,12 @@ fn content_type_for(filename: &str) -> &'static str {
     }
 }
 
-/// Keep the real extension on disk so nginx serves images with a content type
-/// the browser will render - `nosniff` means a wrong one shows a broken image.
-/// The rest of the stored name is a cuid, so the user's filename never reaches
-/// the filesystem and can't traverse out of the directory.
 fn safe_extension(filename: &str) -> Option<String> {
     let ext = filename.rsplit_once('.')?.1;
     let ok = !ext.is_empty() && ext.len() <= 12 && ext.bytes().all(|b| b.is_ascii_alphanumeric());
     ok.then(|| ext.to_ascii_lowercase())
 }
 
-/// Read just the header for dimensions. Decoding a 10 MB image to measure it
-/// would hand any user a cheap way to chew through memory.
 fn image_dims(bytes: &[u8]) -> Option<(u32, u32)> {
     image::ImageReader::new(Cursor::new(bytes))
         .with_guessed_format()
@@ -394,7 +315,6 @@ fn image_dims(bytes: &[u8]) -> Option<(u32, u32)> {
         .ok()
 }
 
-/// The wire shape from shared/src/types.ts (`Attachment`).
 #[allow(clippy::too_many_arguments)]
 fn descriptor(
     id: &str,
@@ -484,8 +404,6 @@ async fn insert_pending(
     ))
 }
 
-/// Strip anything the user's filename could smuggle: it's echoed back into chat
-/// and used as the browser's download name, never as a path.
 fn clean_filename(raw: &str) -> String {
     let base = raw
         .rsplit(['/', '\\'])
@@ -501,15 +419,10 @@ fn clean_filename(raw: &str) -> String {
 
 #[derive(Deserialize, Default)]
 struct UploadQuery {
-    /// Set by clients uploading bytes they have already sealed themselves. The
-    /// server then stores an opaque blob and learns only its length.
     #[serde(default)]
     sealed: Option<u8>,
 }
 
-/// A duration the client measured on its side (audio length, video length) as
-/// a string number of seconds. Only persisted for audio/video; on anything
-/// else it is ignored, and a value that fails to parse is the client's bug.
 fn parse_duration(raw: Option<&str>, is_media: bool) -> AppResult<Option<f64>> {
     let Some(raw) = raw.filter(|r| !r.is_empty()) else {
         return Ok(None);
@@ -526,9 +439,6 @@ fn parse_duration(raw: Option<&str>, is_media: bool) -> AppResult<Option<f64>> {
     Ok(Some(seconds))
 }
 
-/// Store a client-made video still the same way the main bytes are stored -
-/// re-encoded to bound it, encrypted where the bytes are encrypted - and hand
-/// back the url to keep next to the attachment.
 async fn store_thumbnail(state: &AppState, bytes: Vec<u8>) -> AppResult<String> {
     let (out, ext) = tokio::task::spawn_blocking(move || process_image(&bytes, "avatar"))
         .await
@@ -618,8 +528,6 @@ async fn upload_attachment(
         return Err(AppError::BadRequest("File is empty".into()));
     }
     if bytes.len() > MAX_LOCAL_ATTACHMENT {
-        // The body limit usually catches this first; this covers the exact-fit
-        // case and keeps the rule true regardless of how the layer is tuned.
         return Err(AppError::BadRequest(
             "File is too large (max 10 MB for a direct upload)".into(),
         ));
@@ -634,9 +542,6 @@ async fn upload_attachment(
     let id = cuid();
     let ext = safe_extension(&filename);
 
-    // A video's first frame rides the same upload. It is re-encoded and
-    // moderated like any other image; a frame moderation dislikes simply means
-    // no preview, never a withheld attachment.
     let thumbnail_url = if is_media {
         match thumbnail.filter(|(_, bytes)| !bytes.is_empty()) {
             Some((thumb_name, thumb)) => {
@@ -726,18 +631,12 @@ async fn upload_attachment(
     )
     .await;
 
-    // Don't leave bytes on disk that no row points at.
     if result.is_err() {
         let _ = tokio::fs::remove_file(dir.join(&stored)).await;
     }
     Ok(Json(result?))
 }
 
-/// The E2EE path (docs/E2EE.md §7). The client has already encrypted the bytes,
-/// the filename and the content type under a key we do not have, so there is
-/// nothing here to moderate, no dimensions to read, and no reason to seal it a
-/// second time under a key we *do* hold. What the row keeps is a storage id and
-/// a byte length, which is all §7 allows it to know.
 async fn upload_sealed(
     user: AuthUser,
     state: AppState,
@@ -834,23 +733,9 @@ async fn upload_sealed(
     Ok(Json(result?))
 }
 
-/// How long an unsent upload is kept before the sweeper takes it. Long enough to
-/// cover someone picking a file and leaving the tab open over lunch.
 const PENDING_TTL_HOURS: i64 = 24;
 
-/// Delete staged uploads nobody ever sent, and the local bytes behind them.
-///
-/// `send_message` removes the row it claims, so anything still here is an upload
-/// that was abandoned - a file picked and never sent, or a send that failed.
-/// Without this they'd accumulate on disk forever, which is a slow leak any
-/// logged-in user could drive.
-///
-/// Returns how many rows went. OrangMove-backed rows own no bytes of ours: that
-/// file is already gone, reaped an hour after it was uploaded. Cloudinary-backed
-/// rows do, and are destroyed over the API.
 pub async fn sweep_pending(state: &AppState) -> AppResult<u64> {
-    // Compute the cutoff here rather than as SQL interval arithmetic: it's one
-    // bound timestamp instead of a cast Postgres has to infer a type for.
     let cutoff = Utc::now().naive_utc() - ChronoDuration::hours(PENDING_TTL_HOURS);
     let stale: Vec<(String, String)> = sqlx::query_as(
         r#"DELETE FROM "PendingAttachment"
@@ -865,9 +750,6 @@ pub async fn sweep_pending(state: &AppState) -> AppResult<u64> {
     for (url, storage) in &stale {
         match storage.as_str() {
             "local" => {
-                // The row's url is one we built, but read the basename back out
-                // rather than trusting it to be one - a join with a "../" would
-                // escape the dir.
                 if let Some(name) = url
                     .rsplit('/')
                     .next()
@@ -877,8 +759,6 @@ pub async fn sweep_pending(state: &AppState) -> AppResult<u64> {
                 }
             }
             "cloudinary" => {
-                // Unconfigured-but-rows-exist happens when credentials are pulled
-                // after the fact; the row still goes, the asset is left behind.
                 if let Some(cloudinary) = &state.cloudinary {
                     if let Some(storage_id) = encrypted_storage_id_from_delivery_url(url) {
                         let _ = cloudinary
@@ -889,8 +769,6 @@ pub async fn sweep_pending(state: &AppState) -> AppResult<u64> {
                             .destroy(&sealed_public_id(storage_id), "raw")
                             .await;
                     } else if let Some((public_id, resource_type)) = public_id_from_url(url) {
-                        // Compatibility for pending uploads created before
-                        // server-side encryption was enabled.
                         let _ = cloudinary.destroy(&public_id, &resource_type).await;
                     }
                 }
@@ -904,33 +782,19 @@ pub async fn sweep_pending(state: &AppState) -> AppResult<u64> {
 #[derive(Deserialize)]
 struct ExternalBody {
     token: String,
-    /// Optional media length in seconds, measured by the sender's client.
-    /// There is no way to derive it server-side: the bytes never come through
-    /// this process, and OrangMove reports every file as a generic blob.
     #[serde(default)]
     duration: Option<f64>,
-    /// Id of a separately uploaded still image (the video's first frame) to
-    /// claim as this attachment's thumbnail. Uploaded through the normal
-    /// endpoint first, then consumed here so it can never be attached to a
-    /// message as a file of its own.
     #[serde(rename = "thumbnailId", default)]
     thumbnail_id: Option<String>,
 }
 
-/// What OrangMove's `/api/meta/:token` returns (store::Meta).
 #[derive(Deserialize)]
 struct OrangMoveMeta {
     name: String,
     size: i64,
-    /// Unix seconds. OrangMove's reaper deletes the file at this point.
     expires_at: i64,
 }
 
-/// Turn an OrangMove token into an attachment. The token alone is the client's
-/// claim; everything recorded about the file comes from OrangMove's own metadata,
-/// so a client can't overstate a size or rename someone else's upload. A token
-/// that has already expired (or never existed) is rejected rather than stored as
-/// a link that's dead on arrival.
 async fn register_external(
     user: AuthUser,
     State(state): State<AppState>,
@@ -981,8 +845,6 @@ async fn register_external(
         .naive_utc();
 
     let filename = clean_filename(&meta.name);
-    // OrangMove records every upload as application/octet-stream, so the name is
-    // the only thing left to go on.
     let content_type = content_type_for(&filename);
     let is_media = content_type.starts_with("audio/") || content_type.starts_with("video/");
     let size = i32::try_from(meta.size)
@@ -998,9 +860,6 @@ async fn register_external(
         _ => None,
     };
 
-    // The thumbnail was uploaded through the normal endpoint as its own
-    // pending row; take it now so it can't be attached anywhere else. A
-    // moderation flag on the frame is treated as "no preview".
     let thumbnail_url = match &body.thumbnail_id {
         Some(thumb_id) if is_media => {
             let claimed: Option<(String, bool)> = sqlx::query_as(
@@ -1025,15 +884,8 @@ async fn register_external(
         _ => None,
     };
 
-    // Served through the same-origin proxy rather than the OrangMove host: the
-    // browser CSP would otherwise have to allow it, and the token stays off
-    // cross-origin referrers. See deploy/nginx/chat.oranges.lt.conf.
     let url = format!("/orangmove/file/{token}");
 
-    // The bytes never come through this process, so moderation names the file by
-    // its public url and lets OpenAI fetch it. Absolute, since "public" is the
-    // whole requirement; on a dev box CLIENT_ORIGIN is localhost, the fetch fails,
-    // and it fails open.
     let flagged = if content_type.starts_with("image/") {
         let public_url = format!(
             "{}{}",
@@ -1045,8 +897,6 @@ async fn register_external(
         false
     };
 
-    // Dimensions would mean downloading the file back; not worth it for
-    // something this size, so large images lay out from their intrinsic size.
     Ok(Json(
         insert_pending(
             &state,

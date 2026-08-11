@@ -1,6 +1,6 @@
 # orangchat
 
-Official Python SDK for building [OrangChat](https://orangchat.lt) bots — an
+Official Python SDK for building [OrangChat](https://orangchat.lt) bots - an
 async REST client plus a realtime gateway.
 
 ```bash
@@ -30,7 +30,7 @@ Friends, or at `/developers`), then invite it to a server from the same screen.
 
 ## Events
 
-Handlers are registered by name — `on_message` handles `message`.
+Handlers are registered by name - `on_message` handles `message`.
 
 `ready`, `message`, `message_update`, `message_delete`, `reaction_add`,
 `reaction_remove`, `typing`, `disconnect`.

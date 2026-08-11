@@ -9,30 +9,15 @@ import {
   type LocalPreview,
 } from '../e2ee/attachments';
 
-/**
- * Where a file goes depends only on its size:
- *
- * * **≤ 10MB** - posted to OrangChat, which stores it (Cloudinary, or its own
- *   disk when that's unconfigured), kept as long as the message.
- * * **> 10MB** - posted straight to OrangMove (same-origin via the /orangmove
- *   proxy), then registered with OrangChat by token. OrangChat never sees the
- *   bytes, which is the point: a 1GB file would otherwise be uploaded twice.
- *
- * The catch is that OrangMove is an ephemeral store - an hour is the longest it
- * will keep anything - so large attachments carry an `expiresAt` and stop
- * resolving after it. That's a property of the store, not a bug to fix here;
- * the UI shows the deadline instead of pretending it isn't coming.
- */
 
-/** Must match MAX_LOCAL_ATTACHMENT in server-rs/src/http/attachments.rs. */
-// AES-GCM's version header, nonce and authentication tag consume 36 bytes of
-// Cloudinary's 10 MiB raw-asset limit.
+
+
 export const MAX_LOCAL_ATTACHMENT = 10 * 1024 * 1024 - 36;
-/** OrangMove's hard ceiling (MAX_SIZE). Nothing bigger can be sent at all. */
+
 export const MAX_ATTACHMENT = 1024 * 1024 * 1024;
-/** Mirrors attachmentIds.max(10) in shared/schemas.ts. */
+
 export const MAX_PER_MESSAGE = 10;
-/** OrangMove's MAX_TTL. Asking for more is rejected, so this is as long as a large file can live. */
+
 const ORANGMOVE_TTL_SECONDS = 3600;
 
 export interface UploadHandle {
@@ -45,12 +30,11 @@ interface RawResponse {
   body: string;
 }
 
-/** Media metadata captured on the sender's device before the bytes go up. */
+
 export interface MediaMeta {
-  /** Seconds, for audio and video. */
+
   duration?: number;
-  /** A still of the video's first frame, made here because the server cannot
-   *  decode the encrypted bytes it stores. */
+
   thumbnail?: Blob;
 }
 
@@ -93,17 +77,12 @@ function mediaContentType(file: File, isVideo: boolean, isAudio: boolean): strin
   return file.type || 'application/octet-stream';
 }
 
-/** How long to wait for a local file's metadata before giving up on it. A
- *  probe is a courtesy preview, never something the send should hang on. */
+
 const PROBE_TIMEOUT_MS = 10_000;
-/** Longest thumbnail edge, matching the E2EE preview cap. */
+
 const THUMB_EDGE = 400;
 
-/**
- * Wait for a local media element's headers. Resolves false on error, and after
- * [PROBE_TIMEOUT_MS] no matter what - a probe is a courtesy, never something
- * the send hangs on.
- */
+
 function awaitMetadata(element: HTMLMediaElement): Promise<boolean> {
   return new Promise((resolve) => {
     const timer = setTimeout(finish, PROBE_TIMEOUT_MS, true);
@@ -118,10 +97,7 @@ function awaitMetadata(element: HTMLMediaElement): Promise<boolean> {
   });
 }
 
-/**
- * The duration of a local audio file, read from its headers. One pass over the
- * headers only - no bytes are played back.
- */
+
 async function probeAudio(file: File): Promise<MediaMeta | null> {
   const url = URL.createObjectURL(file);
   try {
@@ -154,12 +130,7 @@ function seekTo(video: HTMLVideoElement, time: number): Promise<void> {
   });
 }
 
-/**
- * Duration and a first-frame still for a local video. The first frame is not
- * always paintable - some encoders start with black frames - so the still is
- * taken just past the very start, which is still "the first frame" to anyone
- * looking at it.
- */
+
 async function probeVideo(file: File): Promise<MediaMeta | null> {
   const url = URL.createObjectURL(file);
   try {
@@ -175,7 +146,6 @@ async function probeVideo(file: File): Promise<MediaMeta | null> {
       await seekTo(video, Math.min(0.5, duration ?? 0.5));
       thumbnail = (await captureFrame(video))?.blob;
     } catch {
-      // A frame is a courtesy; the upload goes on without it.
     }
     return { ...(duration !== undefined ? { duration } : {}), ...(thumbnail ? { thumbnail } : {}) };
   } finally {
@@ -183,7 +153,7 @@ async function probeVideo(file: File): Promise<MediaMeta | null> {
   }
 }
 
-/** A painted frame and its dimensions, at most [THUMB_EDGE] on the long edge. */
+
 async function captureFrame(video: HTMLVideoElement): Promise<{
   blob: Blob;
   width: number;
@@ -205,19 +175,10 @@ async function captureFrame(video: HTMLVideoElement): Promise<{
   return blob ? { blob, width, height } : null;
 }
 
-/**
- * A sealed video's preview: the duration and a first-frame still, both made on
- * this device because the server can never decode the sealed bytes. The still
- * is returned ready to be sealed as its own blob (see makePreview), so an
- * encrypted video gets a poster exactly like an encrypted image does.
- */
+
 export async function makeVideoPreview(file: File): Promise<{
   duration?: number;
-  /**
-   * The clip's own dimensions. Separate from [preview] because receivers lay
-   * the player out from these, and a frame grab is allowed to fail - when it
-   * does, the shape is still known and the box is still right.
-   */
+
   size?: { width: number; height: number };
   preview: LocalPreview | null;
 }> {
@@ -244,12 +205,10 @@ export async function makeVideoPreview(file: File): Promise<{
           contentType: frame.blob.type || 'image/webp',
           width: video.videoWidth,
           height: video.videoHeight,
-          // Straight off the element, while it still holds the painted frame.
           blur: await blurStamp(video, video.videoWidth, video.videoHeight),
         };
       }
     } catch {
-      // A frame is a courtesy; the duration still rides along.
     }
     return {
       ...(duration !== undefined ? { duration } : {}),
@@ -261,11 +220,7 @@ export async function makeVideoPreview(file: File): Promise<{
   }
 }
 
-/**
- * What to capture from a file before it is uploaded. Audio and video probe
- * their headers for a length; video also keeps a still of its first frame.
- * Anything that fails costs the preview, not the send.
- */
+
 async function probeMedia(file: File): Promise<MediaMeta> {
   if (file.type.startsWith('video/') || VIDEO_EXTENSION.test(file.name)) {
     return (await probeVideo(file)) ?? {};
@@ -276,10 +231,7 @@ async function probeMedia(file: File): Promise<MediaMeta> {
   return {};
 }
 
-/**
- * fetch() can't report upload progress, and these go up to a gigabyte - a
- * progressless 1GB upload is indistinguishable from a hung one, so XHR it is.
- */
+
 function post(
   url: string,
   form: FormData,

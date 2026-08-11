@@ -1,10 +1,3 @@
-//! Profile connection routes, mounted under /api.
-//!
-//! The link flow is deliberately two-legged. `/authorize` is a normal
-//! authenticated XHR that *returns* a URL rather than redirecting, because the
-//! browser would drop the Authorization header on a redirect. The client then
-//! navigates to that URL itself. The callback comes back unauthenticated and
-//! recovers the user from the Redis-bound state token (see services/connection).
 
 use std::collections::HashMap;
 
@@ -32,8 +25,6 @@ pub fn routes() -> Router<AppState> {
         .route("/users/:userId/connections", get(list_for_user))
 }
 
-/// Which providers this deployment can actually offer - an unconfigured one is
-/// hidden rather than shown as a button that 500s.
 async fn list_providers(State(state): State<AppState>, _user: AuthUser) -> Json<Value> {
     let items: Vec<Value> = connections::PROVIDERS
         .iter()
@@ -49,8 +40,6 @@ async fn list_mine(State(state): State<AppState>, user: AuthUser) -> AppResult<J
     Ok(Json(json!({ "items": items })))
 }
 
-/// Someone else's card: visible rows only. Requires auth but no relationship -
-/// a profile card is already reachable by anyone who shares a server or DM.
 async fn list_for_user(
     State(state): State<AppState>,
     Path(user_id): Path<String>,
@@ -84,20 +73,14 @@ async fn authorize(
     Ok(Json(json!({ "url": url })))
 }
 
-/// Terminal leg of the link. Always redirects back into the settings UI - the
-/// user is looking at a browser tab, so an error belongs in the page, not in a
-/// JSON body they'd see as raw text.
 async fn callback(
     State(state): State<AppState>,
     Path(provider_key): Path<String>,
     Query(params): Query<HashMap<String, String>>,
 ) -> impl IntoResponse {
     let origin = &state.config.client_origin;
-    // Settings is a dialog, not a route - land on the app root and let the
-    // client reopen settings on the Connections section from this query.
     let back = |q: &str| Redirect::to(&format!("{origin}/?{q}"));
 
-    // The user pressed cancel/deny on the remote consent screen.
     if params.contains_key("error") {
         return back("connection=cancelled");
     }
@@ -140,8 +123,6 @@ async fn add_custom(
     if name.is_empty() || name.len() > 40 || url.len() > 500 {
         return Err(bad_request("Invalid input"));
     }
-    // Scheme allowlist: these URLs become hrefs on a public profile, so
-    // javascript:/data: must never make it into storage.
     if !(url.starts_with("https://") || url.starts_with("http://")) {
         return Err(bad_request("Link must start with https://"));
     }

@@ -10,26 +10,14 @@ import {
 import { getPrefs } from "../../lib/prefs";
 import { playJoinSound, playLeaveSound } from "../../lib/ringtone";
 
-/**
- * Thin wrapper around the livekit-client Room singleton. Subscribed audio tracks
- * attach to hidden <audio> elements; video tracks are surfaced as `VideoTile`s
- * for the UI to render.
- *
- * Join/leave cues live here rather than in the signalling layer so DM calls and
- * server voice channels sound identical, and so the cue tracks real media
- * connectivity rather than an intent to connect.
- */
+
 
 let room: Room | null = null;
 
-/** A camera and a screen from the same person are two tiles, not one. */
+
 export type TileSource = "camera" | "screen";
 
-/**
- * A video track to render. `attach`/`detach` are closures over the livekit
- * Track so components never import livekit types - which matters because this
- * whole module is a ~700 kB lazy chunk.
- */
+
 export interface VideoTile {
   identity: string;
   name: string;
@@ -44,53 +32,38 @@ let onTiles: ((tiles: VideoTile[]) => void) | null = null;
 let onSpeakers: ((identities: string[]) => void) | null = null;
 let onScreenShareEnded: (() => void) | null = null;
 
-/**
- * The browser's own "Stop sharing" bar ends the capture without going through
- * our button, so the store has to hear about it or the toggle keeps claiming we
- * are still sharing.
- */
+
 export function setScreenShareEndedSink(sink: (() => void) | null): void {
   onScreenShareEnded = sink;
 }
 
-/** Called by the voice store so tile changes land in zustand. */
+
 export function setTileSink(sink: ((tiles: VideoTile[]) => void) | null): void {
   onTiles = sink;
   onTiles?.(tiles);
 }
 
-/**
- * Who is speaking, from two different clocks.
- *
- * Other people come from `ActiveSpeakersChanged`, which the SFU computes and
- * broadcasts - a few hundred ms behind the audio, which nobody notices for a
- * voice they are only hearing. Our own glow cannot use it: you hear yourself
- * with zero latency, so a server-timed ring visibly trails your own voice. So
- * the local half is measured straight off the mic track instead, and the two
- * are merged here.
- */
+
 let remoteSpeakers: string[] = [];
 let localSpeaking = false;
 
 function emitSpeakers(): void {
   const identity = room?.localParticipant.identity;
-  // The SFU counts us among the active speakers too; ours is the one reading
-  // we do not want, so it is dropped in favour of the locally measured one.
   const ids = remoteSpeakers.filter((id) => id !== identity);
   if (localSpeaking && identity) ids.push(identity);
   onSpeakers?.(ids);
 }
 
-/** Active-speaker identities drive the green speaking glow in call UI. */
+
 export function setSpeakerSink(sink: ((identities: string[]) => void) | null): void {
   onSpeakers = sink;
   if (!sink) return;
   emitSpeakers();
 }
 
-/** RMS (0..1) the mic must clear to count as speech rather than room noise. */
+
 const SPEAKING_THRESHOLD = 0.02;
-/** Ordinary gaps between words must not strobe the ring off and back on. */
+
 const SPEAKING_HOLD_MS = 250;
 
 let analyserCleanup: (() => void) | null = null;
@@ -98,21 +71,15 @@ let analyserFrame: number | null = null;
 
 function startLocalSpeaking(current: Room): void {
   stopLocalSpeaking();
-  // Sharing a screen with audio publishes a second local audio track, and
-  // metering that one would glow the ring at whatever the screen is playing.
   const publication = current.localParticipant.getTrackPublication(Track.Source.Microphone);
   const track = publication?.track;
   if (!(track instanceof LocalAudioTrack)) return;
 
-  // cloneTrack would hold a second, independent capture of the mic open purely
-  // to measure it - and would keep reading after a mute, which is exactly when
-  // it must read silence.
   const { calculateVolume, cleanup } = createAudioAnalyser(track, { cloneTrack: false });
   analyserCleanup = () => void cleanup();
 
   let lastLoudAt = 0;
   const tick = () => {
-    // A muted mic reaches nobody, so glowing for it would be a lie.
     const volume = publication?.isMuted ? 0 : calculateVolume();
     const now = performance.now();
     if (volume > SPEAKING_THRESHOLD) lastLoudAt = now;
@@ -134,7 +101,7 @@ function stopLocalSpeaking(): void {
   localSpeaking = false;
 }
 
-/** Identity is unique per participant, so this separates our tile from theirs. */
+
 const tileKey = (identity: string, isLocal: boolean, source: TileSource) =>
   `${identity}:${isLocal ? "self" : "remote"}:${source}`;
 

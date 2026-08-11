@@ -12,19 +12,14 @@ const isMobile = () => window.matchMedia(MOBILE_QUERY).matches;
 const isBelowLg = () => window.matchMedia(BELOW_LG_QUERY).matches;
 
 interface PanelShellProps {
-  /** Column next to the server rail (channel list / DM list). */
+
   sidebar?: ReactNode;
-  /** Right column (member list); drawer below lg, static at lg+. */
+
   aside?: ReactNode;
   children: ReactNode;
 }
 
-/**
- * Responsive frame. md+ renders the classic columns: rail | sidebar |
- * main | aside. Below md the main pane is full-screen and rail+sidebar
- * live in a swipeable left drawer; the aside becomes a right drawer
- * below lg. Swipe right/left anywhere to open/close, Discord-style.
- */
+
 export function PanelShell({ sidebar, aside, children }: PanelShellProps) {
   const left = usePanelStore((s) => s.left);
   const right = usePanelStore((s) => s.right);
@@ -33,10 +28,6 @@ export function PanelShell({ sidebar, aside, children }: PanelShellProps) {
   const leftRef = useRef<HTMLDivElement>(null);
   const rightRef = useRef<HTMLDivElement>(null);
 
-  // The drawers are translated off-screen, not removed, so a closed one stays
-  // focusable and screen-reader-visible - tabbing from the chat header walks
-  // straight into the hidden channel list. inert removes it from tab order
-  // and the a11y tree (aria-hidden alone still leaves controls Tab-reachable).
   const [mobile, setMobile] = useState(isMobile);
   const [belowLg, setBelowLg] = useState(isBelowLg);
   useEffect(() => {
@@ -56,7 +47,6 @@ export function PanelShell({ sidebar, aside, children }: PanelShellProps) {
   }, []);
 
   useEffect(() => {
-    // Above the breakpoint the drawer is a static column and must stay live.
     if (leftRef.current) leftRef.current.inert = !left && mobile;
     if (rightRef.current) rightRef.current.inert = !right && belowLg;
   }, [left, right, mobile, belowLg]);
@@ -98,8 +88,6 @@ export function PanelShell({ sidebar, aside, children }: PanelShellProps) {
         ref={leftRef}
         aria-hidden={!left && mobile}
         className={cn(
-          // Height matches the app shell's visual-viewport height so an open
-          // keyboard doesn't leave the drawer running underneath it.
           "fixed top-0 left-0 z-40 flex h-[var(--oc-vvh,100dvh)] pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] transition-transform duration-200 ease-out",
           "md:static md:z-auto md:h-auto md:translate-x-0 md:pb-0 md:pt-0 md:transition-none",
           left ? "translate-x-0" : "-translate-x-full",

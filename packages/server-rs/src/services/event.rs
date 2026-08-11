@@ -1,4 +1,3 @@
-//! Scheduled server events.
 
 use chrono::NaiveDateTime;
 
@@ -195,7 +194,6 @@ pub async fn set_interest(
     get_event(state, event_id, user_id).await
 }
 
-/// The server an event belongs to, for permission checks before a write.
 pub async fn event_server(state: &AppState, event_id: &str) -> AppResult<String> {
     sqlx::query_scalar(r#"SELECT "serverId" FROM "ScheduledEvent" WHERE id = $1"#)
         .bind(event_id)

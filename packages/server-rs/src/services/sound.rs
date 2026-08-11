@@ -1,4 +1,3 @@
-//! Soundboard clips. No TS equivalent - new for the Rust port.
 
 use crate::error::{AppError, AppResult};
 use crate::ids::cuid;
@@ -7,11 +6,8 @@ use crate::state::AppState;
 
 const NAME_MAX: usize = 32;
 const NAME_MIN: usize = 1;
-/// Bounded because the whole board is sent to every client that opens it.
 pub const PER_SERVER_LIMIT: i64 = 64;
 
-/// Unlike emoji, sound names are only ever shown as labels - never parsed out of
-/// message text - so they can hold spaces and punctuation.
 pub fn normalize_name(raw: &str) -> AppResult<String> {
     let name = raw.trim().to_string();
     if name.chars().count() < NAME_MIN || name.chars().count() > NAME_MAX {
@@ -22,8 +18,6 @@ pub fn normalize_name(raw: &str) -> AppResult<String> {
     Ok(name)
 }
 
-/// Clamped rather than rejected: a slider that refuses to save is worse than one
-/// that lands on its own edge.
 pub fn normalize_volume(raw: Option<f64>) -> f64 {
     raw.unwrap_or(1.0).clamp(0.0, 1.0)
 }
@@ -39,9 +33,6 @@ pub async fn list_sounds(state: &AppState, server_id: &str) -> AppResult<Vec<Sou
     Ok(rows)
 }
 
-/// Every sound from every server the user is in - what the soundboard picker
-/// needs to let them fire any of their sounds into whatever voice room they're
-/// in, mirroring how custom emoji are usable anywhere you're a member.
 pub async fn list_usable_sounds(state: &AppState, user_id: &str) -> AppResult<Vec<SoundRow>> {
     let rows = sqlx::query_as::<_, SoundRow>(
         r#"SELECT s.id, s."serverId", s.name, s.url, s.duration, s.emoji, s.volume,

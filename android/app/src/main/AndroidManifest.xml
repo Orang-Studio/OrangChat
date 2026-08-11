@@ -3,38 +3,24 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- Runtime-requested on Android 13+ for local message notifications. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Calls (LiveKit). RECORD_AUDIO/CAMERA are requested at runtime when a
-         call starts; the rest are install-time. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-    <!-- Android 12+ requires this runtime grant before a connected Bluetooth
-         headset can appear in LiveKit's audio-output picker. -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <!-- Typed foreground service, mandatory from API 34. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
-    <!-- Lets a ringing call take over the screen; auto-granted to CATEGORY_CALL. -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
-    <!-- In-app updates: OrangChat ships outside any store, so it installs its
-         own APK. The user still grants "install unknown apps" per-app, and the
-         system installer still shows the confirmation dialog. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
-    <!-- Saving an attachment to the public Downloads folder. Scoped storage made
-         this unnecessary in Android 10, so it's capped there rather than asked
-         of everyone; below that it's requested at runtime on first download. -->
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
 
-    <!-- A phone without a camera can still place voice calls. -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
@@ -65,8 +51,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Receive text, links, and one or more attachments from Android's
-                 system share sheet. MIME filtering happens in the upload path. -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -78,11 +62,6 @@
                 <data android:mimeType="*/*" />
             </intent-filter>
 
-            <!-- Invite links. autoVerify makes these open here instead of the
-                 browser, without a disambiguation prompt - but only once the
-                 site serves /.well-known/assetlinks.json naming this app's
-                 signing certificate (see deploy/assetlinks.json). Until then
-                 they still work, just via the "open with" chooser. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -90,9 +69,6 @@
                 <data android:scheme="https" android:host="chat.oranges.lt" android:pathPrefix="/invite/" />
             </intent-filter>
 
-            <!-- QR sign-in. The web login page shows an orangchat://login?token=
-                 code; scanning it with the phone's camera opens the app here to
-                 confirm the web session. Custom scheme, so no assetlinks needed. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -100,10 +76,6 @@
                 <data android:scheme="orangchat" android:host="login" />
             </intent-filter>
 
-            <!-- Contact verification (docs/E2EE.md §6.7). The other person shows
-                 an orangchat://verify?... code; scanning it here pins their
-                 encryption identity. Its own host, so the type tag is enforced
-                 by the OS before the app even sees it. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -111,8 +83,6 @@
                 <data android:scheme="orangchat" android:host="verify" />
             </intent-filter>
 
-            <!-- Device enrollment. A system-camera scan opens the old device
-                 directly into the SAS + TOTP authorization flow. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -120,17 +90,11 @@
                 <data android:scheme="orangchat" android:host="device-transfer" />
             </intent-filter>
 
-            <!-- Lets the conversation shortcuts published with message
-                 notifications appear in the share sheet's direct-share row. -->
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
         </activity>
 
-        <!-- The conversation behind a notification bubble. A bubble can only
-             host an activity that is embeddable, resizeable and document-
-             launched, none of which a singleTask MainActivity can be - so it
-             gets its own entry point rather than a flag on that one. -->
         <activity
             android:name=".feature.chat.BubbleActivity"
             android:allowEmbedded="true"
@@ -152,28 +116,20 @@
             android:exported="false"
             android:foregroundServiceType="microphone|camera" />
 
-        <!-- Notification quick actions (reply / mark read / mute) are delivered
-             here so they resolve without launching the activity. -->
         <receiver
             android:name=".notifications.NotificationActionReceiver"
             android:exported="false" />
 
-        <!-- Sends a quick reply the broadcast could not get out, as soon as the
-             system sees a network again. Never launched by the app itself. -->
         <service
             android:name=".notifications.ReplyRetryJobService"
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
 
-        <!-- Registers this device's FCM token when the app could not: without it
-             the server has nothing to push to and notifications never arrive. -->
         <service
             android:name=".notifications.PushTokenJobService"
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
 
-        <!-- Hands the downloaded APK to the system installer: a file:// uri is
-             rejected outright from API 24 on. -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

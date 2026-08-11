@@ -9,7 +9,6 @@ import { stopSoundboardClips } from "../soundboard/playback";
 import { getVoiceParticipants } from "./api";
 import type { VideoTile } from "./livekit";
 
-// livekit-client is ~700 kB; load it only when someone actually joins voice.
 const livekit = () => import("./livekit");
 
 export type VoiceSessionStatus = "connecting" | "connected" | "error";
@@ -28,20 +27,15 @@ export interface VoiceSession {
 
 interface VoiceState {
   session: VoiceSession | null;
-  /** channelId → userId → live voice state, fed by voice:state events. */
+
   participants: Record<string, Record<string, VoiceStatePayload>>;
-  /** Camera tracks to render, mirrored out of the livekit chunk. */
+
   videoTiles: VideoTile[];
-  /** LiveKit identities currently above the active-speaker threshold. */
+
   speakingIds: string[];
-  /** Every device of *ours* currently in voice, this one included. */
+
   devices: VoiceDevicePayload[];
-  /**
-   * Why the camera/mic could not be turned on: permission refused, device in
-   * use, no camera. Held apart from `session.error`, which means the join
-   * itself failed and the session is unusable - a rejected camera leaves a
-   * perfectly good call running.
-   */
+
   mediaError: string | null;
 }
 
@@ -54,11 +48,7 @@ export const useVoiceStore = create<VoiceState>(() => ({
   mediaError: null,
 }));
 
-/**
- * getUserMedia rejections are DOMExceptions whose `message` is browser-specific
- * and often empty; `name` is the part that is specified and stable, so the
- * advice is keyed off that.
- */
+
 function cameraErrorMessage(err: unknown): string {
   const name = err instanceof Error ? err.name : "";
   switch (name) {

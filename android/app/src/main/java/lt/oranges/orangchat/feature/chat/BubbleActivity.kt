@@ -25,21 +25,6 @@ import lt.oranges.orangchat.notifications.NotificationHelper
 import lt.oranges.orangchat.ui.theme.OrangChatTheme
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-/**
- * The floating window behind a conversation bubble.
- *
- * A bubble is the one place Android will host a chat outside the app, and it can
- * only host an activity that is embeddable, resizeable and document-launched -
- * which [lt.oranges.orangchat.MainActivity], being singleTask, can never be.
- * Hence a second entry point rather than a flag on the first.
- *
- * It opens the shell straight into the conversation it was expanded for, so what
- * the bubble shows is the same chat the app shows, with the same view model
- * wiring. The channel is passed down the composition rather than through
- * [lt.oranges.orangchat.feature.home.PendingConversationStore]: the store is
- * process-wide, and a bubble expanding must not drag the main window off
- * whatever the user was reading there.
- */
 @AndroidEntryPoint
 class BubbleActivity : LocalizedActivity() {
     @Inject lateinit var notificationHelper: NotificationHelper
@@ -47,7 +32,6 @@ class BubbleActivity : LocalizedActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val channelId = intent?.getStringExtra(NotificationHelper.EXTRA_CHANNEL_ID)
-        // Expanding the bubble is reading it, the same as opening the app.
         channelId?.let(notificationHelper::clearConversationNotifications)
 
         setContent {

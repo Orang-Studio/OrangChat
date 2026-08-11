@@ -21,15 +21,7 @@ import {
 } from './transfer';
 import { t } from "../../lib/i18n";
 
-/**
- * Device transfer (docs/E2EE.md §4), from both ends.
- *
- * The six digits are the part that cannot be skipped. The QR gives
- * confidentiality - whoever holds the pairing secret can talk to this device -
- * but it does not prove the thing on the other end is the phone in your hand. A
- * relay attacker who photographed the code over a shoulder produces different
- * digits, and a person comparing two screens is what catches that.
- */
+
 
 function Digits({ value }: { value: string }) {
   return <p className="text-center font-mono text-3xl font-semibold tracking-[0.3em]">{value}</p>;

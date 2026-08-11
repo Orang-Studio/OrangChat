@@ -8,20 +8,12 @@ import lt.oranges.orangchat.data.model.UnreadState
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Unread dots and mention badges. Port of the web client's stores/unread.ts.
- *
- * Server-side truth arrives from GET /me/unreads on start and `unread:activity`
- * thereafter; the channel the user is looking at is never marked unread.
- */
 @Singleton
 class UnreadStore @Inject constructor() {
 
     private val _states = MutableStateFlow<Map<String, UnreadState>>(emptyMap())
-    /** channelId -> unread state. */
     val states: StateFlow<Map<String, UnreadState>> = _states.asStateFlow()
 
-    /** The channel on screen: activity here is read immediately, never badged. */
     @Volatile
     var activeChannelId: String? = null
         private set
@@ -37,7 +29,6 @@ class UnreadStore @Inject constructor() {
             .associateBy { it.channelId }
     }
 
-    /** Fold in a new message's activity. [mentionsMe] bumps the badge count. */
     fun onActivity(channelId: String, serverId: String?, mentionsMe: Boolean) {
         if (channelId == activeChannelId) return
         _states.update(channelId) { current ->
@@ -74,14 +65,11 @@ class UnreadStore @Inject constructor() {
     }
 }
 
-/** Total mentions across a server, for the rail badge. */
 fun Map<String, UnreadState>.mentionsForServer(serverId: String): Int =
     values.filter { it.serverId == serverId }.sumOf { it.mentionCount }
 
-/** Any unread channel in a server, for the rail dot. */
 fun Map<String, UnreadState>.hasUnreadInServer(serverId: String): Boolean =
     values.any { it.serverId == serverId && it.unread }
 
-/** Total unread DM *messages* (not conversations) for the home button. */
 fun Map<String, UnreadState>.unreadDmCount(): Int =
     minOf(values.filter { it.serverId == null }.sumOf { it.unreadCount }, UNREAD_COUNT_CAP)

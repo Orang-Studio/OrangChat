@@ -26,19 +26,6 @@ private const val ESTIMATED_CARD_HEIGHT_DP = 240
 private const val HEIGHT_POLL_ATTEMPTS = 12
 private const val HEIGHT_POLL_INTERVAL_MS = 40L
 
-/**
- * Renders a themed profile card through a WebView so that user profile CSS
- * behaves exactly as it does on the web client.
- *
- * The WebView is the sandbox: it contains only this one card, so user CSS has
- * no surrounding app to escape into and no sibling card to leak onto - the two
- * things the web sanitizer's scoping exists to prevent. What is left is network
- * egress (an external url() would leak the viewer's IP to the profile owner),
- * blocked here three ways: sanitizeProfileCss strips external url()/@import, the
- * CSP allows no load except images and the fixed badge-interaction script, and
- * shouldInterceptRequest hard-blocks every request that is not one of the
- * avatar/banner/badge URLs we put in the document.
- */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun ProfileCardWebView(
@@ -64,8 +51,6 @@ fun ProfileCardWebView(
                 isFocusable = false
                 overScrollMode = WebView.OVER_SCROLL_NEVER
                 settings.apply {
-                    // The generated document's nonce-restricted script only
-                    // toggles badge labels; profile content remains escaped.
                     javaScriptEnabled = true
                     domStorageEnabled = false
                     allowFileAccess = false
@@ -104,11 +89,6 @@ private class ProfileCardWebViewClient(
         return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(ByteArray(0)))
     }
 
-    /**
-     * contentHeight is only meaningful once layout has settled, and there is no
-     * JS available to report it back, so poll it briefly. initial-scale=1 makes
-     * the CSS pixels it reports equal to dp.
-     */
     override fun onPageFinished(view: WebView, url: String?) {
         fun poll(attempt: Int) {
             val measured = view.contentHeight

@@ -1,10 +1,5 @@
 package lt.oranges.orangchat.data.model
 
-/**
- * Mirrors packages/shared/src/permissions.ts. Bitfields cross the wire as
- * decimal strings because JSON has no BigInt; they are i64 on the server, so
- * Long is the matching Kotlin type.
- */
 object Permissions {
     const val ADMINISTRATOR = 1L shl 0
 
@@ -41,14 +36,11 @@ object Permissions {
 
     const val ALL = (1L shl 26) - 1
 
-    /** @everyone's position. The owner outranks every real role. */
     const val EVERYONE_POSITION = 0
 
-    /** Matches the server's OWNER_POSITION (i32::MAX). */
     const val OWNER_POSITION = Int.MAX_VALUE
 }
 
-/** Display name + the bit, grouped the way the settings UI renders them. */
 data class PermissionInfo(val bit: Long, val label: String, val description: String)
 
 data class PermissionGroup(val title: String, val permissions: List<PermissionInfo>)

@@ -73,7 +73,6 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
 private fun screenModifier(c: lt.oranges.orangchat.ui.theme.OrangColors) =
     Modifier.fillMaxSize().background(c.surface2)
 
-// ── Privacy ─────────────────────────────────────────────
 
 @Composable
 fun PrivacyScreen(self: SelfUser, onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
@@ -82,10 +81,6 @@ fun PrivacyScreen(self: SelfUser, onBack: () -> Unit, vm: SettingsViewModel = hi
     val prefs by vm.prefs.collectAsStateWithLifecycle()
     var explainerOpen by remember { mutableStateOf(false) }
 
-    // Granting happens in system settings, i.e. outside this process, so the
-    // answer is re-read on every resume - otherwise a user who just turned
-    // notifications on would come back to a screen still telling them they
-    // are off.
     val context = LocalContext.current
     val notificationsAllowed = rememberNotificationPermissionState()
 
@@ -126,9 +121,6 @@ fun PrivacyScreen(self: SelfUser, onBack: () -> Unit, vm: SettingsViewModel = hi
                 )
             }
             SettingSection(AppStrings.get(context, R.string.catalog_notifications_753a22b2)) {
-                // The first-run prompt takes "no" for an answer and never asks
-                // again, and the permission can be revoked from the system at
-                // any time. This row is the whole way back from either.
                 if (!notificationsAllowed) {
                     SettingsNavRow(
                         label = AppStrings.get(context, R.string.catalog_notifications_are_turned_off_e638becc),
@@ -173,7 +165,6 @@ fun PrivacyScreen(self: SelfUser, onBack: () -> Unit, vm: SettingsViewModel = hi
     }
 }
 
-// ── Camera & Microphone ─────────────────────────────────
 
 @Composable
 fun SharingScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
@@ -216,13 +207,7 @@ fun SharingScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
     }
 }
 
-// ── Devices ─────────────────────────────────────────────
 
-/**
- * Best-effort device name from a User-Agent. Deliberately coarse: the string is
- * attacker-controlled and only ever a label, so it's matched against a short
- * list of substrings rather than parsed.
- */
 private fun describeDevice(context: Context, userAgent: String?): String {
     if (userAgent.isNullOrBlank()) return AppStrings.get(context, R.string.catalog_unknown_device_7af13b29)
     val ua = userAgent.lowercase()
@@ -250,11 +235,6 @@ private fun describeDevice(context: Context, userAgent: String?): String {
     }
 }
 
-/**
- * Live sessions, one per signed-in device. A session is a refresh token, so
- * revoking one stops that device renewing - it keeps working until its current
- * access token expires, which is minutes, not indefinitely.
- */
 @Composable
 fun DevicesScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
         val context = LocalContext.current
@@ -340,13 +320,10 @@ fun DevicesScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
     }
 }
 
-// ── Passkeys ─────────────────────────────────────────────
 
 @Composable
 private fun PasskeysSection(self: SelfUser, vm: SettingsViewModel) {
     val c = OrangTheme.colors
-    // Credential Manager raises its sheet over the Activity, so the ceremony
-    // needs this context rather than the application one.
     val context = LocalContext.current
     val ui by vm.passkeys.collectAsStateWithLifecycle()
 
@@ -593,7 +570,6 @@ private fun PasskeyRow(
     }
 }
 
-// ── Security (2FA) ──────────────────────────────────────
 
 @Composable
 fun SecurityScreen(
@@ -659,18 +635,12 @@ fun SecurityScreen(
     }
 }
 
-/**
- * Change email / set-or-change password. Both are gated on the current password
- * (except on OAuth-only accounts) plus a 2FA code when it's on, so the two forms
- * share one credential block - mirrors the web CredentialsSection.
- */
 @Composable
 private fun CredentialsSection(self: SelfUser, hasPassword: Boolean, vm: SettingsViewModel) {
         val context = LocalContext.current
     val c = OrangTheme.colors
     val ui by vm.credentials.collectAsStateWithLifecycle()
 
-    // null = neither form open.
     var mode by remember { mutableStateOf<String?>(null) }
     var password by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
@@ -722,8 +692,6 @@ private fun CredentialsSection(self: SelfUser, hasPassword: Boolean, vm: Setting
                         value = email,
                         onValueChange = { email = it },
                         label = AppStrings.get(context, R.string.catalog_new_email_b07e22b0),
-                        // Nothing confirms the address afterwards - there's no
-                        // mail transport - so don't imply a confirmation email.
                         hint = AppStrings.get(context, R.string.catalog_used_to_sign_in_there_s_no_51a10c36),
                     )
                 } else {
@@ -795,11 +763,6 @@ private fun CredentialsSection(self: SelfUser, hasPassword: Boolean, vm: Setting
     }
 }
 
-/**
- * Bans and live timeouts against the account. Moderation is per-server - there
- * is no instance-wide sanction - so "good standing" means no server currently
- * restricts you.
- */
 @Composable
 private fun AccountStandingSection(vm: SettingsViewModel) {
         val context = LocalContext.current
@@ -870,11 +833,6 @@ private fun AccountStandingSection(vm: SettingsViewModel) {
     }
 }
 
-/**
- * Freezes the account: nothing can sign in, no new DM reaches it, no friend
- * request lands. For "I think someone's in my account" - a step short of
- * deleting it, and reversible.
- */
 @Composable
 private fun LockdownSection(self: SelfUser, hasPassword: Boolean, vm: SettingsViewModel) {
         val context = LocalContext.current
@@ -922,8 +880,6 @@ private fun LockdownSection(self: SelfUser, hasPassword: Boolean, vm: SettingsVi
         ui.error?.let { Text(it, color = c.danger, fontSize = 13.sp) }
 
         if (confirming) {
-            // Lifting needs the password; turning it on deliberately doesn't, so
-            // nothing slows you down in the moment you actually need it.
             if (locked && hasPassword) {
                 OrangTextField(
                     value = password,
@@ -964,10 +920,6 @@ private fun LockdownSection(self: SelfUser, hasPassword: Boolean, vm: SettingsVi
     }
 }
 
-/**
- * Bulk-leaves every server the user doesn't own. Two-step: destructive enough
- * that one tap shouldn't do it, cheap enough not to need a password.
- */
 @Composable
 private fun LeaveAllServersSection(vm: SettingsViewModel) {
         val context = LocalContext.current
@@ -1025,11 +977,6 @@ private fun LeaveAllServersSection(vm: SettingsViewModel) {
     }
 }
 
-/**
- * Wipes every message the user has written, anywhere - including servers and
- * group DMs they've left. Password-gated: unlike leaving a server, none of this
- * can be undone or re-obtained.
- */
 @Composable
 private fun DeleteAllMessagesSection(self: SelfUser, hasPassword: Boolean, vm: SettingsViewModel) {
         val context = LocalContext.current
@@ -1107,11 +1054,6 @@ private fun DeleteAllMessagesSection(self: SelfUser, hasPassword: Boolean, vm: S
     }
 }
 
-/**
- * Irreversible account deletion. The account is tombstoned rather than removed:
- * messages stay in the conversations they're part of and everything identifying
- * is scrubbed. Owning a server blocks it; the server names which ones.
- */
 @Composable
 private fun DeleteAccountSection(self: SelfUser, hasPassword: Boolean, vm: SettingsViewModel) {
         val context = LocalContext.current
@@ -1253,7 +1195,7 @@ private fun TwoFactorVerify(state: TwoFactorUi.Setup, vm: SettingsViewModel) {
 private fun TwoFactorManage(state: TwoFactorUi.On, hasPassword: Boolean, vm: SettingsViewModel) {
         val context = LocalContext.current
     val c = OrangTheme.colors
-    var mode by remember { mutableStateOf("idle") } // idle | disable | regen
+    var mode by remember { mutableStateOf("idle") }
     var password by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
 
@@ -1366,7 +1308,6 @@ private fun BackupCodes(codes: List<String>, onDone: () -> Unit) {
     }
 }
 
-// ── Accessibility ───────────────────────────────────────
 
 @Composable
 fun AccessibilityScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
@@ -1432,7 +1373,6 @@ fun AccessibilityScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewMode
     }
 }
 
-// ── System ──────────────────────────────────────────────
 
 @Composable
 fun SystemScreen(
@@ -1487,7 +1427,6 @@ fun SystemScreen(
     }
 }
 
-// ── About ───────────────────────────────────────────────
 
 @Composable
 fun AboutScreen(appIconUrl: String?, onBack: () -> Unit) {
@@ -1537,12 +1476,6 @@ fun AboutScreen(appIconUrl: String?, onBack: () -> Unit) {
     }
 }
 
-/**
- * The brand mark over the app's name, or whatever the user replaced it with -
- * the same substitution the web and desktop clients make. Android cannot
- * repoint its own launcher icon, so this screen is where a custom mark actually
- * shows up on this device.
- */
 @Composable
 private fun AppMark(appIconUrl: String?) {
     val markModifier = Modifier.size(64.dp).clip(RoundedCornerShape(OrangRadius.lg))
@@ -1562,10 +1495,6 @@ private fun AppMark(appIconUrl: String?) {
     }
 }
 
-/**
- * Check / download / install, in one row of the About screen. OrangChat is
- * sideloaded, so this is the only way an update ever arrives.
- */
 @Composable
 private fun UpdateSection() {
     val c = OrangTheme.colors
@@ -1607,9 +1536,6 @@ private fun UpdateSection() {
         when (val s = state) {
             is UpdateUiState.Available ->
                 OrangButton(
-                    // The per-app "install unknown apps" toggle has no runtime
-                    // dialog, so send the user to it before downloading 30 MB
-                    // they could not install at the end of.
                     text = if (vm.canInstall()) AppStrings.get(context, R.string.catalog_download_install_7db0bddc) else AppStrings.get(context, R.string.catalog_allow_installs_first_a339d45d),
                     onClick = {
                         if (vm.canInstall()) vm.download(s.manifest)

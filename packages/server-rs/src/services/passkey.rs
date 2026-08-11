@@ -1,29 +1,3 @@
-//! WebAuthn passkeys: registration, sign-in, and the second-factor path.
-//!
-//! Why a passkey outranks the code-based factors, which is what decides where it
-//! sits in the login flow:
-//!
-//! * It is **bound to this origin** by the browser. A code read off a screen can
-//!   be typed into a lookalike domain; a passkey signature simply is not offered
-//!   there, so the whole class of phishing that TOTP and emailed codes lose to
-//!   does not apply.
-//! * The **private half never leaves the authenticator**. What this table holds
-//!   verifies signatures and mints nothing, so a dump of it is not a set of
-//!   credentials the way a TOTP secret is.
-//! * The authenticator has **already checked the human** - biometric or device
-//!   PIN - before it will sign.
-//!
-//! So a completed passkey ceremony ends the login by itself: no password, no
-//! emailed code. And when someone signs in with a password on an account that
-//! has passkeys, we ask for the passkey rather than the email code, because it
-//! is both stronger and quicker.
-//!
-//! ## Ceremony state
-//!
-//! WebAuthn is two round trips, and the challenge from the first has to be
-//! remembered to check the second. That state lives in Redis under an opaque
-//! token, never with the client: it carries the challenge the server will
-//! accept, so a client that could edit it could replay one.
 
 use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
@@ -39,52 +13,27 @@ use crate::ids::cuid;
 use crate::models::{PasskeyRow, UserRow};
 use crate::state::AppState;
 
-/// Long enough to find a phone, unlock it and approve; short enough that an
-/// abandoned ceremony is not sitting around to be replayed into.
 const CEREMONY_TTL_SECONDS: u64 = 300;
 
-/// Passkeys per account. High enough that nobody sensible hits it (phone,
-/// laptop, a hardware key, a spare), low enough that a compromised session
-/// cannot quietly bury a backdoor key among hundreds.
 pub const MAX_PER_USER: i64 = 20;
 
 fn key(token: &str) -> String {
     format!("passkey:ceremony:{token}")
 }
 
-/// The half of a ceremony the server keeps. `Registration` also carries who it
-/// belongs to: the finish call is authenticated, but binding the user here means
-/// a token cannot be finished by a *different* signed-in account.
 #[derive(Serialize, Deserialize)]
 enum Ceremony {
     Registration {
         user_id: String,
         state: Box<PasskeyRegistration>,
     },
-    /// Sign-in with no username given: the credential names the account.
     Discoverable { state: Box<DiscoverableAuthentication> },
-    /// Sign-in where the account is already known - the second-factor path.
     Known {
         user_id: String,
         state: Box<PasskeyAuthentication>,
     },
 }
 
-/// Builds the relying party from `CLIENT_ORIGIN`.
-///
-/// The RP ID is the origin's host and nothing else. It is what the browser
-/// scopes the credential to and it cannot be changed later without orphaning
-/// every existing passkey, so it is deliberately derived rather than configured:
-/// a stray environment variable here would silently lock people out.
-///
-/// The scheme must be https. Browsers will not run a ceremony from an insecure
-/// origin at all, so an http `CLIENT_ORIGIN` is a misconfiguration that would
-/// otherwise surface as an unexplained failure in the browser rather than here.
-///
-/// The Android app is admitted alongside it. It signs the same RP ID - that is
-/// what makes a passkey created on the site usable in the app - but its client
-/// data names an `android:apk-key-hash:` origin rather than a web one, so the
-/// signing key has to be allowed explicitly. See `Config::android_origins`.
 pub fn webauthn(state: &AppState) -> AppResult<Webauthn> {
     let origin = Url::parse(&state.config.client_origin)
         .map_err(|e| AppError::Internal(format!("passkey: CLIENT_ORIGIN is not a url: {e}")))?;
@@ -110,14 +59,6 @@ pub fn webauthn(state: &AppState) -> AppResult<Webauthn> {
         .map_err(|e| AppError::Internal(format!("passkey: {e}")))
 }
 
-/// The user handle an authenticator stores alongside the credential.
-///
-/// WebAuthn wants a UUID and our ids are cuids, so this is a v5 hash of the id
-/// under a fixed namespace: stable for the life of the account, which is what
-/// matters - an authenticator keys its own entry on this, and a handle that
-/// changed would leave a second, orphaned entry in the user's keychain every
-/// time they enrolled. Nothing reads it back; sign-in resolves the account from
-/// the credential id, which is unique on its own.
 fn handle(user_id: &str) -> Uuid {
     Uuid::new_v5(&Uuid::NAMESPACE_URL, user_id.as_bytes())
 }
@@ -131,8 +72,6 @@ async fn park(state: &AppState, ceremony: &Ceremony) -> AppResult<String> {
     Ok(token)
 }
 
-/// Reads a parked ceremony and burns it in the same breath. Single-use is the
-/// point: a challenge that survived its answer could be answered twice.
 async fn take(state: &AppState, token: &str) -> AppResult<Ceremony> {
     let mut con = state.rd();
     let raw: Option<String> = con.get(key(token)).await?;
@@ -141,7 +80,6 @@ async fn take(state: &AppState, token: &str) -> AppResult<Ceremony> {
         .ok_or_else(|| AppError::BadRequest("That took too long - start again".into()))
 }
 
-// ── Registration ────────────────────────────────────────────────────────────
 
 pub async fn list(state: &AppState, user_id: &str) -> AppResult<Vec<PasskeyRow>> {
     Ok(sqlx::query_as(
@@ -156,9 +94,6 @@ fn credential_of(row: &PasskeyRow) -> Option<Passkey> {
     serde_json::from_value(row.credential.clone()).ok()
 }
 
-/// Begins enrolment. Existing credentials are excluded so an authenticator that
-/// already holds one for this account says so instead of silently making a
-/// second, which would show up as a duplicate nobody can tell apart.
 pub async fn start_registration(
     state: &AppState,
     user: &UserRow,
@@ -197,7 +132,6 @@ pub async fn start_registration(
     Ok((challenge, token))
 }
 
-/// Completes enrolment and stores the credential.
 pub async fn finish_registration(
     state: &AppState,
     user_id: &str,
@@ -217,8 +151,6 @@ pub async fn finish_registration(
         .finish_passkey_registration(&response, &reg)
         .map_err(|e| AppError::BadRequest(format!("That passkey could not be registered: {e}")))?;
 
-    // base64url without padding, matching what the browser sends as `id` - this
-    // is what a discoverable sign-in is looked up by.
     let credential_id = base64url(credential.cred_id().as_ref());
     let encoded = serde_json::to_value(&credential)
         .map_err(|e| AppError::Internal(format!("passkey: {e}")))?;
@@ -270,11 +202,7 @@ pub async fn remove(state: &AppState, user_id: &str, id: &str) -> AppResult<()> 
     Ok(())
 }
 
-// ── Sign-in ─────────────────────────────────────────────────────────────────
 
-/// Begins a sign-in where no account has been named. The browser picks the
-/// credential, and the credential names the account - so this endpoint is
-/// reachable logged-out and reveals nothing about who exists.
 pub async fn start_discoverable(state: &AppState) -> AppResult<(serde_json::Value, String)> {
     let (challenge, auth) = webauthn(state)?
         .start_discoverable_authentication()
@@ -291,8 +219,6 @@ pub async fn start_discoverable(state: &AppState) -> AppResult<(serde_json::Valu
     Ok((challenge, token))
 }
 
-/// Begins a sign-in for a known account - the second-factor path, where the
-/// password has already been checked and we know which credentials to ask for.
 pub async fn start_known(
     state: &AppState,
     user_id: &str,
@@ -321,12 +247,6 @@ pub async fn start_known(
     Ok((challenge, token))
 }
 
-/// Completes either sign-in shape and returns the account it proved.
-///
-/// The two differ only in how the account is found: a discoverable ceremony
-/// learns it from the credential, a known one was told it up front. Everything
-/// after - verifying the signature, refusing a credential that belongs to
-/// someone else, updating the counter - is the same, so it is written once.
 pub async fn finish_authentication(
     state: &AppState,
     token: &str,
@@ -360,8 +280,6 @@ pub async fn finish_authentication(
             let row = by_credential_id(state, &base64url(result.cred_id().as_ref()))
                 .await?
                 .ok_or_else(failed)?;
-            // The ceremony offered this account's credentials, but the answer is
-            // client-supplied: check it came back from the account we asked.
             if row.user_id != user_id {
                 return Err(failed());
             }
@@ -370,10 +288,6 @@ pub async fn finish_authentication(
         Ceremony::Registration { .. } => return Err(failed()),
     };
 
-    // A counter that went backwards is the signature of a cloned authenticator.
-    // webauthn-rs reports it; we record it and let the sign-in through, because
-    // the majority of real reports are authenticators that simply do not keep a
-    // counter, and locking those accounts out would be the bigger harm.
     if result.needs_update() {
         if let Some(mut credential) = credential_of(&row) {
             credential.update_credential(&result);
@@ -411,7 +325,6 @@ async fn by_credential_id(state: &AppState, credential_id: &str) -> AppResult<Op
     )
 }
 
-/// Whether an account can be asked for a passkey instead of an emailed code.
 pub async fn count(state: &AppState, user_id: &str) -> AppResult<i64> {
     let (n,): (i64,) = sqlx::query_as(r#"SELECT count(*) FROM "Passkey" WHERE "userId" = $1"#)
         .bind(user_id)
@@ -420,12 +333,6 @@ pub async fn count(state: &AppState, user_id: &str) -> AppResult<i64> {
     Ok(n)
 }
 
-/// Whether the authenticator says this key syncs to a cloud keychain.
-///
-/// Read out of the serialised credential rather than through an accessor,
-/// because webauthn-rs only exposes one behind `danger-credential-internals`
-/// and this is a label in a settings list - nothing decides anything on it. A
-/// shape change upstream costs the label and nothing else, hence the default.
 fn backup_eligible(encoded: &serde_json::Value) -> bool {
     encoded
         .pointer("/cred/backup_eligible")

@@ -21,9 +21,9 @@ export interface OutgoingMessagePayload {
   replyToId?: string;
   attachmentIds?: string[];
   spoilerAttachmentIds?: string[];
-  /** Already-uploaded objects shown while the server message is pending. */
+
   optimisticAttachments?: Attachment[];
-  /** Keys and filenames for attachments the server cannot read (§7). */
+
   sealedAttachments?: SealedAttachmentRef[];
 }
 
@@ -32,12 +32,11 @@ interface PendingOutgoing {
   authorId: string;
   payload: OutgoingMessagePayload;
   message: Message;
-  /** Set once sealed, so the broadcast echo can be matched to this entry. */
+
   sealedCiphertext?: string;
-  /** Set while strict mode is holding this back; see §6.5. */
+
   awaitingVerification?: boolean;
-  /** Set when the server rejected the send. The row stays put so the user can
-   * retry it from the message list instead of losing their words. */
+
   failed?: boolean;
   failure?: string;
 }
@@ -68,12 +67,7 @@ const removeEntry = (localId: string) => {
   void deleteQueued(localId).catch(() => {});
 };
 
-/**
- * A message strict mode will not release yet has to survive a reload, and it has
- * to survive it without the server ever seeing it. Sealing it under the same
- * non-extractable vault key as the conversation keys is what makes "queued
- * locally, encrypted at rest" true rather than aspirational.
- */
+
 async function persistQueued(entry: PendingOutgoing): Promise<void> {
   try {
     const sealed = await sealLocal(
@@ -89,11 +83,10 @@ async function persistQueued(entry: PendingOutgoing): Promise<void> {
       ...sealed,
     });
   } catch {
-    // Losing persistence costs the message on reload, not the send in flight.
   }
 }
 
-/** Reloads anything strict mode was holding when the tab last closed. */
+
 export async function restoreQueuedMessages(): Promise<void> {
   const author = useAuthStore.getState().user;
   if (!author) return;
@@ -151,11 +144,7 @@ export async function restoreQueuedMessages(): Promise<void> {
   void flushOutbox();
 }
 
-/**
- * Sealing happens here rather than when the message is queued, so a message
- * that waited out a disconnect is encrypted under the epoch that is current
- * when it actually goes, not the one that was current when it was typed.
- */
+
 async function emitPending(entry: PendingOutgoing): Promise<Message> {
   if (!socket.connected) throw new SocketDisconnectedError();
   const {
@@ -174,8 +163,6 @@ async function emitPending(entry: PendingOutgoing): Promise<Message> {
       attachments: sealedAttachments,
     });
     entry.sealedCiphertext = sealed.ciphertext;
-    // Filenames and spoiler flags are inside the ciphertext now; sending them
-    // again in the clear would hand back exactly what §7 just took away.
     wirePayload = {
       ...plainPayload,
       spoilerAttachmentIds: undefined,
@@ -200,9 +187,6 @@ async function emitPending(entry: PendingOutgoing): Promise<Message> {
 }
 
 async function confirmEntry(entry: PendingOutgoing, sent: Message): Promise<void> {
-  // Keep the optimistic plaintext visible until the confirmed wire row has
-  // been opened and inserted. Encrypted acks carry an empty `content`; removing
-  // the pending row first makes the message vanish until history is reloaded.
   await appendConfirmed?.({ ...sent, clientId: entry.localId });
   removeEntry(entry.localId);
 }
@@ -219,15 +203,8 @@ async function flushOutbox(): Promise<void> {
   if (flushing || !socket.connected) return;
   flushing = true;
   try {
-    // Strict mode blocks one conversation, not the outbox: a message held back
-    // for an unverified DM must not stop everything else from going. A message
-    // the server rejected stays where it is too, but only leaves on retry.
     const blocked = new Set<string>();
 
-    // Sweep entries belonging to a previous account up front. The in-loop check
-    // below used to be the only cleanup, but the `find` now skips rejected rows,
-    // so a message account A failed to send would never be reached again - and
-    // it outlives a logout, since nothing else empties this store.
     const currentAuthor = useAuthStore.getState().user?.id;
     for (const stale of useMessageOutbox.getState().entries) {
       if (stale.authorId !== currentAuthor) removeEntry(stale.localId);
@@ -239,7 +216,6 @@ async function flushOutbox(): Promise<void> {
         .entries.find((candidate) => !blocked.has(candidate.payload.channelId) && !candidate.failed);
       if (!entry) break;
 
-      // Never leak a queued message into a different account after logout.
       if (entry.authorId !== useAuthStore.getState().user?.id) {
         removeEntry(entry.localId);
         continue;
@@ -251,15 +227,11 @@ async function flushOutbox(): Promise<void> {
       } catch (error) {
         if (error instanceof SocketDisconnectedError) break;
         if (error instanceof StrictModeError) {
-          // Nothing was wrapped and nothing was sent. The message waits here,
-          // sealed at rest, until the contact is verified.
           blocked.add(entry.payload.channelId);
           markAwaitingVerification(entry.localId);
           await persistQueued(entry);
           continue;
         }
-        // The server refused it. Never drop the text: keep the row so the
-        // message stays visible with a retry affordance (useFailedMessages).
         const failure = error instanceof Error ? error.message : "Failed to send message";
         useMessageOutbox.setState((state) => ({
           entries: state.entries.map((candidate) =>

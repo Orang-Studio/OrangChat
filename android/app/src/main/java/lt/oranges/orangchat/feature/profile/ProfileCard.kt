@@ -44,14 +44,8 @@ import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.absoluteUrl
 import lt.oranges.orangchat.util.formatFullTime
 
-/** What the viewer can do about this person, given their relationship. */
 enum class ProfileRelation { SELF, FRIEND, PENDING, STRANGER }
 
-/**
- * A profile card. Users who set profile CSS get the WebView card, which renders
- * their theme with the same engine the web client uses; everyone else gets the
- * native card below, so the common case costs no WebView.
- */
 @Composable
 fun ProfileCard(
     user: User,
@@ -65,11 +59,6 @@ fun ProfileCard(
     }
 }
 
-/**
- * Native counterpart of the web ProfileCard. The measurements and layering
- * deliberately follow the web card: 80dp banner, overlapping square avatar,
- * then profile details on an inset surface-1 panel.
- */
 @Composable
 private fun ProfileCardNative(
     user: User,
@@ -167,7 +156,6 @@ private fun ProfileCardNative(
             }
         }
 
-        // Absolute overlay equivalent to the web card's negative avatar margin.
         Box(
             modifier = Modifier
                 .offset(x = 16.dp, y = 44.dp)
@@ -184,7 +172,6 @@ private fun ProfileCardNative(
     }
 }
 
-/** Profile popup: the shared card plus relationship actions, like the web UI. */
 @Composable
 fun ProfileDialog(
     user: User,

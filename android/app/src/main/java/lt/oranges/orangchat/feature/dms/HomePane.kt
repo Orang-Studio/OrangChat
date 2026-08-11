@@ -69,7 +69,6 @@ import lt.oranges.orangchat.ui.components.UserFooter
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-/** Home middle pane: entry points to Friends and the DM conversation list. */
 @Composable
 fun HomePane(
     self: SelfUser,
@@ -89,7 +88,6 @@ fun HomePane(
     onLeaveConversation: (Conversation) -> Unit,
     modifier: Modifier = Modifier,
     unreads: Map<String, UnreadState> = emptyMap(),
-    /** channelId → user ids seen typing there, self already filtered out. */
     typing: Map<String, Set<String>> = emptyMap(),
 ) {
         val context = LocalContext.current
@@ -173,11 +171,6 @@ private fun latestMessagePreview(message: Message?, selfId: String): String? {
     return "$author: $content"
 }
 
-/**
- * Who to name in the row's typing line. A one-on-one has a single candidate, so
- * the name adds nothing the row title does not already say; a group needs it to
- * be useful, and past two people the list is longer than the row is wide.
- */
 private fun typingPreview(
     typingIds: Set<String>,
     convo: Conversation,
@@ -220,8 +213,6 @@ private fun ConversationRow(
     val title = convo.name ?: others.joinToString(", ") { it.displayName }.ifBlank { "Direct Message" }
     val lead = others.firstOrNull()
     val latestPreview = latestMessagePreview(convo.latestMessage, selfId)
-    // A group DM has no single counterpart, so the person-shaped actions
-    // (profile, remove friend, copy user ID) only apply to a one-on-one.
     val other = if (convo.type == ChannelType.GROUP_DM) null else lead
     val typingLine = typingPreview(typingUserIds, convo, convo.type == ChannelType.GROUP_DM)
     val haptics = LocalHapticFeedback.current
@@ -233,8 +224,6 @@ private fun ConversationRow(
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 1.dp)
             .clip(RoundedCornerShape(OrangRadius.md))
-            // Long-press stands in for the web client's right-click menu; the
-            // tap still opens the conversation.
             .combinedClickable(
                 onClick = { onClick(convo) },
                 onLongClick = {
@@ -245,11 +234,6 @@ private fun ConversationRow(
             .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.Top,
     ) {
-        // Leading pip, as on the web: the row reads as unread even before the
-        // eye reaches the count on the far side. The Box reserves the slot
-        // either way so titles stay aligned down the list. The row is
-        // top-aligned for the avatar's sake, so the pip has to opt back into
-        // centring itself or it rides up against the first text line.
         Box(
             modifier = Modifier
                 .align(Alignment.CenterVertically)
@@ -266,9 +250,6 @@ private fun ConversationRow(
         if (others.size > 1 || lead == null) {
             GroupIcon(iconUrl = convo.iconUrl, size = 38.dp)
         } else {
-            // Conversation DTOs carry the user's saved preference, not proof
-            // of a live socket. Only the realtime presence map may show them
-            // as online; unknown presence is safely treated as offline.
             Avatar(
                 lead,
                 size = 38.dp,
@@ -280,15 +261,11 @@ private fun ConversationRow(
             Text(
                 text = title,
                 color = if (unread) c.ink else c.inkSecondary,
-                // Unread conversations read bolder, as on the web.
                 fontWeight = if (unread) FontWeight.Bold else FontWeight.Medium,
                 fontSize = 15.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            // Someone mid-sentence is newer news than the message before it, so
-            // the typing line takes the preview's slot rather than adding a
-            // third row and reflowing every neighbour in the list.
             if (typingLine != null) {
                 Text(
                     text = typingLine,
@@ -313,8 +290,6 @@ private fun ConversationRow(
             }
         }
         UnreadCountBadge(unreadCount, modifier = Modifier.padding(top = 2.dp))
-        // Anchored to the row's trailing edge so the menu never covers the
-        // avatar and name of what is being acted on.
         Box {
             OrangDropdownMenu(
                 expanded = menuOpen,
@@ -348,9 +323,6 @@ private fun ConversationRow(
                             clipboard.setText(AnnotatedString(convo.id))
                         },
                     )
-                    // Leaving a group is permanent; closing a one-on-one only
-                    // hides it until the other person writes again, so the two
-                    // are named differently rather than sharing one label.
                     val isGroup = convo.type == ChannelType.GROUP_DM
                     add(
                         MenuItem(

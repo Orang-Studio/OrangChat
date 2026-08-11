@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 """Bulk-rewrite hardcoded UI string literals in Kotlin Compose files into
 res/values/strings.xml + context.getString(R.string.x) call sites.
 
@@ -27,7 +27,6 @@ import re
 import sys
 from pathlib import Path
 
-# ---- shared with extract_english_strings.py, kept in sync by hand ----
 SKIP_EXACT = {
     "true", "false", "null", "default", "none", "online", "offline", "idle", "dnd",
     "mobile", "desktop", "browser", "GET", "POST", "PUT", "DELETE",
@@ -56,7 +55,6 @@ def slug(value: str) -> str:
     return f"catalog_{stem}_{digest}"
 
 
-# ---- attribute whitelist: names strongly associated with rendered UI text ----
 ATTRS = [
     "text", "label", "contentDescription", "placeholder", "title", "hint",
     "description", "subtitle", "confirmText", "dismissText", "supportingText",
@@ -66,30 +64,20 @@ ATTRS = [
 ATTR_RE = re.compile(r'\b(' + '|'.join(ATTRS) + r')\s*=\s*"((?:\\.|[^"\\])*)"')
 TEXT_CALL_RE = re.compile(r'\bText\(\s*"((?:\\.|[^"\\])*)"')
 
-# Custom composables/functions whose first positional argument is UI text,
-# discovered by grepping their `fun` signatures - not every String param, only
-# ones actually called with literal titles/labels in this codebase.
 POSITIONAL1_NAMES = [
     "SettingSection", "Section", "SettingsTopBar", "EmptyHint", "Body", "Hint",
     "MenuItem", "InfoRow", "SettingsNavRow",
 ]
 POSITIONAL1_RE = re.compile(r'\b(?:' + '|'.join(POSITIONAL1_NAMES) + r')\(\s*"((?:\\.|[^"\\])*)"')
-# SettingsNavRow(label, subtitle, ...) - subtitle is also a literal in every
-# observed call site, unlike other composables' 2nd+ params.
 SETTINGS_NAV_ROW_SUBTITLE_RE = re.compile(
     r'\bSettingsNavRow\(\s*"(?:\\.|[^"\\])*"\s*,\s*"((?:\\.|[^"\\])*)"\s*,',
 )
 
-# Bare literals in expression position - safe to swap for context.getString(...)
-# regardless of the surrounding branch shape, since `if`/`when`/`?:` are just
-# expressions and getString(...) is a String like the literal it replaces.
-ARROW_RE = re.compile(r'->\s*"((?:\\.|[^"\\])*)"')  # when-branch / else ->
-ELVIS_RE = re.compile(r'\?:\s*"((?:\\.|[^"\\])*)"')  # `x.message ?: "fallback"`
-ELSE_RE = re.compile(r'\belse\s+"((?:\\.|[^"\\])*)"')  # `if (c) a else "B"` (not `else ->`)
-THEN_RE = re.compile(r'\bif\s*\([^()]*\)\s*"((?:\\.|[^"\\])*)"')  # `if (c) "A" ...`
+ARROW_RE = re.compile(r'->\s*"((?:\\.|[^"\\])*)"')
+ELVIS_RE = re.compile(r'\?:\s*"((?:\\.|[^"\\])*)"')
+ELSE_RE = re.compile(r'\belse\s+"((?:\\.|[^"\\])*)"')
+THEN_RE = re.compile(r'\bif\s*\([^()]*\)\s*"((?:\\.|[^"\\])*)"')
 
-# Skip files that are pure HTML/CSS builders - their string literals are markup,
-# not app UI text, and rewriting them would just corrupt generated HTML.
 FILE_SKIP = {"ProfileCardHtml.kt"}
 
 TOKEN_RE = re.compile(r'"""(?:.|\n)*?"""|"(?:\\.|[^"\\])*"|//[^\n]*|/\*.*?\*/|[(){}]', re.DOTALL)
@@ -104,10 +92,6 @@ def find_functions(text: str) -> list[dict]:
     funcs = []
     for m in FUN_SIG_RE.finditer(text):
         sig_start = m.start()
-        # Find the matching ')' for the parameter list opened by the regex's
-        # trailing '(', skipping strings/comments and nested parens (default
-        # lambda values like `onClick: () -> Unit = {}` don't confuse this
-        # since we only track paren depth here, not brace depth).
         depth = 1
         params_end = None
         for tok in TOKEN_RE.finditer(text, m.end()):
@@ -121,9 +105,6 @@ def find_functions(text: str) -> list[dict]:
                     break
         if params_end is None:
             continue
-        # Between the params and the body, there may be `: ReturnType` - scan
-        # forward for the first top-level '{' (body) or '=' (expression body,
-        # skip - no brace-delimited body to track).
         brace_pos = None
         is_expr_body = False
         for tok in TOKEN_RE.finditer(text, params_end):
@@ -137,10 +118,6 @@ def find_functions(text: str) -> list[dict]:
                 break
         if brace_pos is None:
             continue
-        # Expression-bodied functions (`fun f(...) = expr` or `fun f(...): T =
-        # trailing { lambda }`) have an '=' between the params and the brace
-        # we just found - that brace belongs to the expression, not a block
-        # body. Skip these; matches inside them are rare and get flagged.
         if "=" in text[params_end:brace_pos - 1]:
             continue
 
@@ -175,10 +152,6 @@ def fn_has_context_declared(text: str, fn: dict) -> bool:
     body = text[fn["start"]:fn["end"]]
     if re.search(r'\bcontext\s*:\s*(?:android\.content\.)?Context\b', sig):
         return True
-    # Bare "LocalContext.current" is deliberately not enough here - a function
-    # can already use it bound to a different name (`val activity = LocalContext
-    # .current as? Activity`), which does not make a bare `context` reference
-    # resolve. Only a local actually named `context` does that.
     if re.search(r'\bval\s+context\b', body):
         return True
     return False
@@ -206,13 +179,8 @@ def process_file(path: Path, catalogue: dict[str, tuple[str, str]], report: list
             lit_end = m.end(group_idx) + 1
             out.append((lit_start, lit_end, m.group(group_idx), kind))
 
-    matches = []  # (start, end_of_full_match, literal_value, kind)
+    matches = []
     for m in ATTR_RE.finditer(text):
-        # Replace only the quoted literal (group 2), not the full match - the
-        # full match includes `paramName = `, and dropping that turns a named
-        # arg into a positional one, silently shifting every arg after it into
-        # the wrong parameter (wrong type, or a duplicate of one passed by name
-        # elsewhere in the same call).
         add_group(m, 2, "attr", matches)
     for m in TEXT_CALL_RE.finditer(text):
         add_group(m, 1, "text", matches)
@@ -232,8 +200,6 @@ def process_file(path: Path, catalogue: dict[str, tuple[str, str]], report: list
     if not matches:
         return
 
-    # de-dup overlapping matches (ATTR_RE's "text" attr and TEXT_CALL_RE both
-    # match `text = "x"`); keep by start position, prefer attr (has clearer span)
     matches.sort(key=lambda t: t[0])
     deduped = []
     last_end = -1
@@ -243,13 +209,8 @@ def process_file(path: Path, catalogue: dict[str, tuple[str, str]], report: list
         deduped.append((start, end, raw, kind))
         last_end = end
 
-    # A class that already takes an injected Context (existing convention:
-    # `@ApplicationContext private val context: Context`) can use it from any
-    # method, composable or not, with no insertion needed.
     has_class_context = bool(re.search(r'\bval\s+context\s*:\s*(?:android\.content\.)?Context\b', text))
 
-    # Assign each match to its enclosing function; skip matches outside any
-    # known function (module-level vals etc. - too risky to guess).
     assigned = []
     for start, end, raw, kind in deduped:
         fn = enclosing_function(funcs, start)
@@ -264,7 +225,6 @@ def process_file(path: Path, catalogue: dict[str, tuple[str, str]], report: list
     if not assigned:
         return
 
-    # Build replacement text (single pass, right to left so offsets stay valid)
     assigned.sort(key=lambda t: t[0], reverse=True)
     new_text = text
     used_here: dict[str, str] = {}
@@ -279,15 +239,6 @@ def process_file(path: Path, catalogue: dict[str, tuple[str, str]], report: list
     if not used_here:
         return
 
-    # Insert `val context = LocalContext.current` into composable functions
-    # lacking it. has_class_context only means *some* class in this file (a
-    # ViewModel etc.) has an injected context on its own members - it says
-    # nothing about a free @Composable function in the same file, which has
-    # no access to that member and still needs its own local. So this has to
-    # run for every composable regardless of has_class_context; per-function
-    # fn_has_context_declared is what actually decides whether one is needed.
-    # Re-scan new_text fresh since replacement text length differs from
-    # the original and function offsets already found are now stale.
     funcs2 = find_functions(new_text)
     to_fix = []
     for fn in funcs2:
@@ -323,9 +274,6 @@ def process_file(path: Path, catalogue: dict[str, tuple[str, str]], report: list
             inserts.append("import androidx.compose.ui.platform.LocalContext")
         if needs_import:
             inserts.append("import lt.oranges.orangchat.R")
-        # keep import block sorted-ish: just append after package/blank, before
-        # first existing import line, gradle/ktlint import-order isn't enforced
-        # here, ktlintFormat (if run) will resort them.
         for line in reversed(inserts):
             lines.insert(import_idx, line)
         new_text = "\n".join(lines)

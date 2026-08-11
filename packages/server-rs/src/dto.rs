@@ -1,4 +1,3 @@
-//! Wire DTOs (camelCase JSON) and mappers from DB rows. Mirrors mappers.ts.
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value as Json;
@@ -37,8 +36,6 @@ pub struct UserDto {
     pub pronouns: Option<String>,
     pub profile_css: Option<String>,
     pub badges: Vec<String>,
-    /// True for a bot account. Clients render this as a label beside the name -
-    /// it is a property of the account, not text anyone can put in a nickname.
     pub bot: bool,
     pub created_at: String,
 }
@@ -62,8 +59,6 @@ pub struct SelfUserDto {
     pub created_at: String,
     pub email: String,
     pub custom_css: Option<String>,
-    /// Replaces the OrangChat mark on this user's own clients. Self-only: it is
-    /// deliberately absent from UserDto so it can never be fetched per-viewer.
     pub app_icon_url: Option<String>,
     pub dm_privacy: String,
     pub friend_request_privacy: String,
@@ -71,23 +66,13 @@ pub struct SelfUserDto {
     pub notify_friend_requests: bool,
     pub notify_friend_accepted: bool,
     pub notify_friend_online: bool,
-    /// "Require verification before messaging anyone new" (docs/E2EE.md §6.5).
-    /// Enforced entirely on the owner's own clients; the server stores it so the
-    /// choice follows the account rather than the browser.
     pub e2ee_strict: bool,
-    /// "Display the game you're playing". Gates the desktop client's process
-    /// scan, and is re-checked here on every `activity:game` so that turning it
-    /// off drops presence an older shell is still reporting.
     pub game_activity: bool,
-    /// Whether TOTP is active. The secret itself is never serialized.
     pub two_factor_enabled: bool,
-    /// False for OAuth-only accounts, which have no password to re-confirm.
     pub has_password: bool,
-    /// True while the account is frozen; see services::account.
     pub lockdown: bool,
 }
 
-/// A linked external account, as shown on a profile card.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionDto {
@@ -95,13 +80,11 @@ pub struct ConnectionDto {
     pub provider: String,
     pub name: String,
     pub profile_url: Option<String>,
-    /// True only when an OAuth/OpenID round trip proved control of the account.
     pub verified: bool,
     pub visible: bool,
     pub created_at: String,
 }
 
-/// An accepted friend (the *other* user) plus the friendship id.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FriendDto {
@@ -110,13 +93,11 @@ pub struct FriendDto {
     pub created_at: String,
 }
 
-/// A pending friend request, tagged by direction relative to the viewer.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FriendRequestDto {
     pub id: String,
     pub user: UserDto,
-    /// "incoming" (they asked you) | "outgoing" (you asked them).
     pub direction: String,
     pub created_at: String,
 }
@@ -252,16 +233,10 @@ pub struct MessageDto {
     pub channel_id: String,
     pub author: UserDto,
     pub content: String,
-    /// Present when the server wrote this message about the conversation rather
-    /// than a person typing it: a notice kind, never anything a client sent.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub system_notice: Option<String>,
-    /// The notice's payload, for the kinds that are a card rather than a
-    /// sentence (see `services::system_message`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub system_data: Option<Json>,
-    /// Existing custom emoji referenced by `content`. This is message display
-    /// data, not a list of emoji the viewer is allowed to pick.
     pub emojis: Vec<EmojiDto>,
     pub created_at: String,
     pub edited_at: Option<String>,
@@ -413,10 +388,6 @@ pub struct InviteDto {
     pub uses: i32,
 }
 
-/// What an invite link resolves to, for the embed card and the join page.
-///
-/// Deliberately thin: this is readable by anyone holding the code, so it says
-/// what a joiner needs to decide and nothing about who else is inside.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InvitePreviewDto {
@@ -425,7 +396,6 @@ pub struct InvitePreviewDto {
     pub member_count: i64,
     pub inviter_name: Option<String>,
     pub expires_at: Option<String>,
-    /// "ok" | "expired" | "exhausted" | "banned" | "alreadyMember"
     pub status: String,
 }
 
@@ -436,7 +406,6 @@ pub struct Page<T: Serialize> {
     pub next_cursor: Option<String>,
 }
 
-// ── Mappers ─────────────────────────────────────────────
 
 pub fn to_user(u: &UserRow) -> UserDto {
     UserDto {
@@ -681,8 +650,6 @@ pub fn to_invite_preview(p: &server::InvitePreview) -> InvitePreviewDto {
     }
 }
 
-/// Aggregate raw reaction rows into per-emoji counts, flagged for the viewer.
-/// Preserves first-seen emoji order, matching the JS Map iteration order.
 pub fn to_reactions(reactions: &[ReactionRow], viewer_id: &str) -> Vec<ReactionDto> {
     let mut order: Vec<String> = Vec::new();
     let mut map: std::collections::HashMap<String, ReactionDto> = std::collections::HashMap::new();

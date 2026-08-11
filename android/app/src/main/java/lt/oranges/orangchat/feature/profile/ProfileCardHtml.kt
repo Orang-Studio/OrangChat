@@ -74,11 +74,6 @@ private val BADGE_INTERACTION_SCRIPT = """
 })();
 """
 
-/**
- * The DOM the card WebView renders. Element structure and the oc-pf-* hook
- * classes are kept identical to packages/client/src/features/profile/ProfileCard.tsx,
- * because those classes are the contract users write their profile CSS against.
- */
 data class ProfileCardHtml(val html: String, val imageAllowlist: Set<String>)
 
 fun buildProfileCardHtml(
@@ -132,8 +127,6 @@ fun buildProfileCardHtml(
     }
     val pronouns = user.pronouns?.takeIf { it.isNotBlank() }
         ?.let { """<span class="oc-pf-pronouns">${it.escapeHtml()}</span>""" } ?: ""
-    // Same oc-pf-badge* hook classes as the web card, so one bit of profile CSS
-    // styles both. Each badge is artwork served from the web app's /badges/.
     val resolvedBadges = Badge.resolve(user.badges)
     val badgeUrls = resolvedBadges.map { "$BACKEND_ORIGIN/badges/${it.slug}.svg" }
     val badges = resolvedBadges.takeIf { it.isNotEmpty() }?.let { list ->
@@ -151,10 +144,6 @@ fun buildProfileCardHtml(
         """<div class="oc-pf-member oc-pf-section"><h3 class="oc-pf-heading">Member since</h3><p class="oc-pf-member-text">${formatFullTime(it).escapeHtml()}</p></div>"""
     } ?: ""
 
-    // Avatars, banners and activity artwork are not all on the backend -
-    // Cloudinary serves its own origin - so the policy has to name wherever
-    // this card's images actually came from. Only those URLs are ever put in
-    // the document, and shouldInterceptRequest still hard-blocks anything else.
     val imageAllowlist = setOfNotNull(avatar, banner, activityArtwork) + badgeUrls
     val imgSrc = (listOf(BACKEND_ORIGIN) + imageAllowlist.mapNotNull(::originOf))
         .distinct()
@@ -193,11 +182,6 @@ fun buildProfileCardHtml(
     return ProfileCardHtml(html, imageAllowlist)
 }
 
-/**
- * The `scheme://host[:port]` of [url], which is the granularity CSP source
- * expressions work at. Null if it will not parse - such a URL is not going to
- * load either, so naming it in the policy would achieve nothing.
- */
 internal fun originOf(url: String): String? = try {
     val uri = java.net.URI(url)
     val scheme = uri.scheme ?: return null
@@ -207,11 +191,6 @@ internal fun originOf(url: String): String? = try {
     null
 }
 
-/**
- * Ported from the Tailwind classes on the web card so an unstyled profile looks
- * the same in both clients. `initial-scale=1` makes 1 CSS px == 1 dp, so these
- * numbers match the native card's dp values.
- */
 private fun baseCss(c: OrangColors, accent: String, status: PresenceStatus?): String = """
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { background: transparent; }
@@ -328,7 +307,6 @@ private fun statusDotColor(status: PresenceStatus, c: OrangColors): Color = when
     PresenceStatus.OFFLINE -> c.inkMuted
 }
 
-/** Static snapshot for the initial render; the embedded script keeps it ticking. */
 private fun formatElapsed(startedAt: String, now: Long): String = runCatching {
     val total = ((now - Instant.parse(startedAt).toEpochMilli()) / 1_000).coerceAtLeast(0)
     val seconds = total % 60

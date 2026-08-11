@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 """Route every `context.getString(R.string.x)` through AppStrings.get(...).
 
 The server-served i18n mechanism only works if string lookups can see the
@@ -23,7 +23,6 @@ def insert_import(lines: list[str]) -> list[str]:
     if any(line.strip() == IMPORT for line in lines):
         return lines
     new_import = IMPORT + "\n"
-    # Insert alphabetically among the imports, or after the package line.
     for index, line in enumerate(lines):
         if line.startswith("import "):
             if line.strip() > IMPORT:
@@ -31,9 +30,7 @@ def insert_import(lines: list[str]) -> list[str]:
         elif line.startswith(("package ", "/*", "*", "//")):
             continue
         elif index == 0:
-            # No package statement (unlikely); prepend.
             return [new_import] + lines
-    # No imports at all: append after the package line.
     return lines[:1] + [new_import] + lines[1:]
 
 

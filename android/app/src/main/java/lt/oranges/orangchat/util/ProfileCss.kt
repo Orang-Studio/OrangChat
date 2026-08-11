@@ -14,39 +14,14 @@ private val LAYER_NAME = Regex("""^[\w-]+(\.[\w-]+)*$""")
 private val CONTAINER_QUERY = Regex("""^[\w\s.,()<>=:%+*/-]+$""")
 private val COMMENT = Regex("""/\*.*?\*/""", RegexOption.DOT_MATCHES_ALL)
 
-/**
- * The result is embedded in a <style> element, whose raw-text content ends at
- * the first literal `</style` - so a profile could otherwise close the element
- * and inject markup after it. Nothing else in CSS is affected by this sequence,
- * so stripping it costs valid stylesheets nothing (an inline SVG data: URI
- * keeps working; it contains </svg, not </style).
- */
 private val STYLE_CLOSE = Regex("""</style""", RegexOption.IGNORE_CASE)
 
-/**
- * Deleting a match joins the text on either side of it, and those halves can
- * spell out a fresh `</style` that a single pass would never revisit - the
- * input `</s</styletyle` collapses to exactly that. So repeat until the string
- * stops changing; each pass drops seven characters, so this always terminates.
- */
 private fun stripStyleClose(css: String): String {
     var out = css
     while (STYLE_CLOSE.containsMatchIn(out)) out = STYLE_CLOSE.replace(out, "")
     return out
 }
 
-/**
- * Kotlin counterpart of packages/client/src/lib/profileCss.ts. The web version
- * re-parses through the browser's CSSOM; there is no CSSOM here before the
- * WebView has already committed to rendering, so this hand-parses instead and
- * keeps the same allowlist: style rules plus @media / @supports / @container /
- * @starting-style / @layer / @keyframes only, no external url(), no
- * position:fixed|sticky, no legacy scripting hooks.
- *
- * This is one of three layers. The card WebView also ships a CSP that forbids
- * every non-image load, and intercepts requests against an allowlist - so a
- * miss here still cannot reach the network.
- */
 fun sanitizeProfileCss(css: String?, scopeSelector: String = ".oc-profile-card"): String {
     if (css.isNullOrBlank()) return ""
     val source = COMMENT.replace(css.take(PROFILE_CSS_MAX_LEN), " ")
@@ -60,8 +35,6 @@ private fun processRules(input: String, scope: String, depth: Int): String {
     var i = 0
     while (i < input.length) {
         val (terminator, at) = nextTopLevel(input, i) ?: break
-        // Statement at-rules (@import, @charset) end at ';' with no block. Skip
-        // the statement only - the rules after it are still valid CSS.
         if (terminator == ';') {
             i = at + 1
             continue
@@ -82,9 +55,6 @@ private fun processRules(input: String, scope: String, depth: Int): String {
                     val inner = processRules(body, scope, depth + 1)
                     if (inner.isNotBlank()) out.append("$name $params {\n").append(inner).append("}\n")
                 }
-                // Grouping at-rules whose prelude is a plain query or ident. The
-                // preludes are checked rather than trusted: an ident may carry
-                // \XX escapes, and those must not reach the sheet unexamined.
                 name == "@container" && CONTAINER_QUERY.matches(params) -> {
                     val inner = processRules(body, scope, depth + 1)
                     if (inner.isNotBlank()) out.append("$name $params {\n").append(inner).append("}\n")
@@ -137,7 +107,6 @@ private fun processKeyframes(body: String): String {
     return out.toString()
 }
 
-/** First top-level '{' or ';', ignoring anything inside parens or quotes. */
 private fun nextTopLevel(input: String, from: Int): Pair<Char, Int>? {
     var parens = 0
     var quote: Char? = null
@@ -198,13 +167,8 @@ private fun splitTopLevel(input: String, separator: Char): List<String> {
     return parts
 }
 
-/**
- * Confine every selector to the card root, exactly as the web sanitizer does,
- * so CSS written against one client behaves the same on the other.
- */
 private fun scopeSelectorList(selector: String, scope: String): String {
     if (DANGEROUS_TOKEN.containsMatchIn(selector)) return ""
-    // '<' is never valid in a selector, so its only use here is markup injection.
     if (selector.contains('<')) return ""
     return splitTopLevel(selector, ',')
         .map { it.trim() }

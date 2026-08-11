@@ -5,10 +5,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * Mirrors the escalation cases covered by services/membership.rs's own tests -
- * these gates are what keeps a moderator from self-granting ADMINISTRATOR.
- */
 class HierarchyTest {
 
     private fun user(id: String) = User(id = id, username = id, displayName = id)

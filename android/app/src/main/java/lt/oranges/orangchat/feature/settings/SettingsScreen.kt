@@ -69,8 +69,6 @@ fun SettingsScreen(
     var page by rememberSaveable { mutableStateOf(SettingsPage.ROOT) }
     val toRoot = { page = SettingsPage.ROOT }
 
-    // Hoisted so it outlives the root leaving composition: opening a group and
-    // coming back should land where you were, not at the top of the list.
     val rootScroll = rememberScrollState()
     val context = LocalContext.current
 
@@ -123,7 +121,6 @@ private fun SettingsRoot(
             modifier = Modifier.verticalScroll(scrollState).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            // Use the same profile card as the web preview and profile dialog.
             ProfileCard(
                 user = self.asUser(),
                 presence = self.status,
@@ -344,10 +341,6 @@ private fun RingtonePage(onBack: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
-/**
- * Pick an audio file to ring with. The file stays on the device - only its URI
- * is stored locally, and nothing is uploaded.
- */
 @Composable
 private fun RingtoneSetting() {
         val context = LocalContext.current
@@ -359,7 +352,6 @@ private fun RingtoneSetting() {
         ActivityResultContracts.OpenDocument(),
     ) { uri -> uri?.let(vm::setRingtone) }
 
-    // Never leave a preview ringing after the screen goes away.
     DisposableEffect(Unit) { onDispose { vm.stopPreview() } }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

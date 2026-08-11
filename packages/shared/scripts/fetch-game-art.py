@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 """Build the game-presence artwork set from games.json.
 
 Every registry entry gets exactly one 128x128 webp tile in
@@ -52,17 +52,12 @@ FONT_PATH = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf")
 
 SIZE = 128
 TIMEOUT = 20
-# Valve serves these from a CDN, but 9k requests still deserves a polite cap.
 WORKERS = 8
-# Below this, a Steam response is the delisted-app placeholder rather than art.
 STEAM_PLACEHOLDER_BYTES = 2048
-# Wikimedia rejects requests without a UA that identifies the caller.
 USER_AGENT = "orangchat-game-art/1.0 (https://chat.oranges.lt)"
 
 WIKIPEDIA_SUMMARY = "https://en.wikipedia.org/api/rest_v1/page/summary/{title}"
 
-# Ordered best-first. The portrait library capsule crops to a far better square
-# than the 460x215 header, which centre-crops straight through the wordmark.
 STEAM_SOURCES = (
     "https://cdn.cloudflare.steamstatic.com/steam/apps/{app}/library_600x900.jpg",
     "https://cdn.cloudflare.steamstatic.com/steam/apps/{app}/header.jpg",
@@ -132,7 +127,6 @@ def monogram(game_id: str, name: str) -> Image.Image:
     """A generated tile for titles with no usable store art."""
     image = Image.new("RGB", (SIZE, SIZE), accent_for(game_id))
     draw = ImageDraw.Draw(image)
-    # Up to two initials from the title's words, e.g. "Rocket League" -> "RL".
     words = [word for word in name.replace(":", " ").split() if word[:1].isalnum()]
     initials = "".join(word[0] for word in words[:2]).upper() or name[:1].upper()
     font = ImageFont.truetype(str(FONT_PATH), 52 if len(initials) > 1 else 64)
@@ -199,8 +193,6 @@ def main() -> int:
 
     registry = json.loads(REGISTRY.read_text())
     games = registry["games"]
-    # Article titles live in the hand file rather than the shipped registry -
-    # they are build input, and the registry is compiled into the server binary.
     articles = {
         entry["id"]: entry["wikipedia"]
         for entry in json.loads(NON_STEAM.read_text())["games"]

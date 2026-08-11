@@ -26,7 +26,6 @@ import javax.inject.Inject
 const val FONT_SCALE_MIN = 0.85f
 const val FONT_SCALE_MAX = 1.5f
 
-/** Device-local display prefs, mirrored out of [TokenStore] as observable state. */
 data class DevicePrefs(
     val fontScale: Float = 1f,
     val reducedMotion: Boolean = false,
@@ -36,7 +35,6 @@ data class DevicePrefs(
     val notificationPreviews: Boolean = true,
 )
 
-/** Drives the 2FA enrollment wizard shown on the Security screen. */
 sealed interface TwoFactorUi {
     data object Loading : TwoFactorUi
     data class Off(val error: String? = null) : TwoFactorUi
@@ -45,28 +43,24 @@ sealed interface TwoFactorUi {
     data class On(val backupCodesRemaining: Int, val busy: Boolean = false, val error: String? = null) : TwoFactorUi
 }
 
-/** Drives the backend-version line on the System screen. */
 sealed interface BackendUi {
     data object Loading : BackendUi
     data class Loaded(val version: String) : BackendUi
     data object Unknown : BackendUi
 }
 
-/** Drives the devices list. */
 sealed interface SessionsUi {
     data object Loading : SessionsUi
     data class Loaded(val sessions: List<DeviceSession>) : SessionsUi
     data class Failed(val error: String) : SessionsUi
 }
 
-/** Drives the account-standing panel on the Security screen. */
 sealed interface StandingUi {
     data object Loading : StandingUi
     data class Loaded(val standing: AccountStanding) : StandingUi
     data class Failed(val error: String) : StandingUi
 }
 
-/** Drives the "leave all servers" control on the Security screen. */
 sealed interface LeaveAllUi {
     data object Idle : LeaveAllUi
     data object Busy : LeaveAllUi
@@ -74,18 +68,12 @@ sealed interface LeaveAllUi {
     data class Failed(val error: String) : LeaveAllUi
 }
 
-/** Drives the email/password forms on the Security screen. */
 data class CredentialsUi(
     val busy: Boolean = false,
     val error: String? = null,
-    /** Success line shown after a change; cleared when a new form is opened. */
     val done: String? = null,
 )
 
-/**
- * Drives the passkeys section on the Security screen. [busy] covers the whole
- * section so a rename or removal in flight disables the add form too.
- */
 data class PasskeysUi(
     val loading: Boolean = true,
     val passkeys: List<Passkey> = emptyList(),
@@ -120,12 +108,6 @@ class SettingsViewModel @Inject constructor(
     private val _appIconError = MutableStateFlow<String?>(null)
     val appIconError: StateFlow<String?> = _appIconError.asStateFlow()
 
-    /**
-     * Upload a picked image and adopt it as this account's app icon. Android
-     * cannot repoint its own launcher icon at an arbitrary image (only
-     * activity-alias entries with baked-in drawables can be toggled), so what
-     * this changes is the web tab favicon and the desktop window/tray icon.
-     */
     fun uploadAppIcon(uri: android.net.Uri) {
         viewModelScope.launch {
             _appIconUploading.value = true
@@ -141,7 +123,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    /** "" clears it - a null field never reaches the wire; see UpdateMeRequest. */
     fun removeAppIcon() {
         viewModelScope.launch {
             runCatching { authRepository.updateMe(UpdateMeRequest(appIconUrl = "")) }
@@ -180,13 +161,6 @@ class SettingsViewModel @Inject constructor(
         _prefs.value = _prefs.value.copy(notificationPreviews = on)
     }
 
-    /**
-     * Whether the notification question has been put to this install already.
-     *
-     * Deliberately not part of [DevicePrefs]: it is a record of something that
-     * happened, not a setting anyone chose, and [resetPrefs] restoring display
-     * defaults should not re-open a question the user has already answered.
-     */
     val notificationPermissionAsked: Boolean
         get() = tokenStore.notificationPermissionAsked
 
@@ -204,7 +178,6 @@ class SettingsViewModel @Inject constructor(
         tokenStore.notificationPreviews = true
     }
 
-    // ── Privacy ─────────────────────────────────────────
     private val _privacyError = MutableStateFlow<String?>(null)
     val privacyError: StateFlow<String?> = _privacyError.asStateFlow()
 
@@ -233,7 +206,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    // ── Two-factor ──────────────────────────────────────
     private val _twoFactor = MutableStateFlow<TwoFactorUi>(TwoFactorUi.Loading)
     val twoFactor: StateFlow<TwoFactorUi> = _twoFactor.asStateFlow()
 
@@ -296,7 +268,6 @@ class SettingsViewModel @Inject constructor(
 
     fun dismissCodes() = refreshTwoFactor()
 
-    // ── Passkeys ────────────────────────────────────────
     private val _passkeys = MutableStateFlow(PasskeysUi())
     val passkeys: StateFlow<PasskeysUi> = _passkeys.asStateFlow()
 
@@ -316,11 +287,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Adds a passkey: the password (plus a 2FA code when on) buys the ceremony,
-     * the device enrols a credential, and finish registers it. `context` must be
-     * the Activity - Credential Manager raises its sheet over it.
-     */
     fun addPasskey(
         context: android.content.Context,
         name: String,
@@ -375,13 +341,6 @@ class SettingsViewModel @Inject constructor(
 
     fun clearPasskeyError() { _passkeys.value = _passkeys.value.copy(error = null) }
 
-    /**
-     * Dismissing the system sheet is the common outcome and not a failure.
-     *
-     * Anything the server rejected explains itself in its own JSON body; without
-     * digging that out, [HttpException.message] is only ever "HTTP 400 Bad
-     * Request", which tells the person at the phone nothing they can act on.
-     */
     private fun passkeyMessage(e: Throwable, fallback: String): String = when (e) {
         is Passkeys.Cancelled -> AppStrings.get(appContext, R.string.catalog_that_was_cancelled_b8e83864)
         is HttpException -> serverMessage(e) ?: when (e.code()) {
@@ -392,7 +351,6 @@ class SettingsViewModel @Inject constructor(
         else -> e.message ?: fallback
     }
 
-    /** The `error` field of AppError's JSON body, when the response carries one. */
     private fun serverMessage(e: HttpException): String? =
         runCatching { e.response()?.errorBody()?.string() }.getOrNull()
             ?.let { Regex("\"error\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"").find(it) }
@@ -400,7 +358,6 @@ class SettingsViewModel @Inject constructor(
             ?.replace("\\\"", "\"")
             ?.takeIf { it.isNotBlank() }
 
-    // ── Credentials ─────────────────────────────────────
     private val _credentials = MutableStateFlow(CredentialsUi())
     val credentials: StateFlow<CredentialsUi> = _credentials.asStateFlow()
 
@@ -431,10 +388,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Irreversible. The repository tears the session down on success, so the app
-     * falls back to the sign-in screen on its own - there's no onDone here.
-     */
     fun deleteAccount(password: String, username: String, code: String) {
         viewModelScope.launch {
             _credentials.value = CredentialsUi(busy = true)
@@ -445,7 +398,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    // ── Lockdown ────────────────────────────────────────
     private val _lockdown = MutableStateFlow(CredentialsUi())
     val lockdown: StateFlow<CredentialsUi> = _lockdown.asStateFlow()
 
@@ -478,7 +430,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    // ── Devices ─────────────────────────────────────────
     private val _sessions = MutableStateFlow<SessionsUi>(SessionsUi.Loading)
     val sessions: StateFlow<SessionsUi> = _sessions.asStateFlow()
 
@@ -507,7 +458,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    // ── Backend health ──────────────────────────────────
     private val _backend = MutableStateFlow<BackendUi>(BackendUi.Loading)
     val backend: StateFlow<BackendUi> = _backend.asStateFlow()
 
@@ -525,7 +475,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    // ── Message wipe ────────────────────────────────────
     private val _wipe = MutableStateFlow(CredentialsUi())
     val wipe: StateFlow<CredentialsUi> = _wipe.asStateFlow()
 
@@ -550,7 +499,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    // ── Account standing ────────────────────────────────
     private val _standing = MutableStateFlow<StandingUi>(StandingUi.Loading)
     val standing: StateFlow<StandingUi> = _standing.asStateFlow()
 
@@ -563,7 +511,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    // ── Bulk server actions ─────────────────────────────
     private val _leaveAll = MutableStateFlow<LeaveAllUi>(LeaveAllUi.Idle)
     val leaveAll: StateFlow<LeaveAllUi> = _leaveAll.asStateFlow()
 

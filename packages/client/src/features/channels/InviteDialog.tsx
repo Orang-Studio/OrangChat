@@ -13,7 +13,7 @@ interface InviteDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/** Mint an invite link (7-day expiry) and offer copy-to-clipboard. */
+
 export function InviteDialog({ serverId, open, onOpenChange }: InviteDialogProps) {
   const [copied, setCopied] = useState(false);
 
@@ -21,8 +21,6 @@ export function InviteDialog({ serverId, open, onOpenChange }: InviteDialogProps
     mutationFn: () => createInvite(serverId, { expiresInSeconds: 7 * 24 * 3600 }),
   });
 
-  // Mint one automatically when the dialog opens (also covers programmatic
-  // opens from the server menu, which never fire onOpenChange).
   const { data, isPending, mutate } = mutation;
   useEffect(() => {
     if (open && !data && !isPending) mutate();

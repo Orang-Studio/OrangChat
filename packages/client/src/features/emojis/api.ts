@@ -3,7 +3,7 @@ import { api } from "../../lib/api";
 import { useAuthStore } from "../../stores/auth";
 import { refreshSession } from "../auth/session";
 
-/** Matches the server's cap; checked here so the file never leaves the browser. */
+
 export const MAX_EMOJI_BYTES = 256 * 1024;
 
 export const listUsableEmojis = () => api<Emoji[]>("/emojis");

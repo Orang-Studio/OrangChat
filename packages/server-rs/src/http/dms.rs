@@ -1,4 +1,3 @@
-//! DM / group-DM REST, mounted under /api. Mirrors routes/dms.ts. Requires auth.
 
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -21,8 +20,6 @@ pub fn routes() -> Router<AppState> {
         .route("/dms/:channelId", delete(leave_dm))
 }
 
-/// Removes the conversation from the caller's list. For a group DM that is a
-/// real departure; for a one-to-one it only closes it (services::dm).
 async fn leave_dm(
     State(state): State<AppState>,
     user: AuthUser,
@@ -32,8 +29,6 @@ async fn leave_dm(
 
     match outcome {
         dm::LeaveOutcome::Left => {
-            // Everyone still in the group needs the member list to shrink; the
-            // leaver is told separately, since they are no longer in the room.
             let _ = state
                 .io()
                 .to(format!("channel:{channel_id}"))
@@ -47,9 +42,6 @@ async fn leave_dm(
                 .leave(format!("channel:{channel_id}"));
             Ok(Json(json!({ "status": "left" })))
         }
-        // Nothing is broadcast for a close: it is invisible to the other side
-        // by design, and announcing it would leak that someone shut the
-        // conversation rather than simply gone quiet.
         dm::LeaveOutcome::Closed => Ok(Json(json!({ "status": "closed" }))),
     }
 }

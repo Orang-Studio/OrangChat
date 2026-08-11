@@ -18,14 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import lt.oranges.orangchat.feature.home.AppViewModel
 
-/**
- * Raised when the app is opened by scanning somebody's contact code
- * (docs/E2EE.md §6.7). Confirming pins their encryption identity on this device.
- *
- * One scan verifies one direction. This phone has now pinned them; they have
- * pinned nothing until they scan back, and the copy says so rather than
- * implying the pair is verified - which is the exact bug §6.7 exists to prevent.
- */
 @Composable
 fun VerifyContactDialog(raw: String, appViewModel: AppViewModel) {
         val context = LocalContext.current

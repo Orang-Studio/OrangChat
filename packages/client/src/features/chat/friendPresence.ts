@@ -5,14 +5,7 @@ import { useAuthStore } from "../../stores/auth";
 import { notify } from "../../lib/notifications";
 import { friendKeys } from "../friends/queries";
 
-/**
- * Last status we saw per user, so "came online" means an actual transition.
- *
- * Without this the notification fires on the presence burst the server sends at
- * connect - every friend who was already online would be announced as having
- * just arrived, every time the app starts. A user with no entry yet is recorded
- * silently for the same reason.
- */
+
 const lastStatus = new Map<string, PresenceStatus>();
 
 export function maybeNotifyFriendOnline(

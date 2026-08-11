@@ -6,7 +6,7 @@ import { reportUpgradeRequired } from "../features/updates/upgradeGate";
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string | undefined;
-  /** Newest published version, sent with a 426 so the wall can name it. */
+
   readonly latest: string | undefined;
 
   constructor(status: number, message: string, code?: string, latest?: string) {
@@ -20,15 +20,12 @@ export class ApiError extends Error {
 
 interface ApiOptions {
   method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
-  /** JSON-serialized as the request body. */
+
   json?: unknown;
   signal?: AbortSignal;
 }
 
-/**
- * Typed same-origin API client. Attaches the in-memory Bearer token; on a 401
- * (outside /auth/*) it refreshes the session once and retries the request.
- */
+
 export function api<T>(path: string, options: ApiOptions = {}): Promise<T> {
   return request<T>(path, options, true);
 }

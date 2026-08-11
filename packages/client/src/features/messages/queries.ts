@@ -14,10 +14,7 @@ export const messageKeys = {
 
 type MessageData = InfiniteData<Page<Message>, string | undefined>;
 
-/**
- * Cursor-paginated history. Pages arrive newest-first (page 0 = latest); the
- * hook exposes `messages` flattened to chronological order for rendering.
- */
+
 export function useMessages(channelId: string | undefined) {
   const pending = usePendingMessages(channelId);
   const query = useInfiniteQuery({
@@ -31,7 +28,6 @@ export function useMessages(channelId: string | undefined) {
 
   const messages = useMemo(() => {
     if (!query.data) return pending;
-    // Pages: newest → oldest; items within a page: newest → oldest.
     const all: Message[] = [];
     const confirmedLocalIds = new Set<string>();
     for (let p = query.data.pages.length - 1; p >= 0; p--) {
@@ -42,9 +38,6 @@ export function useMessages(channelId: string | undefined) {
         if (item.clientId) confirmedLocalIds.add(item.clientId);
       }
     }
-    // A confirmed row lands in the cache a beat before its pending twin is
-    // retired. Both carry the same key, so the pending one has to drop out here
-    // or React sees a duplicate.
     const stillPending = pending.filter((message) => !confirmedLocalIds.has(message.id));
     return [...all, ...stillPending].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }, [query.data, pending]);
@@ -53,7 +46,6 @@ export function useMessages(channelId: string | undefined) {
   return { ...query, messages, pendingMessageIds };
 }
 
-// ── Cache mutators (used by realtime sync and optimistic sends) ──
 
 function updateChannel(
   client: QueryClient,
@@ -65,7 +57,7 @@ function updateChannel(
   );
 }
 
-/** Prepend to the newest page unless the id is already present (ack + broadcast dedupe). */
+
 export function appendMessage(client: QueryClient, message: Message): void {
   updateChannel(client, message.channelId, (data) => {
     if (data.pages.some((p) => p.items.some((m) => m.id === message.id))) {
@@ -92,7 +84,7 @@ export function replaceMessage(client: QueryClient, message: Message): void {
   }));
 }
 
-/** Flip a cached message's pin flag (driven by the `message:pins` event). */
+
 export function setMessagePinnedInCache(
   client: QueryClient,
   channelId: string,
@@ -126,7 +118,7 @@ export function removeMessage(
   }));
 }
 
-/** Apply a reaction add/remove event to the cached message. */
+
 export function applyReaction(
   client: QueryClient,
   payload: {
@@ -134,7 +126,7 @@ export function applyReaction(
     messageId: string;
     emoji: string;
     added: boolean;
-    /** Whether the reacting user is the current user (drives `me`). */
+
     isSelf: boolean;
   },
 ): void {

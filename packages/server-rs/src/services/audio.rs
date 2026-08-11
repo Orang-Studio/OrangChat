@@ -1,9 +1,3 @@
-//! Audio probing for soundboard uploads. No TS equivalent - new for the Rust port.
-//!
-//! Only measures; never decodes to play. The duration limit is enforced here and
-//! not in the browser because the abuse case is precisely a client that lies: a
-//! low-bitrate file can hold minutes of audio inside a small upload, and a
-//! soundboard sound plays for everyone in the channel at once.
 
 use std::io::Cursor;
 
@@ -15,18 +9,10 @@ use symphonia::core::probe::Hint;
 
 use crate::error::{AppError, AppResult};
 
-/// Longest a soundboard sound may be.
 pub const MAX_SOUND_SECS: f64 = 3.0;
 
-/// Container/codec headers routinely round a "3.00s" clip a hair over; rejecting
-/// that would fail files every tool reports as exactly three seconds.
 const TOLERANCE_SECS: f64 = 0.15;
 
-/// Duration in seconds, from the track headers where possible.
-///
-/// Some encoders (notably streamed MP3) leave the frame count out of the header,
-/// so the fallback counts decoded packets. Both paths are bounded by the caller's
-/// byte cap, so neither can be made to run long.
 pub fn probe_duration(bytes: Vec<u8>, extension: Option<&str>) -> AppResult<f64> {
     let source = MediaSourceStream::new(Box::new(Cursor::new(bytes)), Default::default());
     let mut hint = Hint::new();
@@ -61,19 +47,15 @@ pub fn probe_duration(bytes: Vec<u8>, extension: Option<&str>) -> AppResult<f64>
         return Ok(frames as f64 / sample_rate);
     }
 
-    // No frame count in the header: add up what the packets actually carry.
     let mut frames: u64 = 0;
     while let Ok(packet) = format.next_packet() {
         if packet.track_id() == track_id {
             frames += packet.dur();
         }
     }
-    // Any read error here is the end of a file we already accepted the bytes
-    // of; whatever we counted is the answer.
     Ok(frames as f64 / sample_rate)
 }
 
-/// Probe and enforce the limit, phrased for the person who picked the file.
 pub fn require_short_enough(bytes: Vec<u8>, extension: Option<&str>) -> AppResult<f64> {
     let seconds = probe_duration(bytes, extension)?;
     if seconds <= 0.0 {
@@ -91,8 +73,6 @@ pub fn require_short_enough(bytes: Vec<u8>, extension: Option<&str>) -> AppResul
 mod tests {
     use super::*;
 
-    /// A 16-bit mono PCM WAV of `seconds` of silence. Silence is fine: the probe
-    /// reads frame counts, not samples.
     fn wav(seconds: f64) -> Vec<u8> {
         const RATE: u32 = 44_100;
         let frames = (RATE as f64 * seconds) as u32;
@@ -101,13 +81,13 @@ mod tests {
         out.extend(b"RIFF");
         out.extend((36 + data_len).to_le_bytes());
         out.extend(b"WAVEfmt ");
-        out.extend(16u32.to_le_bytes()); // fmt chunk size
-        out.extend(1u16.to_le_bytes()); // PCM
-        out.extend(1u16.to_le_bytes()); // mono
+        out.extend(16u32.to_le_bytes());
+        out.extend(1u16.to_le_bytes());
+        out.extend(1u16.to_le_bytes());
         out.extend(RATE.to_le_bytes());
-        out.extend((RATE * 2).to_le_bytes()); // byte rate
-        out.extend(2u16.to_le_bytes()); // block align
-        out.extend(16u16.to_le_bytes()); // bits per sample
+        out.extend((RATE * 2).to_le_bytes());
+        out.extend(2u16.to_le_bytes());
+        out.extend(16u16.to_le_bytes());
         out.extend(b"data");
         out.extend(data_len.to_le_bytes());
         out.extend(std::iter::repeat_n(0u8, data_len as usize));
@@ -127,8 +107,6 @@ mod tests {
 
     #[test]
     fn rejects_a_clip_over_the_limit() {
-        // The whole point of the server-side probe: this file is small, and
-        // still too long to let loose on a channel.
         assert!(require_short_enough(wav(30.0), Some("wav")).is_err());
     }
 
@@ -137,8 +115,6 @@ mod tests {
         assert!(require_short_enough(b"not audio at all".to_vec(), Some("wav")).is_err());
     }
 
-    /// The hint is a hint: a mislabelled file must still be measured correctly
-    /// rather than trusted or rejected on its extension.
     #[test]
     fn ignores_a_wrong_extension_hint() {
         let seconds = probe_duration(wav(1.0), Some("mp3")).unwrap();

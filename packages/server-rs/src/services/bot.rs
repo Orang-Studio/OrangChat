@@ -1,11 +1,3 @@
-//! Bot accounts and their API tokens.
-//!
-//! A bot is a `User` row with `isBot = true` and an `ownerId`, not a separate
-//! entity. Message authorship, server membership, roles and the permission
-//! bitfield all key on `User`; giving bots their own table would mean a parallel
-//! nullable column on every one of those and a branch at every read. The cost of
-//! this choice is that a bot row has to be kept out of the human account
-//! surfaces deliberately - see `http::deny_bots` and the notes below.
 
 use base64::Engine;
 use rand::RngCore;
@@ -17,12 +9,8 @@ use crate::state::AppState;
 
 use super::badge;
 
-/// How many bots one account may own. Each one is a real user row that can be
-/// invited into servers, so this is a spam ceiling, not a licensing decision.
 const MAX_BOTS_PER_OWNER: i64 = 25;
 
-/// Tokens per bot. More than one so a token can be rotated without downtime:
-/// mint the new one, deploy it, then revoke the old.
 const MAX_TOKENS_PER_BOT: i64 = 5;
 
 pub struct BotRow {
@@ -33,8 +21,6 @@ pub struct BotRow {
     pub created_at: String,
 }
 
-/// A freshly minted token. The plaintext exists only in this struct, on the way
-/// to the one response that will ever contain it.
 pub struct MintedToken {
     pub id: String,
     pub token: String,
@@ -45,11 +31,6 @@ fn hash_token(token: &str) -> String {
     hex::encode(Sha256::digest(token.as_bytes()))
 }
 
-/// `<base64url(bot id)>.<32 random bytes, base64url>`.
-///
-/// The id prefix is not a security property - it is there so the server can find
-/// the right row without scanning, and so a leaked token is traceable to its bot.
-/// The entropy is entirely in the second half.
 fn generate_token(bot_id: &str) -> String {
     let mut secret = [0u8; 32];
     rand::thread_rng().fill_bytes(&mut secret);
@@ -57,8 +38,6 @@ fn generate_token(bot_id: &str) -> String {
     format!("{}.{}", engine.encode(bot_id), engine.encode(secret))
 }
 
-/// The bot id a token claims to belong to. Claims, not proves - the caller still
-/// has to match the digest. Returning it early just avoids a full-table scan.
 fn claimed_bot_id(token: &str) -> Option<String> {
     let prefix = token.split('.').next()?;
     let raw = base64::engine::general_purpose::URL_SAFE_NO_PAD
@@ -67,13 +46,6 @@ fn claimed_bot_id(token: &str) -> Option<String> {
     String::from_utf8(raw).ok()
 }
 
-/// Resolves a bot token to its bot id, or `None` if it matches nothing.
-///
-/// The digest is compared in the database by equality on a unique index. That is
-/// not a constant-time comparison, but it does not need to be: the value being
-/// compared is a SHA-256 of the secret, so timing tells an attacker only about
-/// digests, and finding a token whose digest is close to a target is exactly the
-/// preimage problem.
 pub async fn authenticate(state: &AppState, token: &str) -> AppResult<Option<String>> {
     let Some(bot_id) = claimed_bot_id(token) else {
         return Ok(None);
@@ -94,7 +66,6 @@ pub async fn authenticate(state: &AppState, token: &str) -> AppResult<Option<Str
         return Ok(None);
     };
 
-    // Best-effort: a failed touch must not fail the request it was observing.
     let _ = sqlx::query(r#"UPDATE "BotToken" SET "lastUsedAt" = now() WHERE "tokenHash" = $1"#)
         .bind(&hash)
         .execute(&state.pool)
@@ -150,16 +121,9 @@ pub async fn create(
     }
 
     let id = cuid();
-    // The email is unique and non-null on User, so a bot needs one it can never
-    // receive at. `.invalid` is reserved by RFC 2606 and cannot resolve.
     let email = format!("bot+{id}@bots.orangchat.invalid");
 
-    // `emailVerifiedAt` is not cosmetic here: AuthUser rejects any account
-    // without it, so an unverified bot would 401 on every request it ever made.
     sqlx::query(
-        // "updatedAt" is set explicitly: Prisma's @updatedAt is applied by the
-        // Prisma client, not by a database default, so a raw INSERT that omits
-        // it violates the NOT NULL constraint.
         r#"INSERT INTO "User"
            (id, email, username, "displayName", "isBot", "ownerId",
             "emailVerifiedAt", "passwordHash", "updatedAt")
@@ -204,8 +168,6 @@ pub async fn list(state: &AppState, owner_id: &str) -> AppResult<Vec<BotRow>> {
         .collect())
 }
 
-/// A bot, but only for the account that owns it. Every mutating route funnels
-/// through this, so ownership is checked in exactly one place.
 pub async fn get(state: &AppState, owner_id: &str, bot_id: &str) -> AppResult<Option<BotRow>> {
     let row: Option<(String, String, String, Option<String>, chrono::NaiveDateTime)> =
         sqlx::query_as(
@@ -272,10 +234,6 @@ pub async fn update(
     require_owned(state, owner_id, bot_id).await
 }
 
-/// Deletes the bot outright rather than tombstoning it the way `account` does
-/// for people. A bot has no conversations of its own to keep readable, and its
-/// messages survive on their channels regardless; leaving a live login behind
-/// for something the owner asked to be gone would be the worse default.
 pub async fn delete(state: &AppState, owner_id: &str, bot_id: &str) -> AppResult<()> {
     require_owned(state, owner_id, bot_id).await?;
     sqlx::query(r#"DELETE FROM "User" WHERE id = $1 AND "ownerId" = $2 AND "isBot" = true"#)
@@ -366,16 +324,6 @@ pub async fn revoke_token(
     Ok(())
 }
 
-/// Adds a bot to a server with a dedicated role carrying `permissions`.
-///
-/// The requested bitfield is intersected against what the *inviter* actually
-/// holds. Without that, inviting a bot is a privilege-escalation path: any
-/// member with MANAGE_SERVER could mint a bot, invite it with ADMINISTRATOR, and
-/// drive the server through it. This codebase has closed that class of bug once
-/// already for roles - `membership::assert_no_escalation` is the same guard.
-///
-/// The bot gets its own role rather than inheriting @everyone so its powers are
-/// visible in the role list and can be edited or removed like anything else.
 pub async fn invite_to_server(
     state: &AppState,
     server_id: &str,
@@ -487,7 +435,6 @@ mod tests {
         assert_eq!(hash_token(&token).len(), 64);
     }
 
-    /// Garbage must read as "no such token", never as a panic or a match.
     #[test]
     fn malformed_tokens_claim_nothing() {
         assert_eq!(claimed_bot_id(""), Some(String::new()));

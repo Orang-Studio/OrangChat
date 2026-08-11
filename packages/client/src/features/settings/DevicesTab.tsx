@@ -8,11 +8,7 @@ import { SectionTitle } from "./controls";
 import { getSessions, revokeOtherSessions, revokeSession } from "./api";
 import { t, tCount } from "../../lib/i18n";
 
-/**
- * Best-effort device name from a User-Agent. Deliberately coarse: the string is
- * attacker-controlled and only ever used as a label, so it's matched against a
- * short list of substrings rather than parsed.
- */
+
 function describe(userAgent: string | null): { label: string; icon: typeof Monitor } {
   if (!userAgent) return { label: "Unknown device", icon: Monitor };
   const ua = userAgent.toLowerCase();

@@ -1,15 +1,10 @@
 import { create } from "zustand";
 
-/**
- * Per-server notification preferences. These are device-local on purpose: the
- * server has no notion of a mute, and pretending otherwise across devices would
- * be a lie. Muting suppresses desktop/push alerts for a server; the unread dots
- * keep working, the same way muting a channel elsewhere still tracks unreads.
- */
+
 export type NotificationLevel = "all" | "mentions" | "none";
 
 export interface ServerNotificationPrefs {
-  /** Epoch ms the mute expires, "forever", or null when not muted. */
+
   mutedUntil: number | "forever" | null;
   level: NotificationLevel;
 }
@@ -47,7 +42,6 @@ function write(map: PrefsMap): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
   } catch {
-    // Storage unavailable (private mode) - prefs just won't persist.
   }
 }
 
@@ -83,19 +77,18 @@ export const serverNotificationActions = {
 
 function resolve(prefs: ServerNotificationPrefs | undefined): ServerNotificationPrefs {
   if (!prefs) return DEFAULTS;
-  // An expired mute is just not a mute; no cleanup pass needed.
   if (typeof prefs.mutedUntil === "number" && prefs.mutedUntil <= Date.now()) {
     return { ...prefs, mutedUntil: null };
   }
   return prefs;
 }
 
-/** Reactive prefs for one server (mute state already expired-checked). */
+
 export function useServerNotificationPrefs(serverId: string): ServerNotificationPrefs {
   return resolve(useServerNotifications((s) => s.servers[serverId]));
 }
 
-/** Non-reactive read, for the notification gate in the realtime layer. */
+
 export function getServerNotificationPrefs(serverId: string): ServerNotificationPrefs {
   return resolve(useServerNotifications.getState().servers[serverId]);
 }

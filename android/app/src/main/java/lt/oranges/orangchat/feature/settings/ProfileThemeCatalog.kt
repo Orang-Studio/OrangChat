@@ -4,11 +4,6 @@ import android.content.Context
 import lt.oranges.orangchat.R
 import lt.oranges.orangchat.util.AppStrings
 
-/**
- * A profile theme: freeform CSS a user applies to their own profile card. The
- * "Install" action stores the CSS in the user's profileCss; the card renderer
- * sanitizes and scopes it at render time exactly as it does hand-written CSS.
- */
 data class ProfileTheme(
     val id: String,
     val name: String,
@@ -17,13 +12,6 @@ data class ProfileTheme(
     val css: String,
 )
 
-/**
- * Kotlin mirror of packages/marketplace/src/profile-themes. Keep in lockstep
- * with that catalog: the CSS strings must match the web entries byte-for-byte so
- * a theme installed on either client lights up as "Installed" on the other
- * (the check is an exact string compare against the stored profileCss). The web
- * strings are `.trim()`-ed template literals, so these use the same trimmed body.
- */
 val PROFILE_THEMES: List<ProfileTheme> = listOf(
     ProfileTheme(
         id = "neon",
@@ -88,10 +76,6 @@ val PROFILE_THEMES: List<ProfileTheme> = listOf(
     ),
 )
 
-/**
- * The built-in names/descriptions are catalogue strings so the community can
- * translate them; the raw fields above stay English for the search filter.
- */
 fun ProfileTheme.displayName(context: Context): String = when (id) {
     "neon" -> AppStrings.get(context, R.string.catalog_neon_00706b5e)
     "parchment" -> AppStrings.get(context, R.string.catalog_parchment_4761c103)

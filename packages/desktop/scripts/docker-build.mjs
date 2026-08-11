@@ -2,8 +2,6 @@ import { spawnSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// electron-builder needs wine to stamp the .exe icon and run makensis. This box
-// has no wine, so the Windows targets are built inside electronuserland/builder:wine.
 const IMAGE = "electronuserland/builder:wine";
 const pkgDir = resolve(join(dirname(fileURLToPath(import.meta.url)), ".."));
 const repoRoot = resolve(pkgDir, "..", "..");
@@ -23,8 +21,6 @@ const gid = process.getgid?.() ?? 0;
 const script = [
   "set -e",
   "cd /project/packages/desktop",
-  // --publish never: the generic provider is a plain nginx path, so nothing is
-  // uploaded, but latest.yml is still emitted for electron-updater to poll.
   "./node_modules/.bin/electron-builder --win nsis zip --publish never --config electron-builder.yml",
   `chown -R ${uid}:${gid} /project/packages/desktop/release`,
 ].join(" && ");

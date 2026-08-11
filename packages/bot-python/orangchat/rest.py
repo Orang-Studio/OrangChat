@@ -47,8 +47,6 @@ class Rest:
         async with session.request(method, f"{self._base_url}{path}", json=body) as res:
             text = await res.text()
             if res.status >= 400:
-                # Errors are `{"error": ...}`, but a proxy or a crash can return
-                # anything at all - never surface that as a JSON decode failure.
                 message = text or res.reason or "request failed"
                 try:
                     parsed = json.loads(text)

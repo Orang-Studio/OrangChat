@@ -4,31 +4,15 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
-// API + Socket.IO are same-origin in production; in dev, Vite proxies both
-// to the backend (planned port 3001 - confirm with backend scaffold).
 const BACKEND_URL = process.env.ORANGCHAT_BACKEND_URL ?? "http://localhost:3001";
 
-// Attachments over 10MB are uploaded straight to OrangMove. Production serves it
-// from this app's own origin under /orangmove/ (see deploy/nginx) because
-// OrangMove pins CORS to a single origin; dev mirrors that so the upload path is
-// identical in both. Needs OrangMove running locally on :8080.
 const ORANGMOVE_URL = process.env.ORANGCHAT_ORANGMOVE_URL ?? "http://localhost:8080";
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as {
   version: string;
 };
 
-/**
- * The service worker has to decrypt notifications (docs/E2EE.md §8), so it needs
- * the crypto core from `@orangchat/shared` - the same source the app and the
- * Kotlin mirror agree with. Hand-copying it into a plain `public/sw.js` is how
- * the two would drift into producing different bytes, which for E2EE means
- * "silently undecryptable" rather than "slightly wrong".
- *
- * It is bundled to a single classic script rather than a module worker on
- * purpose: module service workers still are not supported everywhere, and a
- * notification path that only runs in some browsers is worse than none.
- */
+
 function serviceWorker(): Plugin {
   const entry = fileURLToPath(new URL("./src/sw/sw.ts", import.meta.url));
   let cached: string | null = null;
@@ -64,8 +48,6 @@ function serviceWorker(): Plugin {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         if ((req.url ?? "").split("?")[0] !== "/sw.js") return next();
-        // Rebuilt per request in dev; the worker is small and this keeps edits
-        // to it from needing a restart.
         cached = null;
         void bundle(false).then(
           (code) => {
@@ -106,8 +88,6 @@ export default defineConfig({
         changeOrigin: false,
         rewrite: (path) => path.replace(/^\/orangmove/, "/api"),
       },
-      // No /attachments entry: like /uploads, stored bytes are served by nginx,
-      // not the backend, so previews of local attachments need it in front.
     },
   },
 });

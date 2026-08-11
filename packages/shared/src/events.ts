@@ -42,7 +42,7 @@ export interface ReactionPayload {
   messageId: string;
   emoji: string;
   userId: string;
-  /** true = added, false = removed */
+
   added: boolean;
 }
 
@@ -64,10 +64,10 @@ export interface VoiceDevicePayload {
 export interface SoundboardPlayedPayload {
   channelId: string;
   soundId: string;
-  /** Who pressed it. */
+
   userId: string;
   url: string;
-  /** 0..1, set by whoever manages the board. */
+
   volume: number;
 }
 
@@ -85,7 +85,7 @@ export interface DmCallEndedPayload {
   channelId: string;
   userId: string;
   reason: 'declined' | 'cancelled' | 'ended' | 'timeout' | 'busy';
-  /** true when the call itself is finished.*/
+
   callOver: boolean;
 }
 
@@ -161,11 +161,7 @@ export interface ServerToClientEvents {
   'e2ee:device:revoked': (payload: { userId: string; deviceId: string }) => void;
   'e2ee:log:head': (payload: { userId: string; seq: number; entryHash: string }) => void;
   'e2ee:epoch': (payload: { channelId: string; epoch: E2eeEpoch }) => void;
-  /**
-   * WebRTC signalling between two devices of the same account during a transfer
-   * (docs/E2EE.md §4). Opaque to the server, and never routed outside the
-   * sender's own account.
-   */
+
   'e2ee:transfer:signal': (payload: {
     transferId: string;
     kind: 'offer' | 'answer' | 'ice' | 'ready';
@@ -210,19 +206,11 @@ export interface ClientToServerEvents {
   'reaction:add': (payload: { channelId: string; messageId: string; emoji: string }) => void;
   'reaction:remove': (payload: { channelId: string; messageId: string; emoji: string }) => void;
   'presence:update': (status: PresenceStatus) => void;
-  /** Automatic foreground/idle state for this socket only. */
+
   'presence:lifecycle': (status: 'online' | 'idle') => void;
-  /** Renew this socket's five-minute lease and reaffirm its lifecycle state. */
+
   'presence:heartbeat': (status: 'online' | 'idle') => void;
-  /**
-   * Report the game the desktop client detected, or `null` when it stopped.
-   *
-   * `gameId` names an entry in the shipped registry and is the only way to get
-   * a title and artwork: the server resolves both from its own copy, so a
-   * client can never choose the text - let alone the image url - that other
-   * people see. `name` is the escape hatch for a process the user allowed by
-   * hand; it is sanitized and rendered without artwork.
-   */
+
   'activity:game': (
     payload: { gameId: string; name?: never } | { gameId?: never; name: string } | null,
   ) => void;

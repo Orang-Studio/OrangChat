@@ -110,7 +110,6 @@ fun FriendsScreen(
                                     .size(22.dp)
                                     .clickable { onMessage(friend.user.id) },
                             )
-                            // No spacer: the 48dp targets already sit the glyphs apart.
                             Icon(
                                 Icons.Default.Close,
                                 contentDescription = "Remove",

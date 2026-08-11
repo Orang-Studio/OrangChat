@@ -6,18 +6,10 @@ import { useVoiceStore } from "../voice/store";
 import { playSound, useUsableSounds } from "./queries";
 import { t } from "../../lib/i18n";
 
-/**
- * The soundboard, as a popover off the voice controls.
- *
- * Only offered inside a server voice channel (a DM call has no soundboard), but
- * the sounds shown come from every server the viewer is in, so a clip from one
- * server can be fired into another server's voice room.
- */
+
 export function SoundboardPanel({ className }: { className?: string }) {
   const session = useVoiceStore((s) => s.session);
   const [open, setOpen] = useState(false);
-  // Sourced across all the viewer's servers, not just this channel's, so
-  // their whole soundboard is available wherever they are in voice.
   const { data: sounds, isLoading } = useUsableSounds(open && Boolean(session?.serverId));
 
   if (!session?.serverId) return null;

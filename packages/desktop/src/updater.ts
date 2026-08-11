@@ -5,15 +5,10 @@ import { messageBoxWhenVisible } from "./modal";
 const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
 let getWindow: () => BrowserWindow | null = () => null;
-// Lets the caller flip main's close-to-tray guard off before we quit to install,
-// so quitAndInstall() actually closes the window instead of hiding it to tray.
 let prepareQuit: () => void = () => {};
 
 let wired = false;
-// A user asked for this check, so its result should be shown even when there's
-// no update (the silent background poll stays quiet in that case).
 let interactive = false;
-// Dedupes overlapping checks (background interval vs. a menu click).
 let checking = false;
 let notifiedVersion: string | null = null;
 

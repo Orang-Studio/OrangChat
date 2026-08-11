@@ -29,22 +29,6 @@ import lt.oranges.orangchat.util.LocalePreferences
 import lt.oranges.orangchat.util.RemoteI18n
 import lt.oranges.orangchat.util.labelRes
 
-/**
- * Device-local language picker: one option per row, listed downward rather
- * than as a row of chips, so twelve options stay reachable on any screen.
- *
- * The bundled languages come first (in [AppLanguage] order), then anything the
- * server published that this build never shipped - a language added after the
- * APK was made, fetched by [RemoteI18n] on its launch-and-hourly poll. A
- * language that vanished from the server list but is still cached locally
- * keeps its row so a user isn't silently switched.
- *
- * Picking a language recreates the Activity so [lt.oranges.orangchat.LocalizedActivity]
- * re-attaches the new locale on [android.app.Activity.attachBaseContext] - that
- * is the only point Android reads the override from. Other already-running
- * activities (a bubble, a media preview) keep their old locale until they are
- * themselves relaunched, which is what the notice below the list is for.
- */
 @Composable
 fun LanguagePage(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val c = OrangTheme.colors
@@ -66,8 +50,6 @@ fun LanguagePage(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     RemoteI18n.languages().forEach { remote ->
                         if (none { it.first == remote.code }) add(Triple(remote.code, remote.endonym, ""))
                     }
-                    // A picked language the server no longer publishes still
-                    // works from cache; keep its row so it stays visible.
                     if (selected != systemTag && none { it.first == selected }) {
                         add(Triple(selected, LocalePreferences.label(context, selected), ""))
                     }
@@ -79,11 +61,6 @@ fun LanguagePage(onBack: () -> Unit, modifier: Modifier = Modifier) {
                         selected = tag
                         if (tag == systemTag) LocalePreferences.setSystem(context)
                         else LocalePreferences.set(context, tag)
-                        // A server-added language needs its catalogue before the
-                        // recreated activity can render it; the refresh is
-                        // fire-and-forget so switching bundled languages stays
-                        // instant. Until it lands, resources (English for an
-                        // unbundled tag) stand in.
                         RemoteI18n.refreshNow()
                         (context as? Activity)?.recreate()
                     },

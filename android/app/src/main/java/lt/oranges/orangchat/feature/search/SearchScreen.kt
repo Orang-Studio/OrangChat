@@ -43,10 +43,6 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.formatTime
 
-/**
- * Message search. Servers use the remote full-text index and fall back to the
- * encrypted disk cache; DMs always use the on-device decrypted index.
- */
 @Composable
 fun SearchScreen(
     serverId: String?,
@@ -54,11 +50,6 @@ fun SearchScreen(
     channelNames: Map<String, String>,
     authors: Map<String, User>,
     onBack: () -> Unit,
-    /**
-     * Open the hit's channel and scroll to the message itself. The id matters:
-     * a hit is usually older than the page a channel opens on, and dropping it
-     * left every result opening the conversation at the bottom instead.
-     */
     onJumpToMessage: (channelId: String, messageId: String) -> Unit,
     modifier: Modifier = Modifier,
     vm: SearchViewModel = hiltViewModel(),
@@ -66,7 +57,6 @@ fun SearchScreen(
         val context = LocalContext.current
     val c = OrangTheme.colors
     val state by vm.state.collectAsStateWithLifecycle()
-    // Keep the renderer safe if an overlapping page comes back from the server.
     val results = state.results.distinctBy { it.id }
 
     LaunchedEffect(serverId, channelIds) { vm.reset() }
@@ -140,7 +130,6 @@ fun SearchScreen(
                         onClick = { onJumpToMessage(message.channelId, message.id) },
                     )
                 }
-                // Offset pagination: ask for the next page at the bottom.
                 if (state.hasMore) {
                     item {
                         Text(

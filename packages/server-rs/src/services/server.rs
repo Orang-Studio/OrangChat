@@ -1,4 +1,3 @@
-//! Server / invite persistence. Mirrors server-service.ts.
 
 use std::collections::HashMap;
 
@@ -44,17 +43,12 @@ pub struct NewInvite {
     pub max_uses: Option<i32>,
 }
 
-/// Why an invite can't be used, or that it can.
-///
-/// The preview and the join share this so a card can never offer a Join button
-/// for an invite the join would reject.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum InviteStatus {
     Ok,
     Expired,
     Exhausted,
     Banned,
-    /// Already in - the join is a no-op, so clients jump straight to the server.
     AlreadyMember,
 }
 
@@ -69,7 +63,6 @@ impl InviteStatus {
         }
     }
 
-    /// The message a rejected join fails with.
     fn reject(self) -> Option<AppError> {
         match self {
             InviteStatus::Ok | InviteStatus::AlreadyMember => None,
@@ -84,7 +77,6 @@ impl InviteStatus {
     }
 }
 
-/// What an invite link resolves to before anyone commits to joining.
 pub struct InvitePreview {
     pub invite: InviteRow,
     pub server: ServerRow,
@@ -101,8 +93,6 @@ async fn get_invite(state: &AppState, code: &str) -> AppResult<InviteRow> {
         .ok_or_else(|| AppError::NotFound("Invalid invite".into()))
 }
 
-/// Ban and membership are per-viewer, so an anonymous viewer only ever learns
-/// whether the invite itself is still live.
 async fn invite_status(
     state: &AppState,
     invite: &InviteRow,
@@ -119,8 +109,6 @@ async fn invite_status(
             return Ok(InviteStatus::Banned);
         }
 
-        // Checked before expiry: an existing member following a stale link
-        // should land in the server, not be told the link is dead.
         let member: Option<String> = sqlx::query_scalar(
             r#"SELECT id FROM "ServerMember" WHERE "serverId" = $1 AND "userId" = $2"#,
         )
@@ -146,7 +134,6 @@ async fn invite_status(
     Ok(InviteStatus::Ok)
 }
 
-/// Resolve an invite code to the server behind it, without joining anything.
 pub async fn get_invite_preview(
     state: &AppState,
     code: &str,
@@ -318,9 +305,6 @@ pub async fn get_server_detail(
     }))
 }
 
-/// Confirm a channel setting points at a channel of `expected_type` belonging to
-/// this server. Without the serverId check a caller could aim their system
-/// channel at someone else's channel and have notices posted there.
 async fn assert_channel_of_type(
     state: &AppState,
     server_id: &str,
@@ -360,8 +344,6 @@ pub async fn update_server(
     if let Some(name) = patch.name {
         sep.push(r#"name = "#).push_bind_unseparated(name);
     }
-    // Same round-trip guard as the user profile: the wire form is this row's own
-    // asset route, and storing it would erase the real url.
     if let Some(icon) = patch
         .icon_url
         .filter(|v| !v.as_deref().is_some_and(is_asset_url))
@@ -402,11 +384,6 @@ pub async fn update_server(
         .await?)
 }
 
-/// Leave a server under your own steam.
-///
-/// Distinct from kick_member, which refuses self-targeting and demands
-/// KICK_MEMBERS - leaving needs neither. The owner cannot leave, since that
-/// would strand the server without one; they delete it instead.
 pub async fn leave_server(state: &AppState, server_id: &str, user_id: &str) -> AppResult<()> {
     let owner: Option<String> =
         sqlx::query_scalar(r#"SELECT "ownerId" FROM "Server" WHERE id = $1"#)
@@ -434,13 +411,6 @@ pub async fn leave_server(state: &AppState, server_id: &str, user_id: &str) -> A
     Ok(())
 }
 
-/// Leaves every server the user is in but does not own, in one statement.
-///
-/// Owned servers are skipped rather than refused: the point of the button is
-/// "get me out of everyone else's servers", and an owner leaving would strand
-/// theirs without one - same rule `leave_server` enforces individually.
-///
-/// Returns the ids left, so the caller can drop the sockets out of those rooms.
 pub async fn leave_all_non_owned(state: &AppState, user_id: &str) -> AppResult<Vec<String>> {
     let rows: Vec<(String,)> = sqlx::query_as(
         r#"DELETE FROM "ServerMember" m

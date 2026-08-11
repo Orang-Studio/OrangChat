@@ -44,7 +44,6 @@ export function loadWindowState(): WindowState {
     maximized: saved.maximized ?? false,
   };
 
-  // A monitor may have been unplugged since the last run.
   if (!isVisibleOnSomeDisplay(state)) {
     delete state.x;
     delete state.y;
@@ -56,6 +55,5 @@ export function saveWindowState(state: WindowState): void {
   try {
     writeFileSync(file(), JSON.stringify(state, null, 2));
   } catch {
-    // Losing window geometry must never take the app down.
   }
 }

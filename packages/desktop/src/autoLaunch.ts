@@ -1,7 +1,5 @@
 import { app } from "electron";
 
-// Squirrel/NSIS installs run from a versioned folder via a stable Update.exe
-// stub, so pointing the login item at execPath would break on every update.
 export function applyAutoLaunch(enabled: boolean): void {
   if (process.platform !== "win32" && process.platform !== "darwin") return;
   app.setLoginItemSettings({

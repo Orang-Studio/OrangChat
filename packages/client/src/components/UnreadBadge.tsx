@@ -1,7 +1,7 @@
 import { UNREAD_COUNT_CAP } from "../stores/unread";
 import { cn } from "../lib/cn";
 
-/** The server stops counting at the cap, so anything at it is an "at least". */
+
 export function formatUnreadCount(count: number): string {
   return count >= UNREAD_COUNT_CAP ? `${UNREAD_COUNT_CAP - 1}+` : String(count);
 }

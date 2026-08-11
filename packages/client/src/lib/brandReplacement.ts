@@ -1,16 +1,4 @@
-/**
- * Master switch for the brand rename. The settings toggle that drove it has
- * been taken out of the UI, so nothing can turn `iHateAdas` on any more, but
- * the machinery below is deliberately kept whole for when it comes back: flip
- * this to `true` and restore the Toggle in AccessibilityTab.
- *
- * It gates the stored pref rather than the toggle alone, so anyone who switched
- * the rename on while the toggle existed is not left in a renamed UI with no
- * way back out of it.
- *
- * Typed `boolean` rather than inferred, so the checks below read as ordinary
- * conditions instead of narrowing to `false` and looking like dead branches.
- */
+
 export const BRAND_REPLACEMENT_ENABLED: boolean = false;
 
 const BRAND_PATTERN = /orangchat/gi;
@@ -35,7 +23,7 @@ function isDisplayText(node: Text): boolean {
   return !parent.closest('[contenteditable="true"]');
 }
 
-/** Replace the product name while retaining the capitalization users see. */
+
 export function replaceOrangChat(value: string): string {
   return value.replace(BRAND_PATTERN, (match) => {
     if (match === match.toUpperCase()) return "BONFIRE";
@@ -152,7 +140,7 @@ function disable(): void {
   trackedElements.clear();
 }
 
-/** Apply the accessibility rename without changing React state or message data. */
+
 export function applyBrandReplacement(enabled: boolean): void {
   if (enabled && BRAND_REPLACEMENT_ENABLED) enable();
   else disable();

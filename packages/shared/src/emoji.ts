@@ -1,23 +1,10 @@
-/**
- * Custom emoji in message content.
- *
- * A resolved emoji is written as a `<:name:id>` token (`<a:name:id>` when
- * animated); the id is what actually resolves, so the name is only there for a
- * readable fallback when the emoji has been deleted. Users can also type a bare
- * `:name:` shortcode, which is turned into a token when the message is sent.
- *
- * This module is the single source of truth for that grammar. Rendering and the
- * send-time normalizer both go through {@link tokenizeEmoji}, so a token is
- * always consumed whole and its inner `:name:` can never be re-parsed as a
- * shortcode and re-wrapped into `<<:name:id>id>`. The Android client and Rust
- * server mirror these same rules.
- */
 
-/** A name is 2-32 chars of `[a-z0-9_-]`; an id is a run of `[a-z0-9]`. */
+
+
 const NAME = "[a-z0-9_-]{2,32}";
 const ID = "[a-z0-9]+";
 
-/** A complete token. Groups: 1 = animated flag (`a`/empty), 2 = name, 3 = id. */
+
 export const EMOJI_TOKEN_SOURCE = `<(a?):(${NAME}):(${ID})>`;
 /** A bare, hand-typed shortcode. Group 1 = name. */
 export const EMOJI_SHORTCODE_SOURCE = `:(${NAME}):`;

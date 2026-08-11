@@ -100,11 +100,6 @@ pub fn revoke_statement_bytes(user_id: &str, device_id: &str, revoked_at: &str) 
     ])
 }
 
-/// What a device signs to erase the account's identity without waiting.
-///
-/// Mirrors `eraseKeysStatementBytes` in `@orangchat/shared`. Unlike a revocation
-/// this is not a log entry - there is no log left afterwards to put it in - so
-/// `issued_at` is what stops a captured signature being replayed later.
 pub fn erase_keys_statement_bytes(user_id: &str, device_id: &str, issued_at: &str) -> Vec<u8> {
     encode_fields(&[
         DOMAIN_ERASE_KEYS.as_bytes(),
@@ -644,10 +639,6 @@ pub async fn touch(state: &AppState, user_id: &str, device_id: &str) -> AppResul
     .execute(&state.pool)
     .await?;
 
-    // Only a device that has loaded a local identity ever gets here, so this is
-    // the account demonstrating that a working key still exists - which is
-    // exactly the question a pending key erasure is waiting on. Answer it now
-    // rather than at the end of the wait.
     if updated.rows_affected() > 0 {
         key_deletion::abort_on_device_seen(state, user_id).await?;
     }
@@ -670,12 +661,6 @@ fn burned_transfer_key(transfer_id: &str) -> String {
     format!("e2ee:blob-burned:{transfer_id}")
 }
 
-/// The relay fallback carries three things, in order: the new device's name for
-/// the device list ("hello"), the old device's ephemeral public key so both ends
-/// derive the same six digits ("handshake"), and the history bundle itself.
-/// Naming the slots keeps them from overwriting each other on a hostile network
-/// where all three have to go this way. All are opaque to the server; the
-/// pairing secret only ever existed on the QR a camera read.
 pub fn valid_blob_slot(slot: &str) -> bool {
     matches!(slot, "hello" | "handshake" | "bundle")
 }
@@ -796,8 +781,6 @@ pub async fn put_transfer_blob(
     Ok(BLOB_TTL_SECONDS)
 }
 
-/// Single-use by construction: the read deletes. A blob fetched by anyone but
-/// the waiting device is a burned transfer, which is loud on purpose.
 pub async fn take_transfer_blob(
     state: &AppState,
     transfer_id: &str,
@@ -829,8 +812,6 @@ pub async fn take_transfer_blob(
         ));
     }
 
-    // GETDEL is one Redis operation. A GET followed by DEL has a race where two
-    // callers can both receive a blob that is meant to be single-use.
     let blob: Option<String> = con.get_del(&key).await?;
     let blob = blob.ok_or_else(|| {
         AppError::NotFound("This transfer is no longer available; start it again".into())
@@ -853,18 +834,10 @@ pub struct MintEpochInput {
     pub id: String,
     pub created_by: String,
     pub envelopes: Vec<EnvelopeInput>,
-    /// Whether the conversation should be told a key was started. Only a person
-    /// choosing "reset the key" sets this: epochs are also minted whenever the
-    /// device set changes, and announcing those would bury the conversation in
-    /// notices about routine rekeying. It says nothing the server has to trust -
-    /// at worst a client announces its own rekey.
     #[serde(default)]
     pub announce: bool,
 }
 
-/// The epoch id is minted by the client, not here, because it is the HKDF salt
-/// every wrapping is already bound to by the time we see them. A server-assigned
-/// id would have to be predicted before it existed.
 pub fn valid_epoch_id(value: &str) -> bool {
     value.len() == TRANSFER_ID_HEX_LEN && value.chars().all(|c| c.is_ascii_hexdigit())
 }
@@ -1067,14 +1040,10 @@ impl EpochKeyRow {
 #[serde(rename_all = "camelCase")]
 pub struct ChannelStateDto {
     pub channel_id: String,
-    /// "dm" | "group_dm" | …; strict mode is DM-only in v1 (docs/E2EE.md §6.3),
-    /// so the client has to know which one it is before it wraps anything.
     pub channel_type: String,
     pub e2ee: bool,
     pub epoch_number: i32,
     pub capable: bool,
-    /// True when the current epoch's envelopes no longer exactly match the
-    /// active devices of the current members (device or membership change).
     pub rotation_required: bool,
     pub current_epoch_created_at: Option<String>,
     pub current_epoch_message_count: i64,
@@ -1219,9 +1188,6 @@ mod tests {
         assert!(!valid_transfer_id(&"z".repeat(32)));
     }
 
-    /// An erasure signature is checked with the same primitive as a revocation,
-    /// so what keeps one from being spent as the other is the domain prefix.
-    /// Both statements otherwise carry a user, a device and a timestamp.
     #[test]
     fn an_erasure_statement_is_not_a_revocation_statement() {
         let erase = erase_keys_statement_bytes("u1", "d1", "2026-08-10T12:00:00Z");

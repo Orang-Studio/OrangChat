@@ -14,11 +14,6 @@ import dagger.hilt.android.AndroidEntryPoint
 import lt.oranges.orangchat.notifications.NotificationHelper
 import javax.inject.Inject
 
-/**
- * Keeps the process alive and the mic/camera usable while a call runs in the
- * background. Android 14+ refuses microphone capture from a backgrounded app
- * without a foreground service of the matching type, so this is not optional.
- */
 @AndroidEntryPoint
 class CallService : Service() {
 
@@ -36,10 +31,6 @@ class CallService : Service() {
         } else {
             0
         }
-        // Android 14/15 throws SecurityException (and kills the process) when a
-        // camera FGS is promoted after the app loses foreground eligibility.
-        // CallManager starts us synchronously from the permission-backed user
-        // action; this guard is the final protection against a process crash.
         try {
             ServiceCompat.startForeground(
                 this,
@@ -51,7 +42,6 @@ class CallService : Service() {
             stopSelf(startId)
             return START_NOT_STICKY
         }
-        // The call, not the system, decides when this ends.
         return START_NOT_STICKY
     }
 

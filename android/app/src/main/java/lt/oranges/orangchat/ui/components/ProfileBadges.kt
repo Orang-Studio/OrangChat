@@ -31,12 +31,6 @@ import coil.compose.AsyncImage
 import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.absoluteUrl
 
-/**
- * Profile badge catalog, mirroring packages/shared/src/badges.ts and
- * services::badge. The slug is the contract; everything shown here is local, so
- * a renamed label never needs a server change. Each badge is a piece of artwork
- * served from the web app's /badges/ directory.
- */
 enum class Badge(
     val slug: String,
     val label: String,
@@ -50,11 +44,9 @@ enum class Badge(
     BONFIRE("bonfire", "Bonfire", "Was there for the bonfire."),
     BOT("bot", "Bot", "An automated account.");
 
-    /** Artwork URL, served from the web app's static assets. */
     val imageUrl: String? get() = absoluteUrl("/badges/$slug.png")
 
     companion object {
-        /** Drops unknown slugs and returns the rest in catalog order. */
         fun resolve(slugs: List<String>): List<Badge> =
             entries.filter { it.slug in slugs }
     }
@@ -75,11 +67,6 @@ private class BadgePopupPositionProvider(private val gapPx: Int) : PopupPosition
     }
 }
 
-/**
- * Artwork badges for a profile card. Tapping one shows its name above it;
- * tapping it again, tapping outside, or pressing Back dismisses the label.
- * Renders nothing when there are no known badges.
- */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProfileBadges(badges: List<String>, modifier: Modifier = Modifier) {

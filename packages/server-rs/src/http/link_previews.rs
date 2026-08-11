@@ -34,10 +34,6 @@ struct LinkPreview {
     title: Option<String>,
     description: Option<String>,
     image_url: Option<String>,
-    /// Set when the link is a video we managed to resolve to a playable file -
-    /// an Instagram post, today. Already a signed same-origin proxy url, like
-    /// `image_url`, so a client can hand it straight to a video element; when
-    /// it is set, `image_url` is that video's poster.
     video_url: Option<String>,
 }
 
@@ -57,11 +53,6 @@ async fn preview(
     let requested =
         Url::parse(&query.url).map_err(|_| AppError::BadRequest("Invalid preview URL".into()))?;
 
-    // Instagram answers a logged-out scrape with a login wall, so a reel would
-    // otherwise preview as a card for the word "Instagram". Resolving the post
-    // gives the client the video itself; a post that will not resolve (private,
-    // deleted, age-gated) falls through to that same card, which is what it
-    // would have shown anyway.
     if let Some(shortcode) = instagram::shortcode(&requested) {
         if let Some(post) = instagram::resolve(&state, &shortcode).await {
             return Ok(Json(instagram_preview(&state, &requested, post).await?));
@@ -74,9 +65,6 @@ async fn preview(
     Ok(Json(result))
 }
 
-/// An Instagram post as a preview: its caption as the text, its own frame as
-/// the image, and - the point of the exercise - a video url the client can play
-/// inline instead of a card linking back to a login wall.
 async fn instagram_preview(
     state: &AppState,
     url: &Url,
@@ -92,13 +80,6 @@ async fn instagram_preview(
     })
 }
 
-/// A third-party media url in the only form a client should be handed one: a
-/// signed same-origin proxy url.
-///
-/// These are loaded by the *viewer's* browser, so returning the raw url would
-/// hand whoever set it a zero-click IP log of everyone who scrolls past. Minted
-/// only for a host that resolves public - the proxy re-checks before any bytes
-/// move, but there is no point issuing a token it will refuse.
 async fn proxied(state: &AppState, url: Option<&str>) -> AppResult<Option<String>> {
     let Some(raw) = url else {
         return Ok(None);
@@ -120,8 +101,6 @@ pub(crate) async fn fetch_html(mut url: Url) -> AppResult<(Url, String)> {
             .connect_timeout(Duration::from_secs(4))
             .timeout(Duration::from_secs(8))
             .user_agent("OrangChat-LinkPreview/1.0")
-            // Pin this request to the public address we validated. This avoids
-            // resolving the hostname a second time after the SSRF check.
             .resolve(&host, address)
             .build()
             .map_err(|e| AppError::Internal(format!("preview client error: {e}")))?;
@@ -265,10 +244,10 @@ fn is_public_ipv6(ip: Ipv6Addr) -> bool {
     !(ip.is_unspecified()
         || ip.is_loopback()
         || ip.is_multicast()
-        || (segments[0] & 0xfe00) == 0xfc00 // unique-local
-        || (segments[0] & 0xffc0) == 0xfe80 // link-local
-        || (segments[0] & 0xffc0) == 0xfec0 // deprecated site-local
-        || (segments[0] == 0x2001 && segments[1] == 0x0db8)) // documentation
+        || (segments[0] & 0xfe00) == 0xfc00
+        || (segments[0] & 0xffc0) == 0xfe80
+        || (segments[0] & 0xffc0) == 0xfec0
+        || (segments[0] == 0x2001 && segments[1] == 0x0db8))
 }
 
 fn parse_preview(page_url: &Url, html: &str) -> LinkPreview {
@@ -312,8 +291,6 @@ fn parse_preview(page_url: &Url, html: &str) -> LinkPreview {
         title,
         description,
         image_url,
-        // A scraped page is a page; only a resolver (see `instagram_preview`)
-        // knows a link is really a video.
         video_url: None,
     }
 }

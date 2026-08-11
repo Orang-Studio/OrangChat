@@ -13,33 +13,16 @@ import dagger.hilt.android.HiltAndroidApp
 import lt.oranges.orangchat.util.AppForegroundState
 import lt.oranges.orangchat.util.RemoteI18n
 
-/** Hilt application root. Also configures Coil for animated-GIF avatars and for
- *  decoding a video's own first frame as its poster. */
 @HiltAndroidApp
 class OrangChatApp : Application(), ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
-        // Server-served translations: load whatever is cached (so the very
-        // first string lookup already speaks the last-known language), then
-        // start the launch-and-hourly poll for fixes and new languages.
         RemoteI18n.init(applicationContext)
         RemoteI18n.start()
-        // Track process foreground/background so notifications only fire when the
-        // app (or the focused chat) isn't visible.
         AppForegroundState.register()
     }
 
-    /**
-     * Coil's own defaults size the disk cache at 2% of the volume, which on a
-     * nearly-full phone is a handful of megabytes - enough that avatars fall out
-     * of it between one screen and the next and get fetched again. Stating both
-     * caches here fixes that at something a chat client can actually work with,
-     * and makes the number visible instead of implied.
-     *
-     * `cacheDir`, so Android may reclaim the lot when space runs short; every
-     * byte in it can be fetched again.
-     */
     override fun newImageLoader(): ImageLoader =
         ImageLoader.Builder(this)
             .components {

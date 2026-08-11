@@ -1,22 +1,9 @@
-//! Profile connections: linking external accounts for display on a user's
-//! profile card.
-//! for display on a user's profile card.
-//!
-//! Deliberately separate from `oauth.rs`, which logs people in. The two never
-//! share a code path: a connection grants no access to the OrangChat account,
-//! stores no long-lived token, and asks for the narrowest read-only scope each
-//! platform offers. We exchange the code, read the handle once, and drop the
-//! access token on the floor - nothing here can act on the user's behalf later.
-//!
-//! Most platforms are plain OAuth 2.0 authorization-code. Steam is the odd one
-//! out (OpenID 2.0, no token at all) and lives in its own section below.
 
 use serde_json::Value;
 
 use crate::config::Config;
 use crate::error::{AppError, AppResult};
 
-/// What a provider tells us about the account that just authorized us.
 pub struct ConnectionProfile {
     pub provider: String,
     pub provider_id: String,
@@ -36,17 +23,13 @@ pub struct AuthorizedConnection {
     pub grant: OAuthGrant,
 }
 
-/// Everything that varies per platform. Adding a provider means adding one row
-/// here plus one arm in `fetch_profile` - nothing else in the stack changes.
 pub struct Provider {
     pub key: &'static str,
     pub label: &'static str,
     pub auth_url: &'static str,
     pub token_url: &'static str,
     pub scopes: &'static str,
-    /// Reddit and X reject client creds in the form body and want HTTP Basic.
     pub basic_auth: bool,
-    /// X requires PKCE; nobody else here objects to it being present.
     pub pkce: bool,
 }
 
@@ -108,7 +91,6 @@ pub const PROVIDERS: &[Provider] = &[
     Provider {
         key: "steam",
         label: "Steam",
-        // OpenID 2.0, not OAuth - the url fields are unused, see steam_* below.
         auth_url: "https://steamcommunity.com/openid/login",
         token_url: "",
         scopes: "",
@@ -117,7 +99,6 @@ pub const PROVIDERS: &[Provider] = &[
     },
 ];
 
-/// Provider key for hand-entered links. Never reaches an OAuth code path.
 pub const CUSTOM: &str = "custom";
 
 pub fn find(key: &str) -> Option<&'static Provider> {
@@ -138,11 +119,6 @@ pub fn creds<'a>(cfg: &'a Config, provider: &str) -> (Option<&'a String>, Option
             cfg.twitch_client_id.as_ref(),
             cfg.twitch_client_secret.as_ref(),
         ),
-        // YouTube can reuse the Google login app's credentials, but only if they
-        // are set here explicitly: that app needs this callback added to its
-        // authorized redirect URIs and the YouTube Data API enabled. Inheriting
-        // GOOGLE_* silently would surface a button that dies at consent with
-        // redirect_uri_mismatch.
         "youtube" => (
             cfg.youtube_client_id.as_ref(),
             cfg.youtube_client_secret.as_ref(),
@@ -156,8 +132,6 @@ pub fn creds<'a>(cfg: &'a Config, provider: &str) -> (Option<&'a String>, Option
     }
 }
 
-/// Steam needs no client secret - only a Web API key, and even that is optional
-/// (without it we fall back to the numeric id instead of the persona name).
 pub fn is_configured(cfg: &Config, provider: &str) -> bool {
     if provider == "steam" {
         return true;
@@ -188,11 +162,7 @@ pub fn authorization_url(
         ("state", state.to_string()),
     ];
     match provider.key {
-        // Without these Google hands back a token with no refresh and, worse,
-        // silently reuses a prior grant - the account picker never appears.
         "youtube" => params.push(("prompt", "select_account".into())),
-        // Reddit defaults to a one-hour grant unless asked otherwise; we only
-        // need the identity read once, so temporary is correct.
         "reddit" => params.push(("duration", "temporary".into())),
         _ => {}
     }
@@ -226,14 +196,12 @@ pub async fn exchange_code_for_profile(
         form.push(("client_id", client_id.clone()));
         form.push(("client_secret", client_secret.clone()));
     } else {
-        // X wants client_id in the body *as well as* the Basic header.
         form.push(("client_id", client_id.clone()));
     }
 
     let mut req = client
         .post(provider.token_url)
         .header("Accept", "application/json")
-        // Reddit 429s anything with a default UA, and asks for this format.
         .header("User-Agent", "orangchat/1.0 (+https://chat.oranges.lt)")
         .form(&form);
     if provider.basic_auth {
@@ -282,8 +250,6 @@ pub async fn exchange_code_for_profile(
     })
 }
 
-/// Read the account handle. One arm per platform because every one of these
-/// APIs disagrees about where the id, the name, and the public URL live.
 async fn fetch_profile(cfg: &Config, provider: &str, token: &str) -> AppResult<ConnectionProfile> {
     let client = reqwest::Client::new();
     let get = |url: &str| {
@@ -327,8 +293,6 @@ async fn fetch_profile(cfg: &Config, provider: &str, token: &str) -> AppResult<C
             let p: Value = json(get("https://api.spotify.com/v1/me"))
                 .await
                 .map_err(fail)?;
-            // account_id superseded id as Spotify's stable account-linking key
-            // in May 2026. Keep the fallback for older response shapes.
             let id = str_at(&p, "account_id")
                 .or_else(|| str_at(&p, "id"))
                 .unwrap_or_default();
@@ -344,7 +308,6 @@ async fn fetch_profile(cfg: &Config, provider: &str, token: &str) -> AppResult<C
             })
         }
         "twitch" => {
-            // Helix rejects a bearer token without the app's client id alongside.
             let (id, _) = creds(cfg, provider);
             let p: Value = json(
                 get("https://api.twitch.tv/helix/users")
@@ -369,7 +332,6 @@ async fn fetch_profile(cfg: &Config, provider: &str, token: &str) -> AppResult<C
             ))
             .await
             .map_err(fail)?;
-            // An authorized Google account with no channel yields an empty list.
             let c = p.pointer("/items/0").ok_or_else(|| {
                 AppError::BadRequest("That Google account has no YouTube channel".into())
             })?;
@@ -420,20 +382,11 @@ async fn fetch_profile(cfg: &Config, provider: &str, token: &str) -> AppResult<C
     }
 }
 
-// ── Steam (OpenID 2.0) ──────────────────────────────────
-//
-// Steam never adopted OAuth. The flow is: bounce the user to steamcommunity
-// with a return_to, then hand every openid.* param they come back with straight
-// back to Steam with mode=check_authentication. Steam answers is_valid:true and
-// only then may we trust the claimed_id. Verifying the signature ourselves is
-// possible but pointless - the round trip is the documented path.
 
 const STEAM_LOGIN: &str = "https://steamcommunity.com/openid/login";
 const STEAM_NS: &str = "http://specs.openid.net/auth/2.0";
 
 pub fn steam_authorization_url(cfg: &Config, state: &str) -> String {
-    // Our CSRF state has nowhere to ride except return_to - OpenID 2.0 has no
-    // state param, and Steam echoes return_to back to us untouched.
     let return_to = format!("{}?state={}", redirect_uri(cfg, "steam"), urlencode(state));
     let realm = cfg.oauth_redirect_base.clone();
     let params = [
@@ -456,8 +409,6 @@ pub async fn verify_steam_callback(
         .filter(|(k, _)| k.starts_with("openid."))
         .map(|(k, v)| (k.clone(), v.clone()))
         .collect();
-    // Swap the mode; every other param must go back byte-identical or the
-    // signature check fails.
     form.retain(|(k, _)| k != "openid.mode");
     form.push(("openid.mode".into(), "check_authentication".into()));
 
@@ -480,8 +431,6 @@ pub async fn verify_steam_callback(
     let claimed = params
         .get("openid.claimed_id")
         .ok_or_else(|| AppError::BadRequest("Steam returned no identity".into()))?;
-    // is_valid only says the assertion is authentic, not *who* it is about -
-    // pin the host so a valid assertion from elsewhere can't mint a steamid.
     let steam_id = claimed
         .strip_prefix("https://steamcommunity.com/openid/id/")
         .filter(|id| !id.is_empty() && id.chars().all(|c| c.is_ascii_digit()))
@@ -495,8 +444,6 @@ pub async fn verify_steam_callback(
         provider_id: steam_id.clone(),
     };
 
-    // The persona name needs a Web API key. It's a nice-to-have: without one the
-    // connection still works, it just shows the raw id.
     let Some(key) = cfg.steam_api_key.as_ref() else {
         return Ok(fallback);
     };
@@ -519,7 +466,6 @@ pub async fn verify_steam_callback(
     })
 }
 
-// ── helpers ─────────────────────────────────────────────
 
 async fn json(req: reqwest::RequestBuilder) -> Result<Value, String> {
     req.send()
@@ -535,7 +481,6 @@ fn str_at(v: &Value, key: &str) -> Option<String> {
     v.get(key).and_then(Value::as_str).map(String::from)
 }
 
-/// GitHub and GitLab return numeric ids; everyone else returns strings.
 fn num_or_str(v: &Value, key: &str) -> String {
     match v.get(key) {
         Some(Value::Number(n)) => n.to_string(),

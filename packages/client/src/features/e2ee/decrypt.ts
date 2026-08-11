@@ -4,11 +4,7 @@ import { forgetMessage, recallMessage, rememberMessage } from './cache';
 import { open } from './conversation';
 import { noteEpoch } from './store';
 
-/**
- * What a message reads as when this device cannot open it. Shown in place of the
- * body rather than swallowed: a message that exists and cannot be read is a fact
- * the user needs, and an empty bubble looks like a bug.
- */
+
 const UNREADABLE = "This message can't be read on this device.";
 const TAMPERED = 'This message failed its authenticity check and was not shown.';
 
@@ -23,11 +19,7 @@ function isTamper(error: unknown): boolean {
   );
 }
 
-/**
- * Attachments in an encrypted conversation are described entirely by the message
- * payload: the server's row is a storage id and a byte count, so the name, type
- * and dimensions all come from in here.
- */
+
 function attachmentsFrom(payload: MessagePayload, server: Attachment[]): Attachment[] {
   const refs = payload.attachments ?? [];
   if (refs.length === 0) return server;

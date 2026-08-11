@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <!-- Keep shared files in narrow cache subdirectories rather than exposing
-         the whole cache to the camera, installer, or attachment uploader. -->
     <cache-path name="updates" path="updates/" />
     <cache-path name="camera" path="camera/" />
     <cache-path name="recordings" path="recordings/" />

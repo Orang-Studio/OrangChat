@@ -61,7 +61,6 @@ export const updateServerSchema = z
   .object({
     name: z.string().min(1).max(100).optional(),
     iconUrl: z.string().url().nullable().optional(),
-    // 1024 to match the server's own cap in http::servers::parse_patch.
     description: z.string().max(1024).nullable().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: 'No fields to update' });
@@ -85,8 +84,6 @@ export const sendMessageSchema = z.object({
   spoilerAttachmentIds: z.array(z.string()).max(10).optional(),
 });
 export const editMessageSchema = z.object({
-  // Not min(1): a message whose attachments are the whole point can be edited
-  // down to no text at all, the same way it could be sent that way.
   content: z.string().max(4000),
 });
 export const messageHistoryQuerySchema = z.object({

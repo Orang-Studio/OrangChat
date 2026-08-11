@@ -5,11 +5,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * Both mention encodings have to keep working: composers write plain
- * `@username`, but `<@id>` predates that and still sits in older messages.
- * Mirrors the server's `parse_mention_tests`.
- */
 class MarkdownMentionTest {
 
     private val ctx = MentionContext(

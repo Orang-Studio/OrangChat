@@ -9,18 +9,8 @@ import { GroupIcon } from "./GroupIcon";
 import { ProfileDialog } from "../profile/ProfileDialog";
 import { t, tCount, tNodes } from "../../lib/i18n";
 
-/**
- * Header shown at the very start of a conversation, once there's no older
- * history left to load - the DM equivalent of a channel's welcome block.
- * Mirrors Discord: a large avatar, who you're talking to, and their presence.
- */
-/**
- * The onboarding explainer from docs/E2EE.md §6.6, item 5: one line, stated
- * once, at the place people actually look. Deliberately not a choice - asking
- * someone to pick a security mode before they have sent a message guarantees a
- * random answer - but the full explanation is one tap away for anyone who wants
- * to know what the sentence actually means.
- */
+
+
 function EncryptionLine() {
   return (
     <div className="mt-2 space-y-1">
@@ -38,11 +28,11 @@ export function DmIntro({
   groupName,
   groupIconUrl,
 }: {
-  /** Everyone but the viewer. Empty only in a note-to-self DM. */
+
   participants: User[];
-  /** Set for group DMs; 1:1 DMs take their heading from the other person. */
+
   groupName?: string | null;
-  /** The group's own picture, when it has been given one. */
+
   groupIconUrl?: string | null;
 }) {
   const [profileOpen, setProfileOpen] = useState(false);

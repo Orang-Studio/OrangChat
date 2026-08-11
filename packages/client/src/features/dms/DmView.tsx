@@ -33,7 +33,7 @@ function HeaderButton({
   label: string;
   onClick: () => void;
   disabled?: boolean;
-  /** This call is live on another of your devices. */
+
   glow?: boolean;
   children: React.ReactNode;
 }) {
@@ -56,7 +56,7 @@ function HeaderButton({
   );
 }
 
-/** The `/dms/:channelId` pane - a conversation rendered through ChatView. */
+
 export function DmView() {
   const { channelId } = useParams();
   const otherDevice = useOtherDeviceIn(channelId);
@@ -73,7 +73,7 @@ export function DmView() {
 
   const conversation = conversations?.find((c) => c.id === channelId);
 
-  /** Apply the server's answer to the sidebar cache so the pane re-renders. */
+
   const applyBackground = (url: string | null) => {
     queryClient.setQueryData<Conversation[]>(dmKeys.list, (list) =>
       list?.map((c) => (c.id === channelId ? { ...c, backgroundUrl: url } : c)),
@@ -86,7 +86,7 @@ export function DmView() {
     );
   };
 
-  /** `null` clears it. The server writes the notice about it either way. */
+
   const saveIcon = async (file: File | null) => {
     setIconBusy(true);
     try {

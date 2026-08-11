@@ -1,5 +1,3 @@
-//! Authentication-only security helpers: CAPTCHA policy, opaque verification
-//! tokens, one-time email codes, and Google reCAPTCHA verification.
 
 use rand::Rng;
 use sha2::{Digest, Sha256};
@@ -13,7 +11,6 @@ pub fn captcha_required(failed_attempts: u64) -> bool {
     failed_attempts >= CAPTCHA_AFTER_FAILED_LOGINS
 }
 
-/// Token values are emailed to a user but never persisted in plaintext.
 pub fn random_token() -> String {
     let mut bytes = [0_u8; 32];
     rand::thread_rng().fill(&mut bytes);
@@ -32,9 +29,6 @@ pub fn valid_email_code(code: &str) -> bool {
     code.len() == 6 && code.bytes().all(|b| b.is_ascii_digit())
 }
 
-/// Validate a v2 checkbox token server-side when this deployment has enabled
-/// reCAPTCHA. Rate limits remain the fallback for self-hosted deployments that
-/// have not provisioned Google keys.
 pub async fn verify_recaptcha(
     config: &Config,
     token: Option<&str>,

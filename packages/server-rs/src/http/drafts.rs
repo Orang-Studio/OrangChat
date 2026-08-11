@@ -1,4 +1,3 @@
-//! Draft REST, mounted under /api. Requires auth.
 
 use axum::extract::{Path, State};
 use axum::routing::get;
@@ -49,7 +48,6 @@ async fn put_draft(
     if body.content.chars().count() > draft::MAX_DRAFT_LEN {
         return Err(bad_request("Draft is too long"));
     }
-    // An empty draft is a cleared draft, not a stored blank.
     if body.content.trim().is_empty() {
         draft::clear(&state, &user.user_id, &channel_id).await?;
     } else {

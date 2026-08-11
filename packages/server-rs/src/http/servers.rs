@@ -1,4 +1,3 @@
-//! Server / channel / invite REST, mounted under /api. Mirrors routes/servers.ts.
 
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
@@ -20,7 +19,6 @@ use crate::state::AppState;
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/servers", post(create_server).get(list_servers))
-        // Before /servers/:serverId so the literal segment wins the match.
         .route("/servers/leave-all", post(leave_all_servers))
         .route(
             "/servers/:serverId",
@@ -135,13 +133,9 @@ async fn audit_log(
 #[serde(rename_all = "camelCase")]
 struct AddBotBody {
     bot_id: String,
-    /// Decimal string, matching how permissions travel everywhere else (JSON
-    /// has no BigInt). Omitted means the server's @everyone defaults.
     permissions: Option<String>,
 }
 
-/// Invite a bot into this server. The permission ceiling is enforced in the
-/// service - a caller cannot grant a bot anything they do not hold themselves.
 async fn add_bot(
     State(state): State<AppState>,
     user: AuthUser,
@@ -177,7 +171,6 @@ async fn create_server(
     }
     let icon_url = body.get("iconUrl").and_then(Value::as_str);
     let srv = server::create_server(&state, &user.user_id, name, icon_url).await?;
-    // Live sockets only join server rooms at connect; add the creator's now.
     let _ = state
         .io()
         .to(format!("user:{}", user.user_id))
@@ -260,9 +253,6 @@ async fn update_server(
         }
         patch.name = Some(n.to_string());
     }
-    // Empty string clears, same as JSON null. The Android client serialises with
-    // `explicitNulls = false`, so a null field never reaches the wire at all -
-    // "" is the only clear signal it can send.
     if let Some(v) = obj.get("iconUrl") {
         patch.icon_url = Some(match v {
             Value::Null => None,
@@ -302,8 +292,6 @@ async fn update_server(
     }
     if let Some(v) = obj.get("afkTimeout") {
         let t = v.as_i64().ok_or_else(|| bad_request("Invalid input"))?;
-        // Discord's fixed ladder. An arbitrary number here would be a setting the
-        // voice layer silently rounds off anyway.
         if !matches!(t, 60 | 300 | 900 | 1800 | 3600) {
             return Err(bad_request(
                 "afkTimeout must be one of 60, 300, 900, 1800, 3600",
@@ -401,8 +389,6 @@ async fn leave_server(
 ) -> AppResult<impl IntoResponse> {
     server::leave_server(&state, &server_id, &user.user_id).await?;
     let user_id = &user.user_id;
-    // Tell the server we are gone, then drop our sockets out of its room so we
-    // stop receiving its traffic.
     let _ = state.io().to(format!("server:{server_id}")).emit(
         "member:left",
         &json!({ "serverId": server_id, "userId": user_id }),
@@ -414,9 +400,6 @@ async fn leave_server(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// Leaves every server the user doesn't own. Servers they own are left alone -
-/// an owner can't leave without stranding it, so those are reported back rather
-/// than silently skipped.
 async fn leave_all_servers(
     State(state): State<AppState>,
     user: AuthUser,
@@ -492,8 +475,6 @@ async fn create_channel(
     Ok((StatusCode::CREATED, Json(json!(dto))))
 }
 
-/// Bulk reorder: `[{ id, position, parentCategoryId? }, …]`. Omitting
-/// `parentCategoryId` leaves the channel where it is; sending null un-parents it.
 async fn reorder_channels(
     State(state): State<AppState>,
     user: AuthUser,
@@ -577,10 +558,6 @@ async fn create_invite(
     Ok((StatusCode::CREATED, Json(json!(to_invite(&invite)))))
 }
 
-/// Resolve an invite link. Open to signed-out visitors: the invite code is
-/// itself the secret, and a link that can only say what it leads to *after* you
-/// have an account is a link nobody follows. Signing in adds the viewer-specific
-/// part of the answer - banned, or already a member.
 async fn invite_preview(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,

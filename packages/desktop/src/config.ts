@@ -13,18 +13,13 @@ export function isAppUrl(target: string): boolean {
   }
 }
 
-// Every hand-off to the OS shell goes through here. openExternal resolves any
-// registered protocol, so an unfiltered one turns a link the page controls into
-// file:// / smb: / search-ms: - i.e. code execution on Windows.
 export function openExternalIfWeb(url: string): void {
   try {
     if (/^https?:$/.test(new URL(url).protocol)) void shell.openExternal(url);
   } catch {
-    // Not a URL we can hand to the OS.
   }
 }
 
-// orangchat://invite/abc123 -> https://chat.oranges.lt/invite/abc123
 export function deepLinkToAppUrl(link: string): string | null {
   try {
     const url = new URL(link);

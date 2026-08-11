@@ -1,6 +1,6 @@
 import type { Catalog } from "./en";
 
-/** Spanish catalogue. Generated from en.ts with placeholders preserved. */
+
 export const es: Catalog = {
   "common.save": "Guardar",
   "common.cancel": "Cancelar",

@@ -15,18 +15,17 @@ import { t } from "../../lib/i18n";
 
 interface MessageListProps {
   messages: Message[];
-  /** The conversation itself - a call card needs something to ring. */
+
   channel: { id: string; name: string | null; serverId: string | null };
   pendingMessageIds: Set<string>;
-  /** Rows the server refused: localId → server's reason. */
+
   failedMessages: { localId: string; failure: string }[];
-  /** Re-send a failed row. */
+
   onRetryMessage: (localId: string) => void;
-  /** Abandon a failed row. Without this a permanent rejection - no send
-   * permission, deleted channel - wedges the row on screen for good. */
+
   onDiscardMessage: (localId: string) => void;
   channelName: string;
-  /** Shared DM chat background image, drawn behind the messages. */
+
   backgroundUrl?: string | null;
   hasOlder: boolean;
   isLoadingOlder: boolean;
@@ -34,48 +33,35 @@ interface MessageListProps {
   selfId: string | undefined;
   canManage: boolean;
   onReply: (message: Message) => void;
-  /** userId → display name, for rendering `<@id>` mentions. */
+
   mentionNames?: Record<string, string>;
-  /** username → user, for rendering `@username` mentions. */
+
   mentionUsers?: Record<string, { id: string; name: string }>;
-  /** Start-of-history block, shown once there's nothing older to load.
-   * Defaults to the channel welcome; DMs pass their own. */
+
   intro?: ReactNode;
-  /** Message to scroll to once history is in - set from a `?m=` deep link. */
+
   jumpToId?: string | null;
-  /** Current reply target, which receives a persistent subtle highlight. */
+
   replyToId?: string | null;
-  /** Full users for resolved mentions, so a mention can open a profile. */
+
   mentionProfiles?: Record<string, User>;
-  /** Called once a `jumpToId` has been acted on, so the URL can be cleaned. */
+
   onJumpHandled?: () => void;
-  /** Newest-read point (ISO) for the unread divider; null hides it. */
+
   readWatermark?: string | null;
-  /** Advance the read watermark - called with the newest message while the
-   * list sits at the bottom, so unread stays unread while scrolled up. */
+
   onReadUpTo?: (message: Message) => void;
 }
 
-/** How many older pages a jump will pull in before giving up on finding it. */
+
 const JUMP_MAX_PAGES = 12;
 
-/** Rendered-row budget: scrollback beyond this is capped off until asked for,
- * so deep history can't grow the DOM without bound. */
+
 const RENDER_CAP = 600;
 const RENDER_CAP_STEP = 400;
 const RENDER_CAP_MAX = 2000;
 
-/**
- * A message the server wrote about the conversation, rather than a line someone
- * typed into it. Reading it as one of the author's remarks gets it wrong, so it
- * is drawn centred and unbubbled - keeping the name, since who changed what is
- * the whole point of saying it.
- *
- * The kind comes off `message.systemNotice`, which only the server sets. A kind
- * this build has never heard of falls back to the sentence the server wrote,
- * which already names the actor: a new notice on an old client is plain, not
- * missing.
- */
+
 function SystemNotice({
   message,
   channel,
@@ -114,12 +100,7 @@ function SystemNotice({
   );
 }
 
-/**
- * Scrollable message pane. Rendered oldest→newest so a screen reader reads the
- * log forward; the scroll position is managed manually instead (see the layout
- * effect): snap to the bottom while the user is at it, and shift by however
- * much older pages grew when they load, so the visible rows never move.
- */
+
 export function MessageList({
   messages,
   channel,
@@ -150,24 +131,11 @@ export function MessageList({
   const [flashId, setFlashId] = useState<string | null>(null);
   const [missingJump, setMissingJump] = useState(false);
   const flashTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  // "At the present" is a scroll-position question. With a top-down flex
-  // column that means the bottom edge of the viewport, within a small slop.
   const [atBottom, setAtBottom] = useState(true);
   const atBottomRef = useRef(true);
-  // Snapshotted once per mount (this component remounts with its keyed-by-
-  // channel.id parent, so that's once per channel opened): the point new-
-  // message comparisons hold steady against for the whole viewing session.
-  // Reading the live watermark instead would self-erase the divider/count
-  // the instant the list reaches the bottom, since the effect below advances
-  // the persisted value on exactly that condition.
   const enteredWatermarkRef = useRef(readWatermark ?? null);
-  // Older-history fetch in flight (top sentinel crossed): when it lands, the
-  // rows must not jump, so the scroll offset is shifted by the added height.
   const olderLoadPending = useRef(false);
-  // Scroll metrics from the previous layout pass, for that same shift.
   const prevHeight = useRef(0);
-  // DOM budget for deep scrollback; a deep-link jump drops the cap for the
-  // session, because a jump has to be able to reach the row it names.
   const [renderCap, setRenderCap] = useState(RENDER_CAP);
   const [hasJumped, setHasJumped] = useState(false);
 
@@ -176,16 +144,12 @@ export function MessageList({
   }, [jumpToId]);
 
   const capped = !hasJumped && !jumpToId && messages.length > renderCap;
-  // Everything the user can see is the newest messages; older ones sit behind
-  // a "load earlier" edge until they are asked for.
   const rendered = useMemo(() => {
     if (!capped) return messages;
     return messages.slice(-renderCap);
   }, [messages, capped, renderCap]);
 
   const expandHistory = useCallback(() => {
-    // The added rows land above the viewport, so preserve the scroll position
-    // the same way an older-page fetch does.
     olderLoadPending.current = true;
     setRenderCap((c) => (c >= RENDER_CAP_MAX ? Infinity : c + RENDER_CAP_STEP));
   }, []);
@@ -205,9 +169,6 @@ export function MessageList({
     onLoadOlder();
   }, [onLoadOlder]);
 
-  // Manual scroll management, the price of chronological DOM order (a screen
-  // reader used to walk the log newest-first): pin to the bottom while the
-  // user is at it, and preserve the visible rows when older pages prepend.
   useLayoutEffect(() => {
     const el = scroller.current;
     if (!el) return;
@@ -225,10 +186,6 @@ export function MessageList({
     }
   }, [messages, rendered, hasOlder, isLoadingOlder]);
 
-  // Images, video posters and link embeds settle their height after the layout
-  // effect above has already run. The browser used to absorb that for free;
-  // with `overflow-anchor: none` it no longer does, so the rows would slide out
-  // from under a user sitting at the bottom. `load` does not bubble - capture.
   useEffect(() => {
     const el = scroller.current;
     if (!el) return;
@@ -240,11 +197,6 @@ export function MessageList({
     return () => el.removeEventListener('load', onContentLoad, true);
   }, []);
 
-  // The composer growing to a second line, the connection banner mounting, a
-  // reply bar appearing - none of these change scrollHeight, only the
-  // scroller's own clientHeight, so the layout effect above never sees them
-  // (its delta is scrollHeight - scrollHeight). Watch the scroller's own box
-  // and re-pin the same way.
   useEffect(() => {
     const el = scroller.current;
     if (!el) return;
@@ -260,18 +212,12 @@ export function MessageList({
     [failedMessages],
   );
 
-  // While the list sits at the bottom the newest message is by definition read;
-  // anything newer than the watermark arrived while the user was elsewhere.
   useEffect(() => {
     if (!atBottom || !onReadUpTo) return;
     const newest = messages[messages.length - 1];
     if (newest) onReadUpTo(newest);
   }, [messages, atBottom, onReadUpTo]);
 
-  // First row the user hasn't read yet (chronological index), and how many
-  // newer than the entry-time watermark there are in total. Both skip the
-  // user's own messages: you have read what you just wrote, and a divider
-  // sitting above your own line while the button counts zero reads as a bug.
   const isUnread = useCallback(
     (m: Message) => {
       const watermark = enteredWatermarkRef.current;
@@ -287,20 +233,15 @@ export function MessageList({
     () => messages.filter(isUnread).length,
     [messages, isUnread],
   );
-  // Same position, relative to the rendered window (outside it, no divider).
   const cutIndex = messages.length - rendered.length;
   const firstUnreadInView = firstUnreadIndex >= cutIndex ? firstUnreadIndex - cutIndex : -1;
 
-  // The jump loop reads these while it awaits, long after its closure was made.
   const latest = useRef({ hasOlder, isLoadingOlder, onLoadOlder });
   latest.current = { hasOlder, isLoadingOlder, onLoadOlder };
 
   useEffect(() => () => clearTimeout(flashTimer.current), []);
 
-  /**
-   * Scroll to a message and light it up. Anything older than the loaded window
-   * isn't in the DOM yet, so pull pages in until it shows up (or history ends).
-   */
+
   const jumpTo = useCallback(async (messageId: string) => {
     setMissingJump(false);
     for (let page = 0; page <= JUMP_MAX_PAGES; page++) {
@@ -318,23 +259,16 @@ export function MessageList({
       if (!latest.current.isLoadingOlder) latest.current.onLoadOlder();
       await new Promise((resolve) => setTimeout(resolve, 250));
     }
-    // Deleted, or further back than we're willing to page through.
     setMissingJump(true);
     setTimeout(() => setMissingJump(false), 4000);
   }, []);
 
-  // Deep link (`?m=<id>`): jump once the first page of history has rendered.
   useEffect(() => {
     if (!jumpToId || messages.length === 0) return;
     void jumpTo(jumpToId);
     onJumpHandled?.();
-    // Only the id matters; re-running on every new message would yank the view.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jumpToId, messages.length > 0]);
 
-  // Load older history when the (visual) top sentinel scrolls into view. The
-  // cap state is a dependency: the sentinel only exists while uncapped, and
-  // the observer has to (re)attach the moment it appears.
   useEffect(() => {
     const el = topSentinel.current;
     if (!el || !hasOlder) return;
@@ -354,9 +288,6 @@ export function MessageList({
     return map;
   }, [messages]);
 
-  // Chronological walk decides grouping. Runs over the rendered window, so
-  // the row before the first rendered message (the cap edge) does not exist
-  // and the first row simply renders as a lead - the grouping stays honest.
   const rows = useMemo(
     () =>
       rendered.map((message, i) => {
@@ -364,9 +295,6 @@ export function MessageList({
         const notice = isSystemNotice(message);
         const compact =
           !!prev &&
-          // A notice is a break in the conversation, not a line of it: letting
-          // the message after one group into the bubble above would hide its
-          // header behind a divider.
           !isSystemNotice(prev) &&
           !notice &&
           prev.author.id === message.author.id &&
@@ -377,23 +305,11 @@ export function MessageList({
     [rendered],
   );
 
-  // Where the unread divider lands, or -1 for nowhere. Suppressed while the
-  // list sits at the bottom, where a new message arriving would make it
-  // flicker.
   const dividerIndex = atBottom ? -1 : firstUnreadInView;
 
   const plated = !!backgroundUrl;
 
-  /**
-   * The rows banded into the runs that share a plate: a lead message plus the
-   * compact ones grouped under it. Anything that interrupts the conversation
-   * ends a run early - a system notice, which is drawn unplated and centred,
-   * and the unread divider, which has to sit between plates rather than
-   * splitting one down the middle.
-   *
-   * Bands are built even with no background picture, where they render flat and
-   * unwrapped, so the two paths agree on where a group begins and ends.
-   */
+
   const bands = useMemo(() => {
     const out: { key: string; start: number; notice: boolean; rows: typeof rows }[] = [];
     rows.forEach((row, i) => {

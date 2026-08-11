@@ -17,11 +17,7 @@ interface ForwardDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/**
- * Send an existing message's text somewhere else. Targets are the places the
- * client already knows about without extra fetches: every DM/group conversation,
- * plus the text channels of the server currently open.
- */
+
 export function ForwardDialog({ message, open, onOpenChange }: ForwardDialogProps) {
   const navigate = useNavigate();
   const { serverId } = useParams();

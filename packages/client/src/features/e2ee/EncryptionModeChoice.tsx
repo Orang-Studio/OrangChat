@@ -2,15 +2,7 @@ import { Check, Lock, ShieldCheck, Users } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { t } from "../../lib/i18n";
 
-/**
- * The two modes of docs/E2EE.md §6, presented as the choice they actually are.
- *
- * It used to be a switch labelled "verify before sending", sitting under a
- * safety number, which reads as "encryption: off/on" to anyone who has not read
- * the design doc - the exact misreading §6 forbids. Both options here are
- * encrypted; what differs is whether a swapped key is prevented or merely
- * caught, so both cards say so and neither is decorated as the deficient one.
- */
+
 
 export type EncryptionMode = 'standard' | 'verify-first';
 
@@ -99,12 +91,7 @@ export function EncryptionModeChoice({
   );
 }
 
-/**
- * Groups are standard-only in v1 (§6.3), and the reason has to be visible rather
- * than looking like a missing feature: one member holding a twenty-person
- * conversation until they have personally met nineteen people is not a security
- * win.
- */
+
 export function GroupModeNote() {
   return (
     <div className="flex gap-3 rounded-xl border border-border px-3 py-3">

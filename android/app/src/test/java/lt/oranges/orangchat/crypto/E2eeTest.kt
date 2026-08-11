@@ -12,14 +12,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 
-/**
- * The Kotlin half of the contract with `packages/shared/src/e2ee.test.ts`.
- *
- * The hex vectors below are copied from that file verbatim and are the whole
- * point of this test: if the two platforms ever encode the same statement
- * differently, every signature becomes silently unverifiable across them and
- * messages stop opening. A failure here is that drift, caught early.
- */
 class E2eeTest {
 
     private fun signingPair(): KeyPair = KeyPairGenerator.getInstance("EC").apply {
@@ -36,7 +28,6 @@ class E2eeTest {
         seq = 7,
     )
 
-    // ── Canonical encoding ────────────────────────────────
 
     @Test
     fun `length-prefixes every field`() {
@@ -62,11 +53,9 @@ class E2eeTest {
             E2ee.encodeFields(-1L)
             fail("expected a negative field to be rejected")
         } catch (_: IllegalArgumentException) {
-            // expected
         }
     }
 
-    // ── The pinned statement encodings ────────────────────
 
     @Test
     fun `pins the one-message report key across Android and web`() {
@@ -107,12 +96,6 @@ class E2eeTest {
         )
     }
 
-    /**
-     * The server erases the account's whole identity on this signature with no
-     * waiting period, so an erasure must never be obtainable from something else
-     * the same key already signs - a revocation above all, which carries the same
-     * three fields and differs only in its domain.
-     */
     @Test
     fun `cannot spend a revocation as an erasure`() {
         assertNotEquals(
@@ -138,13 +121,7 @@ class E2eeTest {
         assertTrue(E2ee.MESSAGE_NONCE.all { it.toInt() == 0 })
     }
 
-    // ── Signature encoding ────────────────────────────────
 
-    /**
-     * WebCrypto and the Rust server both speak fixed 64-byte `r‖s`; the JCA
-     * speaks DER. A signature that is the wrong shape verifies nowhere, and it
-     * fails only across platforms, so it is pinned here.
-     */
     @Test
     fun `signatures are 64 raw bytes, not DER`() {
         val pair = signingPair()
@@ -160,7 +137,6 @@ class E2eeTest {
         assertArrayEquals(raw, E2ee.derToRawSignature(E2ee.rawToDerSignature(raw)))
     }
 
-    // ── HKDF ──────────────────────────────────────────────
 
     @Test
     fun `hkdf matches RFC 5869 test case 1`() {
@@ -176,7 +152,6 @@ class E2eeTest {
         )
     }
 
-    // ── Sealing and opening ───────────────────────────────
 
     @Test
     fun `round-trips a message`() {
@@ -196,15 +171,9 @@ class E2eeTest {
             E2ee.openMessage(key, "other-channel", envelope, pair.public.encoded)
             fail("expected a different channel to fail")
         } catch (_: Exception) {
-            // expected
         }
     }
 
-    /**
-     * The whole point of the per-sender signature: everyone in a group holds the
-     * conversation key, so a GCM tag alone proves only that *someone* here wrote
-     * it. Re-signing under another device's key must not open as that device.
-     */
     @Test
     fun `refuses a message another member re-signed as someone else`() {
         val key = E2ee.randomBytes(E2ee.CONVERSATION_KEY_BYTES)
@@ -215,7 +184,6 @@ class E2eeTest {
             E2ee.openMessage(key, ctx.channelId, envelope, honest.public.encoded)
             fail("expected a foreign signature to fail")
         } catch (_: IllegalArgumentException) {
-            // expected
         }
     }
 
@@ -240,11 +208,9 @@ class E2eeTest {
             E2ee.decodeEnvelope(encoded + byteArrayOf(0))
             fail("expected trailing bytes to be rejected")
         } catch (_: IllegalArgumentException) {
-            // expected
         }
     }
 
-    // ── Key wrapping ──────────────────────────────────────
 
     @Test
     fun `round-trips a conversation key to one device`() {
@@ -285,12 +251,10 @@ class E2eeTest {
                 )
                 fail("expected ${attempt.first}/${attempt.second} to fail")
             } catch (_: Exception) {
-                // expected
             }
         }
     }
 
-    // ── The device log ────────────────────────────────────
 
     private fun entry(seq: Int, payload: String, prev: ByteArray?): E2ee.LogRecord {
         val bytes = payload.toByteArray()
@@ -318,7 +282,6 @@ class E2eeTest {
         assertEquals("empty", E2ee.verifyLogChain(emptyList()))
     }
 
-    // ── Identity verification ─────────────────────────────
 
     private class Account(
         val sig: KeyPair,
@@ -359,12 +322,6 @@ class E2eeTest {
         assertEquals(listOf("device-genesis"), identity.authorizedDeviceIds)
     }
 
-    /**
-     * The attack the whole signature graph exists to stop: an operator with full
-     * database access inserts a device it holds the private key for, hoping to be
-     * wrapped a conversation key. It has no authorization signature from an
-     * existing device, and no amount of server access can produce one.
-     */
     @Test
     fun `rejects a device the server invented`() {
         val account = buildAccount("user-1")
@@ -404,7 +361,6 @@ class E2eeTest {
         }
     }
 
-    // ── Safety numbers ────────────────────────────────────
 
     @Test
     fun `safety numbers are order-independent and 12 groups of 5 digits`() {
@@ -466,7 +422,6 @@ class E2eeTest {
         )
     }
 
-    // ── QR type tags ──────────────────────────────────────
 
     @Test
     fun `round-trips a transfer code`() {
@@ -527,11 +482,6 @@ class E2eeTest {
         assertArrayEquals(payload.genesisCommitment, decoded.genesisCommitment)
     }
 
-    /**
-     * Three codes now exist and they look identical. One authorises a device, so
-     * a scanner that accepts the wrong kind is how "scan this to add me"
-     * eventually gets somebody to scan a transfer code.
-     */
     @Test
     fun `refuses a code of the wrong kind by name`() {
         val transfer = E2eeQr.encodeDeviceTransfer(
@@ -575,7 +525,6 @@ class E2eeTest {
         }
     }
 
-    // ── Message payloads ──────────────────────────────────
 
     @Test
     fun `round-trips a payload and reads pre-payload text as text`() {

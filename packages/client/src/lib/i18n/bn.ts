@@ -187,7 +187,7 @@ export const bn: Catalog = {
   "composer.holdToRecordAVoiceMessage": "একটি ভয়েস বার্তা রেকর্ড করতে ধরে রাখুন",
   "composer.lockedSendWhenYoureDone": "লক করা হয়েছে - হয়ে গেলে পাঠান",
   "composer.mentionSuggestions": "পরামর্শ উল্লেখ করুন",
-  "composer.pasteCutOff": "কাট অফ পেস্ট করুন — {max} অক্ষর সর্বাধিক",
+  "composer.pasteCutOff": "কাট অফ পেস্ট করুন - {max} অক্ষর সর্বাধিক",
   "composer.pasteItAnyway": "যেভাবেই হোক পেস্ট করুন",
   "composer.replyingTo": "উত্তর দিচ্ছে",
   "composer.sendMessage": "বার্তা পাঠান",
@@ -313,7 +313,7 @@ export const bn: Catalog = {
   "encryptionTab.yourDirectMessagesAreLockedOn":
     "আপনার সরাসরি বার্তাগুলি পাঠানোর আগে আপনার নিজের ডিভাইসে লক করা হয়। চাবিটি এখানে তৈরি করা হয়েছে এবং এই ডিভাইস থেকে অনুলিপি করা যাবে না, তাই OrangChat চালানো কেউই - এবং আমাদের ডাটাবেস ধরে রাখে এমন কেউই সেগুলি পড়তে পারবে না৷",
   "errorBoundary.orangchatHitAnUnexpectedErrorAnd":
-    "OrangChat একটি অপ্রত্যাশিত ত্রুটি আঘাত করেছে এবং এই পৃষ্ঠাটি দেখানো চালিয়ে যেতে পারেনি৷ আপনার বার্তাগুলি নিরাপদ — আবার চেষ্টা করতে পুনরায় লোড করুন৷",
+    "OrangChat একটি অপ্রত্যাশিত ত্রুটি আঘাত করেছে এবং এই পৃষ্ঠাটি দেখানো চালিয়ে যেতে পারেনি৷ আপনার বার্তাগুলি নিরাপদ - আবার চেষ্টা করতে পুনরায় লোড করুন৷",
   "errorBoundary.reloadOrangchat": "OrangChat পুনরায় লোড করুন",
   "errorBoundary.somethingWentWrong": "কিছু ভুল হয়েছে",
   "eventsDialog.aLinkAnAddressAnywhere": "একটি লিঙ্ক, একটি ঠিকানা, যেকোনো জায়গায়",

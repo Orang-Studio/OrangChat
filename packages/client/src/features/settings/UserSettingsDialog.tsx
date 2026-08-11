@@ -60,7 +60,7 @@ import { QrSignInTab } from "./QrSignInTab";
 interface UserSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Section to land on. Only read at first mount. */
+
   initialSection?: SettingsSection;
 }
 
@@ -151,7 +151,7 @@ const PROFILE_CSS_TEMPLATE = `/* OrangChat profile theme - this CSS is sandboxed
   letter-spacing: 0.02em;
 }
 .oc-pf-banner {
-  /* data: URLs are allowed; external url() is stripped */
+
   background: repeating-linear-gradient(45deg, #7c3aed, #7c3aed 10px, #5b21b6 10px, #5b21b6 20px);
 }
 .oc-pf-avatar-frame {

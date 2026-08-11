@@ -81,8 +81,6 @@ class MainActivity : LocalizedActivity() {
             val pref by themeVm.preference.collectAsStateWithLifecycle()
             val devicePrefs by settingsVm.prefs.collectAsStateWithLifecycle()
             OrangChatTheme(preference = pref) {
-                // The accessibility text-size pref scales the whole UI by
-                // overriding the ambient font-scale density.
                 val base = LocalDensity.current
                 CompositionLocalProvider(
                     LocalDensity provides Density(base.density, base.fontScale * devicePrefs.fontScale),
@@ -91,11 +89,6 @@ class MainActivity : LocalizedActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = OrangTheme.colors.surface1,
                 ) {
-                    // A ringing call must sit above every screen, including the
-                    // auth/home swap, so it lives outside the nav tree.
-                    // safeDrawing keeps content clear of the status/nav bars and
-                    // the keyboard while the window itself stays edge-to-edge, so
-                    // the surface colour still bleeds under the system bars.
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -103,9 +96,6 @@ class MainActivity : LocalizedActivity() {
                     ) {
                         OrangChatNavHost()
                         CallHost()
-                        // Outranks the ordinary "available" prompt: once the
-                        // server has refused this build there is nothing behind
-                        // the dialog that still works.
                         if (upgradeRequired) {
                             UpdateRequiredDialog(
                                 latestVersion = updateGate.latestVersion,
@@ -143,13 +133,6 @@ class MainActivity : LocalizedActivity() {
         captureSharedContent(intent)
     }
 
-    /**
-     * Show over the lockscreen and wake the screen only for a ringing call -
-     * that alone justifies taking over a locked phone. Every other launch (a
-     * message tap, the launcher) must respect the keyguard, so the flags are set
-     * per-intent here rather than declared statically in the manifest, where
-     * they would apply to the whole app on every launch.
-     */
     private fun applyLockScreenFlags(intent: Intent?) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O_MR1) return
         val incomingCall = intent?.getBooleanExtra(NotificationHelper.EXTRA_INCOMING_CALL, false) == true
@@ -157,13 +140,6 @@ class MainActivity : LocalizedActivity() {
         setTurnScreenOn(incomingCall)
     }
 
-    /**
-     * Open whatever conversation the app was launched into - a notification tap,
-     * a conversation shortcut, a bubble - and take its notification out of the
-     * shade. Until this existed a tapped notification only dropped the user
-     * wherever the app happened to be, which for the one gesture the whole
-     * notification exists to invite is close to useless.
-     */
     private fun openConversation(intent: Intent?) {
         intent?.getStringExtra(NotificationHelper.EXTRA_CHANNEL_ID)?.let {
             notificationHelper.clearConversationNotifications(it)
@@ -171,33 +147,19 @@ class MainActivity : LocalizedActivity() {
         }
     }
 
-    /**
-     * Park an invite link the app was opened with. The join UI lives inside the
-     * authenticated shell, which may not exist yet - the store holds the code
-     * until it does, even if that means waiting out a whole sign-in.
-     */
     private fun captureInviteLink(intent: Intent?) {
         if (intent?.action != Intent.ACTION_VIEW) return
         intent.data?.toString()?.let(InviteLink::codeFrom)?.let(pendingInviteStore::offer)
     }
 
-    /**
-     * Park a QR sign-in token the app was opened with. Approving the web session
-     * only makes sense once this phone is signed in, so the shell raises the
-     * confirm prompt when it can - the token survives a sign-in first if needed.
-     */
     private fun captureQrLogin(intent: Intent?) {
         if (intent?.action != Intent.ACTION_VIEW) return
         val raw = intent.data?.toString() ?: return
         QrLoginLink.tokenFrom(raw)?.let(pendingQrLoginStore::offer)
-        // A contact code scanned with the phone's own camera lands here too. The
-        // stores reject anything of the wrong kind by name, which is the whole
-        // point of the type tags: one of these three codes authorises a device.
         pendingVerifyStore.offer(raw)
         pendingTransferStore.offer(raw)
     }
 
-    /** Capture text, links, and content URIs sent through Android's share sheet. */
     @Suppress("DEPRECATION")
     private fun captureSharedContent(intent: Intent?) {
         if (intent?.action != Intent.ACTION_SEND && intent?.action != Intent.ACTION_SEND_MULTIPLE) return
@@ -212,9 +174,6 @@ class MainActivity : LocalizedActivity() {
             }
         }.distinct()
         val text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString().orEmpty()
-        // Picked from the share sheet's direct-share row rather than from the
-        // app's own icon: Android names the choice with the id of the long-lived
-        // conversation shortcut the notification published.
         val channelId = intent.getStringExtra(Intent.EXTRA_SHORTCUT_ID)
             ?.takeIf { it.startsWith(NotificationHelper.CONVERSATION_SHORTCUT_PREFIX) }
             ?.removePrefix(NotificationHelper.CONVERSATION_SHORTCUT_PREFIX)
@@ -224,7 +183,6 @@ class MainActivity : LocalizedActivity() {
         }
     }
 
-    /** Keep an active call visible as a system PiP window when Home is pressed. */
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
         if (callManager.current.value == null || isInPictureInPictureMode) return

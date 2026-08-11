@@ -15,11 +15,6 @@ import lt.oranges.orangchat.data.local.TokenStore
 import lt.oranges.orangchat.feature.voice.RingtonePlayer
 import javax.inject.Inject
 
-/**
- * The custom call ringtone. Entirely device-local: the picked file is never
- * uploaded and never leaves the phone - only its content:// URI is kept, in the
- * app's encrypted prefs, so the server knows nothing about it.
- */
 @HiltViewModel
 class RingtoneViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -28,12 +23,9 @@ class RingtoneViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _ringtoneName = MutableStateFlow(tokenStore.ringtoneName)
-    /** Display name of the chosen tone, or null when using the device default. */
     val ringtoneName: StateFlow<String?> = _ringtoneName.asStateFlow()
 
     fun setRingtone(uri: Uri) {
-        // The picker grants read access for this process only; persist it or the
-        // tone stops working after a reboot.
         val persisted = runCatching {
             context.contentResolver.takePersistableUriPermission(
                 uri,

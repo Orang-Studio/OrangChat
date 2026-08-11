@@ -92,11 +92,7 @@ function PluginCard({ plugin }: { plugin: Plugin }) {
   );
 }
 
-/**
- * The plugin marketplace: the bundled catalog, each toggleable per device.
- * Plugins ship with the build - nothing is fetched or executed from elsewhere -
- * so this is a list of what's available, not a store that installs code.
- */
+
 export function PluginsTab() {
   const [query, setQuery] = useState("");
   const enabledCount = usePlugins((s) => s.enabled.length);

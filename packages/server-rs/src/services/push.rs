@@ -1,32 +1,3 @@
-//! Push notifications that survive the app being closed.
-//!
-//! The socket path (see socket.rs `unread:activity`) can only reach a client
-//! that is currently connected, which by definition excludes the case people
-//! actually mean by "notify me": the tab shut, the phone asleep. This module is
-//! the other half. The transports - Web Push for browsers, FCM for Android -
-//! keep their own connection to the device and wake it on our behalf, so a send
-//! here lands whether or not OrangChat is running.
-//!
-//! Both transports are independent and optional, mirroring Cloudinary/OpenAI: an
-//! unconfigured one is simply never dispatched to, and the client is told not to
-//! offer subscribing. Sends also fail open - a push outage must never take the
-//! message path down with it, since the message itself already committed.
-//!
-//! ## A phone is notified last
-//!
-//! Which devices a conversation notification reaches depends on where the person
-//! already is, because a buzz in the pocket is only useful to somebody who is not
-//! already reading the message. `notify_message` skips the phone outright when
-//! the app is open in front of them, and holds it back for a few minutes when
-//! they are at their computer - see the deferral section below.
-//!
-//! ## Payloads are data-only on purpose
-//!
-//! FCM will happily render a `notification` block itself, but only the app can
-//! decide what a message *means* - whether the channel is already on screen,
-//! which notification channel it belongs to, whether it's a call that needs a
-//! full-screen intent. So both transports carry data only, and each client
-//! renders it (NotificationHelper on Android, the service worker on web).
 
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -44,16 +15,11 @@ use crate::error::AppResult;
 use crate::services::presence;
 use crate::state::AppState;
 
-/// How long a push service should hold a message for a device that is offline.
-/// A day: long enough to cover a phone left on a charger overnight, short enough
-/// that nobody is woken by a message that has since been read elsewhere.
 const TTL_SECONDS: u32 = 60 * 60 * 24;
 
-/// Google's OAuth2 scope for the FCM HTTP v1 API.
 const FCM_SCOPE: &str = "https://www.googleapis.com/auth/firebase.messaging";
 const GOOGLE_TOKEN_URI: &str = "https://oauth2.googleapis.com/token";
 
-/// A registered device, straight out of the `PushSubscription` table.
 #[derive(Debug, Clone, FromRow)]
 pub struct Subscription {
     pub id: String,
@@ -63,8 +29,6 @@ pub struct Subscription {
     pub auth: Option<String>,
 }
 
-/// What a client hands us when it registers. `p256dh`/`auth` are present only
-/// for Web Push; an FCM registration arrives with just its token in `endpoint`.
 #[derive(Debug, Deserialize)]
 pub struct NewSubscription {
     pub kind: String,
@@ -74,20 +38,11 @@ pub struct NewSubscription {
     pub label: Option<String>,
 }
 
-/// The notification itself, as both clients receive it. Mirrored by the
-/// `PushPayload` interface in the service worker and `PushPayload` in Kotlin.
-///
-/// Deserializable because a payload can outlive the request that built it: one
-/// held back for a phone (see the deferral section) is parked in Redis and read
-/// back minutes later.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PushPayload {
     pub title: String,
     pub body: String,
-    /// Route to open on tap, e.g. `/dms/<id>`.
     pub href: String,
-    /// Collapse key: a later notification for the same channel replaces the
-    /// earlier one rather than stacking a second copy of the same conversation.
     pub tag: String,
     pub icon: Option<String>,
     pub channel_id: String,
@@ -95,24 +50,13 @@ pub struct PushPayload {
     pub sender_id: String,
     pub sender_name: String,
     pub is_group: bool,
-    /// Distinguishes a ring from a message so the client can route it to the
-    /// calls channel and take over the screen.
     pub kind: PushKind,
-    /// docs/E2EE.md §8: for an encrypted conversation there is no body to
-    /// compose here, so the envelope travels instead and the client decrypts it
-    /// in its own notification path. Absent when the conversation is plaintext,
-    /// or when the ciphertext would not fit inside the transport's payload
-    /// ceiling - in which case the client shows a placeholder rather than
-    /// nothing, because a truncated GCM ciphertext cannot be opened at all.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ciphertext: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enc_epoch: Option<i32>,
 }
 
-/// Web Push caps a payload at about 4 KB once encrypted, and the rest of the
-/// notification has to fit alongside. Anything larger is sent without its
-/// ciphertext.
 const MAX_PUSH_CIPHERTEXT_CHARS: usize = 2600;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -120,26 +64,17 @@ const MAX_PUSH_CIPHERTEXT_CHARS: usize = 2600;
 pub enum PushKind {
     Message,
     Call,
-    /// Not a notification to show but one to *take back*: the channel was read
-    /// on another device, so any lingering notification for it should be
-    /// dismissed. Carries no title/body - the client just cancels by channel.
     Read,
-    /// Something happened to the account itself rather than to a conversation.
-    /// Shown insistently: these are the ones where reading it late is the same
-    /// as not reading it at all.
     Security,
 }
 
-// ── Web Push ─────────────────────────────────────────────
 
 struct WebPush {
     private_key: String,
     subject: String,
 }
 
-// ── FCM ──────────────────────────────────────────────────
 
-/// The fields we need out of a Google service-account JSON.
 #[derive(Debug, Deserialize)]
 struct ServiceAccount {
     project_id: String,
@@ -164,12 +99,9 @@ struct TokenResponse {
 
 struct Fcm {
     account: ServiceAccount,
-    /// Cached OAuth2 access token and its expiry (unix seconds). Google's are
-    /// good for an hour, so minting one per notification would be absurd.
     token: RwLock<Option<(String, u64)>>,
 }
 
-// ── Service ──────────────────────────────────────────────
 
 pub struct Push {
     web: Option<WebPush>,
@@ -178,8 +110,6 @@ pub struct Push {
 }
 
 impl Push {
-    /// None when neither transport is configured - push is then entirely off and
-    /// nothing else in the process needs to know.
     pub fn from_config(config: &Config) -> Option<Push> {
         let web = match (&config.vapid_private_key, &config.vapid_subject) {
             (Some(private_key), Some(subject)) => Some(WebPush {
@@ -223,9 +153,6 @@ impl Push {
     }
 }
 
-/// Accepts either the service-account JSON itself or a path to it, because the
-/// two deployments want different things: systemd units pass a path, containers
-/// tend to inject the blob straight into the environment.
 fn load_service_account(raw: &str) -> Option<ServiceAccount> {
     let trimmed = raw.trim();
     let json = if trimmed.starts_with('{') {
@@ -255,15 +182,7 @@ fn now_secs() -> u64 {
         .unwrap_or_default()
 }
 
-// ── Subscription storage ─────────────────────────────────
 
-/// Register (or re-register) a device.
-///
-/// Upserting on `endpoint` rather than inserting is what keeps the table from
-/// growing without bound: browsers hand back the same endpoint every load, and
-/// FCM the same token, so a fresh row per sign-in would fan every notification
-/// out N times to one device. The conflict clause also re-points the row at the
-/// current user, which is what should happen when a shared device changes hands.
 pub async fn save_subscription(
     state: &AppState,
     user_id: &str,
@@ -293,9 +212,6 @@ pub async fn save_subscription(
     Ok(())
 }
 
-/// Scoped to the owner: an endpoint is a bearer capability to notify someone, so
-/// letting any authenticated caller delete an arbitrary one would be a free
-/// "silence this user" button.
 pub async fn delete_subscription(state: &AppState, user_id: &str, endpoint: &str) -> AppResult<()> {
     sqlx::query(r#"DELETE FROM "PushSubscription" WHERE "endpoint" = $1 AND "userId" = $2"#)
         .bind(endpoint)
@@ -315,7 +231,6 @@ async fn subscriptions_for(state: &AppState, user_id: &str) -> AppResult<Vec<Sub
     Ok(rows)
 }
 
-/// Drop a device the transport has told us is gone for good.
 async fn forget(state: &AppState, id: &str) {
     let _ = sqlx::query(r#"DELETE FROM "PushSubscription" WHERE "id" = $1"#)
         .bind(id)
@@ -323,34 +238,19 @@ async fn forget(state: &AppState, id: &str) {
         .await;
 }
 
-// ── Sending ──────────────────────────────────────────────
 
-/// Fan a payload out to every device a user has registered.
-///
-/// Errors are logged, never returned: callers are on the message-send path and
-/// the message has already been persisted and delivered over the socket by the
-/// time we get here. A device the transport reports as permanently gone is
-/// pruned, which is the only way these rows ever get cleaned up.
 pub async fn send_to_user(state: &AppState, user_id: &str, payload: &PushPayload) {
     send_to(state, user_id, payload, Audience::Every).await;
 }
 
-/// Which of a user's registered devices a send is meant for.
-///
-/// Only conversation notifications ever narrow this: an account-level notice or
-/// a dismissal is for every device the person has, by definition.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Audience {
     Every,
-    /// Phones only - a notification that was held back and has now come due.
     Phones,
-    /// Everything but the phones, which are being handled separately.
     NotPhones,
 }
 
 impl Audience {
-    /// `fcm` is the Android app and nothing else; browsers and the desktop build
-    /// both register as `webpush`.
     fn admits(self, kind: &str) -> bool {
         match self {
             Audience::Every => true,
@@ -408,9 +308,6 @@ async fn send_to(state: &AppState, user_id: &str, payload: &PushPayload, audienc
     }
 }
 
-/// Separates "this device is permanently gone, delete it" from "this send did
-/// not work, try again next time" - conflating them either leaks dead rows
-/// forever or unsubscribes people over a transient 500.
 enum Delivery {
     Gone,
     Failed(String),
@@ -421,8 +318,6 @@ async fn send_web(push: &Push, sub: &Subscription, payload: &[u8]) -> Result<(),
         return Err(Delivery::Failed("Web Push is not configured".into()));
     };
     let (Some(p256dh), Some(auth)) = (&sub.p256dh, &sub.auth) else {
-        // Keys are what the payload is encrypted to; without them the row is
-        // unusable and always will be.
         return Err(Delivery::Gone);
     };
 
@@ -471,8 +366,6 @@ async fn send_web(push: &Push, sub: &Subscription, payload: &[u8]) -> Result<(),
     if status.is_success() {
         return Ok(());
     }
-    // 404/410 is the push service telling us the subscription was revoked -
-    // the tab's permission was withdrawn, or the browser profile is gone.
     if status == reqwest::StatusCode::NOT_FOUND || status == reqwest::StatusCode::GONE {
         return Err(Delivery::Gone);
     }
@@ -488,8 +381,6 @@ async fn send_fcm(push: &Push, sub: &Subscription, payload: &PushPayload) -> Res
         .await
         .map_err(Delivery::Failed)?;
 
-    // Data-only (see the module note), and every value must be a string: FCM's
-    // data map is typed `map<string, string>` and rejects anything else.
     let body = json!({
         "message": {
             "token": sub.endpoint,
@@ -503,8 +394,6 @@ async fn send_fcm(push: &Push, sub: &Subscription, payload: &PushPayload) -> Res
                 "senderId": payload.sender_id,
                 "senderName": payload.sender_name,
                 "isGroup": payload.is_group.to_string(),
-                // Keep the avatar under an application-specific key as well as
-                // `icon`: FCM treats `icon` as a reserved notification option.
                 "avatarUrl": payload.icon.clone().unwrap_or_default(),
                 "icon": payload.icon.clone().unwrap_or_default(),
                 "kind": match payload.kind {
@@ -517,8 +406,6 @@ async fn send_fcm(push: &Push, sub: &Subscription, payload: &PushPayload) -> Res
                 "encEpoch": payload.enc_epoch.map(|value| value.to_string()).unwrap_or_default(),
             },
             "android": {
-                // Anything less can be held until the device next wakes, which
-                // for a chat notification is indistinguishable from dropping it.
                 "priority": "high",
                 "ttl": format!("{TTL_SECONDS}s"),
             },
@@ -543,9 +430,6 @@ async fn send_fcm(push: &Push, sub: &Subscription, payload: &PushPayload) -> Res
         return Ok(());
     }
     let text = res.text().await.unwrap_or_default();
-    // UNREGISTERED (404) is an uninstalled app or a rotated token. A 400
-    // INVALID_ARGUMENT naming the token is a malformed one that will never work;
-    // other 400s are our own payload's fault and must not prune the device.
     if status == reqwest::StatusCode::NOT_FOUND
         || (status == reqwest::StatusCode::BAD_REQUEST && text.contains("registration token"))
     {
@@ -554,11 +438,6 @@ async fn send_fcm(push: &Push, sub: &Subscription, payload: &PushPayload) -> Res
     Err(Delivery::Failed(format!("{status}: {}", text.trim())))
 }
 
-/// Mint (or reuse) an OAuth2 access token for FCM.
-///
-/// The service-account flow: self-sign a JWT asserting the scope, hand it to
-/// Google, get a bearer token back. Refreshed a minute before expiry so a token
-/// can't die mid-flight.
 async fn fcm_access_token(push: &Push, fcm: &Fcm) -> Result<String, String> {
     if let Some((token, exp)) = fcm.token.read().await.as_ref() {
         if now_secs() + 60 < *exp {
@@ -567,7 +446,6 @@ async fn fcm_access_token(push: &Push, fcm: &Fcm) -> Result<String, String> {
     }
 
     let mut slot = fcm.token.write().await;
-    // Another task may have refreshed it while we waited for the write lock.
     if let Some((token, exp)) = slot.as_ref() {
         if now_secs() + 60 < *exp {
             return Ok(token.clone());
@@ -616,25 +494,11 @@ async fn fcm_access_token(push: &Push, fcm: &Fcm) -> Result<String, String> {
     Ok(token.access_token)
 }
 
-// ── Pending-notification tracking ────────────────────────
-//
-// A notification, once delivered, lives on the device until something cancels
-// it - and only the app can, by running code. So a message read on another
-// device can't clear a phone's notification unless we wake that phone and tell
-// it to. We only ever want to do that for a channel that actually has a
-// notification outstanding, so we remember, per user, which channels we've
-// pushed for and haven't yet seen read. `notify_read` fires a dismissal only
-// when the channel is in that set, which keeps reads that clear nothing (every
-// channel switch, most sends) from waking a device for no reason.
 
-/// Channels we've pushed a message for and not yet seen read, per user. Expires
-/// with the push TTL: a notification the transport would no longer deliver is
-/// not one we still need to chase down.
 fn pending_key(user_id: &str) -> String {
     format!("push:pending:{user_id}")
 }
 
-/// Remember that `user_id` now has an outstanding notification for `channel_id`.
 async fn mark_pending(state: &AppState, user_id: &str, channel_id: &str) {
     let mut con = state.rd();
     let key = pending_key(user_id);
@@ -642,8 +506,6 @@ async fn mark_pending(state: &AppState, user_id: &str, channel_id: &str) {
     let _: Result<(), _> = con.expire(&key, TTL_SECONDS as i64).await;
 }
 
-/// Drop a channel from the pending set, reporting whether it was there - i.e.
-/// whether a notification for it is plausibly still on a device.
 async fn clear_pending(state: &AppState, user_id: &str, channel_id: &str) -> bool {
     let mut con = state.rd();
     let removed: i64 = con
@@ -653,25 +515,11 @@ async fn clear_pending(state: &AppState, user_id: &str, channel_id: &str) -> boo
     removed > 0
 }
 
-// ── Holding a notification back for the phone ────────────
-//
-// A phone is the device of last resort. Someone typing at their desk has already
-// been told about the message by the client in front of them, and buzzing their
-// pocket at the same time is the notification people cite when they turn
-// notifications off. But "they are at their desk" is not the same as "they read
-// it": step away mid-conversation and the message is now exactly the one the
-// phone should have carried. So the phone's copy is not dropped, only held - and
-// released a few minutes later if the message is still sitting unread.
 
-/// Sorted by when each held notification comes due.
 const DEFERRED_KEY: &str = "push:deferred:mobile";
 
-/// How long a message stays with the computer before the phone is told too.
 pub const DEFER_TO_MOBILE_SECONDS: i64 = 300;
 
-/// A phone's copy of a notification, parked until [`DEFER_TO_MOBILE_SECONDS`]
-/// have passed. The whole payload rides along: rebuilding it later would mean
-/// re-deriving a preview from a message that may since have been edited.
 #[derive(Serialize, Deserialize)]
 struct Deferred {
     user_id: String,
@@ -689,16 +537,9 @@ async fn defer_to_mobile(state: &AppState, user_id: &str, payload: &PushPayload)
     let due = (now_secs() as i64 + DEFER_TO_MOBILE_SECONDS) as f64;
     let mut con = state.rd();
     let _: Result<(), _> = con.zadd(DEFERRED_KEY, raw, due).await;
-    // The set is only ever a few minutes deep; the expiry is a backstop against
-    // a Redis that outlives a server which crashed mid-hold.
     let _: Result<(), _> = con.expire(DEFERRED_KEY, TTL_SECONDS as i64).await;
 }
 
-/// Release every held notification that has come due and is still worth sending.
-///
-/// Returns how many phones were actually woken. Called on a timer; a hold whose
-/// message has since been read is dropped silently, which is the common case and
-/// the entire point of holding it.
 pub async fn flush_deferred(state: &AppState) -> AppResult<usize> {
     if state.push.is_none() {
         return Ok(0);
@@ -711,8 +552,6 @@ pub async fn flush_deferred(state: &AppState) -> AppResult<usize> {
 
     let mut sent = 0;
     for raw in due {
-        // Claim it first: whoever removes the member is the one that sends it,
-        // so a second sweep overlapping this one cannot notify twice.
         let claimed: i64 = {
             let mut con = state.rd();
             con.zrem(DEFERRED_KEY, &raw).await.unwrap_or(0)
@@ -731,9 +570,6 @@ pub async fn flush_deferred(state: &AppState) -> AppResult<usize> {
         {
             continue;
         }
-        // They may have picked the phone up in the meantime, in which case the
-        // app itself is showing them the conversation and a push would be the
-        // duplicate this whole path exists to avoid.
         let active = presence::active_devices(state, &entry.user_id)
             .await
             .unwrap_or_default();
@@ -748,15 +584,7 @@ pub async fn flush_deferred(state: &AppState) -> AppResult<usize> {
     Ok(sent)
 }
 
-// ── Fan-out helpers ──────────────────────────────────────
 
-/// Push a new message to everyone it should reach, skipping the author.
-///
-/// Deliberately narrower than the unread bookkeeping next to it at the call
-/// site: a DM or an @mention is worth waking a phone for, an ordinary message
-/// in a busy server channel is not, and that distinction is the difference
-/// between notifications people keep on and notifications people turn off. It
-/// matches what the web client already chose to surface locally.
 #[allow(clippy::too_many_arguments)]
 pub async fn notify_message(
     state: &AppState,
@@ -768,8 +596,6 @@ pub async fn notify_message(
     author_avatar: Option<&str>,
     preview: &str,
     recipients: &[String],
-    // `ciphertext` is the base64 message envelope for an encrypted conversation;
-    // see docs/E2EE.md §8. None for a plaintext one.
     ciphertext: Option<&str>,
     enc_epoch: Option<i32>,
 ) {
@@ -778,17 +604,12 @@ pub async fn notify_message(
     }
     let is_dm = server_id.is_none();
 
-    // The socket handler already resolved the authoritative recipients.
     let targets = recipients.to_vec();
 
     let href = match server_id {
         Some(server_id) => format!("/servers/{server_id}/channels/{channel_id}"),
         None => format!("/dms/{channel_id}"),
     };
-    // An encrypted conversation has no body here to compose from: `content` is
-    // the empty string by construction. The envelope goes instead and the client
-    // opens it; a ciphertext too large for the transport is dropped rather than
-    // truncated, because half a GCM ciphertext decrypts to nothing at all.
     let sealed = ciphertext.filter(|c| c.len() <= MAX_PUSH_CIPHERTEXT_CHARS);
     let encrypted = ciphertext.is_some();
 
@@ -798,8 +619,6 @@ pub async fn notify_message(
         } else {
             format!("{author_name} mentioned you")
         },
-        // Matches the 140 the web client truncates its local notification to,
-        // and keeps us clear of the 4 KB Web Push payload ceiling.
         body: if encrypted {
             String::new()
         } else {
@@ -831,11 +650,6 @@ pub async fn notify_message(
             .any(|kind| kind == "browser" || kind == "desktop");
 
         if on_phone {
-            // The app is open in their hand, and the socket that told us so is
-            // the same one that just delivered this message. A push on top of it
-            // is a second copy of something already on screen. A phone that dies
-            // without saying goodbye stops counting as soon as Socket.IO's own
-            // ping timeout drops the lease, so this cannot silence it for long.
             send_to(state, &target, &payload, Audience::NotPhones).await;
         } else if at_computer {
             send_to(state, &target, &payload, Audience::NotPhones).await;
@@ -843,17 +657,10 @@ pub async fn notify_message(
         } else {
             send_to_user(state, &target, &payload).await;
         }
-        // Record the outstanding notification so a later read on any of this
-        // user's devices can reach out and dismiss it (see `notify_read`).
         mark_pending(state, &target, channel_id).await;
     }
 }
 
-/// Dismiss a user's outstanding notification for a channel they just read
-/// elsewhere. A no-op unless we actually pushed for that channel, so ordinary
-/// channel opens don't wake the user's other devices. The payload carries only
-/// the channel and `PushKind::Read`; each client cancels by channel and shows
-/// nothing new (NotificationHelper on Android, the service worker on web).
 pub async fn notify_read(state: &AppState, user_id: &str, channel_id: &str) {
     if state.push.is_none() {
         return;
@@ -879,9 +686,6 @@ pub async fn notify_read(state: &AppState, user_id: &str, channel_id: &str) {
     send_to_user(state, user_id, &payload).await;
 }
 
-/// Tell every device something happened to the account. No channel, no sender,
-/// no collapsing against conversation notifications - `tag` is the event so a
-/// second security notice never silently replaces the first.
 pub async fn notify_security(
     state: &AppState,
     user_id: &str,
@@ -908,8 +712,6 @@ pub async fn notify_security(
     send_to_user(state, user_id, &payload).await;
 }
 
-/// Ring a callee's devices. Unlike a message this is worth interrupting for, so
-/// the client escalates it to a full-screen intent.
 pub async fn notify_call(
     state: &AppState,
     channel_id: &str,
@@ -942,7 +744,6 @@ pub async fn notify_call(
     }
 }
 
-/// The VAPID public key the browser needs to subscribe, if Web Push is on.
 pub fn web_public_key(state: &AppState) -> Option<String> {
     state.push.as_ref()?.web.as_ref()?;
     state.config.vapid_public_key.clone()
@@ -952,9 +753,6 @@ pub fn web_public_key(state: &AppState) -> Option<String> {
 mod tests {
     use super::*;
 
-    /// The whole routing rests on `fcm` meaning "phone" and nothing else meaning
-    /// it, so a transport added later must be classified deliberately rather than
-    /// inheriting whichever side of this split it happens to fall on.
     #[test]
     fn only_fcm_counts_as_a_phone() {
         assert!(Audience::Phones.admits("fcm"));
@@ -966,10 +764,6 @@ mod tests {
         }
     }
 
-    /// A held notification is written now and read back by a different process
-    /// minutes later, so the payload has to survive the round trip intact -
-    /// including the encrypted-conversation fields, which are omitted from the
-    /// wire form when absent.
     #[test]
     fn a_held_payload_survives_being_parked() {
         let payload = PushPayload {
@@ -1001,8 +795,6 @@ mod tests {
         assert_eq!(back.payload.kind, PushKind::Message);
     }
 
-    /// The plaintext case sends no ciphertext at all, and `skip_serializing_if`
-    /// means those keys are simply missing from what comes back out of Redis.
     #[test]
     fn a_plaintext_payload_parks_without_its_absent_fields() {
         let raw = r#"{"user_id":"u2","payload":{"title":"Kim","body":"hi","href":"/dms/c1",

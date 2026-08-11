@@ -50,7 +50,7 @@ import { Composer } from "./Composer";
 import { TypingIndicator } from "./TypingIndicator";
 import { t } from "../../lib/i18n";
 
-/** A header action that lives in the overflow menu rather than as its own icon. */
+
 export interface HeaderMenuItem {
   label: string;
   icon: LucideIcon;
@@ -62,33 +62,25 @@ export interface HeaderMenuItem {
 interface ChatViewProps {
   channel: Channel;
   members: ServerMember[];
-  /** Extra header controls (e.g. calls). Kept for the few that must stay one tap. */
+
   headerActions?: ReactNode;
-  /**
-   * Secondary actions, folded into the header's overflow menu. Everything that
-   * is not time-sensitive belongs here - a header of eight anonymous icons is
-   * how the DM header got unreadable.
-   */
+
   headerMenu?: HeaderMenuItem[];
-  /** DM avatar/group image shown beside the conversation name. */
+
   headerIcon?: ReactNode;
-  /** Live activity beneath a DM conversation name. */
+
   headerSubtitle?: ReactNode;
-  /** Start-of-history block; DMs pass their own instead of the #channel welcome. */
+
   intro?: ReactNode;
-  /**
-   * The verification affordance (§6.6). DMs pass one because only they know who
-   * the conversation is with; without it the header falls back to a plain
-   * "Encrypted" label, which is still true, just not actionable.
-   */
+
   encryptionBadge?: ReactNode;
-  /** Strict-mode blocked-state copy; DMs pass one for the same reason. */
+
   encryptionNotice?: ReactNode;
 }
 
 const HEADER_ICON = { dm: AtSign, group_dm: Users } as const;
 
-/** Main column: channel header, message history, typing line, composer. */
+
 export function ChatView({
   channel,
   members,
@@ -104,15 +96,12 @@ export function ChatView({
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [topicOpen, setTopicOpen] = useState(false);
-  // `?m=<id>` - what a copied message link carries. The list scrolls to it once
-  // history is in, then the param is dropped so a reload doesn't re-jump.
   const [searchParams, setSearchParams] = useSearchParams();
   const jumpToId = searchParams.get("m");
 
   useChannelRoom(channel.id, channel.serverId === null);
   const encryption = useE2eeChannel(channel.id, channel.type);
 
-  // Opening a channel reads it: clear its badge and persist the read cursor.
   useEffect(() => {
     setActiveChannel(channel.id);
     unreadActions.clear(channel.id);
@@ -133,9 +122,6 @@ export function ChatView({
   } = useMessages(channel.id);
   const failedMessages = useFailedMessages(channel.id);
   const readWatermark = useReadWatermark(channel.id);
-  // Advance the watermark only while the list is at the bottom (MessageList
-  // gates the call), so messages that arrive while the user is scrolled up
-  // stay behind the unread divider until they are actually seen.
   const advanceRead = useCallback(
     (message: Message) => {
       readWatermarkActions.mark(channel.id, message.id, message.createdAt);
@@ -149,14 +135,12 @@ export function ChatView({
     if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  // userId → display name (nickname wins) for rendering + autocompleting mentions.
   const mentionNames = useMemo(() => {
     const map: Record<string, string> = {};
     for (const m of members) map[m.userId] = m.nickname ?? m.user.displayName;
     return map;
   }, [members]);
 
-  // username (lowercased) → { id, label } for resolving @username mentions.
   const mentionUsers = useMemo(() => {
     const map: Record<string, { id: string; name: string }> = {};
     for (const m of members) {

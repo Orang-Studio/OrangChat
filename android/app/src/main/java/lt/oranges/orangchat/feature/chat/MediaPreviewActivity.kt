@@ -109,14 +109,6 @@ internal object MediaPreviewTransport {
     fun decode(value: String): Attachment = json.decodeFromString(value)
 }
 
-/**
- * A real full-screen window for attachment previews.
- *
- * This deliberately is not a Compose Dialog. Dialog windows kept a platform
- * wrap-content height on some devices, which moved the media centre and bottom
- * controls beyond the physical display. An activity owns the display bounds,
- * system bars and back gesture directly, so there is one coordinate system.
- */
 @AndroidEntryPoint
 class MediaPreviewActivity : LocalizedActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -125,9 +117,6 @@ class MediaPreviewActivity : LocalizedActivity() {
         window.statusBarColor = AndroidColor.BLACK
         window.navigationBarColor = AndroidColor.BLACK
 
-        // The viewer grew out of the thumbnail (see scaleUpFrom); sliding it off
-        // the side on the way back would undo a move the eye already followed.
-        // A fade leaves the chat where it was, with the picture simply gone.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, android.R.anim.fade_out)
         }
@@ -163,10 +152,6 @@ class MediaPreviewActivity : LocalizedActivity() {
     }
 }
 
-/**
- * Remembers where a thumbnail is on screen, so the viewer it opens can grow out
- * of it. Attach [Modifier.mediaOrigin] to whatever was tapped.
- */
 class MediaOrigin {
     internal var bounds: Rect? = null
 }
@@ -174,18 +159,9 @@ class MediaOrigin {
 @Composable
 fun rememberMediaOrigin(): MediaOrigin = remember { MediaOrigin() }
 
-/** Track this element's box for [openMediaPreview]. */
 fun Modifier.mediaOrigin(origin: MediaOrigin): Modifier =
     onGloballyPositioned { origin.bounds = it.boundsInWindow() }
 
-/**
- * The scale-up the viewer opens with, or null when the thumbnail's box is not
- * known and the platform default has to do.
- *
- * A window sliding in from the side says "a screen arrived"; what actually
- * happened is that one picture got bigger, and the eye should be able to follow
- * it there. The web client does the same thing with a FLIP (`useMediaZoom`).
- */
 private fun scaleUpFrom(view: View, origin: MediaOrigin?): ActivityOptionsCompat? {
     val bounds = origin?.bounds ?: return null
     if (bounds.width <= 0f || bounds.height <= 0f) return null
@@ -200,7 +176,6 @@ private fun scaleUpFrom(view: View, origin: MediaOrigin?): ActivityOptionsCompat
     )
 }
 
-/** Open the full-screen viewer, growing out of [origin] when it is known. */
 fun openMediaPreview(context: Context, view: View, origin: MediaOrigin?, attachment: Attachment) {
     context.startActivity(
         MediaPreviewActivity.intent(context, attachment),
@@ -208,7 +183,6 @@ fun openMediaPreview(context: Context, view: View, origin: MediaOrigin?, attachm
     )
 }
 
-/** As [openMediaPreview], for the callers that need the activity's result. */
 fun openMediaPreview(
     launcher: ActivityResultLauncher<Intent>,
     context: Context,
@@ -222,8 +196,6 @@ fun openMediaPreview(
 @Composable
 private fun FullscreenMediaPreview(attachment: Attachment, onClose: () -> Unit) {
     val messages by MediaPreviewHost.messages.collectAsState()
-    // Looked up rather than carried in the intent, so a reaction made here shows
-    // up here - see MediaPreviewHost.
     val message = remember(messages, attachment.id) {
         MediaPreviewHost.messageFor(messages, attachment.id)
     }
@@ -262,8 +234,6 @@ private fun FullscreenMediaPreview(attachment: Attachment, onClose: () -> Unit) 
                 url = source.url,
                 chromeVisible = chromeVisible,
                 onToggleChrome = { chromeVisible = !chromeVisible },
-                // Stacked under the transport rather than over it: the controls
-                // are about the clip, this is about the message it came on.
                 senderBar = message?.let { { PreviewSenderBar(message = it) } },
             )
             else -> FullscreenImage(
@@ -273,9 +243,6 @@ private fun FullscreenMediaPreview(attachment: Attachment, onClose: () -> Unit) 
             )
         }
 
-        // The bars belong to the edges they sit on, so that is where they come
-        // from - fading them in over the middle of the picture reads as a
-        // second thing appearing rather than the frame around the first.
         AnimatedVisibility(
             visible = chromeVisible,
             enter = slideInVertically { -it } + fadeIn(),
@@ -302,14 +269,6 @@ private fun FullscreenMediaPreview(attachment: Attachment, onClose: () -> Unit) 
     }
 }
 
-/**
- * Who sent this file, when, whatever they said with it, and the reactions.
- *
- * Opening a file used to lose all of that: the viewer showed the bytes and a
- * filename, and the only way back to the message was to close it. Reacting from
- * here matters for the same reason - there is no message row on screen to long
- * press.
- */
 @Composable
 private fun PreviewSenderBar(message: Message, modifier: Modifier = Modifier) {
         val context = LocalContext.current
@@ -378,8 +337,6 @@ private fun PreviewSenderBar(message: Message, modifier: Modifier = Modifier) {
                         message.content,
                         color = Color.White.copy(alpha = 0.85f),
                         fontSize = 13.sp,
-                        // A caption can be an essay; three lines is enough to
-                        // recognise it, and the message is still in the chat.
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -539,8 +496,6 @@ private fun FullscreenVideo(
 
     LaunchedEffect(attachment.id, url) {
         if (MediaPlayback.currentId == attachment.id) {
-            // Claim errors for the visible owner even when playback started in
-            // the message row before this activity opened.
             MediaPlayback.open(context, attachment.id, url) { broken = true }
         } else {
             MediaPlayback.toggle(context, attachment.id, url) { broken = true }
@@ -597,8 +552,6 @@ private fun FullscreenVideo(
             )
         }
 
-        // The media itself owns chrome toggling. Controls are rendered after
-        // this layer, so their gestures do not leak through and hide the UI.
         Box(Modifier.fillMaxSize().tapToToggle(onToggleChrome))
 
         AnimatedVisibility(
@@ -615,8 +568,6 @@ private fun FullscreenVideo(
                     isPlaying = isPlaying,
                     durationMs = durationMs,
                     onBroken = { broken = true },
-                    // Whatever is last owns the gesture inset; with a sender bar
-                    // below, padding here would open a gap through the middle.
                     bottomInset = senderBar == null,
                 )
                 senderBar?.invoke()

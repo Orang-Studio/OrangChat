@@ -37,16 +37,6 @@ import lt.oranges.orangchat.data.remote.ApiService
 import org.json.JSONArray
 import org.json.JSONObject
 
-/**
- * The Android half of end-to-end encryption (docs/E2EE.md).
- *
- * Everything the web client does, this does too: the device log is replayed and
- * verified locally rather than trusted, conversation keys are wrapped only to
- * devices that survived that replay, and every message carries a per-sender
- * signature that is checked before the text is shown. A device the server
- * invented has no authorization signature from an existing device, and no amount
- * of server access can manufacture one.
- */
 @Singleton
 class E2eeRepository @Inject constructor(
     private val api: ApiService,
@@ -54,12 +44,6 @@ class E2eeRepository @Inject constructor(
 ) {
     class E2eeException(message: String) : Exception(message)
 
-    /**
-     * Strict mode holding a send until the peer has been checked (§6.5). The
-     * outbox has to tell this apart from a real failure - the row stays queued
-     * rather than being dropped - and it must not do so by matching on the
-     * message text, which is user-facing copy that gets rewritten.
-     */
     class VerificationRequiredException(message: String) : Exception(message)
 
     private val rotation = Mutex()
@@ -87,17 +71,9 @@ class E2eeRepository @Inject constructor(
         val sas: String,
     )
 
-    // ── Identity ──────────────────────────────────────────
 
     fun identity(): E2eeKeystore.LocalIdentity? = keystore.identity()
 
-    /**
-     * Gives this device an encryption identity if the account has none.
-     *
-     * Enrolment only ever succeeds on an account with no active device, so
-     * installing the app a second time does not quietly become a second device -
-     * that needs the transfer flow and a TOTP code (§4).
-     */
     suspend fun enrol(userId: String): E2eeKeystore.LocalIdentity = withContext(Dispatchers.IO) {
         keystore.identity()?.let { if (it.userId == userId) return@withContext it }
 
@@ -138,30 +114,6 @@ class E2eeRepository @Inject constructor(
         keystore.identity()!!
     }
 
-    /**
-     * Drops this phone's commitment to its *own* account's identity, and only
-     * ever at the moment this phone is the one establishing that identity.
-     *
-     * A pin is a memory of what an account looked like, kept so the server
-     * cannot quietly swap it for another. That argument does not apply to this
-     * phone's own hands. An account whose keys were erased - the documented way
-     * back from losing every device - or a phone that was revoked and set up
-     * again leaves a pin behind describing a generation that no longer exists,
-     * and the genesis this phone then mints with a key it generated itself does
-     * not match it. [pin] reads that as "this account's encryption identity
-     * changed" and throws, which is a warning about a change the person holding
-     * the phone just made, on their own account, and one [acceptIdentityChange]
-     * will not clear because an account is never its own contact.
-     *
-     * The same holds for a phone joining an identity through a transfer (§4):
-     * it did not mint that genesis, but a person compared six digits against
-     * the device that holds it, which says more about the account's current
-     * identity than a pin written by a generation that is gone.
-     *
-     * No part of the log replay is skipped - [selfMonitor] runs in full straight
-     * afterwards and writes the pin back. What is given up is the comparison
-     * against a generation this phone has already replaced on purpose.
-     */
     private fun forgetOwnPin(userId: String) {
         runCatching { keystore.deletePin(userId) }
     }
@@ -179,11 +131,6 @@ class E2eeRepository @Inject constructor(
     private fun deviceName(): String = "${Build.MANUFACTURER} ${Build.MODEL}".trim()
         .replaceFirstChar { it.uppercase() }
 
-    /**
-     * The step that closes first contact without asking a human anything: every
-     * account audits its own log, so a genesis this device never created shows up
-     * here as a hard failure rather than on the stranger being lied to.
-     */
     suspend fun selfMonitor(userId: String): E2ee.VerifiedIdentity = withContext(Dispatchers.IO) {
         val list = api.getMyE2eeDevices()
         val verified = verifyList(list)
@@ -201,17 +148,6 @@ class E2eeRepository @Inject constructor(
                 )
             }
         } else {
-            // Signed in, but holding no key in this account - a phone that has
-            // not been added yet, or one whose account started over from
-            // another device. Its pin describes a generation that has since
-            // been erased, and a new genesis restarts the log at seq 0, so
-            // every check in [pin] fires at once: "the identity changed", "the
-            // log went backwards", "the log has forked". All three are about a
-            // chain that no longer exists, and none of them is something this
-            // phone can act on - it created nothing under either generation and
-            // holds no key under this one. Settings → Encryption already says
-            // what is actually true here, which is that this phone is not a
-            // device on the account yet.
             val stale = keystore.pin(userId)
             if (stale != null &&
                 stale.genesisCommitment != E2ee.toBase64(verified.genesisCommitment)
@@ -222,11 +158,6 @@ class E2eeRepository @Inject constructor(
 
         pin(userId, verified, list)
 
-        // Checking in is what tells the server a key is still alive out here.
-        // It is read by the key-erasure sweep, where a device that has not been
-        // heard from is taken as one the account has genuinely lost - so a phone
-        // that never reports in could have its keys erased out from under it.
-        // Best-effort: a failure here must never break identity verification.
         local?.takeIf { it.userId == userId }?.let { identity ->
             runCatching { api.markE2eeDeviceSeen(identity.deviceId) }
         }
@@ -234,11 +165,6 @@ class E2eeRepository @Inject constructor(
         verified
     }
 
-    /**
-     * Validates a device list against its own log rather than against the
-     * server's word, and writes down the signing keys of everything that passed
-     * so the notification path can check a signature later.
-     */
     fun verifyList(list: E2eeDeviceList): E2ee.VerifiedIdentity {
         val identity = E2ee.verifyIdentity(
             list.userId,
@@ -273,12 +199,6 @@ class E2eeRepository @Inject constructor(
         return identity
     }
 
-    /**
-     * Refuses to move forward on a head that rewound, forked, or dropped an
-     * entry this device already saw. A pinned head is a commitment to everything
-     * before it, so a server showing a different history has to contradict
-     * something already written down here.
-     */
     private fun pin(userId: String, verified: E2ee.VerifiedIdentity, list: E2eeDeviceList) {
         val hashes = MutableList(verified.headSeq + 1) { "" }
         for (entry in list.log) if (entry.seq < hashes.size) hashes[entry.seq] = entry.entryHash
@@ -312,7 +232,6 @@ class E2eeRepository @Inject constructor(
         )
     }
 
-    /** Verifies a peer, pins their commitment, and returns who may hold a key. */
     suspend fun resolvePeer(userId: String): List<E2eeDevice> = withContext(Dispatchers.IO) {
         val list = api.getPeerE2eeDevices(userId)
         val verified = verifyList(list)
@@ -320,20 +239,6 @@ class E2eeRepository @Inject constructor(
         list.devices.filter { verified.authorizedDeviceIds.contains(it.id) }
     }
 
-    /**
-     * The way out of an identity change, and the only one. Losing every device
-     * is a real thing that happens to real people, and before this there was no
-     * path back from it: [pin] throws on the mismatch before the new commitment
-     * can be written, so every contact of somebody who started over was left
-     * unable to read or send, permanently.
-     *
-     * Dropping the pin first is what makes the re-verification possible - it is
-     * the pin that rejects the new identity, so the account has to be treated as
-     * a stranger again before it can be looked at. [verifyList] still runs in
-     * full, so this forgives a *changed* identity, never a malformed one. A
-     * failure puts the old commitment back rather than leaving the account
-     * unpinned.
-     */
     suspend fun acceptIdentityChange(userId: String): Unit = withContext(Dispatchers.IO) {
         val previous = keystore.pin(userId)
         keystore.deletePin(userId)
@@ -346,7 +251,6 @@ class E2eeRepository @Inject constructor(
         Unit
     }
 
-    /** Marks a contact verified after their code has been confirmed in person. */
     fun markVerified(userId: String) {
         val existing = keystore.pin(userId) ?: throw E2eeException(
             "Fetch this contact's identity before verifying it.",
@@ -358,17 +262,14 @@ class E2eeRepository @Inject constructor(
 
     fun setGlobalStrict(enabled: Boolean) = keystore.setGlobalStrict(enabled)
 
-    /** Applied here first: the gate must hold from the moment it was asked for, not from the ack. */
     fun setStrictFor(channelId: String, enabled: Boolean?) =
         keystore.setStrictFor(channelId, enabled)
 
-    /** Store the choice server-side, so the server is the one that announces it. */
     suspend fun pushStrictFor(channelId: String, enabled: Boolean?) = withContext(Dispatchers.IO) {
         api.setChannelE2eeStrict(channelId, E2eeStrictRequest(on = enabled))
         Unit
     }
 
-    /** This account's overrides, so a fresh install enforces what was chosen elsewhere. */
     suspend fun loadStrictOverrides() = withContext(Dispatchers.IO) {
         val overrides = api.getMyE2eeStrict().overrides
         for ((channelId, on) in overrides) keystore.setStrictFor(channelId, on)
@@ -406,10 +307,6 @@ class E2eeRepository @Inject constructor(
         }
     }
 
-    /**
-     * This account's own verification code (§6.7). Public material only, and the
-     * value it commits to is the genesis identity rather than a loose key.
-     */
     fun myContactQr(): String? {
         val local = keystore.identity() ?: return null
         val mine = keystore.pin(local.userId) ?: return null
@@ -423,11 +320,6 @@ class E2eeRepository @Inject constructor(
         )
     }
 
-    /**
-     * The out-of-band half of verification. The commitment being compared came
-     * off a camera, not off the network, so a server that substituted an identity
-     * is caught here by a mismatch it cannot influence.
-     */
     suspend fun acceptScannedContact(raw: String): String = withContext(Dispatchers.IO) {
         val scanned = lt.oranges.orangchat.crypto.E2eeQr.decodeContactVerify(raw)
         val local = keystore.identity()
@@ -474,22 +366,6 @@ class E2eeRepository @Inject constructor(
         Unit
     }
 
-    /**
-     * Throws the account's whole encryption identity away, right now.
-     *
-     * There is a slow version of this on the server for an account nobody can
-     * sign for any more, and it waits hours precisely because the request proves
-     * nothing - a stolen password can file it. This phone can sign for it with
-     * the key itself, which is the thing that wait was there to give the real
-     * owner time to produce, so it does not wait. It also could not use the slow
-     * path if it wanted to: a keyed device checking in aborts a pending erasure,
-     * so this phone would cancel its own request the next time it started.
-     *
-     * Every message in every encrypted conversation on the account becomes
-     * unreadable, on all devices, permanently. The local identity goes too - its
-     * public half no longer exists, and keeping the private half would only
-     * convince this phone it is still enrolled.
-     */
     suspend fun eraseKeysNow(): Unit = withContext(Dispatchers.IO) {
         val local = keystore.identity() ?: throw E2eeException("This device has no encryption identity.")
         val issuedAt = java.time.Instant.now().toString()
@@ -505,20 +381,6 @@ class E2eeRepository @Inject constructor(
         keystore.clearIdentity()
     }
 
-    /**
-     * Lets this phone enrol again after another device revoked it.
-     *
-     * Revocation is one-way for the keys involved: the identity in the Keystore
-     * is dead the moment it leaves the authorized set, and holding onto it is
-     * what makes the Encryption screen believe this phone is still a device and
-     * refuse to start a transfer. So the identity goes, and only the identity -
-     * pins and epoch keys are what this phone knows about *other* people.
-     *
-     * The revocation is re-checked against a freshly verified log rather than
-     * taken from the caller. Throwing away keys on the server's say-so alone
-     * would hand it a way to knock any device out of an account; a real
-     * revocation carries a signed entry from a device that was authorized.
-     */
     suspend fun forgetRevokedIdentity(): Boolean = withContext(Dispatchers.IO) {
         val local = keystore.identity() ?: return@withContext false
         val list = api.getMyE2eeDevices()
@@ -528,18 +390,10 @@ class E2eeRepository @Inject constructor(
         true
     }
 
-    // ── Nearby device transfer ────────────────────────────
 
-    /**
-     * Starts the receiving half of §4. The phone makes a distinct identity in
-     * the Android Keystore, publishes only its self-signature, and shows the
-     * pairing secret in a QR code. Conversation keys do not move until both
-     * people confirm the six digits.
-     */
     suspend fun beginDeviceTransfer(userId: String): PendingNewDevice =
         beginDeviceTransferInternal(userId, null)
 
-    /** Desktop-first flow: the phone scanned the invitation shown on the PC. */
     suspend fun beginDeviceTransferFromInvitation(
         userId: String,
         raw: String,
@@ -600,7 +454,6 @@ class E2eeRepository @Inject constructor(
             )
         }
 
-    /** Waits for the already-authorized PC/phone to scan the QR. */
     suspend fun awaitDeviceTransfer(pending: PendingNewDevice): NewDeviceHandshake =
         withContext(Dispatchers.IO) {
             val ephemeralPub = takeTransferBlob(pending.transferId, "handshake")
@@ -617,10 +470,6 @@ class E2eeRepository @Inject constructor(
             )
         }
 
-    /**
-     * Called only after the user taps that the SAS matches. Opens the history
-     * archive, then waits until the old device's signed log entry appears.
-     */
     suspend fun finishDeviceTransfer(userId: String, handshake: NewDeviceHandshake) =
         withContext(Dispatchers.IO) {
             val sealed = takeTransferBlob(handshake.pending.transferId, "bundle")
@@ -660,11 +509,6 @@ class E2eeRepository @Inject constructor(
             runCatching { api.markE2eeDeviceSeen(device.id) }
         }
 
-    /**
-     * The sending half, used when this Android device is the one that already
-     * holds history. The OS camera opens device-transfer deep links, while the
-     * Encryption screen also accepts a pasted code.
-     */
     suspend fun adoptScannedDevice(raw: String): OldDeviceHandshake =
         withContext(Dispatchers.IO) {
             val scanned = lt.oranges.orangchat.crypto.E2eeQr.decodeDeviceTransfer(raw)
@@ -688,11 +532,6 @@ class E2eeRepository @Inject constructor(
             )
         }
 
-    /**
-     * SAS has matched; require a fresh security code (TOTP when the account has
-     * an authenticator, otherwise the emailed one-time code) and sign the new
-     * device into the log.
-     */
     suspend fun finishAdoptingDevice(
         handshake: OldDeviceHandshake,
         code: String,
@@ -802,17 +641,9 @@ class E2eeRepository @Inject constructor(
         return JSONObject(String(cipher.doFinal(sealed.copyOfRange(12, sealed.size)), Charsets.UTF_8))
     }
 
-    // ── Epochs ────────────────────────────────────────────
 
     private val stateCache = mutableMapOf<String, Pair<Long, E2eeChannelState>>()
 
-    /**
-     * Sending touches the channel's state three times - to decide whether to
-     * seal, to find the current epoch, and to collect whose heads to gossip.
-     * Without this that is three round trips per message on a phone radio, so
-     * the answer is held briefly. Short enough that a rotation lands quickly,
-     * long enough that one send is one fetch.
-     */
     suspend fun channelState(channelId: String, maxAgeMs: Long = 5_000): E2eeChannelState =
         withContext(Dispatchers.IO) {
             val now = System.currentTimeMillis()
@@ -826,15 +657,6 @@ class E2eeRepository @Inject constructor(
         stateCache.remove(channelId)
     }
 
-    /**
-     * The gate that makes strict mode prevention rather than detection (§6.5).
-     *
-     * It has to run on the seal path as well as on rotation, which the web
-     * client does and this one used to not: an established conversation already
-     * has an epoch, so `currentEpoch` returns it without ever reaching `rotate`
-     * and every message went out under a key wrapped to devices nobody had
-     * checked. Turning the setting on looked like it worked and did nothing.
-     */
     private fun assertMayEncryptTo(channelId: String, state: E2eeChannelState, selfId: String) {
         if (!keystore.strictFor(channelId, state.channelType)) return
         val unverified = state.memberDevices
@@ -848,15 +670,6 @@ class E2eeRepository @Inject constructor(
         }
     }
 
-    /**
-     * Mints a fresh conversation key and wraps it to every verified device. The
-     * epoch id is generated here rather than by the server, because every
-     * wrapping is bound to it as the HKDF salt before the request is sent.
-     *
-     * [announce] asks the server to say on the conversation that the key was
-     * reset - true only for a reset somebody asked for, since the automatic
-     * rotations happen constantly and are nobody's decision.
-     */
     suspend fun rotate(channelId: String, announce: Boolean = false): Int = rotation.withLock {
         withContext(Dispatchers.IO) {
             val local = keystore.identity()
@@ -911,7 +724,6 @@ class E2eeRepository @Inject constructor(
         }
     }
 
-    /** Pulls down and caches every epoch key this device is entitled to. */
     suspend fun syncEpochKeys(channelId: String) = withContext(Dispatchers.IO) {
         val local = keystore.identity() ?: return@withContext
         val agreement = keystore.agreementPrivate() ?: return@withContext
@@ -930,9 +742,6 @@ class E2eeRepository @Inject constructor(
                     ),
                 )
             }.onSuccess { keystore.saveEpochKey(channelId, key.epoch.epoch, it) }
-            // An envelope this device cannot open belongs to an epoch minted
-            // before it existed. That history is simply unreadable here rather
-            // than an error to raise.
         }
     }
 
@@ -966,18 +775,15 @@ class E2eeRepository @Inject constructor(
         }
     }
 
-    /** True once this conversation has ever been seen encrypted. */
     suspend fun isEncrypted(channelId: String): Boolean =
         runCatching { channelState(channelId).e2ee }.getOrDefault(false)
 
-    /** True when this send must be encrypted, including the first capable send. */
     suspend fun shouldEncrypt(channelId: String): Boolean = runCatching {
         val state = channelState(channelId)
         state.e2ee ||
             (state.channelType in setOf("dm", "group_dm") && state.capable)
     }.getOrDefault(false)
 
-    // ── Messages ──────────────────────────────────────────
 
     data class Sealed(val ciphertext: String, val encEpoch: Int, val encVersion: Int)
 
@@ -992,8 +798,6 @@ class E2eeRepository @Inject constructor(
             ?: throw E2eeException("This device has no encryption identity yet.")
 
         val state = runCatching { channelState(channelId) }.getOrNull()
-        // Before any key is derived, not after: a message sealed under a CK that
-        // was already wrapped to an unchecked device has nothing left to prevent.
         if (state != null) assertMayEncryptTo(channelId, state, local.userId)
 
         val epoch = currentEpoch(channelId)
@@ -1030,23 +834,11 @@ class E2eeRepository @Inject constructor(
         )
     }
 
-    /**
-     * Opens a message and, crucially, checks who wrote it. Everyone in the
-     * conversation holds the same conversation key, so a valid GCM tag proves
-     * only that *someone* here wrote it; the per-sender signature is what makes
-     * authorship mean anything, and an unsigned message is a hard failure rather
-     * than a degraded render.
-     */
     suspend fun open(channelId: String, ciphertext: String, authorId: String): MessagePayload =
         withContext(Dispatchers.IO) {
             val envelope = E2ee.decodeEnvelope(E2ee.fromBase64(ciphertext))
             val key = conversationKeyFor(channelId, envelope.epoch)
 
-            // A sender device we already verified is trusted from the keystore
-            // alone, so a push can still check the signature while the phone is
-            // offline or the app was cold-started (the notification path has no
-            // server round-trip to spare). Fresh lookups still run for devices
-            // never seen here, and re-verify on every online path.
             val local = keystore.identity()
             val remembered = keystore.deviceKey(envelope.senderDeviceId)
             val devices = if (remembered != null && remembered.first == envelope.senderUserId) {
@@ -1064,9 +856,6 @@ class E2eeRepository @Inject constructor(
                     ),
                 )
             } else if (local != null && envelope.senderUserId == local.userId) {
-                // Our own devices get the same treatment as anyone else's: skipping
-                // the replay here would let the server invent a device on *our*
-                // account and attribute a message to it.
                 val mine = api.getMyE2eeDevices()
                 val verified = verifyList(mine)
                 mine.devices.filter { verified.authorizedDeviceIds.contains(it.id) }
@@ -1093,12 +882,6 @@ class E2eeRepository @Inject constructor(
             payload
         }
 
-    /**
-     * Cross-checks the sender's view of everyone's device log (§6.1). It never
-     * blocks rendering - the message is already authenticated - but a
-     * disagreement at a sequence this device already committed to means the
-     * server is showing different histories to different people.
-     */
     private fun checkGossip(heads: List<GossipedHead>?) {
         for (head in heads.orEmpty()) {
             val pinned = keystore.pin(head.userId) ?: continue
@@ -1110,17 +893,8 @@ class E2eeRepository @Inject constructor(
         }
     }
 
-    /**
-     * Replaces an encrypted message's empty `content` with its plaintext, so
-     * everything downstream keeps working on plain messages. A message that
-     * cannot be read says so rather than rendering as an empty bubble.
-     */
     suspend fun decrypt(message: Message): Message = withContext(Dispatchers.IO) {
         val ciphertext = message.ciphertext ?: return@withContext message
-        // The cached *payload*, not just the cached text. An attachment's real
-        // name, type and key exist only in here, so a cache hit that restored
-        // text alone left every later render showing the server's placeholder
-        // row - the file called "sealed" that no device could open.
         keystore.cachedPayload(message.id)?.let {
             keystore.backfillCachedMessageMetadata(message, it.sentAt)
             return@withContext apply(message, it)
@@ -1138,12 +912,6 @@ class E2eeRepository @Inject constructor(
         }
     }
 
-    /**
-     * Rebuilds a readable message from its payload. Attachments in an encrypted
-     * conversation are described entirely in there - the server's row carries a
-     * storage id, a byte count and the placeholder name "sealed" - so this has
-     * to run on every path that produces one, cached or freshly opened.
-     */
     private fun apply(message: Message, payload: MessagePayload): Message {
         payload.attachments.orEmpty().forEach(keystore::rememberSealedAttachment)
         val refs = payload.attachments.orEmpty().associateBy { it.attachmentId }
@@ -1167,11 +935,6 @@ class E2eeRepository @Inject constructor(
         )
     }
 
-    /**
-     * Report one exact message. For E2EE the server receives only the derived
-     * key for this sender-device sequence, verifies the original signature and
-     * GCM tag, and cannot use it to open any neighbouring message.
-     */
     suspend fun reportMessage(message: Message, reason: String?): String =
         withContext(Dispatchers.IO) {
             val reportKey = message.ciphertext?.let { raw ->
@@ -1213,9 +976,6 @@ class E2eeRepository @Inject constructor(
 
     suspend fun decryptAll(messages: List<Message>): List<Message> =
         if (messages.none { it.ciphertext != null }) messages
-        // One hop for the whole page: every message here touches the encrypted
-        // preference store, and a page of them on the main thread is the
-        // difference between a scroll and an ANR.
         else withContext(Dispatchers.IO) { messages.map { decrypt(it) } }
 
     private fun unreadable(error: Exception): String {
@@ -1230,7 +990,6 @@ class E2eeRepository @Inject constructor(
         }
     }
 
-    /** Local search over encrypted messages this device has actually opened. */
     suspend fun searchLocal(
         query: String,
         channelIds: Set<String>? = null,
@@ -1239,7 +998,6 @@ class E2eeRepository @Inject constructor(
         keystore.searchCached(query, channelIds, limit)
     }
 
-    /** Edits must evict the prior plaintext before opening the new envelope. */
     fun forgetCachedMessage(messageId: String) = keystore.forgetCachedMessage(messageId)
 
     fun saveQueuedMessage(

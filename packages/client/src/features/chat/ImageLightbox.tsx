@@ -10,18 +10,7 @@ import { MediaSenderBar, type MediaContext } from "./MediaSenderBar";
 import { useMediaZoom, type MediaOrigin } from "./useMediaZoom";
 import { t } from "../../lib/i18n";
 
-/**
- * Full-bleed viewer for an image attachment.
- *
- * Clicking a thumbnail used to navigate to the file, which nginx serves with
- * `Content-Disposition: attachment` (deliberately - those bytes are never
- * re-encoded, so they're served inert). The effect was that "look closer"
- * silently meant "download". Expanding in place restores the obvious reading
- * and leaves downloading to the button that says so.
- *
- * `<img>` isn't affected by the header - it only applies to navigations - so
- * the same URL renders here without loosening anything server-side.
- */
+
 export function ImageLightbox({
   attachment,
   context,
@@ -30,10 +19,9 @@ export function ImageLightbox({
   onOpenChange,
 }: {
   attachment: Attachment;
-  /** The message this file came on. Absent where a viewer has no message
-   *  behind it, and then the bar along the bottom is simply not drawn. */
+
   context?: MediaContext;
-  /** The thumbnail's box, so the viewer grows out of where it was clicked. */
+
   origin?: MediaOrigin | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -41,13 +29,7 @@ export function ImageLightbox({
   const favoriteGifs = useFavoriteGifs((s) => s.gifs);
   const toggleFavorite = useFavoriteGifs((s) => s.toggle);
 
-  // Only GIFs are bookmarkable - the picker they feed is a GIF picker, so a
-  // saved PNG would have nowhere to appear.
   const gif = isGif(attachment.contentType, attachment.filename);
-  // Self-hosted/Cloudinary uploads carry a relative url (`/api/attachments/...`).
-  // A GIF is sent by putting its url in the message, but the media embed pipeline
-  // only renders absolute http(s) urls - so bookmark the resolved absolute form,
-  // the same shape a Tenor GIF already has.
   const gifUrl = new URL(attachment.url, window.location.origin).toString();
   const saved = gif && isGifFavorite(favoriteGifs, gifUrl);
   const [scale, setScale] = useState(1);
@@ -60,8 +42,6 @@ export function ImageLightbox({
         <RadixDialog.Content
           aria-describedby={undefined}
           className="fixed inset-0 z-50 flex flex-col focus:outline-none"
-          // Radix restores focus to the thumbnail on close; without this it
-          // also scrolls it back into view, yanking a long channel around.
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
           <RadixDialog.Title className="sr-only">{attachment.filename}</RadixDialog.Title>

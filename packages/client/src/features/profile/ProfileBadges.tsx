@@ -2,12 +2,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { badgeAsset, resolveBadges } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
 
-/**
- * Artwork badges for a profile card. The native title keeps the full
- * explanation available on hover, while the popover makes the badge name
- * available to touch and keyboard users. Each badge is an image served from
- * `/badges/`. Renders nothing when the user has no badges.
- */
+
 export function ProfileBadges({
   badges,
   className,

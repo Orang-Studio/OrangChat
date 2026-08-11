@@ -56,7 +56,6 @@ export function updateSettings(patch: Partial<Settings>): Settings {
   try {
     writeFileSync(file(), JSON.stringify(next, null, 2));
   } catch {
-    // Settings are a convenience; a read-only profile must not crash the app.
   }
   return next;
 }

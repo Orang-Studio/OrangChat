@@ -1,18 +1,14 @@
 import { Users } from "lucide-react";
 import { cn } from "../../lib/cn";
 
-/**
- * A group DM's picture. Falls back to the members glyph, which is what every
- * group looked like before icons existed and what one without an icon still
- * looks like - so the two must line up at the same size in the same slot.
- */
+
 export function GroupIcon({
   iconUrl,
   name,
   className,
 }: {
   iconUrl: string | null;
-  /** Only used for the alt text; the picture is decorative next to the name. */
+
   name?: string;
   className?: string;
 }) {

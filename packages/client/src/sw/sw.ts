@@ -1,7 +1,4 @@
 /// <reference lib="webworker" />
-// Straight from the crypto module rather than the package barrel: the barrel
-// pulls in the zod schemas and everything else the app needs, none of which a
-// notification path has any use for.
 import {
   decodeEnvelope,
   decodeMessagePayload,
@@ -10,20 +7,7 @@ import {
   openMessage,
 } from '@orangchat/shared/e2ee';
 
-/**
- * The service worker. Three jobs: render notifications, open the encrypted ones
- * itself (docs/E2EE.md §8), and keep small media out of the network.
- *
- * The server has no body to compose for an encrypted conversation, so it sends
- * the envelope instead. Everything needed to open it is already in this origin's
- * IndexedDB - the identity key handles, the sealed conversation keys, and the
- * signing keys of devices whose chain the app has already replayed - and none of
- * it is extractable, so a worker that can *use* them still cannot leak them.
- *
- * Failure is a placeholder, never nothing. "New message from Vakaris" is an
- * acceptable notification; a swallowed exception that shows nothing is the bug
- * this file exists to avoid.
- */
+
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -43,35 +27,16 @@ interface PushPayload {
   encEpoch?: number;
 }
 
-/**
- * Bump to abandon everything cached under the old name. `activate` deletes any
- * cache that is not this one, so a rename is also the purge.
- */
+
 const MEDIA_CACHE = 'orangchat-media-v1';
 
-/**
- * How many responses to keep. Avatars and emoji are a few KB each, so this is a
- * modest amount of disk for a set that covers every face in a busy server.
- */
+
 const MAX_ENTRIES = 600;
 
-/**
- * Nothing larger than this is stored. The point of the cache is the small
- * images that are requested again on every single render; a big file would
- * evict hundreds of them for one hit, and the origin quota is shared with the
- * IndexedDB that holds this device's encryption keys - filling it is how a
- * browser decides to throw those away.
- */
+
 const MAX_BYTES = 4 * 1024 * 1024;
 
-/**
- * Which paths are safe to serve from disk without asking.
- *
- * Attachments are deliberately absent. They are access-controlled, often large,
- * and video among them is fetched by range - all three are reasons for the
- * network to stay in the loop. They carry `immutable` and an entity tag of
- * their own, so the browser's own cache already keeps them.
- */
+
 function isCacheableMedia(url: URL): boolean {
   return (
     url.pathname.startsWith(ASSET_ROUTE) ||
@@ -82,44 +47,24 @@ function isCacheableMedia(url: URL): boolean {
 
 const ASSET_ROUTE = '/api/media/asset/';
 
-/**
- * Whether a cached response may have been replaced under the same url.
- *
- * An upload filename and a proxy url both name their own bytes - cache them and
- * you are done. `/api/media/asset/<kind>/<id>` names a *row*: changing a picture
- * keeps the url and only changes what it serves, which is why the server
- * revalidates that route rather than pinning it. Serving it cache-first and
- * never going back froze every face at whichever one this browser saw first.
- */
+
 function isMutableAsset(url: URL): boolean {
   return url.pathname.startsWith(ASSET_ROUTE);
 }
 
-/**
- * Refresh a cached asset behind the response already handed back. A failure
- * leaves the stored copy alone: offline, yesterday's portrait is the best
- * answer there is.
- */
+
 async function revalidate(cache: Cache, request: Request): Promise<void> {
   try {
-    // `no-cache` forces a conditional request rather than letting the http
-    // cache answer from the very entry this is trying to get past.
     const response = await fetch(request, { cache: 'no-cache' });
     if (!(await cacheable(response))) return;
     await cache.put(request, response);
     await trim(cache);
   } catch {
-    /* no network: keep what we have */
+
   }
 }
 
-/**
- * Drops the oldest entries once the cache outgrows its budget. `keys()` yields
- * insertion order, so this is first-in-first-out rather than true LRU: a face
- * that has been on screen all day is no more protected than one seen once. That
- * is the right trade for content this cheap to re-fetch, and it avoids writing
- * a timestamp on every read.
- */
+
 async function trim(cache: Cache): Promise<void> {
   const keys = await cache.keys();
   if (keys.length <= MAX_ENTRIES) return;
@@ -127,9 +72,6 @@ async function trim(cache: Cache): Promise<void> {
 }
 
 async function cacheable(response: Response): Promise<boolean> {
-  // A 206 is a slice, and the Cache API cannot represent that: stored beside
-  // its url it would later be handed out as the whole file. An opaque response
-  // has an unreadable status, so it can't be told apart from an error page.
   if (response.status !== 200 || response.type === 'opaque') return false;
   const declared = Number(response.headers.get('content-length'));
   return Number.isFinite(declared) && declared > 0 ? declared <= MAX_BYTES : true;
@@ -140,16 +82,12 @@ async function fromCacheOrNetwork(event: FetchEvent): Promise<Response> {
   const cache = await caches.open(MEDIA_CACHE);
   const hit = await cache.match(request);
   if (hit) {
-    // Stale-while-revalidate, and only where the bytes can actually move: the
-    // render is never held back, but the next one shows the current picture.
     if (isMutableAsset(new URL(request.url))) event.waitUntil(revalidate(cache, request));
     return hit;
   }
 
   const response = await fetch(request);
   if (await cacheable(response)) {
-    // Cache the clone, return the original: a body can only be read once, and
-    // the caller is owed the one that streams.
     void cache
       .put(request, response.clone())
       .then(() => trim(cache))
@@ -162,9 +100,6 @@ self.addEventListener('fetch', (event: FetchEvent) => {
   const request = event.request;
   if (request.method !== 'GET') return;
 
-  // A range request is asking for part of something it already has. `match`
-  // ignores the header entirely, so answering one from the cache hands a player
-  // the start of the file when it asked for the middle, and it never recovers.
   if (request.headers.has('range')) return;
 
   const url = new URL(request.url);
@@ -173,11 +108,7 @@ self.addEventListener('fetch', (event: FetchEvent) => {
   event.respondWith(fromCacheOrNetwork(event));
 });
 
-/**
- * Sent by the app when a session ends. What is stored is only ever avatars,
- * emoji and proxied embeds, but they still describe who the last person here
- * was talking to, and that should not outlive their sign-out.
- */
+
 self.addEventListener('message', (event: ExtendableMessageEvent) => {
   if ((event.data as { type?: string } | null)?.type === 'media-cache:clear') {
     event.waitUntil(caches.delete(MEDIA_CACHE));
@@ -185,9 +116,6 @@ self.addEventListener('message', (event: ExtendableMessageEvent) => {
 });
 
 self.addEventListener('install', () => {
-  // Nothing to pre-cache: this worker only keeps what the app has actually
-  // asked for. Take over straight away so the first load after an update is
-  // already served by the version that shipped with it.
   void self.skipWaiting();
 });
 
@@ -208,11 +136,7 @@ const DEVICE_KEYS = 'deviceKeys';
 const SETTINGS = 'settings';
 const NOTIFICATION_PREVIEWS = 'notificationPreviews';
 
-/**
- * How long an open client gets to fetch the missing keys before the retry.
- * Long enough for the epoch-key round trip, short enough that a notification
- * never feels delayed.
- */
+
 const SYNC_RETRY_MS = 2_000;
 
 interface StoredEpochKey {
@@ -222,12 +146,7 @@ interface StoredEpochKey {
   wrapped: ArrayBuffer;
 }
 
-/**
- * Opens the app's database without ever upgrading it. A service worker that
- * created the schema would race the page and could win with an older idea of
- * what the stores are; if the app has not run yet there is simply nothing to
- * decrypt.
- */
+
 function openDb(): Promise<IDBDatabase | null> {
   return new Promise((resolve) => {
     let request: IDBOpenDBRequest;

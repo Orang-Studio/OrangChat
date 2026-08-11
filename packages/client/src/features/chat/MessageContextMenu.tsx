@@ -34,7 +34,7 @@ import { t } from "../../lib/i18n";
 
 const copyText = (text: string) => void navigator.clipboard?.writeText(text);
 
-/** Read a message out loud. Cancels whatever was already speaking. */
+
 function speak(text: string): void {
   const synth = window.speechSynthesis;
   if (!synth || !text.trim()) return;
@@ -45,7 +45,7 @@ function speak(text: string): void {
 export interface MessageContextMenuProps {
   message: Message;
   isOwn: boolean;
-  /** Current user may delete/pin others' messages (MANAGE_MESSAGES). */
+
   canManage: boolean;
   onReply: () => void;
   onEdit: () => void;
@@ -54,10 +54,7 @@ export interface MessageContextMenuProps {
   onReport: () => void;
 }
 
-/**
- * Right-click menu for a message row. Everything here is also reachable from
- * the hover bar or a keyboard path; this is the fast way to it.
- */
+
 export function MessageContextMenu({
   message,
   isOwn,
@@ -68,8 +65,6 @@ export function MessageContextMenu({
   onTogglePin,
   onReport,
 }: MessageContextMenuProps) {
-  // The route we're on *is* the channel, DM or server alike, so the link is
-  // just the current path plus the message the `?m=` jump understands.
   const { pathname } = useLocation();
   const messageLink = `${window.location.origin}${pathname}?m=${message.id}`;
 

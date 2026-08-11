@@ -15,9 +15,9 @@ interface CreateChannelDialogProps {
   serverId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Fixes the dialog to one kind and hides the type picker. */
+
   only?: ChannelKind;
-  /** Categories the new channel can be filed under. */
+
   categories?: Channel[];
 }
 
@@ -45,11 +45,9 @@ export function CreateChannelDialog({
         ...(kind !== "category" && parentCategoryId ? { parentCategoryId } : {}),
       }),
     onSuccess: (channel) => {
-      // The channel:created broadcast also updates the cache; invalidate as a fallback.
       client.invalidateQueries({ queryKey: serverKeys.detail(serverId) });
       onOpenChange(false);
       setName("");
-      // Voice channels have no chat route - they're joined from the sidebar.
       if (channel.type === "text") {
         navigate(`/servers/${serverId}/channels/${channel.id}`);
       }

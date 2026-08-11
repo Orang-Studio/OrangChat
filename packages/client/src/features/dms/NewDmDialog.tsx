@@ -17,16 +17,15 @@ import { t } from "../../lib/i18n";
 interface NewDmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** When set, adds the picked people to this group DM instead of creating one. */
+
   addTo?: Conversation;
-  /** Start framed as a group: needs at least two people to create. */
+
   groupMode?: boolean;
 }
 
-// A group tops out at 15 people: you plus 14 others.
 const MAX_RECIPIENTS = 14;
 
-/** Pick friends - start a DM/group DM or grow an existing group. */
+
 export function NewDmDialog({ open, onOpenChange, addTo, groupMode = false }: NewDmDialogProps) {
   const selfId = useAuthStore((s) => s.user?.id);
   const navigate = useNavigate();
@@ -36,8 +35,6 @@ export function NewDmDialog({ open, onOpenChange, addTo, groupMode = false }: Ne
 
   const { data: friends } = useFriends();
 
-  // Your friends, minus yourself and anyone already in the conversation being
-  // grown, sorted by display name.
   const candidates = useMemo(() => {
     const excluded = new Set([selfId, ...(addTo?.participants.map((p) => p.id) ?? [])]);
     return (friends ?? [])

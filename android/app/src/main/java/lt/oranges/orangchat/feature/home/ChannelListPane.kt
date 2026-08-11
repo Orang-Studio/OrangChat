@@ -71,7 +71,6 @@ fun ChannelListPane(
     onOpenUserSettings: () -> Unit,
     modifier: Modifier = Modifier,
     unreads: Map<String, UnreadState> = emptyMap(),
-    /** channelId -> who is sitting in that voice channel. */
     voiceParticipants: Map<String, Map<String, VoiceState>> = emptyMap(),
     memberNames: Map<String, String> = emptyMap(),
     onMarkRead: (Channel) -> Unit = {},
@@ -88,9 +87,6 @@ fun ChannelListPane(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(c.surface1)
-                // The icons carry their own 48dp height now, which is exactly what
-                // the old 14dp vertical padding around a 20dp glyph came to - so the
-                // header keeps its height while the targets grow.
                 .padding(start = 16.dp, end = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -197,8 +193,6 @@ private fun ChannelRow(
             .padding(horizontal = 8.dp, vertical = 1.dp)
             .clip(RoundedCornerShape(OrangRadius.md))
             .background(if (selected) c.primarySoft else androidx.compose.ui.graphics.Color.Transparent)
-            // Long-press stands in for the web client's right-click menu; the
-            // tap still opens the channel.
             .combinedClickable(
                 onClick = { onClick(channel) },
                 onLongClick = {
@@ -215,7 +209,6 @@ private fun ChannelRow(
             text = channel.name ?: "channel",
             color = when {
                 selected -> c.ink
-                // Unread channels read brighter, as on the web.
                 unread -> c.ink
                 else -> c.inkSecondary
             },
@@ -224,8 +217,6 @@ private fun ChannelRow(
             modifier = Modifier.weight(1f),
         )
         MentionBadge(mentionCount)
-        // Keeping the anchor at the trailing edge leaves the channel name
-        // visible while its action is open.
         Box {
             OrangDropdownMenu(
                 expanded = menuOpen,
@@ -238,7 +229,6 @@ private fun ChannelRow(
             )
         }
     }
-    // Who is already in this voice channel, as on the web.
     voiceMembers.values.forEach { member ->
         Row(
             modifier = Modifier.padding(start = 42.dp, top = 1.dp, bottom = 1.dp),

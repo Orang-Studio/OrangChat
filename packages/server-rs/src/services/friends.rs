@@ -1,13 +1,9 @@
-//! Friendships & friend requests. A single `Friendship` row models both a
-//! pending request (status="pending", requester → addressee) and an accepted
-//! friendship (status="accepted"). No TS equivalent - new for the Rust backend.
 
 use crate::error::{AppError, AppResult};
 use crate::ids::cuid;
 use crate::models::{FriendJoinRow, UserRow};
 use crate::state::AppState;
 
-/// The other user in a friendship, joined against the viewer.
 const OTHER_USER_JOIN: &str =
     r#"u.id = CASE WHEN f."requesterId" = $1 THEN f."addresseeId" ELSE f."requesterId" END"#;
 
@@ -53,15 +49,12 @@ pub async fn list_outgoing(state: &AppState, user_id: &str) -> AppResult<Vec<Fri
     Ok(rows)
 }
 
-/// Result of sending a request: the resulting row (as seen by the sender) and
-/// whether it was auto-accepted (i.e. it matched an existing inbound request).
 pub struct SendOutcome {
     pub row: FriendJoinRow,
     pub target: UserRow,
     pub accepted: bool,
 }
 
-/// Fetch a single friendship joined with the other party, from `user_id`'s view.
 async fn fetch_joined(
     state: &AppState,
     user_id: &str,
@@ -114,8 +107,6 @@ pub async fn have_mutual_friend(state: &AppState, a: &str, b: &str) -> AppResult
 }
 
 async fn can_request(state: &AppState, requester_id: &str, target: &UserRow) -> AppResult<bool> {
-    // Same rule as can_dm: a locked-down account accepts nothing new, whatever
-    // its own privacy setting says.
     if target.lockdown_at.is_some() {
         return Ok(false);
     }
@@ -131,8 +122,6 @@ pub async fn send_request(
     requester_id: &str,
     target_username: &str,
 ) -> AppResult<SendOutcome> {
-    // Usernames are unique case-insensitively (see the lower(username) index), so
-    // adding a friend must not care how they typed it.
     let target: Option<UserRow> =
         sqlx::query_as(r#"SELECT * FROM "User" WHERE lower(username) = lower($1)"#)
             .bind(target_username)
@@ -143,7 +132,6 @@ pub async fn send_request(
         return Err(AppError::BadRequest("You cannot add yourself".into()));
     }
 
-    // Any existing edge between the two, in either direction.
     let existing: Option<(String, String, String)> = sqlx::query_as(
         r#"SELECT id, status, "requesterId" FROM "Friendship"
            WHERE ("requesterId" = $1 AND "addresseeId" = $2)
@@ -160,11 +148,9 @@ pub async fn send_request(
             if status == "accepted" {
                 return Err(AppError::Conflict("Already friends".into()));
             }
-            // status == pending
             if req_id == requester_id {
                 return Err(AppError::Conflict("Friend request already sent".into()));
             }
-            // Inbound pending request from the target → accept it.
             sqlx::query(
                 r#"UPDATE "Friendship" SET status = 'accepted', "updatedAt" = now() WHERE id = $1"#,
             )
@@ -181,8 +167,6 @@ pub async fn send_request(
             });
         }
         None => {
-            // Only a brand-new request is gated: accepting an inbound one above
-            // is the target's own choice, whatever their setting now says.
             if !can_request(state, requester_id, &target).await? {
                 return Err(AppError::Permission(
                     "This person isn't accepting friend requests".into(),
@@ -212,8 +196,6 @@ pub async fn send_request(
     })
 }
 
-/// Accept a pending request addressed to `user_id`. Returns the row from the
-/// accepter's view plus the requester's id (to notify them).
 pub async fn accept_request(
     state: &AppState,
     user_id: &str,
@@ -236,8 +218,6 @@ pub async fn accept_request(
     Ok((row, requester_id))
 }
 
-/// Decline (addressee) or cancel (requester) a pending request. Returns the id
-/// of the *other* party so they can be notified the request went away.
 pub async fn delete_request(
     state: &AppState,
     user_id: &str,
@@ -256,7 +236,6 @@ pub async fn delete_request(
     Ok(if req == user_id { addr } else { req })
 }
 
-/// Remove an accepted friend by their user id. Returns the removed friend's id.
 pub async fn remove_friend(state: &AppState, user_id: &str, other_id: &str) -> AppResult<String> {
     let deleted: Option<String> = sqlx::query_scalar(
         r#"DELETE FROM "Friendship"

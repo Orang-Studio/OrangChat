@@ -1,16 +1,12 @@
-//! Direct-message / group-DM channels. Mirrors dm-service.ts.
 
 use crate::error::{AppError, AppResult};
 use crate::ids::cuid;
 use crate::models::{ChannelRow, UserRow};
 use crate::state::AppState;
 
-/// A group DM tops out at 15 people (the creator plus 14).
 pub const MAX_GROUP_SIZE: i64 = 15;
 
 pub async fn can_dm(state: &AppState, requester_id: &str, target_id: &str) -> AppResult<bool> {
-    // Lockdown outranks the target's own setting: it means "nothing new reaches
-    // this account", which a permissive dmPrivacy must not undo.
     let row: Option<(String, Option<chrono::NaiveDateTime>)> =
         sqlx::query_as(r#"SELECT "dmPrivacy", "lockdownAt" FROM "User" WHERE id = $1"#)
             .bind(target_id)
@@ -85,8 +81,6 @@ pub async fn get_or_create_direct_channel(
         }
     }
 
-    // Opening a *new* conversation is what privacy gates; an existing thread
-    // above stays reachable so tightening the setting can't strand history.
     for target_id in &participant_ids {
         if target_id == requester_id {
             continue;
@@ -166,21 +160,11 @@ pub async fn get_conversation_participants(
     )
 }
 
-/// What leaving a conversation actually did, so the caller can tell the other
-/// participants the right thing.
 pub enum LeaveOutcome {
-    /// A group DM: the user is gone from it and can no longer read it.
     Left,
-    /// A one-to-one DM: hidden for this user only, and silently restored the
-    /// next time a message arrives.
     Closed,
 }
 
-/// Removes a DM from one user's list.
-///
-/// The two channel types are genuinely different operations rather than one
-/// with a flag - see the 20260730160000_dm_leave_and_close migration for why a
-/// one-to-one DM must keep its membership.
 pub async fn leave_conversation(
     state: &AppState,
     channel_id: &str,
@@ -232,10 +216,6 @@ pub async fn leave_conversation(
     }
 }
 
-/// Un-hides a closed one-to-one DM for everyone in it.
-///
-/// Called when a message lands. Without this a closed conversation would stay
-/// invisible while quietly accumulating messages the user is never shown.
 pub async fn reopen_for_new_message(state: &AppState, channel_id: &str) -> AppResult<Vec<String>> {
     Ok(sqlx::query_scalar(
         r#"UPDATE "ChannelParticipant" SET "hiddenAt" = NULL
@@ -274,7 +254,6 @@ pub async fn add_group_participants(
         ));
     }
 
-    // A group tops out at 15 people, so a grow can't push it past that.
     let current: i64 =
         sqlx::query_scalar(r#"SELECT count(*) FROM "ChannelParticipant" WHERE "channelId" = $1"#)
             .bind(channel_id)
@@ -286,9 +265,6 @@ pub async fn add_group_participants(
         )));
     }
 
-    // Being pulled into a group thread opens a conversation just as much as
-    // starting one does, so it answers to the same privacy gate - otherwise
-    // dmPrivacy is bypassed by creating a group and adding the target to it.
     for uid in new_user_ids {
         if uid == requester_id {
             continue;

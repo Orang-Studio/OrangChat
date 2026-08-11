@@ -73,8 +73,6 @@ class AuthRepository @Inject constructor(
     val currentUser: SelfUser?
         get() = (_session.value as? SessionState.Authenticated)?.user
 
-    /** On cold start: if we have a refresh cookie, /auth/refresh mints a token,
-     *  then /auth/me hydrates the profile. Falls back to Unauthenticated. */
     suspend fun restoreSession() {
         _session.value = SessionState.Loading
         try {
@@ -87,17 +85,11 @@ class AuthRepository @Inject constructor(
             }
             return
         } catch (_: Exception) {
-            // Fall through to one refresh attempt; the access token may simply
-            // have expired while the app was closed.
         }
 
         try {
             applyAuth(api.refresh())
         } catch (e: Exception) {
-            // Only the server saying no ends a session. A dropped link, a DNS
-            // failure or a 5xx means the account is fine and unreachable, so the
-            // last known profile is restored and the socket reconnects behind it.
-            // Signing out here is what made a lost wifi look like a logout.
             if (isSessionRejected(e)) {
                 cachedUser()?.id?.let { offlineCache.clear(it) }
                 tokenStore.clear()
@@ -110,17 +102,6 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    /**
-     * True only for a definitive rejection from the server, never for reachability.
-     *
-     * The status code on its own does not establish that, because anything
-     * between the phone and us can answer with one: captive portals, corporate
-     * proxies and CDNs under strain all serve 401/403 HTML pages, and believing
-     * one of those signs the user out of a perfectly good account. A real
-     * rejection carries our own JSON error body (AppError's IntoResponse), and
-     * `/auth/refresh` only ever raises Unauthorized - a 403 on this route came
-     * from something in the middle, so it counts as unreachable.
-     */
     private fun isSessionRejected(e: Exception): Boolean {
         if (e !is HttpException || e.code() != 401) return false
         val body = e.response()?.errorBody() ?: return false
@@ -135,16 +116,6 @@ class AuthRepository @Inject constructor(
             runCatching { json.decodeFromString(SelfUser.serializer(), it) }.getOrNull()
         }
 
-    /**
-     * First half of a login. A correct password buys one second factor - a
-     * passkey, an authenticator code, or a mailed one - so this usually returns
-     * the challenge that finishes the sign-in rather than flipping [session].
-     *
-     * The exception is an authenticator code sent with the password: that rung
-     * ends the login, so the session is opened here and the caller sees a
-     * challenge carrying [LoginChallenge.user]. [lostAuthenticator] steps past
-     * that rung down to the mailed code, for a phone left at home.
-     */
     suspend fun login(
         email: String,
         password: String,
@@ -166,16 +137,9 @@ class AuthRepository @Inject constructor(
             if (user != null && tokens != null) applyAuth(AuthResult(user, tokens))
         }
 
-    // ── Passkeys ────────────────────────────────────────
 
-    /** Opens a sign-in ceremony for a device that hasn't said who it is. */
     suspend fun startPasskeySignIn(): PasskeyChallenge = api.startPasskeySignIn()
 
-    /**
-     * Closes a ceremony - either shape - and opens the session. This is the whole
-     * login: the authenticator already proved the device, the person and the
-     * origin, so nothing weaker is asked for on top.
-     */
     suspend fun finishPasskeySignIn(ceremonyToken: String, response: JsonElement) {
         applyAuth(api.finishPasskeySignIn(PasskeyFinishRequest(ceremonyToken, response)))
     }
@@ -200,7 +164,6 @@ class AuthRepository @Inject constructor(
         api.deletePasskey(id, TwoFactorDisableRequest(password?.ifBlank { null }, code.trim()))
     }
 
-    /** Second half: the mailed code is what actually opens the session. */
     suspend fun verifyEmailCode(loginToken: String, code: String) {
         applyAuth(api.verifyEmailTwoFactor(EmailTwoFactorRequest(loginToken, code.trim())))
     }
@@ -209,7 +172,6 @@ class AuthRepository @Inject constructor(
         api.resendEmailTwoFactor(ResendEmailTwoFactorRequest(loginToken))
     }
 
-    /** Creates the account; it stays unusable until the emailed link is opened. */
     suspend fun signup(email: String, username: String, password: String, displayName: String?) {
         api.signup(
             SignupRequest(
@@ -227,10 +189,6 @@ class AuthRepository @Inject constructor(
         return updated
     }
 
-    /**
-     * Patch profile fields. Every parameter is null-by-default meaning "leave
-     * alone"; pass "" to clear a field such as the avatar.
-     */
     suspend fun updateProfile(
         username: String? = null,
         displayName: String? = null,
@@ -270,10 +228,8 @@ class AuthRepository @Inject constructor(
     suspend fun uploadImage(part: MultipartBody.Part, kind: String): UploadResponse =
         api.uploadImage(part, kind)
 
-    /** The running backend's health payload, including its version. */
     suspend fun health() = api.health()
 
-    // ── Two-factor auth ─────────────────────────────────
     suspend fun twoFactorStatus(): TwoFactorStatus = api.getTwoFactorStatus()
 
     suspend fun setupTwoFactor(password: String?): TwoFactorSetup =
@@ -281,7 +237,6 @@ class AuthRepository @Inject constructor(
 
     suspend fun enableTwoFactor(code: String): TwoFactorEnableResult {
         val result = api.enableTwoFactor(TwoFactorCodeRequest(code.trim()))
-        // Reflect the new state in the cached self so settings update at once.
         currentUser?.let { _session.value = SessionState.Authenticated(it.copy(twoFactorEnabled = true)) }
         return result
     }
@@ -297,20 +252,16 @@ class AuthRepository @Inject constructor(
 
     suspend fun accountStanding(): AccountStanding = api.getAccountStanding()
 
-    // ── Devices ─────────────────────────────────────────
     suspend fun sessions(): SessionsResult = api.getSessions()
 
     suspend fun revokeSession(jti: String): RevokeResult = api.revokeSession(jti)
 
     suspend fun revokeOtherSessions(): RevokeResult = api.revokeOtherSessions()
 
-    /** QR sign-in: tell the server this phone scanned a web code. */
     suspend fun qrScan(token: String) = api.qrScan(QrTokenRequest(token))
 
-    /** QR sign-in: approve the code, opening a web session for this account. */
     suspend fun qrApprove(token: String) = api.qrApprove(QrTokenRequest(token))
 
-    /** Freezes/unfreezes the account; the password is only needed to lift it. */
     suspend fun setLockdown(on: Boolean, password: String?): LockdownResult {
         val result = api.setLockdown(LockdownRequest(on, password?.ifBlank { null }))
         currentUser?.let {
@@ -319,12 +270,6 @@ class AuthRepository @Inject constructor(
         return result
     }
 
-    // ── Credentials ─────────────────────────────────────
-    /**
-     * The server revokes every refresh token on success, including this device's.
-     * The access token stays valid until it expires, so the session survives long
-     * enough to show the result and the next refresh is what signs us out.
-     */
     suspend fun changePassword(password: String?, newPassword: String, code: String): ChangePasswordResult {
         val result = api.changePassword(
             ChangePasswordRequest(password?.ifBlank { null }, newPassword, code.trim()),
@@ -341,11 +286,9 @@ class AuthRepository @Inject constructor(
         return result
     }
 
-    /** Irreversible: wipes the user's messages everywhere, including left servers. */
     suspend fun deleteAllMessages(password: String?, code: String): DeleteAllMessagesResult =
         api.deleteAllMessages(DeleteAllMessagesRequest(password?.ifBlank { null }, code.trim()))
 
-    /** Irreversible. On success the local session is torn down like a sign-out. */
     suspend fun deleteAccount(password: String?, username: String, code: String): DeleteAccountResult {
         val userId = currentUser?.id
         val result = api.deleteAccount(
@@ -363,7 +306,6 @@ class AuthRepository @Inject constructor(
         try {
             api.logout()
         } catch (_: Exception) {
-            // Best-effort; clear locally regardless.
         }
         userId?.let { offlineCache.clear(it) }
         tokenStore.clear()
@@ -378,7 +320,6 @@ class AuthRepository @Inject constructor(
 
     private fun onAuthenticated(user: SelfUser) {
         _session.value = SessionState.Authenticated(user)
-        // Kept for the offline cold start in restoreSession.
         tokenStore.cachedUser =
             runCatching { json.encodeToString(SelfUser.serializer(), user) }.getOrNull()
         socketManager.connect()

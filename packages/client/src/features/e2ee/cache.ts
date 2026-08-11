@@ -9,15 +9,7 @@ import {
   sealLocal,
 } from './keystore';
 
-/**
- * What a decrypted message leaves behind on this device. The server cannot read
- * any of it, and neither can an exfiltrated IndexedDB dump: every record is
- * sealed under the same non-extractable vault key as the conversation keys.
- *
- * This cache is not an optimisation. Search, reply previews and notification
- * history all have to work without the server being able to read anything, so
- * this is where they read from.
- */
+
 export interface CachedMessage {
   id: string;
   channelId: string;
@@ -39,7 +31,7 @@ interface StoredBody {
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-/** In-memory mirror so a rendered list does not hit IndexedDB per message. */
+
 const hot = new Map<string, CachedMessage>();
 
 export async function rememberMessage(
@@ -75,7 +67,6 @@ export async function rememberMessage(
       ...sealed,
     });
   } catch {
-    // A cache that cannot be written costs offline search, not correctness.
   }
   return entry;
 }
@@ -97,8 +88,6 @@ async function hydrate(record: Awaited<ReturnType<typeof getCachedMessage>>) {
     hot.set(entry.id, entry);
     return entry;
   } catch {
-    // A record sealed under a vault key this origin no longer has is inert, and
-    // dropping it is right: the message is still readable from its ciphertext.
     await deleteCachedMessage(record.id).catch(() => {});
     return null;
   }
@@ -110,7 +99,7 @@ export async function recallMessage(id: string): Promise<CachedMessage | null> {
   return hydrate(await getCachedMessage(id).catch(() => null));
 }
 
-/** Pulls a conversation's cache into memory so a reload does not re-decrypt. */
+
 export async function warmChannel(channelId: string): Promise<void> {
   try {
     const records = await cachedMessagesIn(channelId);
@@ -118,7 +107,6 @@ export async function warmChannel(channelId: string): Promise<void> {
       if (!hot.has(record.id)) await hydrate(record);
     }
   } catch {
-    // Nothing cached yet, or storage is unavailable; decryption still works.
   }
 }
 
@@ -135,11 +123,7 @@ export interface LocalSearchHit {
   text: string;
 }
 
-/**
- * The client-side half of search. Server-side `content ILIKE` cannot see an
- * encrypted conversation at all - `content` is the empty string there - so a DM
- * search that returned nothing would be a silent lie rather than a limitation.
- */
+
 export async function searchLocal(
   query: string,
   options: { channelId?: string; channelIds?: readonly string[]; limit?: number } = {},

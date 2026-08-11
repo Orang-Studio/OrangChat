@@ -4,11 +4,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * Profile CSS is authored by one user and rendered in other users' clients, so
- * these are security tests as much as parser tests: anything that escapes the
- * <style> element, reaches the network, or leaves the card is a defect.
- */
 class ProfileCssTest {
 
     private fun assertKeeps(css: String, vararg expected: String) {

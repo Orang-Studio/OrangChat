@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 """Extract candidate English UI literals from Kotlin into an Android catalogue.
 
 This is deliberately a catalogue generator rather than a source rewriter: Kotlin
@@ -66,9 +66,6 @@ def main() -> None:
         "         values and plural sentences before translating. -->",
     ]
     for name, (value, source) in sorted(values.items()):
-        # Quotes are legal in element text. Using numeric apostrophe entities
-        # makes aapt interpret them as malformed unicode escapes in some AGP
-        # versions, so escape only XML metacharacters that need it here.
         escaped = html.escape(value, quote=False).replace("'", "\\'").replace('"', '\\"')
         lines.append(f'    <string name="{name}" formatted="false">{escaped}</string>')
     lines.append("</resources>")

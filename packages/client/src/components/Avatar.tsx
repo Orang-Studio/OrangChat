@@ -12,16 +12,16 @@ export const STATUS_LABEL: Record<PresenceStatus, string> = {
 
 interface AvatarProps {
   user: Pick<User, "displayName" | "avatarUrl"> & Partial<Pick<User, "devices">>;
-  /** Presence dot; omit to hide (e.g. in message rows). */
+
   status?: PresenceStatus;
   className?: string;
-  /** Extra classes on the <img>; lets callers hang CSS hooks off it. */
+
   imgClassName?: string;
-  /** Extra classes on the initial-letter stand-in shown when there is no image. */
+
   fallbackClassName?: string;
 }
 
-/** User avatar with initial fallback and optional presence dot. */
+
 export function Avatar({ user, status, className, imgClassName, fallbackClassName }: AvatarProps) {
   const device = primaryDevice(user.devices);
   const label = status

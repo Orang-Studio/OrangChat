@@ -16,28 +16,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 import lt.oranges.orangchat.data.model.Message
 
-/**
- * Where this device's private keys live (docs/E2EE.md §3).
- *
- * The identity keys are generated inside the Android Keystore - StrongBox when
- * the hardware has it - and are **non-extractable**: their bytes never exist in
- * app memory, so code that can use them while the app is running is a bad day,
- * while code that could copy them would own the account's future traffic on
- * every device that trusts it. P-256 rather than X25519 exactly because it can
- * be non-extractable on both platforms.
- *
- * Conversation keys are unavoidably in memory to do bulk decryption. At rest
- * they live in EncryptedSharedPreferences, whose master key is itself Keystore
- * backed, so a copied preferences file is inert off this device.
- */
 class E2eeKeystore(context: Context) {
 
     private val appContext: Context = context.applicationContext
 
-    // Both are built on first use rather than on construction: opening the
-    // Keystore and unwrapping the preference keyset costs real milliseconds, and
-    // holding a keystore reference must not be something a caller has to think
-    // about before doing it.
     private val prefs: SharedPreferences by lazy {
         val masterKey = MasterKey.Builder(appContext)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -63,7 +45,6 @@ class E2eeKeystore(context: Context) {
         val ikDhPub: ByteArray,
     )
 
-    // ── Identity ──────────────────────────────────────────
 
     fun identity(): LocalIdentity? {
         val userId = prefs.getString(KEY_USER, null) ?: return null
@@ -89,12 +70,6 @@ class E2eeKeystore(context: Context) {
 
     fun hasKeys(): Boolean = keyStore.containsAlias(ALIAS_SIG) && keyStore.containsAlias(ALIAS_DH)
 
-    /**
-     * Mints this device's identity. Both pairs are generated in the Keystore and
-     * never leave it; `setIsStrongBoxBacked` is attempted first and falls back,
-     * because a device without StrongBox must still get a TEE-backed key rather
-     * than no key at all.
-     */
     fun generateIdentityKeys() {
         generate(ALIAS_SIG, KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY)
         generate(ALIAS_DH, KeyProperties.PURPOSE_AGREE_KEY)
@@ -141,7 +116,6 @@ class E2eeKeystore(context: Context) {
         return E2ee.sign(key, message)
     }
 
-    // ── Conversation keys ─────────────────────────────────
 
     fun saveEpochKey(channelId: String, epoch: Int, key: ByteArray) {
         prefs.edit().putString(epochPrefKey(channelId, epoch), E2ee.toBase64(key)).apply()
@@ -165,10 +139,6 @@ class E2eeKeystore(context: Context) {
         val key: ByteArray,
     )
 
-    /**
-     * The history archive copied during a device transfer. Identity private keys
-     * are deliberately absent: the receiving device has already made its own.
-     */
     fun allEpochKeys(): List<EpochKey> =
         prefs.all.entries.mapNotNull { (prefKey, value) ->
             if (!prefKey.startsWith(PREFIX_EPOCH) || value !is String) return@mapNotNull null
@@ -183,12 +153,6 @@ class E2eeKeystore(context: Context) {
             )
         }.sortedWith(compareBy(EpochKey::channelId, EpochKey::epoch))
 
-    /**
-     * Hands out the next per-message sequence number for an epoch. The whole
-     * safety argument for the fixed message nonce rests on this never repeating
-     * for one (conversation key, device), so a client that cannot prove
-     * monotonicity must mint a new epoch rather than guess.
-     */
     @Synchronized
     fun reserveSeq(channelId: String, epoch: Int): Int {
         val key = "$PREFIX_SEQ$channelId:$epoch"
@@ -197,7 +161,6 @@ class E2eeKeystore(context: Context) {
         return seq
     }
 
-    // ── Pins and gossip ───────────────────────────────────
 
     data class Pin(
         val userId: String,
@@ -232,12 +195,6 @@ class E2eeKeystore(context: Context) {
         prefs.edit().putString("$PREFIX_PIN${pin.userId}", json.toString()).apply()
     }
 
-    /**
-     * Puts an account back to first-contact state. Only for accepting an
-     * identity change out loud - a pin is a commitment, and discarding one
-     * quietly is indistinguishable from losing the memory that catches a
-     * server out.
-     */
     fun deletePin(userId: String) {
         prefs.edit().remove("$PREFIX_PIN$userId").apply()
     }
@@ -248,7 +205,6 @@ class E2eeKeystore(context: Context) {
 
     fun globalStrict(): Boolean = prefs.getBoolean(KEY_GLOBAL_STRICT, false)
 
-    /** Per-conversation policy; absent follows the account-wide default. */
     fun setStrictFor(channelId: String, enabled: Boolean?) {
         val edit = prefs.edit()
         if (enabled == null) edit.remove("$PREFIX_STRICT$channelId")
@@ -262,13 +218,7 @@ class E2eeKeystore(context: Context) {
         return if (prefs.contains(key)) prefs.getBoolean(key, false) else globalStrict()
     }
 
-    // ── Device signing keys, for the notification path ────
 
-    /**
-     * Signing keys of devices whose whole chain has already been replayed and
-     * accepted. The notification path reads them so a push can still check the
-     * sender's signature (§2) without being able to re-run the verification.
-     */
     fun rememberDeviceKey(deviceId: String, userId: String, ikSigPub: String) {
         prefs.edit().putString("$PREFIX_DEVICE$deviceId", "$userId:$ikSigPub").apply()
     }
@@ -280,7 +230,6 @@ class E2eeKeystore(context: Context) {
         return raw.substring(0, at) to E2ee.fromBase64(raw.substring(at + 1))
     }
 
-    // ── Local message cache ───────────────────────────────
 
     fun cacheMessage(message: Message, payload: MessagePayload) {
         prefs.edit()
@@ -307,7 +256,6 @@ class E2eeKeystore(context: Context) {
             ?.takeIf(String::isNotEmpty)
             ?.let { runCatching { E2eePayloads.decode(E2ee.fromBase64(it)) }.getOrNull() }
 
-    /** Add searchable metadata to records written before the Android index had it. */
     fun backfillCachedMessageMetadata(message: Message, sentAt: String? = null) {
         val key = "$PREFIX_MESSAGE${message.id}"
         val raw = prefs.getString(key, null) ?: return
@@ -364,7 +312,6 @@ class E2eeKeystore(context: Context) {
         val text: String,
     )
 
-    /** Local search over encrypted messages this device has actually opened. */
     fun searchCached(
         query: String,
         channelIds: Set<String>? = null,
@@ -382,9 +329,6 @@ class E2eeKeystore(context: Context) {
             CachedMessage(
                 id = key.removePrefix(PREFIX_MESSAGE),
                 channelId = cachedChannelId,
-                // Records written by older releases did not carry these two
-                // fields. They remain searchable and the UI resolves whatever
-                // metadata it can from its conversation/member directory.
                 authorId = json.optString("a"),
                 createdAt = json.optString("d"),
                 text = text,
@@ -440,11 +384,6 @@ class E2eeKeystore(context: Context) {
             )
         }
 
-    /**
-     * Forgets only this device's own identity, so a revoked phone can enrol
-     * again. What it learned about other people - the contacts checked in
-     * person, the pinned logs - was never in question and is left alone.
-     */
     fun clearIdentity() {
         prefs.edit()
             .remove(KEY_USER)
@@ -455,7 +394,6 @@ class E2eeKeystore(context: Context) {
         runCatching { keyStore.deleteEntry(ALIAS_DH) }
     }
 
-    /** Signing out must not leave a readable history behind for the next account. */
     fun clear() {
         prefs.edit().clear().apply()
         runCatching { keyStore.deleteEntry(ALIAS_SIG) }
@@ -468,13 +406,6 @@ class E2eeKeystore(context: Context) {
         @Volatile
         private var instance: E2eeKeystore? = null
 
-        /**
-         * The one instance for the process, shared with the Hilt binding. A
-         * keystore built per caller means the Keystore and the preference keyset
-         * are opened again for every one of them; doing that from composition,
-         * once per attachment on screen, is how a chat full of encrypted files
-         * became an ANR.
-         */
         fun get(context: Context): E2eeKeystore =
             instance ?: synchronized(this) {
                 instance ?: E2eeKeystore(context.applicationContext).also { instance = it }

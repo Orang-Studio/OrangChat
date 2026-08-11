@@ -1,6 +1,6 @@
 # @orangchat/bot
 
-Official SDK for building [OrangChat](https://orangchat.lt) bots — a typed REST
+Official SDK for building [OrangChat](https://orangchat.lt) bots - a typed REST
 client plus a realtime gateway.
 
 ```bash

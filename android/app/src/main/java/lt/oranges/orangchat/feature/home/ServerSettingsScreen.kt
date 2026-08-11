@@ -52,13 +52,6 @@ import lt.oranges.orangchat.ui.components.OrangTextField
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-/**
- * Server management: rename, invite, leave, delete. Counterpart of the web
- * client's ServerSettingsDialog Overview tab.
- *
- * Owners see Delete and cannot leave (the backend refuses - a server without an
- * owner would be orphaned); everyone else sees Leave.
- */
 @Composable
 fun ServerSettingsScreen(
     detail: ServerDetail,
@@ -164,9 +157,6 @@ fun ServerSettingsScreen(
 
             Section(AppStrings.get(context, R.string.catalog_invite_people_e1eb97af)) {
                 inviteCode?.let { code ->
-                    // A link rather than the bare code: it unfurls into a join
-                    // card when posted in chat, and opens straight into the app
-                    // for anyone who has it installed.
                     val link = InviteLink.urlFor(code)
                     Row(
                         modifier = Modifier

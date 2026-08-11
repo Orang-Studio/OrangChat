@@ -10,7 +10,7 @@ export const emojiKeys = {
   server: (serverId: string) => ["emojis", "server", serverId] as const,
 };
 
-/** Every custom emoji the viewer can type, across all their servers. */
+
 export function useUsableEmojis() {
   return useQuery({ queryKey: emojiKeys.usable, queryFn: listUsableEmojis });
 }
@@ -23,11 +23,7 @@ export function useServerEmojis(serverId: string | undefined) {
   });
 }
 
-/**
- * id → emoji, for resolving `<:name:id>` while rendering. Messages can name an
- * emoji the viewer has no access to (it was deleted, or lives in a server they
- * are not in); those simply miss and render as text.
- */
+
 export function useEmojiMap(): Record<string, Emoji> {
   const { data } = useUsableEmojis();
   return useMemo(
@@ -36,7 +32,7 @@ export function useEmojiMap(): Record<string, Emoji> {
   );
 }
 
-/** Add a message's display-only emoji to the viewer's picker-scoped map. */
+
 export function withMessageEmojis(
   usable: Record<string, Emoji>,
   messageEmojis: Emoji[] | undefined,
@@ -48,7 +44,7 @@ export function withMessageEmojis(
   };
 }
 
-/** Convert manually typed `:name:` references to durable message tokens. */
+
 export function normalizeCustomEmojiNames(
   content: string,
   emojis: Record<string, Emoji>,

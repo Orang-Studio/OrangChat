@@ -13,7 +13,7 @@ const FIXED_DESIGN_PATHS = new Set([
   "/legal-notice",
 ]);
 
-/** Landing and legal pages always use the shipped OrangChat design tokens. */
+
 export function allowsCssOverrides(pathname: string): boolean {
   const normalized = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
   return !FIXED_DESIGN_PATHS.has(normalized);
@@ -26,7 +26,7 @@ export function setCssOverridesForPath(pathname: string): void {
   if (!enabled) applyCustomCss(null);
 }
 
-/** Keep global style injectors aligned with the route before the browser paints. */
+
 export function CssOverrideScope() {
   const { pathname } = useLocation();
 

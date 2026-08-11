@@ -8,14 +8,7 @@ import { Button } from "../../components/ui/Button";
 import { getAuditLog } from "./api";
 import { t } from "../../lib/i18n";
 
-/**
- * Every action the server records, in the order it recorded them.
- *
- * The wording is deliberately plain rather than templated per action: the log
- * is read when something has gone wrong and someone is trying to work out who
- * did it, so an unfamiliar action name shown verbatim is more useful than a
- * pretty sentence that quietly omits the ones nobody wrote a phrasing for.
- */
+
 const ACTION_LABELS: Record<string, string> = {
   "server.update": "updated the server",
   "channel.create": "created a channel",
@@ -95,8 +88,6 @@ export function AuditLogTab({ server }: { server: Server }) {
 
 function AuditRow({ entry }: { entry: AuditLogEntry }) {
   const changed = Object.keys(entry.changes);
-  // A deleted account leaves its entries behind on purpose - the action still
-  // happened, and hiding it would make the log lie by omission.
   const actorName = entry.actor?.displayName ?? "A deleted account";
 
   return (

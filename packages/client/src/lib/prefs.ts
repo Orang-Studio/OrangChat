@@ -1,10 +1,7 @@
 import { create } from "zustand";
 import { applyBrandReplacement } from "./brandReplacement";
 
-/**
- * Device-local preferences. These never reach the server: they describe this
- * browser (which camera, how big the text), not the account.
- */
+
 export interface LocalPrefs {
   fontScale: number;
   reducedMotion: boolean;
@@ -55,17 +52,12 @@ function write(prefs: LocalPrefs): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
   } catch {
-    // Storage unavailable (private mode) - prefs just won't persist.
   }
 }
 
 export const usePrefs = create<LocalPrefs>(() => read());
 
-/**
- * Push prefs into the DOM. Font scale rides on the root font-size so every
- * rem-based Tailwind utility follows it; the rest are data attributes that
- * index.css keys off.
- */
+
 export function applyPrefs(prefs: LocalPrefs): void {
   const root = document.documentElement;
   const scale = Math.min(Math.max(prefs.fontScale, FONT_SCALE_MIN), FONT_SCALE_MAX);

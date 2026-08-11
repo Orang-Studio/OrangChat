@@ -26,14 +26,6 @@ import lt.oranges.orangchat.data.model.ServerDetail
 import lt.oranges.orangchat.data.model.Sound
 import lt.oranges.orangchat.data.model.UnreadState
 
-/**
- * Encrypted, account-scoped snapshots used to paint the authenticated shell
- * before the network answers and to keep recent conversations readable when it
- * cannot answer at all.
- *
- * Files live under noBackupFilesDir: they are device-local copies, not an
- * account backup, and every byte is sealed with a key held by Android Keystore.
- */
 @Singleton
 class OfflineCache @Inject constructor(
     @ApplicationContext context: Context,
@@ -46,12 +38,6 @@ class OfflineCache @Inject constructor(
         val incomingRequests: List<FriendRequest> = emptyList(),
         val outgoingRequests: List<FriendRequest> = emptyList(),
         val unreads: List<UnreadState> = emptyList(),
-        /**
-         * Custom emoji and soundboard clips span every server the account is in,
-         * so they belong to the account snapshot rather than any one server's.
-         * Without them a cached message paints its `<:name:id>` tokens as raw
-         * text until the network answers, which looks like broken history.
-         */
         val emojis: List<Emoji> = emptyList(),
         val sounds: List<Sound> = emptyList(),
     )
@@ -117,7 +103,6 @@ class OfflineCache @Inject constructor(
             )
         }
 
-    /** Search readable rows retained for offline history, including plaintext DMs. */
     suspend fun searchMessages(
         userId: String,
         query: String,
@@ -140,7 +125,6 @@ class OfflineCache @Inject constructor(
             .toList()
     }
 
-    /** Explicit sign-out must leave nothing another account can recover. */
     suspend fun clear(userId: String) = withCacheLock {
         navigationHot.remove(userId)
         accountDir(userId).deleteRecursively()
@@ -166,30 +150,11 @@ class OfflineCache @Inject constructor(
                 json.decodeFromString<T>(input.readText())
             }
         }.getOrElse {
-            // An interrupted/obsolete snapshot is disposable. A network refresh
-            // will recreate it, while repeatedly retrying corrupt ciphertext is
-            // both slow and incapable of succeeding.
             file.delete()
             null
         }
     }
 
-    /**
-     * Writes [value] to [file], atomically and readably.
-     *
-     * The subtle part is the staging path. EncryptedFile seals a file against
-     * its own *name*: it hands `File.getName()` to Tink as the AEAD's
-     * associated data, on the way in and again on the way out. Staging beside
-     * the target as `<name>.pending` and renaming - the ordinary atomic-write
-     * move - therefore leaves a file sealed under one name and opened under
-     * another, so its tag can never verify. Every snapshot written that way
-     * came back as a decryption failure that [read] dutifully treated as
-     * corruption and deleted, which is why nothing survived a restart and
-     * opening a server showed an empty one.
-     *
-     * Staging in a subdirectory keeps the basename identical, so the file
-     * stays openable and the replace is still a single rename.
-     */
     private inline fun <reified T> write(file: File, value: T) {
         val parent = file.parentFile
         parent?.mkdirs()
@@ -224,14 +189,12 @@ class OfflineCache @Inject constructor(
     private companion object {
         const val NAVIGATION_FILE = "navigation.json"
 
-        /** Half-written snapshots, under their final name. See [write]. */
         const val STAGING_DIR = "staging"
     }
 }
 
 internal const val MAX_OFFLINE_MESSAGES_PER_CHANNEL = 250
 
-/** Pending sends already have their own encrypted outbox and must not be duplicated. */
 internal fun cacheableMessages(messages: List<Message>): List<Message> = messages
     .filterNot { it.id.startsWith("pending:") }
     .takeLast(MAX_OFFLINE_MESSAGES_PER_CHANNEL)

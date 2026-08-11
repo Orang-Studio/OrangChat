@@ -50,12 +50,6 @@ private val ACCENT_COLORS = listOf(
     0x3FBD6E, 0x4F9FF2, 0x7C6FF0, 0xC45BD6,
 )
 
-/**
- * Edit your own profile - display name, pronouns, bio, avatar and banner.
- * Port of the web client's UserSettingsDialog Profile tab; images go through
- * the same POST /uploads/image the web client uses, which resizes and strips
- * EXIF server-side.
- */
 @Composable
 fun ProfileSettingsSection(
     self: SelfUser,

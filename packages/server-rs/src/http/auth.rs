@@ -1,4 +1,3 @@
-//! Auth routes, mounted under /api/auth. Mirrors routes/auth.ts.
 
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
@@ -30,8 +29,6 @@ pub fn routes() -> Router<AppState> {
         .route("/login", post(login))
         .route("/login/email-2fa", post(verify_email_2fa))
         .route("/login/email-2fa/resend", post(resend_email_2fa))
-        // Sign-in with a passkey. `start` is reachable logged-out and names no
-        // account - the credential the browser picks is what names it.
         .route("/passkey/start", post(passkey_start))
         .route("/passkey/finish", post(passkey_finish))
         .route("/verify-email", get(verify_email))
@@ -42,28 +39,18 @@ pub fn routes() -> Router<AppState> {
         .route("/me", get(get_me).patch(patch_me))
         .route("/oauth/:provider", get(oauth_start))
         .route("/oauth/:provider/callback", get(oauth_callback))
-        // QR sign-in. start/poll are for the logged-out web client; scan/approve
-        // are called by the signed-in phone.
         .route("/qr/start", post(qr_start))
         .route("/qr/poll", get(qr_poll))
         .route("/qr/scan", post(qr_scan))
         .route("/qr/approve", post(qr_approve))
-        // Under /auth rather than /security so the refresh cookie is in scope -
-        // it's path-scoped to /api/auth, and its jti is the only way to tell
-        // which of the listed sessions is the one asking.
         .route(
             "/sessions",
             get(list_sessions).delete(revoke_other_sessions),
         )
         .route("/sessions/:jti", axum::routing::delete(revoke_session))
-        // Also here rather than under /security: turning lockdown on has to
-        // spare the session doing it, which means reading the refresh cookie.
         .route("/lockdown", post(set_lockdown))
 }
 
-/// Freezes or unfreezes the account. Turning it on signs out every other device;
-/// turning it off needs the password, since a lockdown that anyone holding the
-/// session can lift protects nothing once that session is the compromised one.
 async fn set_lockdown(
     State(state): State<AppState>,
     user: AuthUser,
@@ -92,17 +79,12 @@ async fn set_lockdown(
     Ok(Json(json!({ "lockdown": on, "sessionsRevoked": revoked })))
 }
 
-/// Web, logged out: mint a code to render as a QR. Rate-limited per IP so it
-/// can't be used to churn Redis.
 async fn qr_start(State(state): State<AppState>, ClientIp(ip): ClientIp) -> AppResult<Json<Value>> {
     rate_limit::check(&state, "qr:start", &ip, rate_limit::LOGIN_PER_IP).await?;
     let (token, expires_in) = qr::start(&state).await?;
     Ok(Json(json!({ "token": token, "expiresIn": expires_in })))
 }
 
-/// Web: poll a code. Once the phone has approved, this issues the session (like
-/// login) and the code is spent. Until then it reports the stage so the UI can
-/// say "scan me" then "confirm on your phone".
 async fn qr_poll(
     State(state): State<AppState>,
     headers: axum::http::HeaderMap,
@@ -121,8 +103,6 @@ async fn qr_poll(
                 .bind(&user_id)
                 .fetch_one(&state.pool)
                 .await?;
-            // A code approved a moment before the account locked down must not
-            // still open a session.
             if user.lockdown_at.is_some() || user.deleted_at.is_some() {
                 return Ok((jar, Json(json!({ "status": "expired" }))).into_response());
             }
@@ -137,7 +117,6 @@ async fn qr_poll(
     }
 }
 
-/// Phone, signed in: report a scan of this code.
 async fn qr_scan(
     State(state): State<AppState>,
     user: AuthUser,
@@ -151,8 +130,6 @@ async fn qr_scan(
     Ok(Json(json!({ "ok": true })))
 }
 
-/// Phone, signed in: approve the code, authorising a web session for this
-/// account. The confirm tap in the app is what stands between a scan and a login.
 async fn qr_approve(
     State(state): State<AppState>,
     user: AuthUser,
@@ -166,9 +143,6 @@ async fn qr_approve(
     Ok(Json(json!({ "ok": true })))
 }
 
-/// The jti of the session making this request, read from the refresh cookie.
-/// None when the cookie is absent or unreadable, in which case nothing is
-/// marked "this device" rather than something being marked wrongly.
 fn current_jti(state: &AppState, jar: &CookieJar) -> Option<String> {
     let token = jar.get(REFRESH_COOKIE)?.value().to_string();
     verify_refresh_token(&state.config, &token)
@@ -199,14 +173,11 @@ async fn list_sessions(
     Ok(Json(json!({ "sessions": sessions })))
 }
 
-/// Signs one device out. Revoking your own is allowed - it's the same as
-/// signing out, and refusing would be surprising.
 async fn revoke_session(
     State(state): State<AppState>,
     user: AuthUser,
     Path(jti): Path<String>,
 ) -> AppResult<Json<Value>> {
-    // Scoped to the caller's own set, so a guessed jti can't sign out a stranger.
     if !is_refresh_token_valid(&state, &jti, &user.user_id).await? {
         return Err(AppError::NotFound("No such session".into()));
     }
@@ -214,7 +185,6 @@ async fn revoke_session(
     Ok(Json(json!({ "revoked": 1 })))
 }
 
-/// Signs out every device except this one.
 async fn revoke_other_sessions(
     State(state): State<AppState>,
     user: AuthUser,
@@ -225,13 +195,10 @@ async fn revoke_other_sessions(
     Ok(Json(json!({ "revoked": revoked })))
 }
 
-/// Where a session was minted from, for the devices screen. Both are best-effort:
-/// a client that sends no User-Agent still gets a session, just an unlabelled one.
 #[derive(Default)]
 struct DeviceInfo {
     user_agent: Option<String>,
     ip: Option<String>,
-    /// Set only on refresh, to carry the original sign-in time forward.
     created_at: Option<String>,
 }
 
@@ -253,7 +220,6 @@ impl DeviceInfo {
     }
 }
 
-/// Mint an access token + rotating refresh cookie for a user. Mirrors issueSession.
 async fn issue_session(
     state: &AppState,
     user: &UserRow,
@@ -287,10 +253,6 @@ async fn issue_email_verification(state: &AppState, user: &UserRow) -> AppResult
     crate::services::email::send_verification(&state.config, &user.email, &token).await
 }
 
-/// Issues a fresh one-time email code for `login_token` and emails it to the
-/// user. Any previous unused code for the account is burned first, so a code
-/// only ever exists once. Shared by sign-in and the e2ee transfer-grant
-/// fallback for accounts without an authenticator.
 pub(super) async fn store_email_login_code(
     state: &AppState,
     user_id: &str,
@@ -318,9 +280,6 @@ pub(super) async fn issue_email_login_code(
     crate::services::email::send_login_code(&state.config, &user.email, &code).await
 }
 
-/// Verifies a one-time email code and burns it. Wrong tries are counted and
-/// the code is spent after five of them; wrong codes and missing rows are
-/// indistinguishable, so the endpoint does not hint at what went wrong.
 pub(super) async fn verify_email_login_code(
     state: &AppState,
     login_token: &str,
@@ -423,8 +382,6 @@ async fn verify_email_2fa(
         .and_then(Value::as_str)
         .unwrap_or_default();
     let code = body.get("code").and_then(Value::as_str).unwrap_or_default();
-    // Read the account *before* verifying: a successful check burns the code, and
-    // this same row is the only link from the login token back to a user.
     let row: Option<UserRow> = sqlx::query_as(r#"SELECT u.* FROM "User" u JOIN "EmailLoginCode" c ON c."userId" = u.id WHERE c."loginTokenHash" = $1 AND c."usedAt" IS NULL AND c."expiresAt" > now() AND c.attempts < 5 AND u."emailVerifiedAt" IS NOT NULL"#).bind(token_hash(token)).fetch_optional(&state.pool).await?;
     verify_email_login_code(&state, token, code).await?;
     let user = row.ok_or_else(|| AppError::Unauthorized("Invalid or expired code".into()))?;
@@ -490,9 +447,6 @@ async fn signup(
         return Err(bad_request("Invalid input"));
     }
 
-    // Case is not meaningful in an address, and no mail provider treats it as
-    // such, so the canonical form is what gets stored - otherwise the row and
-    // the lower(email) index disagree about what "taken" means.
     let email = email.to_lowercase();
 
     let email_taken: Option<String> =
@@ -534,14 +488,6 @@ async fn signup(
     ))
 }
 
-/// Password, then whichever second factor the account actually has.
-///
-/// The ladder is passkey, then authenticator, then a code to the address on the
-/// account, and the login ends at the first rung the account can reach - only
-/// the bottom one is a round trip through a mailbox. Each rung is skippable
-/// downwards (`skipPasskey`, `lostAuthenticator`) because an authenticator that
-/// isn't to hand must not be a lockout, and each skip is a deliberate trade of
-/// strength for reachability.
 async fn login(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
@@ -563,20 +509,12 @@ async fn login(
         return Err(bad_request("Invalid input"));
     }
 
-    // Signing in must not care how the address was capitalised - a phone that
-    // auto-capitalises the first letter would otherwise lock someone out of the
-    // account they just created. See the lower(email) unique index.
     let user: Option<UserRow> =
         sqlx::query_as(r#"SELECT * FROM "User" WHERE lower(email) = lower($1)"#)
             .bind(email)
             .fetch_optional(&state.pool)
             .await?;
 
-    // Budget guesses per account, keyed by id rather than the submitted email so
-    // no address lands in a Redis key. An unknown address gets no bucket of its
-    // own - the per-IP quota above is what covers enumeration. Checked before
-    // verify_password because argon2 is deliberately expensive: unbounded
-    // attempts are a CPU exhaustion vector, not just a guessing one.
     if let Some(u) = &user {
         rate_limit::peek(
             &state,
@@ -603,9 +541,6 @@ async fn login(
         }
     }
 
-    // A tombstoned account keeps its row so its messages stay readable, but the
-    // scrub already cleared passwordHash - this is belt-and-braces, and it keeps
-    // the failure indistinguishable from a wrong password either way.
     let valid = match &user {
         Some(u) if u.deleted_at.is_none() => match &u.password_hash {
             Some(h) => verify_password(h, password),
@@ -620,12 +555,8 @@ async fn login(
         return Err(AppError::Unauthorized("Invalid email or password".into()));
     }
 
-    // Password checked out; the account may still owe us a second factor.
     let user = user.unwrap();
 
-    // Lockdown is deliberately named in the error rather than hidden behind
-    // "invalid credentials": the owner is the one most likely to hit it, and a
-    // silent failure would look like the account was already stolen.
     if user.lockdown_at.is_some() {
         return Err(AppError::Unauthorized(
             "This account is locked down. Lift it from a device that's still signed in.".into(),
@@ -637,12 +568,7 @@ async fn login(
         ));
     }
 
-    // ── Second factor ────────────────────────────────────────────────────────
 
-    // An account with a passkey is asked for that first: it is
-    // phishing-resistant where a code read off a screen is not, and it is one
-    // tap instead of a round trip through a mail server. `skipPasskey` is the
-    // way back out for someone whose authenticator isn't to hand.
     let skip_passkey = body
         .get("skipPasskey")
         .and_then(Value::as_bool)
@@ -659,13 +585,6 @@ async fn login(
         ));
     }
 
-    // `lostAuthenticator` is the escape hatch behind the "Lost your
-    // authenticator?" button, and it is a real trade: it drops the account to
-    // whatever its mailbox is worth, since a password plus that button is then
-    // the whole login. It exists because the alternative - an authenticator on
-    // a phone that is gone, and backup codes in the same drawer as the phone -
-    // is a permanent lockout, and people lose devices far more often than
-    // mailboxes are stolen.
     let lost_authenticator = body
         .get("lostAuthenticator")
         .and_then(Value::as_bool)
@@ -684,23 +603,16 @@ async fn login(
         let ok = totp::verify_code(secret, &user.email, code)?
             || totp::consume_backup_code(&state, &user.id, code).await?;
         if !ok {
-            // A stolen password plus unlimited tries would walk a 6-digit code,
-            // so wrong second factors spend the same budget as wrong passwords.
             record_login_failure(&state, &user.id).await;
             return Err(AppError::TwoFactorRequired(
                 "That code isn't right. Try the current one.".into(),
             ));
         }
         reset_login_failures(&state, &user.id).await;
-        // The authenticator *is* the second factor. Mailing a code on top of it
-        // asks for a weaker proof after a stronger one and buys nothing but a
-        // slower sign-in - and it made email the real gate on every account
-        // that had gone to the trouble of setting up 2FA.
         let (result, cookie) = issue_session(&state, &user, DeviceInfo::new(&headers, &ip)).await?;
         return Ok((jar.add(cookie), Json(result)));
     }
 
-    // No stronger factor available, or the user asked to fall back to this one.
     reset_login_failures(&state, &user.id).await;
     let login_token = random_token();
     issue_email_login_code(&state, &user, &login_token).await?;
@@ -710,10 +622,6 @@ async fn login(
     ))
 }
 
-/// Opens a sign-in ceremony for a browser that hasn't said who it is.
-///
-/// Reachable logged-out and deliberately incurious: it hands out a challenge and
-/// nothing else, so it cannot be used to ask whether an account exists.
 async fn passkey_start(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
@@ -725,14 +633,6 @@ async fn passkey_start(
     ))
 }
 
-/// Finishes either sign-in shape - passkey-only, or passkey-as-second-factor -
-/// and issues the session.
-///
-/// This is the whole login: no password, and no emailed code even on an account
-/// with 2FA on. A completed ceremony already proves possession of the
-/// authenticator and that it checked a biometric or a PIN before signing, over a
-/// channel the browser bound to this origin. Asking for a weaker factor on top
-/// of a stronger one buys nothing.
 async fn passkey_finish(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
@@ -754,7 +654,6 @@ async fn passkey_finish(
 
     let user = passkey::finish_authentication(&state, token, response).await?;
 
-    // The same gates the password path applies, because this path skips it.
     if user.lockdown_at.is_some() {
         return Err(AppError::Unauthorized(
             "This account is locked down. Lift it from a device that's still signed in.".into(),
@@ -771,9 +670,6 @@ async fn passkey_finish(
     Ok((jar.add(cookie), Json(result)))
 }
 
-/// Clears the per-account guess budget once the password (and any authenticator
-/// code) has checked out, so a run of typos doesn't follow someone into their
-/// next sign-in.
 async fn reset_login_failures(state: &AppState, user_id: &str) {
     rate_limit::reset(
         state,
@@ -828,8 +724,6 @@ async fn refresh(
         return Err(AppError::Unauthorized("User no longer exists".into()));
     };
 
-    // Single-use: burn the old token, issue a fresh pair. The replacement keeps
-    // the original sign-in time so a device doesn't look new after every refresh.
     let inherited = read_session(&state, &claims.jti)
         .await?
         .and_then(|s| s.created_at);
@@ -901,7 +795,6 @@ async fn patch_me(
         }
         patch.status = Some(s.to_string());
     }
-    // ── Profile fields (all nullable: JSON null clears them) ──
     if let Some(v) = obj.get("bio") {
         patch.bio = Some(match v {
             Value::Null => None,
@@ -912,7 +805,6 @@ async fn patch_me(
     if let Some(v) = obj.get("appIconUrl") {
         patch.app_icon_url = Some(match v {
             Value::Null => None,
-            // "" clears, for the Android client - see http::servers::parse_patch.
             Value::String(s) if s.is_empty() => None,
             Value::String(s) => Some(s.clone()),
             _ => return Err(bad_request("Invalid input")),
@@ -959,7 +851,6 @@ async fn patch_me(
             _ => return Err(bad_request("Invalid input")),
         });
     }
-    // ── Privacy ──
     if let Some(v) = obj.get("dmPrivacy") {
         let s = v.as_str().ok_or_else(|| bad_request("Invalid input"))?;
         if !matches!(s, "everyone" | "friends" | "none") {
@@ -1001,9 +892,6 @@ async fn patch_me(
 
     let updated = user::update_profile(&state, &user.user_id, patch).await?;
 
-    // Turning the setting off has to take down what is already on screen. The
-    // desktop client stops reporting on its own, but only after it next polls -
-    // and an old shell, or one that is closed mid-game, never would.
     if disabling_game_activity
         && presence::set_activity(&state, &user.user_id, "game", None).await?
     {
@@ -1011,8 +899,6 @@ async fn patch_me(
         crate::socket::broadcast_presence(state.io(), &state, &user.user_id, &status).await;
     }
 
-    // Fan the public profile out to everyone rendering it: shared servers,
-    // friends, DM partners, and the user's own other sessions.
     let rooms = user::get_profile_audience_rooms(&state, &user.user_id).await?;
     let public = to_user(&updated);
     for room in rooms {
@@ -1022,7 +908,6 @@ async fn patch_me(
     Ok(Json(to_self_user(&updated)))
 }
 
-// ── OAuth ───────────────────────────────────────────────
 
 async fn oauth_start(
     State(state): State<AppState>,
@@ -1087,12 +972,6 @@ async fn oauth_callback(
     match oauth::exchange_code_for_profile(&state.config, &provider, code.unwrap()).await {
         Ok(profile) => match user::find_or_create_oauth_user(&state, &profile).await {
             Ok(user) => {
-                // The password path owes a second factor (see `login`), so this
-                // one does too - a provider redirect must not be a way around
-                // 2FA the account holder switched on. There is nowhere to prompt
-                // for a code mid-redirect, so 2FA accounts finish at the form.
-                // TODO: hand off a short-lived pending token to a /login/2fa
-                // step so OAuth + 2FA can coexist before OAuth is enabled.
                 if user.totp_enabled {
                     return Ok((
                         jar,

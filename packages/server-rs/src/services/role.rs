@@ -1,4 +1,3 @@
-//! Role + membership-role + nickname persistence. Mirrors role-service.ts.
 
 use sqlx::QueryBuilder;
 
@@ -28,9 +27,6 @@ pub struct RolePatch {
     pub mentionable: Option<bool>,
 }
 
-/// New roles land at the bottom of the hierarchy (just above @everyone) and push
-/// everything else up, as Discord does. Creating at the *top* would mint a role
-/// outranking its own creator, which they then could not edit.
 pub async fn create_role(
     state: &AppState,
     server_id: &str,
@@ -91,17 +87,12 @@ pub async fn update_role(
 
     let actor_perms =
         membership::require_permission(state, server_id, actor_id, MANAGE_ROLES).await?;
-    // @everyone (position 0) is below everyone by construction, so the hierarchy
-    // check would reject every edit to it; its permissions are still guarded by
-    // the escalation check below.
     if role.position != 0 {
         membership::assert_role_below(state, server_id, actor_id, role.position).await?;
     }
     if let Some(ref p) = patch.permissions {
         membership::assert_no_escalation(actor_perms, role.permissions, permissions::parse(p))?;
     }
-    // Moving a role *to* a position must clear the same bar as editing one there,
-    // or a moderator could hoist a role above themselves and then edit it freely.
     if let Some(pos) = patch.position {
         membership::assert_role_below(state, server_id, actor_id, pos).await?;
     }
@@ -174,12 +165,6 @@ pub async fn delete_role(
     Ok(())
 }
 
-/// Bulk reorder, for drag-and-drop role lists. Applied in one transaction so a
-/// rejected entry cannot leave the hierarchy half-rewritten.
-///
-/// Both the old and new position of every moved role must sit below the actor:
-/// checking only the destination would let someone drag a role down out of the
-/// ranks above them and then edit it.
 pub async fn reorder_roles(
     state: &AppState,
     server_id: &str,
@@ -198,9 +183,6 @@ pub async fn reorder_roles(
             .iter()
             .find(|r| &r.id == role_id)
             .ok_or_else(|| AppError::Permission("Role not found".into()))?;
-        // Unchanged entries are skipped before the @everyone guard on purpose: a
-        // drag-and-drop client naturally sends the whole list back, @everyone
-        // included, and rejecting that would make the obvious payload unusable.
         if role.position == *new_pos {
             continue;
         }
@@ -232,24 +214,6 @@ pub async fn reorder_roles(
     )
 }
 
-/// Shared gate for assign/unassign: the actor needs MANAGE_ROLES, must outrank
-/// both the member and the role in question.
-///
-/// `granting` distinguishes the two directions deliberately:
-///
-/// - Granting additionally requires the role's permissions to be a subset of the
-///   actor's. Without it the escalation guard on update_role is trivially
-///   sidestepped - a moderator cannot *write* BAN_MEMBERS onto a role, but could
-///   hand out an existing role that already has it, to a friend or to
-///   themselves, and gain it by proxy.
-/// - Revoking is not subject to that check. Taking a role away never grants
-///   anything, and requiring BAN_MEMBERS in order to strip BAN_MEMBERS from a
-///   compromised account is exactly backwards during an incident.
-///
-/// Self-targeting is allowed: `assert_outranks` would otherwise compare the actor
-/// against themselves and refuse, leaving a non-owner admin unable to give
-/// themselves so much as a colour role. The subset check above is what keeps
-/// self-assignment from being an escalation.
 async fn assert_can_change_member_role(
     state: &AppState,
     server_id: &str,
@@ -373,12 +337,6 @@ pub async fn set_nickname(
     get_member_with_roles(state, server_id, user_id).await
 }
 
-/// Time a member out, or lift it with `until = None`.
-///
-/// Gated on MODERATE_MEMBERS *and* hierarchy: the permission says you may time
-/// people out, the hierarchy says whom. Admins are exempt as targets - a timeout
-/// they could instantly lift is theatre - which also stops a moderator from
-/// silencing the owner.
 pub async fn set_timeout(
     state: &AppState,
     server_id: &str,

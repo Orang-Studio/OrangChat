@@ -43,7 +43,6 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.absoluteUrl
 
-/** The leftmost server rail: Home/DMs button, server icons, and add-server. */
 @Composable
 fun ServerRail(
     servers: List<Server>,
@@ -70,7 +69,6 @@ fun ServerRail(
             RailButton(selected = homeSelected, onClick = onHome) {
                 Icon(Icons.Default.Chat, contentDescription = AppStrings.get(context, R.string.catalog_direct_messages_e7596a09), tint = it)
             }
-            // Unread DMs badge, Discord-style, on the home button.
             MentionBadge(
                 count = unreads.unreadDmCount(),
                 modifier = Modifier.align(Alignment.TopEnd),

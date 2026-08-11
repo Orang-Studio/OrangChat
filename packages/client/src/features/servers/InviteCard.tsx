@@ -8,7 +8,7 @@ import { setPendingInvite } from "./invite-url";
 import { inviteBlockedReason, useInvite } from "./useInvite";
 import { t } from "../../lib/i18n";
 
-/** "12 members", but "1 member". */
+
 function memberLabel(count: number): string {
   return `${count.toLocaleString()} ${count === 1 ? "member" : "members"}`;
 }

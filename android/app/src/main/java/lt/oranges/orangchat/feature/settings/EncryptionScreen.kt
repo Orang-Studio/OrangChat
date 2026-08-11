@@ -46,13 +46,6 @@ import lt.oranges.orangchat.feature.e2ee.EncryptionExplainerDialog
 import lt.oranges.orangchat.feature.e2ee.HowEncryptionWorksLink
 import lt.oranges.orangchat.feature.transfer.TransferQrScanner
 
-/**
- * What this phone can say about its own encryption (docs/E2EE.md §6.6).
- *
- * Deliberately quiet: the default is secure, so this is a place to look rather
- * than a chore to complete. The loud states - an identity that changed, a device
- * nobody authorised - are surfaced where they happen, not here.
- */
 @Composable
 fun EncryptionScreen(onBack: () -> Unit, vm: EncryptionViewModel = hiltViewModel()) {
         val context = LocalContext.current
@@ -93,8 +86,6 @@ fun EncryptionScreen(onBack: () -> Unit, vm: EncryptionViewModel = hiltViewModel
                         modifier = Modifier.padding(top = 6.dp),
                     )
                 }
-                // The dead key is what blocks a fresh one from being made, so
-                // clearing it out is the first half of adding this phone back.
                 if (state.revokedHere) {
                     OrangButton(
                         text = if (state.resetting) AppStrings.get(context, R.string.catalog_setting_up_cef9b69d) else AppStrings.get(context, R.string.catalog_set_up_this_phone_again_6f53f3fd),
@@ -183,10 +174,6 @@ fun EncryptionScreen(onBack: () -> Unit, vm: EncryptionViewModel = hiltViewModel
                 }
             }
 
-            // Only offered to a phone that holds a key, because holding one is
-            // what makes this instant: the erasure is signed here, and the
-            // server's waiting period exists for requests that carry no such
-            // proof. A phone without a key uses the slow path on the web.
             if (state.deviceId != null && !state.revokedHere) {
                 SettingSection(AppStrings.get(context, R.string.catalog_start_over_with_new_keys_328f6a4a)) {
                     Text(
@@ -319,7 +306,6 @@ fun EncryptionScreen(onBack: () -> Unit, vm: EncryptionViewModel = hiltViewModel
     }
 }
 
-/** Raised globally when Android's Camera app opens a device-transfer deep link. */
 @Composable
 fun ScannedDeviceTransferDialog(
     raw: String,
@@ -381,8 +367,6 @@ private fun DeviceTransferDialog(
     val progressStep = when (state.transferStep) {
         EncryptionViewModel.TransferStep.SAS -> 2
         EncryptionViewModel.TransferStep.TOTP -> 3
-        // A new device sitting in FINISHING is still on "Verify" - the step it
-        // is waiting on belongs to the other device, not to this one.
         EncryptionViewModel.TransferStep.FINISHING -> if (isNew) 3 else 4
         EncryptionViewModel.TransferStep.DONE -> 4
         else -> 1
@@ -530,10 +514,6 @@ private fun DeviceTransferDialog(
                     }
                 }
                 EncryptionViewModel.TransferStep.FINISHING -> {
-                    // Nothing arrives here until a person finishes the second
-                    // factor on the other device, and that can be a minute of
-                    // looking for an email. Saying whose turn it is stops this
-                    // from reading as a phone that has quietly stalled.
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically,

@@ -25,11 +25,7 @@ const botKeys = {
   tokens: (id: string) => ["bots", id, "tokens"] as const,
 };
 
-/**
- * The one moment a token is visible. The server stores only a digest, so if this
- * is dismissed without copying, the token is gone and a new one must be minted -
- * the copy says so plainly rather than letting someone find out later.
- */
+
 function TokenReveal({ token, onDone }: { token: MintedToken; onDone: () => void }) {
   const [copied, setCopied] = useState(false);
 
@@ -67,9 +63,6 @@ function InviteToServer({ bot }: { bot: Bot }) {
   const [done, setDone] = useState(false);
 
   const invite = useMutation({
-    // No permission bits: the bot joins with the server's @everyone defaults and
-    // is given more from the roles screen, the same as any other member. The
-    // server refuses anything above the inviter's own permissions regardless.
     mutationFn: () => addBotToServer(serverId, bot.id, "0"),
     onSuccess: () => {
       setDone(true);

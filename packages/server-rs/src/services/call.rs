@@ -1,12 +1,3 @@
-//! DM / group-DM call signalling: who is ringing, who is connected, and when a
-//! call is over. Media itself rides the same LiveKit room voice channels use
-//! (`voice_<channelId>`, see voice.rs) - this module never touches media, it
-//! only decides whose device rings and mints nothing.
-//!
-//! State lives in Redis under two keys, both TTL'd so a dropped call cannot ring
-//! forever: `call:<channelId>` holds the CallState JSON, and `call:user:<userId>`
-//! reverse-maps a user to the call they are on. The reverse key is what makes
-//! busy-detection and disconnect cleanup cheap.
 
 use std::time::Duration;
 
@@ -20,10 +11,8 @@ use crate::models::UserRow;
 use crate::services::{channel, dm, system_message};
 use crate::state::AppState;
 
-/// How long a callee's device rings before the call gives up on them.
 pub const RING_TIMEOUT: Duration = Duration::from_secs(30);
 
-/// Safety net: a call key cannot outlive this even if every cleanup path fails.
 const CALL_TTL_SECS: u64 = 6 * 3600;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,20 +24,12 @@ pub struct CallState {
     pub participants: Vec<String>,
     pub video: bool,
     pub started_at: String,
-    /// Everyone who was ever connected, as opposed to `participants`, which is
-    /// who is connected now. This is what makes a missed call recognisable after
-    /// the fact: a call that ends with only the caller in here was answered by
-    /// nobody.
     #[serde(default)]
     pub joined: Vec<String>,
-    /// The call card on the conversation - one message, rewritten as the call
-    /// runs. Optional so a call that predates the card (or whose write failed)
-    /// still behaves like a call.
     #[serde(default)]
     pub message_id: Option<String>,
 }
 
-/// Wire shape of the shared contract's DmCallPayload.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CallPayload {
@@ -61,7 +42,6 @@ pub struct CallPayload {
     pub started_at: String,
 }
 
-/// Wire shape of the shared contract's DmCallEndedPayload.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CallEndedPayload {
@@ -78,7 +58,6 @@ fn user_key(user_id: &str) -> String {
     format!("call:user:{user_id}")
 }
 
-// ── Redis plumbing ──────────────────────────────────────
 
 pub async fn load(state: &AppState, channel_id: &str) -> AppResult<Option<CallState>> {
     let mut con = state.rd();
@@ -95,7 +74,6 @@ async fn save(state: &AppState, call: &CallState) -> AppResult<()> {
     Ok(())
 }
 
-/// Drop the call and every reverse mapping that pointed at it.
 async fn discard(state: &AppState, call: &CallState) -> AppResult<()> {
     let mut con = state.rd();
     let _: () = con.del(call_key(&call.channel_id)).await?;
@@ -119,7 +97,6 @@ async fn unbind_user(state: &AppState, user_id: &str) -> AppResult<()> {
     Ok(())
 }
 
-/// The channel id of the call this user is currently on, if any.
 pub async fn active_call_of(state: &AppState, user_id: &str) -> AppResult<Option<String>> {
     let mut con = state.rd();
     Ok(con.get(user_key(user_id)).await?)
@@ -146,24 +123,17 @@ pub async fn payload(state: &AppState, call: &CallState) -> AppResult<CallPayloa
     })
 }
 
-// ── The call card ───────────────────────────────────────
 
 fn now_iso() -> String {
     Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()
 }
 
-/// Seconds between two of our own timestamps. `None` rather than a guess if
-/// either fails to parse - a card with no duration reads better than one
-/// claiming a call lasted zero seconds.
 fn elapsed_secs(from: &str, to: &str) -> Option<i64> {
     let start = chrono::DateTime::parse_from_rfc3339(from).ok()?;
     let end = chrono::DateTime::parse_from_rfc3339(to).ok()?;
     Some((end - start).num_seconds().max(0))
 }
 
-/// Redraw the live card: someone answered, someone left, someone stopped
-/// ringing. Always the same message, so a call is one card in the history
-/// rather than a running commentary.
 async fn sync_card(state: &AppState, call: &CallState) {
     let Some(message_id) = call.message_id.as_deref() else {
         return;
@@ -180,8 +150,6 @@ async fn sync_card(state: &AppState, call: &CallState) {
     system_message::update_call(state, &call.channel_id, message_id, &card).await;
 }
 
-/// Close the card off. What is left behind is the whole record of the call:
-/// when it was, who was on it, and how long it ran - or that nobody answered.
 async fn finish_card(state: &AppState, call: &CallState) {
     let Some(message_id) = call.message_id.as_deref() else {
         return;
@@ -195,25 +163,18 @@ async fn finish_card(state: &AppState, call: &CallState) {
         ended_at: Some(&ended_at),
         joined: &call.joined,
         ringing: &[],
-        // A call nobody answered has a length, but it is the length of the
-        // ringing, which is not what "how long did you talk" means.
         duration_sec: if call.joined.len() > 1 { duration } else { None },
     };
     system_message::update_call(state, &call.channel_id, message_id, &card).await;
 }
 
-// ── Operations ──────────────────────────────────────────
 
 pub struct StartOutcome {
     pub call: CallState,
-    /// Users we did not ring because they are already on another call.
     pub busy: Vec<String>,
-    /// False when the caller joined a call that was already running, in which
-    /// case nobody new is rung and no ring timeout should be armed.
     pub created: bool,
 }
 
-/// Begin a call, or join one already running on this channel.
 pub async fn start(
     state: &AppState,
     channel_id: &str,
@@ -227,8 +188,6 @@ pub async fn start(
         ));
     }
 
-    // Joining the call you are already on is a no-op, not an error; being on a
-    // *different* call is what blocks you.
     if let Some(existing) = active_call_of(state, caller_id).await? {
         if existing != channel_id {
             return Err(AppError::Conflict("You are already on a call".into()));
@@ -263,8 +222,6 @@ pub async fn start(
             ringing.push(uid);
         }
     }
-    // Never open a call that rings nobody - it would strand the caller alone in
-    // a room with no way for it to ever end except the TTL.
     if ringing.is_empty() {
         return Err(if busy.is_empty() {
             AppError::BadRequest("Nobody else is in this conversation".into())
@@ -283,9 +240,6 @@ pub async fn start(
         joined: vec![caller_id.to_string()],
         message_id: None,
     };
-    // The card goes up as the call starts, not when it ends, so a conversation
-    // that is being called shows it - and so the people who were rung can join
-    // from the history rather than needing to have been watching.
     let card = system_message::CallCard {
         caller_id: &call.caller_id,
         video: call.video,
@@ -298,8 +252,6 @@ pub async fn start(
     call.message_id = system_message::open_call(state, channel_id, &card).await;
     save(state, &call).await?;
     bind_user(state, caller_id, channel_id).await?;
-    // Ringing users are bound too, so a second caller sees them as busy and a
-    // disconnect while ringing still cleans up.
     for uid in &ringing {
         bind_user(state, uid, channel_id).await?;
     }
@@ -311,7 +263,6 @@ pub async fn start(
     })
 }
 
-/// Answer a call. Moves the user from `ringing` to `participants`.
 pub async fn accept(state: &AppState, channel_id: &str, user_id: &str) -> AppResult<CallState> {
     let mut call = load(state, channel_id)
         .await?
@@ -332,9 +283,6 @@ pub async fn accept(state: &AppState, channel_id: &str, user_id: &str) -> AppRes
     Ok(call)
 }
 
-/// Remove a user from a call, whatever their role in it. `None` means they were
-/// not on the call at all, so the caller should stay quiet; `Some(call_over)`
-/// reports whether removing them finished the call.
 pub async fn leave(state: &AppState, channel_id: &str, user_id: &str) -> AppResult<Option<bool>> {
     let Some(mut call) = load(state, channel_id).await? else {
         unbind_user(state, user_id).await?;
@@ -349,8 +297,6 @@ pub async fn leave(state: &AppState, channel_id: &str, user_id: &str) -> AppResu
     call.participants.retain(|u| u != user_id);
     unbind_user(state, user_id).await?;
 
-    // A call with nobody connected is over even if someone is still ringing -
-    // that is the caller hanging up before anyone answered.
     if call.participants.is_empty() {
         discard(state, &call).await?;
         finish_card(state, &call).await;
@@ -361,8 +307,6 @@ pub async fn leave(state: &AppState, channel_id: &str, user_id: &str) -> AppResu
     Ok(Some(false))
 }
 
-/// Stop ringing everyone who never answered. Returns the users dropped, and
-/// whether that finished the call off.
 pub async fn expire_ringing(
     state: &AppState,
     channel_id: &str,
@@ -371,7 +315,6 @@ pub async fn expire_ringing(
     let Some(mut call) = load(state, channel_id).await? else {
         return Ok((Vec::new(), false));
     };
-    // A newer call on the same channel must not be cut short by an old timer.
     if call.started_at != started_at || call.ringing.is_empty() {
         return Ok((Vec::new(), false));
     }
@@ -379,7 +322,6 @@ pub async fn expire_ringing(
     for uid in &timed_out {
         unbind_user(state, uid).await?;
     }
-    // Nobody picked up: the caller alone is not a call.
     let over = call.participants.len() <= 1;
     if over {
         discard(state, &call).await?;

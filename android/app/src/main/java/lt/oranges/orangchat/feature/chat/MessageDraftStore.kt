@@ -19,12 +19,6 @@ import java.util.Collections
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Composer text drafts. Written to prefs first so an unsent message survives a
- * process death or an offline moment, then mirrored to the server (debounced)
- * so it follows the user to another device. The server copy is authoritative
- * only when this device has no local draft.
- */
 @Singleton
 class MessageDraftStore @Inject constructor(
     @ApplicationContext context: Context,
@@ -60,18 +54,14 @@ class MessageDraftStore @Inject constructor(
     private suspend fun push(channelId: String) {
         if (e2ee.shouldEncrypt(channelId)) {
             dirty.remove(channelId)
-            // Clear a draft that may have been mirrored before the conversation
-            // latched into encryption.
             runCatching { api.deleteDraft(channelId) }
             return
         }
         val content = readLocal(channelId)
         runCatching { api.putDraft(channelId, DraftBody(content)) }
             .onSuccess { if (readLocal(channelId) == content) dirty.remove(channelId) }
-        // on failure stay dirty; flush() retries when the network returns.
     }
 
-    /** Store locally now and schedule a debounced server sync. */
     fun save(channelId: String, content: String) {
         writeLocal(channelId, content)
         dirty.add(channelId)
@@ -84,7 +74,6 @@ class MessageDraftStore @Inject constructor(
         }
     }
 
-    /** Store and push immediately, e.g. when leaving the channel. */
     fun saveNow(channelId: String, content: String) {
         writeLocal(channelId, content)
         dirty.add(channelId)
@@ -92,7 +81,6 @@ class MessageDraftStore @Inject constructor(
         scope.launch { push(channelId) }
     }
 
-    /** Drop a draft everywhere, e.g. after its message is sent. */
     fun clear(channelId: String) {
         writeLocal(channelId, "")
         dirty.remove(channelId)
@@ -100,7 +88,6 @@ class MessageDraftStore @Inject constructor(
         scope.launch { runCatching { api.deleteDraft(channelId) } }
     }
 
-    /** The draft to show when opening a channel: local first, else the server's. */
     suspend fun load(channelId: String): String {
         val local = readLocal(channelId)
         if (local.isNotEmpty()) return local
@@ -108,7 +95,6 @@ class MessageDraftStore @Inject constructor(
         return runCatching { api.getDraft(channelId).content }.getOrNull().orEmpty()
     }
 
-    /** Retry every unsynced draft; call when connectivity returns. */
     fun flush() {
         for (channelId in dirty.toList()) scope.launch { push(channelId) }
     }

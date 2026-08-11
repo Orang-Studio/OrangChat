@@ -30,7 +30,6 @@ import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.AppStrings
 
-/** Shared top bar with a back arrow for every settings sub-screen. */
 @Composable
 fun SettingsTopBar(title: String, onBack: () -> Unit) {
     val c = OrangTheme.colors
@@ -96,7 +95,6 @@ fun SettingsToggleRow(
     }
 }
 
-/** A vertical list of single-choice options, radio-style. */
 @Composable
 fun <T> SettingsChoiceRow(
     value: T,
@@ -132,7 +130,6 @@ fun <T> SettingsChoiceRow(
     }
 }
 
-/** Navigation entry: label + optional subtitle, tappable, with a chevron feel. */
 @Composable
 fun SettingsNavRow(
     label: String,

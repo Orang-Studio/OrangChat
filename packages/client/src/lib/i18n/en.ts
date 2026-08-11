@@ -1,20 +1,5 @@
-/**
- * Every string the interface says, in English.
- *
- * This file is the source of truth: a translation is a partial copy of it (see
- * `lt.ts`), and any key it does not carry falls back to the English here rather
- * than to a blank or a raw key. That is what makes a half-finished translation
- * shippable - the untranslated parts stay readable instead of disappearing.
- *
- * Keys are `area.thing`, matching where the string is used. Placeholders are
- * `{name}` and are filled by `t()`. A string whose wording depends on a count
- * is written as a set of `key_one` / `key_few` / `key_many` / `key_other`
- * variants and read with `tCount()` - English only ever uses `_one` and
- * `_other`, but the categories a locale needs are the locale's business, and
- * Lithuanian needs all four.
- */
+
 export const en = {
-  // ── Generic actions and words, shared everywhere ──────────────
   "common.save": "Save",
   "common.cancel": "Cancel",
   "common.close": "Close",
@@ -44,7 +29,6 @@ export const en = {
   "common.upload": "Upload",
   "common.unknown": "Unknown",
 
-  // ── Language picker ───────────────────────────────────────────
   "language.title": "Language",
   "language.description":
     "The language this device shows the app in. It is not sent to the server, so each of your devices can differ.",
@@ -65,10 +49,8 @@ export const en = {
   "language.lolcat": "LOLCAT",
   "language.incomplete": "This translation is not finished; anything missing is shown in English.",
 
-  // ── Activity status ─────────────────────────────────────────────
   "activityStatus.forDuration": "for {duration}",
 
-  // ── About tab ─────────────────────────────────────────────────
   "aboutTab.aFastSelfHostedChatFor":
     "A fast, self-hosted chat for servers, DMs, and voice - part of the Oranges.LT family.",
   "aboutTab.build": "Build",
@@ -82,7 +64,6 @@ export const en = {
   "aboutTab.version": "Version",
   "aboutTab.versionNumber": "Version {version}",
 
-  // ── Accessibility tab ─────────────────────────────────────────
   "accessibilityTab.aLink": "A link",
   "accessibilityTab.alwaysUnderlineLinksNotJustOn": "Always underline links, not just on hover.",
   "accessibilityTab.chatInput": "Chat input",
@@ -111,7 +92,6 @@ export const en = {
   "accessibilityTab.todayAt1403": "Today at 14:03",
   "accessibilityTab.underlineLinks": "Underline links",
 
-  // ── Activity tab ──────────────────────────────────────────────
   "activityTab.activity": "Activity",
   "activityTab.addGame": "Add game",
   "activityTab.allowARunningProcessAndChoose":
@@ -131,7 +111,6 @@ export const en = {
     "Turn activity sharing on to inspect running processes.",
   "activityTab.whatShouldFriendsSee": "What should friends see?",
 
-  // ── Add by code ───────────────────────────────────────────────
   "addByCode.checkingTheirIdentity": "Checking their identity…",
   "addByCode.myContactCode": "My contact code",
   "addByCode.publicInformationOnlyBeingInThe":
@@ -141,24 +120,20 @@ export const en = {
   "addByCode.togetherInPersonScanningTheirCode":
     "Together in person? Scanning their code adds them and confirms their encryption keys in one go.",
 
-  // ── Add server dialog ─────────────────────────────────────────
   "addServerDialog.addServerMode": "Add server mode",
   "addServerDialog.inviteLink": "Invite link",
   "addServerDialog.myOrangeGrove": "My orange grove",
   "addServerDialog.serverName": "Server name",
 
-  // ── Android app banner ────────────────────────────────────────
   "androidAppBanner.dismissAndroidAppDownload": "Dismiss Android app download",
   "androidAppBanner.getOrangchatForAndroid": "Get OrangChat for Android",
   "androidAppBanner.orangchatAndroidApp": "OrangChat Android app",
   "androidAppBanner.versionAndSize": "Version {version} · {size}",
 
-  // ── Audit log tab ─────────────────────────────────────────────
   "auditLogTab.changed": "Changed: {list}",
   "auditLogTab.newer": "Newer",
   "auditLogTab.older": "Older",
 
-  // ── Auth layout ───────────────────────────────────────────────
   "authLayout.chat": "Chat",
   "authLayout.cookies": "Cookies",
   "authLayout.guidelines": "Guidelines",
@@ -167,18 +142,14 @@ export const en = {
   "authLayout.privacy": "Privacy",
   "authLayout.terms": "Terms",
 
-  // ── Bot tag ───────────────────────────────────────────────────
   "botTag.bot": "Bot",
   "botTag.botAccount": "Bot account",
 
-  // ── Call card ─────────────────────────────────────────────────
   "callCard.audioCall": "Audio call",
   "callCard.videoCall": "Video call",
 
-  // ── Call error toast ──────────────────────────────────────────
   "callErrorToast.dismiss": "Dismiss",
 
-  // ── Call stage ────────────────────────────────────────────────
   "callStage.callConnected": "Call connected",
   "callStage.calling": "Calling",
   "callStage.closeFullScreen": "Close full screen",
@@ -203,7 +174,6 @@ export const en = {
   "callStage.unmute": "Unmute",
   "callStage.yourScreen": "Your screen",
 
-  // ── Channel sidebar ───────────────────────────────────────────
   "channelSidebar.channels": "Channels",
   "channelSidebar.createChannel": "Create channel",
   "channelSidebar.empty": "Empty",
@@ -212,7 +182,6 @@ export const en = {
   "channelSidebar.noChannelsYet": "No channels yet.",
   "channelSidebar.serverSettings": "Server settings",
 
-  // ── Chat view ─────────────────────────────────────────────────
   "chatView.channelTopic": "Channel topic",
   "chatView.couldntLoadMessagesCheckYourConnection":
     "Couldn't load messages. Check your connection and try again.",
@@ -225,7 +194,6 @@ export const en = {
   "chatView.toggleMemberList": "Toggle member list",
   "chatView.tryAgain": "Try again",
 
-  // ── Composer ──────────────────────────────────────────────────
   "composer.aBotTokenIsThePassword":
     "A bot token is the password for a bot account: anyone with it can sign in as the bot, post in its servers and read its conversations. Pasting it here would hand that control to everyone who can read this conversation.",
   "composer.aLoginTokenLetsAnyoneWho":
@@ -237,25 +205,21 @@ export const en = {
   "composer.holdToRecordAVoiceMessage": "Hold to record a voice message",
   "composer.lockedSendWhenYoureDone": "Locked - send when you're done",
   "composer.mentionSuggestions": "Mention suggestions",
-  "composer.pasteCutOff": "Paste cut off — {max} characters max",
+  "composer.pasteCutOff": "Paste cut off - {max} characters max",
   "composer.pasteItAnyway": "Paste it anyway",
   "composer.replyingTo": "Replying to",
   "composer.sendMessage": "Send message",
   "composer.sendVoiceMessage": "Send voice message",
   "composer.takeAPicture": "Take a picture",
 
-  // ── Composer attachments ──────────────────────────────────────
   "composerAttachments.expiresIn1Hour": "Expires in 1 hour",
 
-  // ── Confirm identity dialog ───────────────────────────────────
   "confirmIdentityDialog.authenticationCode": "Authentication code",
   "confirmIdentityDialog.password": "Password",
 
-  // ── Connection cards ──────────────────────────────────────────
   "connectionCards.connections": "Connections",
   "connectionCards.verified": "Verified",
 
-  // ── Connections tab ───────────────────────────────────────────
   "connectionsTab.addAnyWebsite": "Add any website",
   "connectionsTab.connectAnAccount": "Connect an account",
   "connectionsTab.disconnect": "Disconnect",
@@ -274,18 +238,16 @@ export const en = {
   "connectionsTab.verified": "Verified",
   "connectionsTab.yourConnections": "Your connections",
 
-  // ── Create channel dialog ─────────────────────────────────────
   "createChannelDialog.category": "Category",
   "createChannelDialog.channelType": "Channel type",
   "createChannelDialog.noCategory": "No category",
 
-  // ── Developers page ───────────────────────────────────────────
   "developersPage.addToServer": "Add to server…",
   "developersPage.avatar": "Avatar",
   "developersPage.bot": "Bot",
   "developersPage.bots": "Bots",
   "developersPage.botsIntro":
-    "Build on OrangChat with the {js} package for JavaScript or {py} for Python. A bot is a real account: invite it to a server and give it roles like anyone else. Bots cannot read DMs — those are end-to-end encrypted.",
+    "Build on OrangChat with the {js} package for JavaScript or {py} for Python. A bot is a real account: invite it to a server and give it roles like anyone else. Bots cannot read DMs - those are end-to-end encrypted.",
   "developersPage.copyThisTokenNow": "Copy this token now",
   "developersPage.developers": "Developers",
   "developersPage.displayName": "Display name",
@@ -304,7 +266,6 @@ export const en = {
   "developersPage.username": "Username",
   "developersPage.youHaventMadeAnyBotsYet": "You haven't made any bots yet.",
 
-  // ── Devices tab ───────────────────────────────────────────────
   "devicesTab.eachEntryIsADeviceWith":
     "Each entry is a device with a live sign-in. Revoking one stops it renewing; it loses access within a few minutes.",
   "devicesTab.signedInAt": "Signed in {time}",
@@ -313,7 +274,6 @@ export const en = {
   "devicesTab.thisDevice": "This device",
   "devicesTab.whereYoureSignedIn": "Where you're signed in",
 
-  // ── Dm intro ──────────────────────────────────────────────────
   "dmIntro.dmBeginning": "This is the beginning of your direct message history with {name}.",
   "dmIntro.groupBeginning_one": "This is the beginning of this group, with {count} other person.",
   "dmIntro.groupBeginning_other": "This is the beginning of this group, with {count} other people.",
@@ -323,7 +283,6 @@ export const en = {
   "dmIntro.messagesYouSendInThisConversation":
     "Messages you send in this conversation are only visible to you.",
 
-  // ── Dm sidebar ────────────────────────────────────────────────
   "dmSidebar.conversations": "Conversations",
   "dmSidebar.copyChannelId": "Copy Channel ID",
   "dmSidebar.copyUserId": "Copy User ID",
@@ -341,13 +300,11 @@ export const en = {
     "They'll be removed from your friends, and you'll need a new request to reconnect. Your message history stays.",
   "dmSidebar.unreadMessages": "unread messages",
 
-  // ── Download tab ──────────────────────────────────────────────
   "downloadTab.getTheApp": "Get the app",
   "downloadTab.macosIosArentAvailableYet": "macOS/iOS aren't available yet.",
   "downloadTab.orangchatRunsInYourBrowserBut":
     "OrangChat runs in your browser, but the native apps add tray, notifications, and screen sharing.",
 
-  // ── Emoji tab ─────────────────────────────────────────────────
   "emojiTab.customEmoji": "Custom emoji",
   "emojiTab.gif": "GIF",
   "emojiTab.noCustomEmojiYetUploadOne":
@@ -355,7 +312,6 @@ export const en = {
   "emojiTab.pngJpegOrGifUpTo":
     "PNG, JPEG or GIF up to 256 kB. Resized to 128px; GIFs keep their animation.",
 
-  // ── Encryption mode choice ────────────────────────────────────
   "encryptionModeChoice.beforeAMessageLeavesThisDevice": "Before a message leaves this device",
   "encryptionModeChoice.bothOptionsEncryptEverythingTheDifference":
     "Both options encrypt everything. The difference is whether a swapped lock is stopped before it can be used, or caught afterwards.",
@@ -365,7 +321,6 @@ export const en = {
   "encryptionModeChoice.groupConversationsSendStraightAway":
     "Group conversations send straight away",
 
-  // ── Encryption tab ────────────────────────────────────────────
   "encryptionTab.addAnotherDevice": "Add another device",
   "encryptionTab.addedAt": "Added {time}",
   "encryptionTab.addedByAnotherOfYourDevices": "Added by another of your devices",
@@ -390,13 +345,11 @@ export const en = {
   "encryptionTab.yourDirectMessagesAreLockedOn":
     "Your direct messages are locked on your own devices before they are sent. The key is made here and cannot be copied off this device, so nobody running OrangChat - and nobody who gets hold of our database - can read them.",
 
-  // ── Error boundary ────────────────────────────────────────────
   "errorBoundary.orangchatHitAnUnexpectedErrorAnd":
-    "OrangChat hit an unexpected error and could not keep showing this page. Your messages are safe — reload to try again.",
+    "OrangChat hit an unexpected error and could not keep showing this page. Your messages are safe - reload to try again.",
   "errorBoundary.reloadOrangchat": "Reload OrangChat",
   "errorBoundary.somethingWentWrong": "Something went wrong",
 
-  // ── Events dialog ─────────────────────────────────────────────
   "eventsDialog.aLinkAnAddressAnywhere": "A link, an address, anywhere",
   "eventsDialog.createEvent": "Create event",
   "eventsDialog.description": "Description",
@@ -411,7 +364,6 @@ export const en = {
   "eventsDialog.whatsHappening": "What's happening?",
   "eventsDialog.where": "Where",
 
-  // ── Expression picker ─────────────────────────────────────────
   "expressionPicker.addEmojiOrGif": "Add emoji or GIF",
   "expressionPicker.favourites": "Favourites",
   "expressionPicker.loadingGifs": "Loading GIFs…",
@@ -420,14 +372,12 @@ export const en = {
   "expressionPicker.searchKlipy": "Search KLIPY",
   "expressionPicker.searchKlipyGifs": "Search KLIPY GIFs",
 
-  // ── Forward dialog ────────────────────────────────────────────
   "forwardDialog.directMessages": "Direct messages",
   "forwardDialog.forwardMessage": "Forward message",
   "forwardDialog.nowhereToForwardThisToYet": "Nowhere to forward this to yet.",
   "forwardDialog.searchChannelsAndDms": "Search channels and DMs",
   "forwardDialog.searchForwardTargets": "Search forward targets",
 
-  // ── Friends page ──────────────────────────────────────────────
   "friendsPage.accept": "Accept",
   "friendsPage.addAFriendByTheirUsername": "Add a friend by their username.",
   "friendsPage.addFriend": "Add Friend",
@@ -446,12 +396,10 @@ export const en = {
   "friendsPage.send": "Send",
   "friendsPage.username": "Username",
 
-  // ── Home pane ─────────────────────────────────────────────────
   "homePane.chat": "Chat",
   "homePane.openNavigation": "Open navigation",
   "homePane.orang": "Orang",
 
-  // ── How encryption works ──────────────────────────────────────
   "howEncryptionWorks.addingASecondDeviceBeforeYou":
     "Adding a second device before you need one is the whole answer. That is also why two-factor authentication has to be on first: a spare device is a spare set of keys, and it should take more than a password to make one.",
   "howEncryptionWorks.anythingOnADeviceThatIs":
@@ -507,22 +455,18 @@ export const en = {
   "howEncryptionWorks.yourPhoneAndYourComputerEach":
     "Your phone and your computer each make their own key, on the device itself, the first time you use encryption there. It goes into the part of the device built to guard keys, and it is made so that it cannot be read back out - not by OrangChat, not by another app, not by you. There is nothing to leak and nothing to hand over.",
 
-  // ── Image context menu ────────────────────────────────────────
   "imageContextMenu.copyImage": "Copy image",
   "imageContextMenu.copyImageAddress": "Copy image address",
   "imageContextMenu.saveImageAs": "Save image as…",
 
-  // ── Image lightbox ────────────────────────────────────────────
   "imageLightbox.resetZoom": "Reset zoom",
   "imageLightbox.zoomIn": "Zoom in",
   "imageLightbox.zoomOut": "Zoom out",
 
-  // ── Incoming call dialog ──────────────────────────────────────
   "incomingCallDialog.accept": "Accept",
   "incomingCallDialog.acceptWithCamera": "Accept with camera",
   "incomingCallDialog.decline": "Decline",
 
-  // ── Invite card ───────────────────────────────────────────────
   "inviteCard.inviteInvalid": "Invite invalid",
   "inviteCard.join": "Join",
   "inviteCard.joined": "Joined",
@@ -530,15 +474,12 @@ export const en = {
   "inviteCard.signInToJoin": "Sign in to join",
   "inviteCard.thisInviteIsExpiredRevokedOr": "This invite is expired, revoked, or never existed.",
 
-  // ── Invite dialog ─────────────────────────────────────────────
   "inviteDialog.invitePeople": "Invite people",
   "inviteDialog.shareThisLinkItUnfurlsInto":
     "Share this link - it unfurls into a join card when posted in chat, and opens the app on phones that have it. Expires in 7 days.",
 
-  // ── Invite page ───────────────────────────────────────────────
   "invitePage.thatInviteLinkIsMissingA": "That invite link is missing a code.",
 
-  // ── Key erasure section ───────────────────────────────────────
   "keyErasureSection.eraseMyEncryptionKeys": "Erase my encryption keys",
   "keyErasureSection.everyMessageAlreadyInYourEncrypted":
     "Every message already in your encrypted conversations becomes permanently unreadable - by you, by us, by anyone. Nothing brings them back.",
@@ -556,7 +497,6 @@ export const en = {
   "keyErasureSection.yourEncryptionKeysAreScheduledTo":
     "Your encryption keys are scheduled to be erased",
 
-  // ── Legal page ────────────────────────────────────────────────
   "legalPage.10DisclaimersAndLiability": "10. Disclaimers and liability",
   "legalPage.10Security": "10. Security",
   "legalPage.11Changes": "11. Changes",
@@ -817,7 +757,6 @@ export const en = {
   "legalPage.youMustFollowTheCommunityGuidelines":
     "You must follow the Community Guidelines. You must not:",
 
-  // ── Login page ────────────────────────────────────────────────
   "loginPage.authenticatorCode": "Authenticator code",
   "loginPage.confirmWithYourPasskeyToFinish": "Confirm with your passkey to finish signing in.",
   "loginPage.createAnAccount": "Create an account",
@@ -839,10 +778,8 @@ export const en = {
   "loginPage.weEmailedYouASignIn": "We emailed you a sign-in code. It expires in 10 minutes.",
   "loginPage.welcomeBack": "Welcome back",
 
-  // ── Markdown ──────────────────────────────────────────────────
   "markdown.spoilerClickToReveal": "Spoiler, click to reveal",
 
-  // ── Marketplace themes ────────────────────────────────────────
   "marketplaceThemes.install": "Install",
   "marketplaceThemes.installed": "Installed",
   "marketplaceThemes.intro":
@@ -851,7 +788,6 @@ export const en = {
   "marketplaceThemes.searchThemes": "Search themes",
   "marketplaceThemes.seeTheMarketplaceRepo": "See the marketplace repo",
 
-  // ── Member list ───────────────────────────────────────────────
   "memberList.ban": "Ban",
   "memberList.banName": "Ban {name}",
   "memberList.changeNickname": "Change nickname",
@@ -869,7 +805,6 @@ export const en = {
   "memberList.theyWontBeAbleToRejoin": "They won't be able to rejoin unless unbanned.",
   "memberList.viewProfile": "View profile",
 
-  // ── Message attachments ───────────────────────────────────────
   "messageAttachments.decrypt": "Decrypt",
   "messageAttachments.decryptingFile": "Decrypting {filename}…",
   "messageAttachments.expiredLargeFilesAreOnlyKept":
@@ -882,7 +817,6 @@ export const en = {
   "messageAttachments.thisFileCouldNotBeDecrypted":
     "This file could not be decrypted on this device",
 
-  // ── Message context menu ──────────────────────────────────────
   "messageContextMenu.addReaction": "Add Reaction",
   "messageContextMenu.apps": "Apps",
   "messageContextMenu.copyMessageId": "Copy Message ID",
@@ -898,7 +832,6 @@ export const en = {
   "messageContextMenu.speakMessage": "Speak Message",
   "messageContextMenu.unpinMessage": "Unpin Message",
 
-  // ── Message item ──────────────────────────────────────────────
   "messageItem.deleteMessage": "Delete message",
   "messageItem.edited": "(edited)",
   "messageItem.editMessage": "Edit message",
@@ -908,7 +841,6 @@ export const en = {
   "messageItem.pinned": "Pinned",
   "messageItem.reply": "Reply",
 
-  // ── Message list ──────────────────────────────────────────────
   "messageList.couldntFindThatMessageItMay":
     "Couldn't find that message - it may have been deleted.",
   "messageList.loadEarlierMessages": "Load earlier messages",
@@ -917,11 +849,9 @@ export const en = {
   "messageList.thisIsTheStartOfThe": "This is the start of the channel. Say something!",
   "messageList.welcomeToChannel": "Welcome to #{channel}",
 
-  // ── New dm dialog ─────────────────────────────────────────────
   "newDmDialog.findFriends": "Find friends",
   "newDmDialog.searchByNameOrUsername": "Search by name or username",
 
-  // ── Passkeys section ──────────────────────────────────────────
   "passkeysSection.addAPasskey": "Add a passkey",
   "passkeysSection.addedLastUsed": "Added {added} · last used {lastUsed}",
   "passkeysSection.addedNeverUsed": "Added {added} · never used",
@@ -945,14 +875,12 @@ export const en = {
   "passkeysSection.thisBrowserDoesntSupportPasskeysPasskeys":
     "This browser doesn't support passkeys. Passkeys you add elsewhere will still work on your other devices.",
 
-  // ── Plaintext notice ──────────────────────────────────────────
   "plaintextNotice.thisConversationIsNotEncryptedYet": "This conversation is not encrypted yet",
   "plaintextNotice.waitingOn_one":
     "{who} has not set up encryption on any device, and a locked message needs a key on their side to open it. Messages here are stored the ordinary way until then - it switches on by itself the moment they open OrangChat on a phone or computer.",
   "plaintextNotice.waitingOn_other":
     "{who} have not set up encryption on any device, and a locked message needs a key on each of their side to open it. Messages here are stored the ordinary way until then - it switches on by itself the moment they all open OrangChat on a phone or computer.",
 
-  // ── Plugins tab ───────────────────────────────────────────────
   "pluginsTab.enable": "Enable",
   "pluginsTab.enabled": "Enabled",
   "pluginsTab.intro":
@@ -961,7 +889,6 @@ export const en = {
   "pluginsTab.searchPlugins": "Search plugins",
   "pluginsTab.seeTheMarketplaceRepo": "See the marketplace repo",
 
-  // ── Privacy tab ───────────────────────────────────────────────
   "privacyTab.checkPeopleBeforeMessagingThem": "Check people before messaging them",
   "privacyTab.directMessages": "Direct messages",
   "privacyTab.encryption": "Encryption",
@@ -987,15 +914,12 @@ export const en = {
   "privacyTab.withSomeoneNewYourMessagesWait":
     "With someone new, your messages wait on this device - locked, sent nowhere - until you have seen their code in person or read the numbers to each other on a call. Worth turning on only if you can realistically meet or ring the people you message.",
 
-  // ── Profile card ──────────────────────────────────────────────
   "profileCard.aboutMe": "About me",
   "profileCard.memberSince": "Member since",
 
-  // ── Profile dialog ────────────────────────────────────────────
   "profileDialog.accept": "Accept",
   "profileDialog.message": "Message",
 
-  // ── Profile themes tab ────────────────────────────────────────
   "profileThemesTab.install": "Install",
   "profileThemesTab.installed": "Installed",
   "profileThemesTab.intro":
@@ -1007,7 +931,6 @@ export const en = {
   "profileThemesTab.username": "username",
   "profileThemesTab.yourName": "Your name",
 
-  // ── Qr login ──────────────────────────────────────────────────
   "qrLogin.codeExpired": "Code expired",
   "qrLogin.confirmOnYourPhone": "Confirm on your phone",
   "qrLogin.couldNotStartQrSignIn": "Could not start QR sign-in.",
@@ -1019,14 +942,12 @@ export const en = {
   "qrLogin.tryAgain": "Try again",
   "qrLogin.useEmailAndPasswordInstead": "Use email and password instead",
 
-  // ── Qr scanner ────────────────────────────────────────────────
   "qrScanner.cameraPreviewForScanningACode": "Camera preview for scanning a code",
   "qrScanner.pasteInstead": "Paste instead",
   "qrScanner.pasteTheCodeTextInsteadIt": "Paste the code text instead. It starts with",
   "qrScanner.useTheCamera": "Use the camera",
   "qrScanner.useThisCode": "Use this code",
 
-  // ── Qr sign in tab ────────────────────────────────────────────
   "qrSignInTab.approveSignIn": "Approve sign-in",
   "qrSignInTab.approveThisSignIn": "Approve this sign-in?",
   "qrSignInTab.checkingSignInCode": "Checking sign-in code…",
@@ -1039,10 +960,8 @@ export const en = {
   "qrSignInTab.signInApproved": "Sign-in approved",
   "qrSignInTab.theOtherDeviceCanNowFinish": "The other device can now finish signing in.",
 
-  // ── Reactions ─────────────────────────────────────────────────
   "reactions.addReaction": "Add reaction",
 
-  // ── Report message dialog ─────────────────────────────────────
   "reportMessageDialog.addContextThatWillHelpReview":
     "Add context that will help review this report",
   "reportMessageDialog.reportingDeliberatelyRevealsThisOneDecrypted":
@@ -1050,7 +969,6 @@ export const en = {
   "reportMessageDialog.sendReport": "Send report",
   "reportMessageDialog.whatHappenedOptional": "What happened? (optional)",
 
-  // ── Safety number check ───────────────────────────────────────
   "safetyNumberCheck.checkingThemHereIsSaferThan":
     "Checking them here is safer than reading along - sixty digits is more than anyone actually compares by eye.",
   "safetyNumberCheck.digitsOf60":
@@ -1062,7 +980,6 @@ export const en = {
     "These numbers appear once both accounts have set up encryption on a device.",
   "safetyNumberCheck.workingItOut": "Working it out…",
 
-  // ── Search dialog ─────────────────────────────────────────────
   "searchDialog.noMessagesFoundFor": "No messages found for “{query}”.",
   "searchDialog.onlyThisChannel": "Only this channel",
   "searchDialog.searchedOnThisDeviceEncryptedMessages":
@@ -1073,13 +990,11 @@ export const en = {
   "searchDialog.serverSearchHint": "Server search matches whole words. Try {phrase} or {exclude} a word.",
   "searchDialog.typeToSearchMessages": "Type to search messages.",
 
-  // ── Security alert overlay ────────────────────────────────────
   "securityAlertOverlay.account": "Account {subject}",
   "securityAlertOverlay.acceptingStartsThisContactOverAs":
     "Accepting starts this contact over as unverified and lets messages flow again. Anything they sent before they started over stays unreadable, and it does not confirm who they are - compare safety numbers once you can.",
   "securityAlertOverlay.iUnderstand": "I understand",
 
-  // ── Security tab ──────────────────────────────────────────────
   "securityTab.1ScanThisCode": "1. Scan this code",
   "securityTab.2EnterThe6DigitCode": "2. Enter the 6-digit code",
   "securityTab.accountStanding": "Account standing",
@@ -1171,7 +1086,6 @@ export const en = {
     "Your messages stay in the conversations they're part of, shown as from a deleted user. Everything else - profile, connections, friends, server memberships - is erased. This can't be undone.",
   "securityTab.yourPassword": "Your password",
 
-  // ── Server context menu ───────────────────────────────────────
   "serverContextMenu.copyServerId": "Copy Server ID",
   "serverContextMenu.createCategory": "Create Category",
   "serverContextMenu.createChannel": "Create Channel",
@@ -1185,7 +1099,6 @@ export const en = {
   "serverContextMenu.serverSettings": "Server Settings",
   "serverContextMenu.unmuteServer": "Unmute Server",
 
-  // ── Server rail ───────────────────────────────────────────────
   "serverRail.addAServer": "Add a server",
   "serverRail.home": "Home",
   "serverRail.leaveServer": "Leave server",
@@ -1196,7 +1109,6 @@ export const en = {
   "serverRail.unreadDirectMessages": "unread direct messages",
   "serverRail.youllNeedANewInviteTo": "You'll need a new invite to get back in.",
 
-  // ── Server settings dialog ────────────────────────────────────
   "serverSettingsDialog.auditLog": "Audit log",
   "serverSettingsDialog.bans": "Bans",
   "serverSettingsDialog.color": "Color",
@@ -1229,12 +1141,10 @@ export const en = {
   "serverSettingsDialog.unban": "Unban",
   "serverSettingsDialog.whatIsThisServerAbout": "What is this server about?",
 
-  // ── Server view ───────────────────────────────────────────────
   "serverView.couldntLoadThisServer": "Couldn't load this server",
   "serverView.noTextChannelsYetCreateOne":
     "No text channels yet - create one from the server menu.",
 
-  // ── Sharing tab ───────────────────────────────────────────────
   "sharingTab.allowCameraMicrophone": "Allow camera & microphone",
   "sharingTab.appliesTheNextTimeYouJoin": "Applies the next time you join a call.",
   "sharingTab.camera": "Camera",
@@ -1262,7 +1172,6 @@ export const en = {
   "sharingTab.videoDevice": "Video device",
   "sharingTab.whenJoiningACall": "When joining a call",
 
-  // ── Signup page ───────────────────────────────────────────────
   "signupPage.alreadyHaveAnAccount": "Already have an account?",
   "signupPage.checkYourEmailForAVerification":
     "Check your email for a verification link. You must verify it before signing in.",
@@ -1282,7 +1191,6 @@ export const en = {
   "signupPage.termsOfService": "Terms of Service",
   "signupPage.username": "Username",
 
-  // ── Sound tab ─────────────────────────────────────────────────
   "soundTab.deleteName": "Delete {name}",
   "soundTab.maxSizeMb": "Sound must be 1 MB or smaller.",
   "soundTab.mp3OggWavOrFlacUpTo": "MP3, OGG, WAV or FLAC up to 1 MB and {seconds} seconds.",
@@ -1297,14 +1205,11 @@ export const en = {
   "soundTab.uploading": "Uploading…",
   "soundTab.volumeForName": "Volume for {name}",
 
-  // ── Soundboard panel ──────────────────────────────────────────
   "soundboardPanel.noSoundsYetAddSomeIn": "No sounds yet. Add some in Server settings → Sounds.",
   "soundboardPanel.soundboard": "Soundboard",
 
-  // ── Splash screen ─────────────────────────────────────────────
   "splashScreen.loadingOrangchat": "Loading OrangChat",
 
-  // ── System tab ────────────────────────────────────────────────
   "systemTab.appUpdates": "App updates",
   "systemTab.cachedDataOnThisDevice": "Cached data on this device.",
   "systemTab.cachedDataOnThisDeviceUsage": "Cached data on this device: ~{usage}.",
@@ -1341,10 +1246,8 @@ export const en = {
   "systemTab.updateFoundDownloading":
     "Update {version} found - downloading. You'll be asked to restart.",
 
-  // ── Toaster ───────────────────────────────────────────────────
   "toaster.dismissNotification": "Dismiss notification",
 
-  // ── Transfer dialog ───────────────────────────────────────────
   "transferDialog.addingADeviceIsASecurity":
     "Adding a device is a security event, so it takes a fresh second-factor code. Every other device on your account will be told about it.",
   "transferDialog.addPhoneToThisAccount": "Add phone to this account",
@@ -1387,7 +1290,6 @@ export const en = {
   "transferDialog.waitingForTheOtherDevice": "Waiting for the other device…",
   "transferDialog.waitingForYourPhoneToScan": "Waiting for your phone to scan…",
 
-  // ── Update gate ───────────────────────────────────────────────
   "updateGate.dismissUpdateNotice": "Dismiss update notice",
   "updateGate.fixesProblemsInTheVersion":
     "OrangChat {latest} fixes problems in the version you are running.",
@@ -1400,10 +1302,8 @@ export const en = {
   "updateGate.update": "Update",
   "updateGate.updateRequired": "Update required",
 
-  // ── User footer ───────────────────────────────────────────────
   "userFooter.userSettings": "User settings",
 
-  // ── User settings dialog ──────────────────────────────────────
   "userSettingsDialog.about": "About",
   "userSettingsDialog.aboutMe": "About me",
   "userSettingsDialog.accentColor": "Accent color",
@@ -1501,14 +1401,12 @@ export const en = {
   "userSettingsDialog.uploadCss": "Upload CSS",
   "userSettingsDialog.username": "Username",
 
-  // ── Verification notice ───────────────────────────────────────
   "verificationNotice.check_one": "Check them",
   "verificationNotice.check_other": "Check people",
   "verificationNotice.notCheckedYet":
     "You asked to check people before messaging them, and you have not checked {who} yet. The message is sitting on this device, locked - it has not been sent anywhere. Scan their code, or compare numbers on a call, and it goes.",
   "verificationNotice.yourMessageIsWaitingNotLost": "Your message is waiting, not lost",
 
-  // ── Verify dialog ─────────────────────────────────────────────
   "verifyDialog.doneEverythingFromHereOnUses": "Done. Everything from here on uses the new key.",
   "verifyDialog.everythingSentFromNowOnUses":
     "Everything sent from now on uses a new key. Existing messages stay readable, and everyone still in the conversation keeps access.",
@@ -1532,16 +1430,14 @@ export const en = {
   "verifyDialog.thisCodeHoldsNothingSecretIt":
     "This code holds nothing secret. It is safe for anyone to see; being in the room is what makes scanning it mean something.",
 
-  // ── Video lightbox ────────────────────────────────────────────
   "videoLightbox.seekVideo": "Seek video",
 
-  // ── Whats new dialog ──────────────────────────────────────────
   "whatsNewDialog.gotIt": "Got it",
   "whatsNewDialog.whatsNew": "What's new",
 } as const;
 
-/** Every key the interface can ask for. */
+
 export type MessageKey = keyof typeof en;
 
-/** The shape a translation fills in - all keys optional, English fills gaps. */
+
 export type Catalog = Partial<Record<MessageKey, string>>;

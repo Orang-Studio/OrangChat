@@ -13,7 +13,7 @@ interface VisibleReleaseNotes extends ReleaseNotes {
   text: string;
 }
 
-/** Shows each published release note once per signed-in browser user. */
+
 export function WhatsNewDialog() {
   const userId = useAuthStore((state) => state.user?.id);
   const [notes, setNotes] = useState<VisibleReleaseNotes | null>(null);
@@ -32,8 +32,6 @@ export function WhatsNewDialog() {
         if (!response.ok || controller.signal.aborted) return;
         setNotes({ ...release, text: await response.text() });
       } catch {
-        // Release notes are informational: a temporary static-file failure must
-        // never interrupt loading chat.
       }
     })();
     return () => controller.abort();
@@ -44,7 +42,6 @@ export function WhatsNewDialog() {
       try {
         localStorage.setItem(releaseNotesStorageKey(userId), notes.version);
       } catch {
-        // Private browsing may block storage; still let the user dismiss it.
       }
     }
     setNotes(null);

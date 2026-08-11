@@ -7,16 +7,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Content received from Android's system share sheet, held through sign-in. */
 data class PendingShare(
     val text: String = "",
     val uris: List<Uri> = emptyList(),
-    /**
-     * The conversation the user picked in the share sheet's direct-share row,
-     * if they picked one. Android delivers that choice as the id of the
-     * long-lived conversation shortcut the notification published, not as a
-     * destination the app can act on directly.
-     */
     val channelId: String? = null,
 )
 

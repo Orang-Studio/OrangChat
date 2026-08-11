@@ -66,18 +66,10 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
 
 private enum class Overlay { NONE, FRIENDS, NEW_GROUP, SETTINGS, SEARCH, SERVER_SETTINGS, ROLES, MEMBERS, AUDIT_LOG }
 
-/**
- * The authenticated shell: a server rail plus a swapping content pane
- * (DM/home list, channel list, chat, friends, settings). Mobile-first - one
- * content pane at a time with back navigation, Discord-style rail on the left.
- * Once a chat is open it takes the full width and the rail plus its list move
- * into a swipe-from-the-left drawer, mirroring the web client.
- */
 @Composable
 fun HomeScreen(
     appViewModel: AppViewModel,
     self: SelfUser,
-    /** Opened once on first composition; a bubble's conversation. */
     initialChannelId: String? = null,
     themeViewModel: ThemeViewModel = hiltViewModel(),
     callViewModel: CallViewModel = hiltViewModel(),
@@ -106,31 +98,19 @@ fun HomeScreen(
     val pendingVerify by appViewModel.pendingVerify.collectAsStateWithLifecycle()
     val pendingTransfer by appViewModel.pendingTransfer.collectAsStateWithLifecycle()
 
-    // The authenticated user object is a login-time snapshot. Presence events
-    // arrive separately, so fold their latest values into every self-facing UI.
     val liveSelf = self.copy(
         status = presence[self.id] ?: self.status,
         devices = presenceDevices[self.id]?.toList() ?: self.devices,
         activities = presenceActivities[self.id] ?: self.activities,
     )
 
-    // Who the conversation long-press menu may offer "Remove friend" for.
     val friendIds = remember(friends) { friends.map { it.user.id }.toSet() }
 
-    // On Android 13+ posting a notification needs permission, and the system
-    // dialog is a one-shot: once it is dismissed it never comes back, so a
-    // reflexive "Deny" from someone who had no idea what was being asked is
-    // permanent. Put the question in the app's own words first and spend that
-    // single system prompt only on a yes.
-    //
-    // Saying no here is taken for an answer - nothing nags afterwards. The way
-    // back in is Settings > Privacy > Notifications, which offers to open the
-    // system screen whenever the permission is missing.
     val context = LocalContext.current
     var notifRationale by remember { mutableStateOf(false) }
     val notifPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
-    ) { /* result handled by hasNotificationPermission at post time */ }
+    ) { }
     LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             !hasNotificationPermission(context) &&
@@ -141,8 +121,6 @@ fun HomeScreen(
     }
     if (notifRationale) {
         val dismissRationale = {
-            // Recorded on either answer, so "Not now" is not re-asked on every
-            // launch - the Privacy screen is where a change of mind belongs.
             settingsViewModel.markNotificationPermissionAsked()
             notifRationale = false
         }
@@ -190,29 +168,20 @@ fun HomeScreen(
     val auditLogLoading by appViewModel.auditLogLoading.collectAsStateWithLifecycle()
     val serverIconUploading by appViewModel.serverIconUploading.collectAsStateWithLifecycle()
 
-    // Seed each voice channel's roster when a server opens; voice:state keeps
-    // them current from then on.
     LaunchedEffect(detail?.server?.id) {
         detail?.channels
             ?.filter { it.type == ChannelType.VOICE }
             ?.map { it.id }
             ?.let { if (it.isNotEmpty()) callViewModel.seedVoiceChannels(it) }
     }
-    // Starting a call or joining a voice channel both need the mic (and the
-    // camera for video) before anything happens.
     var pendingCallChannel by remember { mutableStateOf<String?>(null) }
     var pendingVoiceChannel by remember { mutableStateOf<Pair<String, String>?>(null) }
     val callGate = rememberCallPermissionGate(
         onGranted = { video ->
             pendingCallChannel?.let { channelId ->
-                // Answering a call that is already ringing at us goes through
-                // accept rather than start: starting would put us in the room
-                // with the phone still ringing at both ends.
                 if (callViewModel.incoming.value?.channelId == channelId) {
                     callViewModel.accept(video)
                 } else {
-                    // The roster only puts a name to whoever declines; an unknown
-                    // conversation still calls fine.
                     val roster = dms.firstOrNull { it.id == channelId }?.participants.orEmpty()
                     callViewModel.startCall(channelId, video, roster)
                 }
@@ -242,36 +211,24 @@ fun HomeScreen(
     var homeSelected by remember { mutableStateOf(true) }
     var openChat by remember { mutableStateOf(false) }
     var overlay by remember { mutableStateOf(Overlay.NONE) }
-    /** Null searches the whole selected area; otherwise search only this chat. */
     var searchChannelId by remember { mutableStateOf<String?>(null) }
     var showCreateServer by remember { mutableStateOf(false) }
     var showCreateChannel by remember { mutableStateOf(false) }
     var callExpanded by remember { mutableStateOf(false) }
     var soundboardOpen by remember { mutableStateOf(false) }
-    /** Whose profile card is open, if any. */
     var profileUser by remember { mutableStateOf<User?>(null) }
-    /** When set, the NEW_GROUP overlay grows this group instead of creating one. */
     var groupAddTargetId by remember { mutableStateOf<String?>(null) }
-    /** A search hit the chat should land on once its channel is open. */
     var pendingJumpMessageId by remember { mutableStateOf<String?>(null) }
 
-    // A newly started/answered DM call opens its stage. Minimizing it does not
-    // touch the call session; the persistent bar below can reopen it anytime.
     LaunchedEffect(activeCall?.channelId, activeCall?.kind) {
         callExpanded = activeCall?.kind == SessionKind.CALL
     }
 
-    // An open chat takes over the whole width - the rail would only steal room
-    // from the conversation, so it moves into a swipe-from-the-left drawer,
-    // matching the web client's mobile layout.
     val chatOpen = openChat && currentChannelId != null
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val closeDrawer: () -> Unit = { scope.launch { drawerState.close() }; Unit }
 
-    // Show each error once and clear it, so the same message can be raised
-    // again later - leaving it set would make a repeat of the same failure
-    // look like nothing happened.
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(error) {
         val message = error ?: return@LaunchedEffect
@@ -279,14 +236,8 @@ fun HomeScreen(
         appViewModel.clearError()
     }
 
-    // Leaving the chat puts the rail back on screen, so a drawer left open
-    // would otherwise show it twice.
     LaunchedEffect(chatOpen) { if (!chatOpen) drawerState.close() }
 
-    // A notification tap, a conversation shortcut or a bubble names a channel
-    // and expects to land in it. Overlays and the drawer come down with it -
-    // arriving behind a settings screen would read as the tap having done
-    // nothing at all.
     val openConversation: suspend (String) -> Unit = { channelId ->
         appViewModel.openConversation(channelId) { isDm ->
             homeSelected = isDm
@@ -301,23 +252,14 @@ fun HomeScreen(
         appViewModel.clearPendingConversation()
         openConversation(channelId)
     }
-    // A bubble is only ever its own conversation, so it is opened directly
-    // rather than through the store the rest of the app shares.
     LaunchedEffect(initialChannelId) {
         initialChannelId?.let { openConversation(it) }
     }
 
-    // The drawer slides in over an expanded call stage. Once it settles open the
-    // stage is fully hidden, so drop it then - closing the drawer should come
-    // back to the conversation, and the call bar can reopen the stage anytime.
     LaunchedEffect(drawerState.isOpen) { if (drawerState.isOpen) callExpanded = false }
 
     BackHandler(enabled = drawerState.isOpen || overlay != Overlay.NONE || chatOpen) {
         when {
-            // Ahead of the drawer: opening an overlay always closes the drawer,
-            // so a still-Open drawer here is a close mid-animation. Settings
-            // takes the drawer off screen outright - deferring to it would eat
-            // the back press and strand the user.
             overlay != Overlay.NONE -> {
                 overlay = Overlay.NONE
                 groupAddTargetId = null
@@ -380,8 +322,6 @@ fun HomeScreen(
                 onNewGroup = { groupAddTargetId = null; overlay = Overlay.NEW_GROUP; closeDrawer() },
                 onMarkRead = appViewModel::markChannelRead,
                 onOpenProfile = { profileUser = it },
-                // Starting from the list has no call UI of its own to lean on,
-                // so it goes through the same permission gate as the chat header.
                 onStartCall = { convo -> requestAndStartCall(convo.id, false) },
                 onRemoveFriend = appViewModel::removeFriend,
                 onLeaveConversation = { convo -> appViewModel.leaveConversation(convo.id) },
@@ -398,7 +338,6 @@ fun HomeScreen(
                 },
                 onSelectChannel = { channel ->
                     when (channel.type) {
-                        // A voice channel is joined, not opened as a chat.
                         ChannelType.VOICE -> {
                             requestAndJoinVoice(channel.id, channel.name ?: "voice")
                             closeDrawer()
@@ -424,8 +363,6 @@ fun HomeScreen(
         }
     }
 
-    // Pinned under the content so call controls stay reachable from any screen
-    // while a call is up.
     val callDock: @Composable () -> Unit = {
         activeCall?.takeIf {
             it.kind == SessionKind.VOICE_CHANNEL ||
@@ -455,8 +392,6 @@ fun HomeScreen(
                 } else {
                     null
                 },
-                // Only server voice channels have a soundboard; the server
-                // rejects a DM channel anyway.
                 onSoundboard = if (call.kind == SessionKind.VOICE_CHANNEL) {
                     { soundboardOpen = true }
                 } else {
@@ -475,9 +410,6 @@ fun HomeScreen(
         )
     }
 
-    // Settings is a takeover: it owns the whole window, rail and sidebar
-    // included. An expanded call still outranks it - the call stage is the one
-    // thing a user needs to get back to immediately.
     val settingsTakeover = overlay == Overlay.SETTINGS &&
         !(activeCall?.kind == SessionKind.CALL && callExpanded)
 
@@ -499,7 +431,6 @@ fun HomeScreen(
     } else {
         ModalNavigationDrawer(
             drawerState = drawerState,
-            // Only when the chat is full-width; otherwise the rail is already there.
             gesturesEnabled = chatOpen && overlay == Overlay.NONE,
             drawerContent = {
                 ModalDrawerSheet(
@@ -702,7 +633,6 @@ fun HomeScreen(
                                     presence = presence,
                                     addMode = addTarget != null,
                                     excludeUserIds = addTarget?.participants?.map { it.id }?.toSet() ?: emptySet(),
-                                    // 15-person cap: the seats a grow can still fill.
                                     maxSelection = addTarget?.let {
                                         (15 - it.participants.size).coerceAtLeast(0)
                                     } ?: 14,
@@ -751,9 +681,6 @@ fun HomeScreen(
                                     onRetryMessage = appViewModel::retryFailedMessage,
                                     onDiscardMessage = appViewModel::discardFailedMessage,
                                     selfId = self.id,
-                                    // A DM's mentionable people are its
-                                    // participants, not the members of whatever
-                                    // server happens to be selected behind it.
                                     members = convo?.participants?.map { u ->
                                         ServerMember(
                                             id = u.id,
@@ -794,13 +721,11 @@ fun HomeScreen(
                                     onJumpHandled = { pendingJumpMessageId = null },
                                     compact = devicePrefs.compactMessages,
                                     reducedMotion = devicePrefs.reducedMotion,
-                                    // Only DMs and group DMs can be called.
                                     onStartCall = if (convo != null) {
                                         { video -> requestAndStartCall(channelId, video) }
                                     } else {
                                         null
                                     },
-                                    // Only group DMs can grow; the button opens the friend picker.
                                     onAddPeople = if (convo?.type == ChannelType.GROUP_DM) {
                                         { groupAddTargetId = channelId; overlay = Overlay.NEW_GROUP }
                                     } else {
@@ -837,8 +762,6 @@ fun HomeScreen(
                                         null
                                     },
                                     iconUrl = convo?.iconUrl,
-                                    // A 1:1 DM shows the other person; only a
-                                    // group has a picture of its own to set.
                                     onSetIcon = if (convo?.type == ChannelType.GROUP_DM) {
                                         { uri -> appViewModel.setDmIcon(channelId, uri) }
                                     } else {
@@ -849,9 +772,6 @@ fun HomeScreen(
                                     } else {
                                         null
                                     },
-                                    // Groups get the same comparison, but §6.3
-                                    // keeps their number informational: a match
-                                    // confirms the membership and pins nothing.
                                     onCompareSafetyNumber = if (convo != null) {
                                         { typed, done ->
                                             appViewModel.compareSafetyNumber(
@@ -901,13 +821,6 @@ fun HomeScreen(
         }
     }
 
-    // Every failed action in the AppViewModel writes `error`, and until now
-    // nothing read it - a refresh, an upload or a join could fail in total
-    // silence. One host sits over the whole shell (settings takeover included,
-    // since that is rendered from here too) and speaks each one once.
-    //
-    // MainActivity already pads the whole tree by WindowInsets.safeDrawing, so
-    // this deliberately adds no inset padding of its own.
     Box(modifier = Modifier.fillMaxSize()) {
         SnackbarHost(
             hostState = snackbarHostState,
@@ -922,9 +835,6 @@ fun HomeScreen(
     }
 
     profileUser?.let { target ->
-        // Relationship decides which action the card offers. An outgoing request
-        // reads as PENDING; an incoming one is left as STRANGER so the button
-        // stays "Add friend", which the server resolves into an accept.
         val relation = when {
             target.id == self.id -> ProfileRelation.SELF
             friends.any { it.user.id == target.id } -> ProfileRelation.FRIEND
@@ -972,8 +882,6 @@ fun HomeScreen(
         )
     }
 
-    // An invite link tapped outside the app. It waits in the store through the
-    // whole sign-in flow if need be, so this is the first moment it can be shown.
     pendingInvite?.let { code ->
         DeepLinkInviteDialog(
             code = code,
@@ -986,15 +894,10 @@ fun HomeScreen(
         )
     }
 
-    // A web sign-in QR scanned into the app. Only reachable here, in the signed-in
-    // shell, since approving a web session needs this phone's own account.
     pendingQrLogin?.let { token ->
         QrLoginConfirmDialog(token = token, appViewModel = appViewModel)
     }
 
-    // Somebody's contact code, scanned with the phone's camera. Pinning their
-    // identity only means anything once this phone is signed in, so like the
-    // sign-in code above it is only ever raised here.
     pendingVerify?.let { code ->
         VerifyContactDialog(raw = code, appViewModel = appViewModel)
     }

@@ -11,13 +11,13 @@ export interface Bot {
 
 export interface BotToken {
   id: string;
-  /** Last four characters, so two tokens can be told apart without revealing either. */
+
   hint: string;
   createdAt: string;
   lastUsedAt: string | null;
 }
 
-/** Only ever returned at mint. The server keeps a digest and cannot show it again. */
+
 export interface MintedToken extends BotToken {
   token: string;
 }

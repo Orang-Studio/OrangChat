@@ -17,8 +17,6 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // socket.io-client + engine.io-client live on Maven Central; JitPack kept
-        // as a fallback for any transitive that is only published there.
         maven { url = uri("https://jitpack.io") }
     }
 }

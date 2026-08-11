@@ -46,17 +46,8 @@ import lt.oranges.orangchat.ui.components.Text
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-// A group tops out at 15 people: you plus 14 others, matching the server.
 private const val MAX_RECIPIENTS = 14
 
-/**
- * Pick friends to start a group DM, or to grow an existing one. Mirrors the web
- * NewDmDialog - a searchable friend list with multi-select and selected-chips.
- *
- * In add mode ([addMode] = true) the title/button say "Add", the minimum is one
- * friend instead of two, and [excludeUserIds] (a group's current participants)
- * are hidden so you only see friends who aren't in it yet.
- */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun NewGroupScreen(
@@ -67,7 +58,6 @@ fun NewGroupScreen(
     modifier: Modifier = Modifier,
     addMode: Boolean = false,
     excludeUserIds: Set<String> = emptySet(),
-    /** Remaining seats: how many more people the group can take (15-person cap). */
     maxSelection: Int = MAX_RECIPIENTS,
 ) {
         val context = LocalContext.current

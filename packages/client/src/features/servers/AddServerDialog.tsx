@@ -15,7 +15,7 @@ interface AddServerDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/** Create a new server or join an existing one via invite link. */
+
 export function AddServerDialog({ open, onOpenChange }: AddServerDialogProps) {
   const [mode, setMode] = useState<"create" | "join">("create");
   const [name, setName] = useState("");

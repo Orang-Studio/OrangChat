@@ -9,19 +9,7 @@ export const STATUS_TEXT: Record<PresenceStatus, string> = {
   offline: "text-ink-muted",
 };
 
-/**
- * Presence as a shape, not just a colour: a full disc for online, a crescent for
- * idle, a barred disc for do-not-disturb, a hollow ring for offline. Colour
- * alone fails for the ~8% of men with red/green deficiency, and at 12px the
- * green and the amber dot are the same dot.
- *
- * `mobile` swaps the disc for a phone silhouette carrying the same cut-outs, so
- * "online" and "online, on their phone" are one glance apart without spending a
- * second badge on it. Only meaningful while online - `devices` is empty offline.
- *
- * The cut-outs are punched through with a mask rather than painted, so whatever
- * sits behind the badge shows through them and the shape reads on any surface.
- */
+
 export function StatusIcon({
   status,
   mobile = false,
@@ -29,10 +17,10 @@ export function StatusIcon({
   label,
 }: {
   status: PresenceStatus;
-  /** Draw the phone silhouette instead of the disc. */
+
   mobile?: boolean;
   className?: string;
-  /** Accessible name; pass null when a parent already labels the badge. */
+
   label?: string | null;
 }) {
   const maskId = useId();

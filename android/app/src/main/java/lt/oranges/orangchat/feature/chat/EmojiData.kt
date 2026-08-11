@@ -2,9 +2,6 @@ package lt.oranges.orangchat.feature.chat
 
 data class EmojiCategory(val name: String, val emojis: List<String>)
 
-/** Kept in-app so emoji insertion works even when the selected keyboard has no
- * emoji panel. The system keyboard can still be used for the full Unicode set.
- * Mirrors packages/client/src/features/chat/emoji-data.ts. */
 val EMOJI_CATEGORIES = listOf(
     EmojiCategory(
         "Smileys",

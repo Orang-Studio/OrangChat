@@ -1,7 +1,5 @@
 import { prisma } from '../src/prisma.js';
-/**
- * Dev seed. Fleshed out in Phase 2 a demo server.
- */
+
 async function main(): Promise<void> {
   const userCount = await prisma.user.count();
   console.log(`Seed connected. Users in DB: ${userCount}`);

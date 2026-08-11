@@ -1,5 +1,3 @@
-//! Friends & friend-request REST, mounted under /api. Requires auth. Emits
-//! real-time `friend:*` events to the affected users' personal rooms.
 
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -32,7 +30,6 @@ async fn fetch_user(state: &AppState, user_id: &str) -> AppResult<UserRow> {
         .map_err(Into::into)
 }
 
-/// Build a FriendDto whose `user` is `me`, for delivery to the *other* party.
 async fn friend_dto_of_me(
     state: &AppState,
     me: &str,
@@ -47,7 +44,6 @@ async fn friend_dto_of_me(
     })
 }
 
-/// Overlay live presence onto a friend row's user status.
 async fn with_presence(state: &AppState, mut dto: FriendDto) -> FriendDto {
     if let Ok(status) = presence::get_status(state, &dto.user.id).await {
         dto.user.status = status;
@@ -108,9 +104,6 @@ async fn send_request(
     )
     .await?;
 
-    // A scanned contact code carries a user id, not a username (docs/E2EE.md
-    // §6.7), so resolve one into the other rather than teaching the QR payload
-    // to carry a second name for the same person.
     let by_id = match body.get("userId").and_then(Value::as_str) {
         Some(id) if !id.trim().is_empty() => {
             let name: Option<String> =
@@ -136,7 +129,6 @@ async fn send_request(
     let outcome = friends::send_request(&state, &user.user_id, username).await?;
 
     if outcome.accepted {
-        // We accepted their inbound request → both are now friends.
         let created = outcome.row.friendship_created_at;
         let created_iso = crate::timefmt::iso(created);
         let to_target = friend_dto_of_me(
@@ -156,7 +148,6 @@ async fn send_request(
             Json(json!({ "accepted": true, "friend": friend })),
         ))
     } else {
-        // New outbound pending request → notify the addressee it arrived.
         let incoming = to_friend_request(
             &FriendJoinRow {
                 friendship_id: outcome.row.friendship_id.clone(),
@@ -185,7 +176,6 @@ async fn accept_request(
 ) -> AppResult<Json<Value>> {
     let (row, requester_id) = friends::accept_request(&state, &user.user_id, &id).await?;
     let created_iso = crate::timefmt::iso(row.friendship_created_at);
-    // Tell the original requester their request was accepted.
     let to_requester =
         friend_dto_of_me(&state, &user.user_id, &row.friendship_id, &created_iso).await?;
     let _ = state.io().to(format!("user:{requester_id}")).emit(

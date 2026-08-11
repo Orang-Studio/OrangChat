@@ -13,10 +13,6 @@ import { DevelopersPage } from "../features/developers/DevelopersPage";
 import { DmView } from "../features/dms/DmView";
 import { ServerView } from "../features/servers/ServerView";
 
-// Standalone entry points only: a first visit has no in-app UI behind them to
-// preserve, so their chunks load behind the splash instead of in the critical
-// path. Every route inside the app shell is eager - navigating home ⇄ server
-// ⇄ DM must never unmount the shell for a chunk fetch.
 const LoginPage = lazy(() =>
   import("../features/auth/LoginPage").then(({ LoginPage }) => ({ default: LoginPage })),
 );

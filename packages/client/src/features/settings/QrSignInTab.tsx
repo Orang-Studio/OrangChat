@@ -16,7 +16,7 @@ function tokenFrom(raw: string): string {
   return token;
 }
 
-/** Lets an already signed-in device authorise a web QR sign-in from Settings. */
+
 export function QrSignInTab() {
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

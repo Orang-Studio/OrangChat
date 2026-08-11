@@ -8,11 +8,7 @@ import { useAuthStore } from '../../stores/auth';
 import { confirmIdentity } from '../settings/api';
 import { t } from "../../lib/i18n";
 
-/**
- * The local re-authentication §6.5 requires before strict mode can be relaxed.
- * Turning verification *on* is free; turning it off is the direction that costs
- * something, so it has to be a person rather than a session that does it.
- */
+
 export function ConfirmIdentityDialog({
   open,
   onOpenChange,

@@ -62,46 +62,13 @@ import java.io.File
 import java.io.FileOutputStream
 import java.time.Instant
 
-/*
- * Two constraints this must not regress back into:
- *
- * TextureView, never SurfaceView (i.e. never VideoView). A SurfaceView is a
- * separate window punched through the one Compose draws into, so it ignores
- * z-order and clipping and paints over whatever is above it.
- *
- * Compose controls, never MediaController. MediaController is a PopupWindow and
- * takes window focus when shown, which leaves the composer's keyboard unable to
- * open while a video is on screen.
- */
 
-/** Layout bounds for the inline box. Beyond these the video letterboxes inside it. */
 private const val MIN_INLINE_ASPECT = 0.6f
 private const val MAX_INLINE_ASPECT = 2.0f
 private const val DEFAULT_ASPECT = 16f / 9f
 
-/**
- * Deliberately about half the width images get. A clip is a thing you tap to
- * watch, and at image size it dominated the channel before anyone chose to.
- */
 private val INLINE_VIDEO_WIDTH = 150.dp
 
-/**
- * What stands behind the play button on an encrypted clip, from three sources,
- * because none of them is dependable on its own:
- *
- * * the **sealed thumbnail blob** - sharp, but a fetch and a decrypt away, and
- *   missing outright on every clip whose second upload failed, was never
- *   claimed, or has since been swept;
- * * the **inline blur** carried in the message payload - 24px, but it arrives
- *   with the text, needs no network, and cannot go missing separately;
- * * a **frame pulled out of the decrypted file** - free once the clip has been
- *   played, and the only thing that ever rescues a clip sent before the blur
- *   existed and without a surviving thumbnail.
- *
- * They are tried in that order because that is the order of quality, not the
- * order of arrival: the blur is on screen first and is replaced when something
- * better resolves.
- */
 @Composable
 private fun rememberSealedPoster(
     attachment: Attachment,
@@ -116,8 +83,6 @@ private fun rememberSealedPoster(
     var blur by remember(attachment.id) { mutableStateOf<String?>(null) }
     var local by remember(attachment.id) { mutableStateOf<String?>(null) }
 
-    // The thumbnail's key is right here in the parent ref; the row is looked up
-    // only to learn the url its ciphertext is served from.
     val thumbRow = remember(sealedRef, all) {
         sealedRef?.thumb?.let { t -> all.firstOrNull { it.id == t.attachmentId } }
     }
@@ -138,8 +103,6 @@ private fun rememberSealedPoster(
                 thumb = null,
             ),
         ) ?: return@LaunchedEffect
-        // Coil guesses a file's type from its extension, and the decrypted
-        // cache file has none - so keep a .jpg copy for the loader.
         sharp = withContext(Dispatchers.IO) {
             runCatching { cachedPoster(context, "poster-${row.id}.jpg", opened) }.getOrNull()
         }
@@ -156,9 +119,6 @@ private fun rememberSealedPoster(
         }
     }
 
-    // Last resort, and the only one that works on a clip nothing was ever
-    // uploaded for: the bytes are already decrypted on this device, so pull a
-    // frame out of them.
     LaunchedEffect(attachment.id, decrypted, sharp) {
         if (sealedRef == null || decrypted == null || sharp != null) return@LaunchedEffect
         local = withContext(Dispatchers.IO) { extractPoster(context, attachment.id, decrypted) }
@@ -167,7 +127,6 @@ private fun rememberSealedPoster(
     return sharp ?: local ?: blur
 }
 
-/** A decrypted blob under a name Coil will recognise as a JPEG. */
 private fun cachedPoster(context: Context, name: String, opened: File): String {
     val poster = File(context.cacheDir, name)
     if (!poster.exists() || poster.lastModified() < opened.lastModified()) {
@@ -176,11 +135,6 @@ private fun cachedPoster(context: Context, name: String, opened: File): String {
     return Uri.fromFile(poster).toString()
 }
 
-/**
- * A still taken from an already-decrypted clip. A hair past the very start,
- * because some encoders paint their first frames black. Costs nothing on the
- * network and nothing on the server, which cannot decode these bytes anyway.
- */
 private fun extractPoster(context: Context, attachmentId: String, source: String): String? {
     val poster = File(context.cacheDir, "frame-$attachmentId.jpg")
     if (poster.isFile && poster.length() > 0) return Uri.fromFile(poster).toString()
@@ -216,11 +170,7 @@ fun VideoAttachment(
     val c = OrangTheme.colors
     val context = LocalContext.current
     val view = LocalView.current
-    // The viewer grows out of this box rather than sliding in over it.
     val origin = rememberMediaOrigin()
-    // A sealed clip is not fetched until it is asked for: decrypting one means
-    // downloading all of it, and a channel of videos doing that on sight is
-    // what made previews take longer the bigger the file was.
     var requested by remember(attachment.id) { mutableStateOf(false) }
     val source = rememberAttachmentSource(attachment, wanted = requested)
     val href = source.url
@@ -239,7 +189,6 @@ fun VideoAttachment(
         return
     }
 
-    // Play was pressed before the bytes were readable; start as soon as they are.
     LaunchedEffect(href, requested) {
         if (requested && href != null && MediaPlayback.currentId != attachment.id) {
             MediaPlayback.toggle(context, attachment.id, href) { broken = true }
@@ -256,15 +205,11 @@ fun VideoAttachment(
         val h = attachment.height
         if (w != null && h != null && w > 0 && h > 0) w.toFloat() / h else null
     }
-    // The still is a frame of this clip, so its shape is the clip's shape - which
-    // is what keeps the row from jumping to a different size on the first press.
     var posterAspect by remember(attachment.id) { mutableStateOf<Float?>(null) }
     val knownAspect = metadataAspect ?: posterAspect
     val decoderAspect = if (active && MediaPlayback.videoAspect > 0f) MediaPlayback.videoAspect else null
     val trueAspect = decoderAspect ?: knownAspect ?: DEFAULT_ASPECT
     val boxAspect = (knownAspect ?: trueAspect).coerceIn(MIN_INLINE_ASPECT, MAX_INLINE_ASPECT)
-    // Matches the inline image radius - a clip and a photo sitting under one
-    // another in a row should not round by different amounts.
     val shape = RoundedCornerShape(OrangRadius.xl2)
 
     Column {
@@ -278,8 +223,6 @@ fun VideoAttachment(
                 .mediaOrigin(origin),
         ) {
             if (player != null) {
-                // While the lightbox is up it owns the output; this must not
-                // snatch it back.
                 VideoSurface(
                     player = player,
                     bind = !previewOpen,
@@ -287,9 +230,6 @@ fun VideoAttachment(
                     modifier = Modifier.fillMaxSize(),
                 )
             } else if (posterUrl != null) {
-                // Standing in until playback starts, so an unplayed clip shows
-                // what it is rather than a black rectangle. Only ever a real
-                // image - see videoPosterUrl for why the clip itself is not one.
                 AsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(posterUrl)
@@ -310,8 +250,6 @@ fun VideoAttachment(
             InlineOverlay(
                 attachment = attachment,
                 active = active,
-                // Nothing to toggle yet when the file still has to be fetched;
-                // asking for it is what the first press means.
                 fetching = source.resolving,
                 progress = source.progress,
                 phaseLabel = source.phaseLabel,
@@ -320,9 +258,6 @@ fun VideoAttachment(
                     else MediaPlayback.toggle(context, attachment.id, href) { broken = true }
                 },
                 onExpand = {
-                    // Resolve sealed media in parallel with the activity. The
-                    // launcher result keeps the inline TextureView from stealing
-                    // the shared player surface while fullscreen owns it.
                     requested = true
                     previewOpen = true
                     openMediaPreview(previewLauncher, context, view, origin, attachment)
@@ -341,11 +276,8 @@ fun VideoAttachment(
 private fun InlineOverlay(
     attachment: Attachment,
     active: Boolean,
-    /** The file is still being fetched and decrypted, before playback can start. */
     fetching: Boolean = false,
-    /** 0-1 of that fetch, so a large clip isn't a spinner with nothing behind it. */
     progress: Float = 0f,
-    /** Which half of it - "Downloading" or "Decrypting". */
     phaseLabel: String = "Downloading",
     onToggle: () -> Unit,
     onExpand: () -> Unit,
@@ -353,8 +285,6 @@ private fun InlineOverlay(
     val isPlaying = active && MediaPlayback.isPlaying
     val buffering = fetching || (active && MediaPlayback.buffering)
     val seekable = active && MediaPlayback.ready
-    // The sender measured the length at upload, so it is on the still before
-    // any of the clip is.
     val durationMs = if (active) {
         MediaPlayback.durationMs
     } else {
@@ -372,8 +302,6 @@ private fun InlineOverlay(
         if (!isPlaying || buffering) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 if (buffering) {
-                    // Determinate while the file itself is coming down: a 40 MB
-                    // clip behind a spinner that never moves reads as broken.
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         if (fetching && progress > 0f) {
                             CircularProgressIndicator(
@@ -389,9 +317,6 @@ private fun InlineOverlay(
                                 modifier = Modifier.size(28.dp),
                             )
                         }
-                        // Which step it is on. Downloading and decrypting both
-                        // run 0-100%, and without this the bar looks like it
-                        // restarted itself for no reason halfway through.
                         if (fetching) {
                             Spacer(Modifier.size(6.dp))
                             Text(
@@ -463,11 +388,6 @@ private fun InlineOverlay(
     }
 }
 
-/**
- * A TextureView stretches its content to its own bounds, so the surface has to
- * be given exactly the video's ratio and centred - otherwise the picture
- * distorts to fill rather than letterboxing.
- */
 @OptIn(UnstableApi::class)
 @Composable
 internal fun VideoSurface(
@@ -482,14 +402,9 @@ internal fun VideoSurface(
             factory = { TextureView(it) },
             modifier = Modifier.aspectRatio(
                 ratio = aspect,
-                // Fit: whichever axis runs out first is the one to match.
                 matchHeightConstraintsFirst = aspect < containerAspect,
             ),
             update = { view -> if (bind) player.setVideoTextureView(view) },
-            // No-ops unless this view still owns the output, so the lightbox
-            // taking over and then this being disposed can't blank the video.
-            // runCatching: a playback error releases the player a frame before
-            // this surface is disposed.
             onRelease = { view -> runCatching { player.clearVideoTextureView(view) } },
         )
     }

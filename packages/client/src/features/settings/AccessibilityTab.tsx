@@ -9,12 +9,7 @@ import { t, tNodes } from "../../lib/i18n";
 
 const SAMPLE_AUTHOR = { displayName: "Rasa", avatarUrl: null };
 
-/**
- * A miniature of the real chat pane. It reuses the same `oc-message` hooks the
- * message list carries, so text size, density, contrast and link underlines all
- * change it exactly the way they change the actual conversation - no need to
- * close settings to see what a setting did.
- */
+
 function ChatPreview() {
   const me = useAuthStore((s) => s.user);
   const self = {

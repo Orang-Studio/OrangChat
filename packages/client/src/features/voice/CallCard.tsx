@@ -14,22 +14,14 @@ import { t } from "../../lib/i18n";
 interface CallCardProps {
   message: Message;
   notice: CallNotice;
-  /** What a call started from this card would ring. */
+
   channel: { id: string; name: string | null; serverId: string | null };
   selfId: string | undefined;
-  /** Everyone in the conversation, for putting faces on the card. */
+
   profiles?: Record<string, User>;
 }
 
-/**
- * A call, as it appears in the history.
- *
- * One card per call, rewritten by the server as the call runs, rather than a
- * message per state change - so a conversation that has been called a lot reads
- * as a list of calls instead of a transcript of ringing. While it is live the
- * card is the way into the call; afterwards it is the record of one: who was on
- * it, when, and for how long, or that nobody picked up.
- */
+
 export function CallCard({ message, notice, channel, selfId, profiles }: CallCardProps) {
   const incoming = useCallStore((s) => s.incoming);
   const current = useCallStore((s) => s.current);

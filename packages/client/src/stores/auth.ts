@@ -4,10 +4,10 @@ import type { SelfUser } from "@orangchat/shared";
 export type AuthStatus = "loading" | "authenticated" | "guest";
 
 interface AuthState {
-  /** "loading" until the initial refresh-cookie bootstrap settles. */
+
   status: AuthStatus;
   user: SelfUser | null;
-  /** JWT access token, memory-only (never persisted). */
+
   accessToken: string | null;
 }
 

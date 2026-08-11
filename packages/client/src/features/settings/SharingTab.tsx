@@ -7,10 +7,7 @@ import { t } from "../../lib/i18n";
 
 type PermissionState = "granted" | "denied" | "prompt" | "unknown";
 
-/**
- * Device labels are blank until permission is granted once - that's the browser
- * hiding them, not a bug, so the UI asks for access before listing.
- */
+
 function useDevices(permission: PermissionState) {
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
 

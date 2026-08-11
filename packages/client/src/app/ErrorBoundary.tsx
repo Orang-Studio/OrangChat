@@ -10,12 +10,7 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-/**
- * App-level error boundary. A render error anywhere below unmounts the whole
- * React tree — without this, the user gets a blank screen with no recovery.
- * User-supplied CSS, marketplace plugins and profile markdown render inline,
- * so a bad value reaching a component can throw at any time.
- */
+
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   override state: ErrorBoundaryState = { error: null };
 

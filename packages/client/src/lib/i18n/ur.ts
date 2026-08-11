@@ -186,7 +186,7 @@ export const ur: Catalog = {
   "composer.holdToRecordAVoiceMessage": "صوتی پیغام ریکارڈ کرنے کے لیے دبائے رکھیں",
   "composer.lockedSendWhenYoureDone": "مقفل - جب آپ کام کر لیں تو بھیجیں۔",
   "composer.mentionSuggestions": "تجاویز کا ذکر کریں۔",
-  "composer.pasteCutOff": "کٹ آف پیسٹ کریں — {max} حروف زیادہ سے زیادہ",
+  "composer.pasteCutOff": "کٹ آف پیسٹ کریں - {max} حروف زیادہ سے زیادہ",
   "composer.pasteItAnyway": "بہرحال چسپاں کریں۔",
   "composer.replyingTo": "کا جواب دے رہا ہے۔",
   "composer.sendMessage": "پیغام بھیجیں۔",
@@ -316,7 +316,7 @@ export const ur: Catalog = {
   "encryptionTab.yourDirectMessagesAreLockedOn":
     "آپ کے براہ راست پیغامات بھیجے جانے سے پہلے آپ کے اپنے آلات پر مقفل کردیئے جاتے ہیں۔ کلید یہاں بنائی گئی ہے اور اسے اس ڈیوائس سے کاپی نہیں کیا جا سکتا، اس لیے اورنگ چیٹ چلانے والا کوئی بھی نہیں - اور کوئی بھی جو ہمارے ڈیٹا بیس کو پکڑتا ہے - اسے پڑھ نہیں سکتا۔",
   "errorBoundary.orangchatHitAnUnexpectedErrorAnd":
-    "اورنگ چیٹ میں ایک غیر متوقع غلطی ہوئی اور اس صفحہ کو دکھانا جاری نہیں رکھ سکا۔ آپ کے پیغامات محفوظ ہیں — دوبارہ کوشش کرنے کے لیے دوبارہ لوڈ کریں۔",
+    "اورنگ چیٹ میں ایک غیر متوقع غلطی ہوئی اور اس صفحہ کو دکھانا جاری نہیں رکھ سکا۔ آپ کے پیغامات محفوظ ہیں - دوبارہ کوشش کرنے کے لیے دوبارہ لوڈ کریں۔",
   "errorBoundary.reloadOrangchat": "اورنگ چیٹ کو دوبارہ لوڈ کریں۔",
   "errorBoundary.somethingWentWrong": "کچھ غلط ہو گیا۔",
   "eventsDialog.aLinkAnAddressAnywhere": "ایک لنک، ایک پتہ، کہیں بھی",

@@ -5,11 +5,7 @@ import { cn } from "../lib/cn";
 import { uploadImage, type UploadKind } from "../features/uploads/api";
 import { t } from "../lib/i18n";
 
-/**
- * Pick a file, upload it, hand back the stored url plus a local blob url. The
- * blob is what gets rendered until the form is saved - the stored url may not
- * be reachable yet on a Cloudinary deployment, and it is never hand-typed.
- */
+
 function ImageUploadButton({
   kind,
   label,
@@ -65,11 +61,7 @@ function ImageUploadButton({
   );
 }
 
-/**
- * Upload-only image field: shows a preview of the current image with Upload and
- * Remove actions. No URL text box - images come from the uploader, which returns
- * a server path (e.g. `/uploads/x.gif`), never hand-typed.
- */
+
 export function ImageField({
   label,
   kind,
@@ -83,7 +75,7 @@ export function ImageField({
   label: string;
   kind: UploadKind;
   value: string;
-  /** Renderable stand-in for `value` while it is still an unsaved remote url. */
+
   preview?: string;
   onChange: (url: string, preview: string) => void;
   hint?: string;

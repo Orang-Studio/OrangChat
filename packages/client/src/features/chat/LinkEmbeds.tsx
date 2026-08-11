@@ -12,7 +12,7 @@ const IMAGE_PATH = /\.(?:avif|gif|jpe?g|png|webp)$/i;
 const VIDEO_PATH = /\.(?:m4v|mp4|ogv|webm)$/i;
 const AUDIO_PATH = /\.(?:aac|flac|m4a|mp3|oga|ogg|wav)$/i;
 
-/** Pull safe HTTP(S) URLs from message prose while ignoring inline/fenced code. */
+
 export function extractEmbedUrls(content: string): string[] {
   const prose = content.replace(/```[\s\S]*?```/g, ' ').replace(/`[^`\n]*`/g, ' ');
   const matches = prose.match(/https?:\/\/[^\s<]+/gi) ?? [];

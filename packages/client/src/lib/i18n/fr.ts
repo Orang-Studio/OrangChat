@@ -1,4 +1,4 @@
-/** French translation of the English interface catalogue. */
+
 import type { Catalog } from "./en";
 
 export const fr: Catalog = {

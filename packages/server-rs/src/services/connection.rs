@@ -1,13 +1,3 @@
-//! Storage and lifecycle for profile connections (see crate::connections for
-//! the provider definitions and remote calls).
-//!
-//! The OAuth `state` here does more work than in the login flow. Login can keep
-//! its CSRF token in a cookie because the browser is anonymous at that point;
-//! linking is different - the callback arrives as a plain top-level navigation
-//! with no Authorization header, so it must tell us *which* logged-in user is
-//! linking. We stash that binding in Redis under the state token and look it up
-//! on the way back, which keeps the user id out of the URL where the remote
-//! platform (and the user) could tamper with it.
 
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine as _;
@@ -21,18 +11,14 @@ use crate::ids::cuid;
 use crate::models::ConnectionRow;
 use crate::state::AppState;
 
-/// Long enough to finish a login on the remote site, short enough that an
-/// abandoned attempt cannot be replayed later.
 const STATE_TTL_SECS: u64 = 600;
 
-/// Keeps any one profile card from turning into a link farm.
 const MAX_CONNECTIONS: i64 = 25;
 
 #[derive(Serialize, Deserialize)]
 struct PendingLink {
     user_id: String,
     provider: String,
-    /// PKCE verifier; empty for providers that don't use it.
     verifier: String,
 }
 
@@ -40,7 +26,6 @@ fn state_key(token: &str) -> String {
     format!("conn:state:{token}")
 }
 
-/// Mint a state token bound to this user and remember it for the callback.
 pub async fn begin_link(
     state: &AppState,
     user_id: &str,
@@ -65,7 +50,6 @@ pub async fn begin_link(
     Ok((token, verifier))
 }
 
-/// Redeem a state token. Single-use: a replayed callback finds nothing.
 async fn consume_state(state: &AppState, token: &str, provider: &str) -> AppResult<PendingLink> {
     let mut rd = state.rd();
     let raw: Option<String> = rd
@@ -80,7 +64,6 @@ async fn consume_state(state: &AppState, token: &str, provider: &str) -> AppResu
 
     let pending: PendingLink =
         serde_json::from_str(&raw).map_err(|_| AppError::Internal("corrupt link state".into()))?;
-    // A state minted for GitHub must not be redeemable at Spotify's callback.
     if pending.provider != provider {
         return Err(AppError::BadRequest("Link request mismatch".into()));
     }
@@ -97,7 +80,6 @@ pub async fn list_for_user(state: &AppState, user_id: &str) -> AppResult<Vec<Con
     Ok(rows)
 }
 
-/// What another user may see: hidden connections are simply absent.
 pub async fn list_visible(state: &AppState, user_id: &str) -> AppResult<Vec<ConnectionRow>> {
     let rows = sqlx::query_as::<_, ConnectionRow>(
         r#"SELECT * FROM "Connection"
@@ -118,8 +100,6 @@ async fn count_for_user(state: &AppState, user_id: &str) -> AppResult<i64> {
     Ok(n)
 }
 
-/// Insert the freshly authorized account, or refresh the handle if this user
-/// already linked it (people rename themselves upstream and relink to update).
 pub async fn upsert_verified(
     state: &AppState,
     user_id: &str,
@@ -127,8 +107,6 @@ pub async fn upsert_verified(
     grant: Option<&OAuthGrant>,
 ) -> AppResult<ConnectionRow> {
     let existing: Option<String> = if profile.provider == "spotify" {
-        // One Spotify grant powers one presence. This also upgrades rows linked
-        // before Spotify introduced account_id without creating a duplicate.
         sqlx::query_scalar(
             r#"SELECT id FROM "Connection"
                WHERE "userId" = $1 AND provider = 'spotify'
@@ -225,8 +203,6 @@ pub async fn upsert_verified(
     Ok(row)
 }
 
-/// Hand-entered link. Never verified - the user typed a URL, which proves
-/// nothing about who owns it, and the profile card says so.
 pub async fn add_custom(
     state: &AppState,
     user_id: &str,
@@ -284,7 +260,6 @@ pub async fn remove(state: &AppState, user_id: &str, id: &str) -> AppResult<Stri
     provider.ok_or_else(|| AppError::NotFound("Connection not found".into()))
 }
 
-/// Finish an OAuth 2.0 link: verify state, trade the code, store the handle.
 pub async fn complete_oauth(
     state: &AppState,
     provider_key: &str,
@@ -301,7 +276,6 @@ pub async fn complete_oauth(
     upsert_verified(state, &pending.user_id, &authorized.profile, grant).await
 }
 
-/// Finish a Steam OpenID link.
 pub async fn complete_steam(
     state: &AppState,
     params: &std::collections::HashMap<String, String>,

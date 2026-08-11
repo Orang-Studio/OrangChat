@@ -48,9 +48,6 @@ fun ShareScreen(
     val colors = OrangTheme.colors
 
     LaunchedEffect(Unit) { viewModel.load() }
-    // Shared straight to a conversation from the direct-share row: land on that
-    // conversation already chosen rather than on a picker the user has just
-    // finished using.
     LaunchedEffect(state.channels, share.channelId) {
         if (selected != null) return@LaunchedEffect
         selected = share.channelId?.let { id -> state.channels.firstOrNull { it.channelId == id } }

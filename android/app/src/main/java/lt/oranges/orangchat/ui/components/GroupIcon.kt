@@ -18,12 +18,6 @@ import coil.compose.AsyncImage
 import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.absoluteUrl
 
-/**
- * Port of features/dms/GroupIcon.tsx. A group DM's picture, falling back to the
- * members glyph - which is what every group looked like before icons existed
- * and what one without an icon still looks like, so the two occupy the same
- * slot at the same size.
- */
 @Composable
 fun GroupIcon(
     iconUrl: String?,

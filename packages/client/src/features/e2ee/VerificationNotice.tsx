@@ -6,14 +6,7 @@ import { useBlockedByVerification } from '../chat/outbox';
 import { VerifyDialog } from './VerifyDialog';
 import { t, tCount } from "../../lib/i18n";
 
-/**
- * What the blocked state of strict mode looks like from inside the conversation
- * (§6.5). It has to read as a deliberate choice rather than a bug - especially
- * to the person who chose nothing - and the way out has to be one tap away.
- *
- * Nothing has been sent and nothing has been wrapped: the message is sitting on
- * this device, sealed, waiting.
- */
+
 export function VerificationNotice({ channelId, peers }: { channelId: string; peers: User[] }) {
   const blocked = useBlockedByVerification(channelId);
   const [open, setOpen] = useState(false);

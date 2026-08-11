@@ -208,7 +208,6 @@ class KlipyGifViewModel @Inject constructor(
     }
 }
 
-/** Categorised emoji grid shared by the composer picker and the reaction menu. */
 @Composable
 fun EmojiGrid(columns: Int, modifier: Modifier = Modifier, onPick: (String) -> Unit) {
     val c = OrangTheme.colors
@@ -260,8 +259,6 @@ fun ExpressionPickerDialog(
         if (tab == PickerTabId.GIFS && gifsEnabled) viewModel.search(query)
     }
 
-    // Sending a GIF and saving one are different intents on the same tile, so
-    // both grids share this pair of handlers.
     val sendGif: (KlipyGif) -> Unit = { gif ->
         viewModel.recordShare(gif)
         onGif(gif.url)
@@ -308,15 +305,11 @@ fun ExpressionPickerDialog(
             Spacer(Modifier.height(8.dp))
 
             when {
-                // Ahead of the `!gifsEnabled` fallback below, which would
-                // otherwise show the unicode grid on the Custom tab.
                 tab == PickerTabId.CUSTOM -> {
                     CustomEmojiGrid(
                         emojis = customEmojis,
                         modifier = Modifier.fillMaxSize(),
                     ) { emoji ->
-                        // The id is what resolves, so a later rename never breaks
-                        // messages that already used it.
                         onEmoji("<${if (emoji.animated) "a" else ""}:${emoji.name}:${emoji.id}>")
                         onDismiss()
                     }
@@ -414,8 +407,6 @@ private fun CustomEmojiGrid(
         contentPadding = PaddingValues(4.dp),
     ) {
         items(emojis, key = { it.id }) { emoji ->
-            // Fills its grid cell instead of sitting as a 40dp island in it: same
-            // 48dp row height as before, no dead gaps between neighbours.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -434,13 +425,6 @@ private fun CustomEmojiGrid(
     }
 }
 
-/**
- * The GIF tiles, shared by the search results and the favorites tab.
- *
- * Tapping a tile sends it; the bookmark saves it. They sit on top of each other
- * deliberately - that is where Discord puts it, and it keeps saving a GIF one
- * gesture away from wherever you found it.
- */
 @Composable
 private fun GifGrid(
     gifs: List<KlipyGif>,
@@ -472,9 +456,6 @@ private fun GifGrid(
                         .background(c.surface1)
                         .clickable { onPick(gif) },
                 )
-                // A 48dp target that takes the tap, with the 26dp chip still drawn
-                // in the corner where it was - growing the circle itself would have
-                // buried the GIF under its own bookmark button.
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)

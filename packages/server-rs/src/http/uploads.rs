@@ -1,16 +1,3 @@
-//! Image upload + compression. Accepts a multipart image, re-encodes it
-//! smaller (resize + recompress; animated GIFs keep their animation), and
-//! returns the URL the client stores as an avatar/banner. No TS equivalent -
-//! new for the Rust port.
-//!
-//! Re-encoding happens here regardless of where the bytes land: it bounds what
-//! a user can push into storage, and it's the only reason the 12 MB cap doesn't
-//! turn into 12 MB of egress on every avatar render.
-//!
-//! With Cloudinary configured the bytes go there and the client gets an absolute
-//! `https://res.cloudinary.com/...` url. Otherwise they land under UPLOAD_DIR and
-//! the url is a relative `/uploads/<file>` served by nginx. Both shapes are live
-//! at once in practice - rows written before the switch keep their old urls.
 
 use std::io::Cursor;
 use std::path::PathBuf;
@@ -31,9 +18,7 @@ use crate::ids::cuid;
 use crate::services::rate_limit;
 use crate::state::AppState;
 
-/// Cap the buffered upload. Larger than the output because it's the raw file.
 const MAX_UPLOAD: usize = 12 * 1024 * 1024;
-/// Guard against pathological animated GIFs (memory / CPU).
 const MAX_FRAMES: usize = 300;
 
 pub fn routes() -> Router<AppState> {
@@ -48,20 +33,11 @@ fn uploads_dir() -> PathBuf {
         .into()
 }
 
-/// Bounding box per image kind. Avatars are square-ish, banners are wide.
-///
-/// Emoji render at 32px but are stored at 128 so they stay sharp on hidpi and
-/// when a message is nothing but a single jumbo emoji.
 fn max_dim(kind: &str) -> (u32, u32) {
     match kind {
         "banner" => (1200, 480),
-        // A DM chat background is a full-screen wallpaper, so it gets to be
-        // bigger than the avatar crop - but still bounded so nobody can push
-        // a giant file into storage.
         "chat-background" => (1600, 900),
         "emoji" => (128, 128),
-        // A window/tray/favicon never renders above 256, and this one is
-        // fetched on every page load by its owner.
         "app-icon" => (256, 256),
         _ => (512, 512),
     }
@@ -110,7 +86,6 @@ async fn upload_image(
     }
     let bytes = bytes.ok_or_else(|| AppError::BadRequest("No file provided".into()))?;
 
-    // Image decode/encode is CPU-bound and blocking - keep it off the runtime.
     let (out, ext) = tokio::task::spawn_blocking(move || process_image(&bytes, &kind))
         .await
         .map_err(|_| AppError::Internal("Image processing failed".into()))??;
@@ -119,14 +94,10 @@ async fn upload_image(
     Ok(Json(json!({ "url": url })))
 }
 
-/// Put already-encoded bytes wherever this deployment keeps images, and return
-/// the url to persist. Cloudinary when configured, UPLOAD_DIR otherwise.
 pub(crate) async fn store_image(state: &AppState, out: Vec<u8>, ext: &str) -> AppResult<String> {
     store_media(state, out, ext, "images", "image").await
 }
 
-/// As `store_image`, for audio. Cloudinary files audio under `video` - that is
-/// its own naming, not a mistake here.
 pub(crate) async fn store_audio(state: &AppState, out: Vec<u8>, ext: &str) -> AppResult<String> {
     store_media(state, out, ext, "sounds", "video").await
 }
@@ -165,8 +136,6 @@ fn resize_to_fit(img: DynamicImage, mw: u32, mh: u32) -> DynamicImage {
     }
 }
 
-/// Returns (encoded_bytes, extension). Animated GIFs stay animated; other
-/// images become JPEG (opaque) or PNG (has alpha) after downscaling.
 pub(crate) fn process_image(bytes: &[u8], kind: &str) -> AppResult<(Vec<u8>, &'static str)> {
     let (mw, mh) = max_dim(kind);
     let format =
@@ -196,15 +165,11 @@ pub(crate) fn process_image(bytes: &[u8], kind: &str) -> AppResult<(Vec<u8>, &'s
                         .map_err(|_| AppError::Internal("GIF encode failed".into()))?;
                 }
             }
-            // The image crate's GIF encoder has no inter-frame compression, so a
-            // re-encode can be larger than the source. Never inflate: keep the
-            // smaller of the two (the original is already a validated GIF).
             if out.len() >= bytes.len() {
                 return Ok((bytes.to_vec(), "gif"));
             }
             return Ok((out, "gif"));
         }
-        // Single-frame GIF: fall through to the static path.
     }
 
     let img = image::load_from_memory(bytes)

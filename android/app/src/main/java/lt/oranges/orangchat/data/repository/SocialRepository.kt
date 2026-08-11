@@ -13,12 +13,10 @@ import lt.oranges.orangchat.data.remote.SendFriendResult
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** DMs + friends REST. */
 @Singleton
 class SocialRepository @Inject constructor(
     private val api: ApiService,
 ) {
-    // DMs
     suspend fun listDms(): List<Conversation> = api.listDms()
 
     suspend fun leaveDm(channelId: String) { api.leaveDm(channelId) }
@@ -29,15 +27,12 @@ class SocialRepository @Inject constructor(
     suspend fun addDmParticipants(channelId: String, userIds: List<String>): Conversation =
         api.addDmParticipants(channelId, CreateDmRequest(userIds))
 
-    /** Set a DM's shared background; [url] null clears it. Plaintext like avatars. */
     suspend fun setDmBackground(channelId: String, url: String?): Channel =
         api.putChannelBackground(channelId, ChannelBackgroundRequest(url))
 
-    /** Set a group DM's icon; [url] null clears it. Plaintext like avatars. */
     suspend fun setDmIcon(channelId: String, url: String?): Channel =
         api.putChannelIcon(channelId, ChannelIconRequest(url))
 
-    // Friends
     suspend fun listFriends(): List<Friend> = api.listFriends()
 
     suspend fun listRequests(): FriendRequestsEnvelope = api.listFriendRequests()

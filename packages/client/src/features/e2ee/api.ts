@@ -10,7 +10,7 @@ import { api } from '../../lib/api';
 
 export interface E2eeChannelState {
   channelId: string;
-  /** Strict mode is DM-only in v1 (§6.3), so the type has to travel with it. */
+
   channelType: ChannelType;
   e2ee: boolean;
   epochNumber: number;
@@ -144,6 +144,6 @@ export const requestKeyDeletion = (code?: string) =>
 export const cancelKeyDeletion = () =>
   api<KeyDeletionStatus>('/e2ee/keys/deletion', { method: 'DELETE' });
 
-/** No waiting period: the signature is the authorization. See identity.eraseKeysNow. */
+
 export const eraseKeysNow = (body: { deviceId: string; issuedAt: string; signature: string }) =>
   api<KeyDeletionStatus>('/e2ee/keys/deletion/now', { method: 'POST', json: body });

@@ -7,18 +7,6 @@ import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Quick replies typed into a notification that have not reached the server yet.
- *
- * A reply is sent from a background broadcast, which is where the network is
- * least dependable: the radio may be asleep, or the phone may have no signal at
- * all. The text is kept here rather than dropped, and [ReplyRetryJobService]
- * sends it the moment there is a network again - without waiting for the app to
- * be opened.
- *
- * Entries are removed one at a time, on delivery, so a retry that is killed
- * halfway cannot take unsent replies down with it.
- */
 @Singleton
 class ReplyOutbox @Inject constructor(
     @ApplicationContext context: Context,
@@ -63,8 +51,6 @@ class ReplyOutbox @Inject constructor(
                 .put("text", it.text)
                 .put("queuedAt", it.queuedAt))
         }
-        // commit, not apply: the caller is often a broadcast or a job whose
-        // process can be torn down the moment it returns.
         prefs.edit().putString(KEY, array.toString()).commit()
     }
 

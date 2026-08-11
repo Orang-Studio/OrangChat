@@ -1,12 +1,4 @@
-/**
- * The browser half of WebAuthn (docs/PASSKEYS.md).
- *
- * The API takes and returns `ArrayBuffer`s; JSON does not carry those. The
- * translation is base64url both ways - the encoding the spec names and the one
- * webauthn-rs speaks - so this module is that translation and nothing else. It
- * deliberately holds no state: the challenge came from the server and goes
- * straight back to it.
- */
+
 
 type Extensions = Record<string, unknown>;
 
@@ -37,18 +29,17 @@ interface RequestOptionsJson {
   extensions?: Extensions;
 }
 
-/** What `/passkeys/register/start` hands back, verbatim. */
+
 export interface CreationChallenge {
   publicKey: CreationOptionsJson;
 }
 
-/** What `/auth/passkey/start` and a `passkeyRequired` login hand back. */
+
 export interface RequestChallenge {
   publicKey: RequestOptionsJson;
 }
 
-/** Hands back the buffer rather than the view: every consumer here is a
- * `BufferSource` field on a WebAuthn options object. */
+
 function fromBase64Url(value: string): ArrayBuffer {
   const padded = value.replace(/-/g, '+').replace(/_/g, '/');
   const binary = atob(padded.padEnd(padded.length + ((4 - (padded.length % 4)) % 4), '='));
@@ -74,7 +65,7 @@ function descriptors(
   }));
 }
 
-/** Whether this browser can do WebAuthn at all. */
+
 export function passkeysSupported(): boolean {
   return (
     typeof window !== 'undefined' &&
@@ -83,11 +74,7 @@ export function passkeysSupported(): boolean {
   );
 }
 
-/**
- * Whether the browser will offer saved passkeys from the sign-in form itself,
- * rather than only from a button. Older browsers answer by not having the
- * method, which is the same answer as "no".
- */
+
 export async function autofillSupported(): Promise<boolean> {
   if (!passkeysSupported()) return false;
   const check = window.PublicKeyCredential.isConditionalMediationAvailable;
@@ -99,7 +86,7 @@ export async function autofillSupported(): Promise<boolean> {
   }
 }
 
-/** Enrols a new credential and returns what the server needs to verify it. */
+
 export async function createPasskey(challenge: CreationChallenge): Promise<unknown> {
   const options = challenge.publicKey;
   const credential = (await navigator.credentials.create({
@@ -126,14 +113,7 @@ export async function createPasskey(challenge: CreationChallenge): Promise<unkno
   };
 }
 
-/**
- * Signs a challenge with an existing credential.
- *
- * `mediation: 'conditional'` is the autofill flow: the request sits open,
- * invisible, until the user picks a passkey from the browser's own dropdown on
- * the sign-in field. It is expected to be abandoned - a user who types a
- * password instead aborts it - so callers pass a signal and ignore the result.
- */
+
 export async function usePasskey(
   challenge: RequestChallenge,
   options?: { conditional?: boolean; signal?: AbortSignal },
@@ -166,13 +146,7 @@ export async function usePasskey(
   };
 }
 
-/**
- * Turns a cancelled ceremony into silence and everything else into a message.
- *
- * Dismissing the system sheet is the single most common outcome and is not a
- * failure; surfacing "NotAllowedError" for it would be noise. Returns null when
- * there is nothing worth telling the user.
- */
+
 export function passkeyError(error: unknown): string | null {
   if (error instanceof DOMException) {
     if (error.name === 'NotAllowedError' || error.name === 'AbortError') return null;

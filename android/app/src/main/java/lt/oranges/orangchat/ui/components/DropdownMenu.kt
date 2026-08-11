@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.sp
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-/** A single item spec for [OrangDropdownMenu]. */
 data class MenuItem(
     val label: String,
     val icon: ImageVector? = null,
@@ -29,10 +28,6 @@ data class MenuItem(
     val onClick: () -> Unit,
 )
 
-/**
- * Port of components/ui/DropdownMenu.tsx - a surface-3 popover with bordered
- * corners; destructive items render in the danger color.
- */
 @Composable
 fun OrangDropdownMenu(
     expanded: Boolean,

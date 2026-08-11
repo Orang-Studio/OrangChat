@@ -16,25 +16,6 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import kotlin.experimental.xor
 
-/**
- * The end-to-end encryption core, mirroring `packages/shared/src/e2ee.ts`.
- *
- * Same discipline as [lt.oranges.orangchat.util.EmojiTokens] and `emoji.ts`, and
- * for a harsher reason: one source of truth for the grammar, or the platforms
- * drift and messages become undecryptable rather than merely inconsistent. The
- * hex vectors pinned in `e2ee.test.ts` are what this file has to reproduce
- * byte-for-byte, and `E2eeTest` reproduces them.
- *
- * Two interop details worth stating out loud, because getting either wrong fails
- * silently and only across platforms:
- *
- *  * **Signatures travel raw, not DER.** WebCrypto emits a fixed 64-byte `r‖s`
- *    and the Rust server parses the same. The JCA emits DER, so every signature
- *    is converted on the way out and back on the way in.
- *  * **The message nonce is twelve zero bytes, deliberately.** The message key is
- *    already unique per (conversation key, device, seq), so each key encrypts
- *    exactly one message. Randomising it is the dangerous option.
- */
 object E2ee {
     const val VERSION = 1
     const val PAYLOAD_VERSION = 1
@@ -44,7 +25,6 @@ object E2ee {
     const val WRAP_NONCE_BYTES = 12
     const val PAIR_SECRET_BYTES = 32
 
-    /** Do not randomise. See the class comment and docs/E2EE.md §2. */
     val MESSAGE_NONCE = ByteArray(12)
 
     object Domain {
@@ -70,19 +50,12 @@ object E2ee {
         const val CONTACT_VERIFY = "verify"
     }
 
-    // ── Canonical encoding ────────────────────────────────
 
-    /** One field: a big-endian 32-bit length, then the bytes. */
     private fun field(out: ByteArrayOutputStream, bytes: ByteArray) {
         out.write(ByteBuffer.allocate(4).putInt(bytes.size).array())
         out.write(bytes)
     }
 
-    /**
-     * Length-prefixes every field so no two different field lists can ever
-     * produce the same bytes - which is what stops a signature over one
-     * statement being replayed as a signature over another.
-     */
     fun encodeFields(vararg fields: Any): ByteArray {
         val out = ByteArrayOutputStream()
         for (value in fields) {
@@ -107,15 +80,10 @@ object E2ee {
 
     fun toHex(bytes: ByteArray): String = bytes.joinToString("") { "%02x".format(it) }
 
-    // java.util.Base64 rather than android.util.Base64: it exists from API 26
-    // (this app's minimum) and, unlike the Android one, it is real on a plain
-    // JVM - which is what lets the pinned vectors be checked by a unit test
-    // instead of only on a device.
     fun toBase64(bytes: ByteArray): String = java.util.Base64.getEncoder().encodeToString(bytes)
 
     fun fromBase64(value: String): ByteArray = java.util.Base64.getDecoder().decode(value)
 
-    /** Constant time in the length-matched case, like its TypeScript twin. */
     fun bytesEqual(a: ByteArray, b: ByteArray): Boolean {
         if (a.size != b.size) return false
         var diff = 0
@@ -127,18 +95,13 @@ object E2ee {
 
     fun randomBytes(length: Int): ByteArray = ByteArray(length).also(secureRandom::nextBytes)
 
-    // ── HKDF ──────────────────────────────────────────────
 
     private fun hmacSha256(key: ByteArray, data: ByteArray): ByteArray {
         val mac = Mac.getInstance("HmacSHA256")
-        // An all-zero salt is a legitimate HKDF extract input, and an empty key
-        // is not something the JCA will accept, so it is widened here rather
-        // than at every call site.
         mac.init(SecretKeySpec(if (key.isEmpty()) ByteArray(32) else key, "HmacSHA256"))
         return mac.doFinal(data)
     }
 
-    /** RFC 5869, matching WebCrypto's `deriveBits({name:"HKDF"})`. */
     fun hkdf(ikm: ByteArray, salt: ByteArray, info: ByteArray, length: Int): ByteArray {
         val prk = hmacSha256(salt, ikm)
         val out = ByteArrayOutputStream()
@@ -153,12 +116,7 @@ object E2ee {
         return out.toByteArray().copyOf(length)
     }
 
-    // ── Signatures ────────────────────────────────────────
 
-    /**
-     * DER `SEQUENCE { INTEGER r, INTEGER s }` to the fixed 64-byte `r‖s` that
-     * WebCrypto and the Rust server both speak.
-     */
     fun derToRawSignature(der: ByteArray): ByteArray {
         require(der.size >= 8 && der[0].toInt() == 0x30) { "e2ee: not a DER signature" }
         var at = if (der[1].toInt() and 0xff < 0x80) 2 else 3
@@ -180,7 +138,6 @@ object E2ee {
         return out
     }
 
-    /** The inverse, for handing a wire signature to the JCA verifier. */
     fun rawToDerSignature(raw: ByteArray): ByteArray {
         require(raw.size == 64) { "e2ee: signature must be 64 bytes" }
         val r = encodeDerInteger(BigInteger(1, raw.copyOfRange(0, 32)))
@@ -226,7 +183,6 @@ object E2ee {
     fun importAgreementPublicKey(spki: ByteArray): PublicKey =
         KeyFactory.getInstance("EC").generatePublic(X509EncodedKeySpec(spki))
 
-    // ── Messages ──────────────────────────────────────────
 
     data class MessageContext(
         val channelId: String,
@@ -282,10 +238,6 @@ object E2ee {
         "AES",
     )
 
-    /**
-     * Discloses exactly one derived key for a deliberate abuse report. HKDF
-     * keeps the conversation key and every other message key hidden.
-     */
     fun deriveMessageKeyBytes(
         conversationKey: ByteArray,
         senderDeviceId: String,
@@ -327,12 +279,6 @@ object E2ee {
         )
     }
 
-    /**
-     * Opens a message and checks who wrote it. Everyone in the conversation
-     * holds the conversation key, so a valid GCM tag proves only that *someone*
-     * here wrote it; the per-sender signature is what makes authorship mean
-     * anything, and a bad one is a hard failure rather than a degraded render.
-     */
     fun openMessage(
         conversationKey: ByteArray,
         channelId: String,
@@ -423,7 +369,6 @@ object E2ee {
         )
     }
 
-    // ── Conversation-key wrapping ─────────────────────────
 
     data class WrappedKey(
         val ephemeralPub: ByteArray,
@@ -469,12 +414,6 @@ object E2ee {
         return cipher.doFinal(envelope.wrapped)
     }
 
-    /**
-     * Wrapping needs an ephemeral key pair whose private half this process can
-     * use directly, so it is generated outside the hardware-backed store. That is
-     * correct and not a weakening: it is one-shot, it protects nothing after the
-     * wrap, and the identity key it agrees against never leaves the keystore.
-     */
     fun wrapConversationKey(
         conversationKey: ByteArray,
         epochId: String,
@@ -497,7 +436,6 @@ object E2ee {
         return WrappedKey(ephemeral.public.encoded, wrapNonce, cipher.doFinal(conversationKey))
     }
 
-    // ── Identity statements ───────────────────────────────
 
     data class DeviceBundle(val userId: String, val ikSigPub: ByteArray, val ikDhPub: ByteArray)
 
@@ -522,13 +460,6 @@ object E2ee {
     fun revokeStatementBytes(userId: String, deviceId: String, revokedAt: String): ByteArray =
         encodeFields(Domain.REVOKE, userId, deviceId, revokedAt)
 
-    /**
-     * What a device signs to erase the account's identity without waiting.
-     *
-     * Not a log entry, unlike a revocation - there is no log left afterwards to
-     * put one in - so [issuedAt] is what stops a captured signature being
-     * replayed as a wipe later. The server rejects anything stale.
-     */
     fun eraseKeysStatementBytes(userId: String, deviceId: String, issuedAt: String): ByteArray =
         encodeFields(Domain.ERASE_KEYS, userId, deviceId, issuedAt)
 
@@ -538,7 +469,6 @@ object E2ee {
     fun logSignatureBytes(entryHash: ByteArray): ByteArray =
         encodeFields(Domain.LOG_ENTRY, entryHash)
 
-    // ── Identity verification ─────────────────────────────
 
     data class DeviceRecord(
         val id: String,
@@ -573,7 +503,6 @@ object E2ee {
         haystack.size >= prefix.size &&
             bytesEqual(haystack.copyOfRange(0, prefix.size), prefix)
 
-    /** Replays the hash chain. A rewrite anywhere in it fails here. */
     fun verifyLogChain(entries: List<LogRecord>): String? {
         if (entries.isEmpty()) return "empty"
         var prev: ByteArray? = null
@@ -591,11 +520,6 @@ object E2ee {
         return null
     }
 
-    /**
-     * Decides, without trusting the server, which devices legitimately belong to
-     * an account. A device counts only when an already authorized device signed
-     * it into the log, so no amount of database access can introduce one.
-     */
     fun verifyIdentity(
         userId: String,
         devices: List<DeviceRecord>,
@@ -707,7 +631,6 @@ object E2ee {
         )
     }
 
-    // ── Safety numbers and pairing ────────────────────────
 
     private fun digitGroups(digest: ByteArray, groups: Int): String =
         (0 until groups).joinToString(" ") { i ->
@@ -736,20 +659,12 @@ object E2ee {
 
     const val SAFETY_NUMBER_DIGITS = 60
 
-    /**
-     * Mirrors normalizeSafetyNumber in packages/shared/src/e2ee.ts. Somebody
-     * copying digits off a phone call produces spaces in the wrong places,
-     * dashes and stray whitespace; none of that is a mismatch. Null for
-     * anything short of the whole code, so a half-entered number is never
-     * compared and reported as wrong.
-     */
     fun normalizeSafetyNumber(input: String): String? {
         val digits = input.filter { it.isDigit() }
         if (digits.length != SAFETY_NUMBER_DIGITS) return null
         return digits.chunked(5).joinToString(" ")
     }
 
-    /** Whether a code read out over some other channel is the one derived here. */
     fun safetyNumbersMatch(typed: String, expected: String): Boolean {
         val left = normalizeSafetyNumber(typed) ?: return false
         return left == normalizeSafetyNumber(expected)
@@ -773,7 +688,6 @@ object E2ee {
             "AES",
         )
 
-    // ── Attachments ───────────────────────────────────────
 
     fun attachmentAad(fileId: String): ByteArray = encodeFields(Domain.ATTACHMENT, fileId)
 

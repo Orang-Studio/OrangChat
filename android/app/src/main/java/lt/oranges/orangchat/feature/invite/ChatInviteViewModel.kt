@@ -10,13 +10,6 @@ import lt.oranges.orangchat.data.model.InvitePreview
 import lt.oranges.orangchat.data.repository.ServerRepository
 import javax.inject.Inject
 
-/**
- * Resolves the invite links appearing in chat. One instance backs every embed on
- * screen, keyed by code, so the same invite posted three times costs one request
- * and a scroll back to it costs none.
- *
- * Null means still resolving; a failed Result means the link is dead.
- */
 @HiltViewModel
 class ChatInviteViewModel @Inject constructor(
     private val serverRepository: ServerRepository,
@@ -33,6 +26,5 @@ class ChatInviteViewModel @Inject constructor(
             }
         }
 
-    /** Hand the code to the shell, which raises the confirm sheet over it. */
     fun open(code: String) = pendingInviteStore.offer(code)
 }

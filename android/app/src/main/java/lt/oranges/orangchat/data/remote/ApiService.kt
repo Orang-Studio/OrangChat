@@ -56,23 +56,14 @@ import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
 
-/**
- * Retrofit surface. Paths mirror the modules under packages/server-rs/src/http
- * (base URL already includes /api/). The refresh token rides in an httpOnly
- * cookie handled by the OkHttp CookieJar; only the access token is a Bearer.
- */
 interface ApiService {
 
-    /** Lives at the host root, outside /api - the leading slash escapes the
-     *  base URL's /api/ prefix. No auth required. */
     @GET("/health")
     suspend fun health(): HealthDto
 
-    // ── auth.rs ─────────────────────────────────────────
     @POST("auth/signup")
     suspend fun signup(@Body body: SignupRequest): SignupResult
 
-    /** Hands back a login token, not a session - see /auth/login/email-2fa. */
     @POST("auth/login")
     suspend fun login(@Body body: LoginRequest): LoginChallenge
 
@@ -82,11 +73,6 @@ interface ApiService {
     @POST("auth/login/email-2fa/resend")
     suspend fun resendEmailTwoFactor(@Body body: ResendEmailTwoFactorRequest): OkResult
 
-    // ── passkeys ────────────────────────────────────────
-    //
-    // `start` names no account: the credential the device offers is what names
-    // it. `finish` closes both this flow and the passkey-as-second-factor one,
-    // so it is the only call that mints a session either way.
     @POST("auth/passkey/start")
     suspend fun startPasskeySignIn(): PasskeyChallenge
 
@@ -96,7 +82,6 @@ interface ApiService {
     @GET("security/passkeys")
     suspend fun getPasskeys(): PasskeyListResult
 
-    /** Password-gated (plus a 2FA code when on): adding a passkey adds a way in. */
     @POST("security/passkeys/register/start")
     suspend fun startPasskeyRegistration(@Body body: TwoFactorDisableRequest): PasskeyChallenge
 
@@ -127,7 +112,6 @@ interface ApiService {
     @PATCH("auth/me")
     suspend fun patchMe(@Body body: UpdateMeRequest): SelfUser
 
-    // ── security.rs (2FA) ───────────────────────────────
     @GET("security/2fa")
     suspend fun getTwoFactorStatus(): TwoFactorStatus
 
@@ -149,7 +133,6 @@ interface ApiService {
     @POST("security/email")
     suspend fun changeEmail(@Body body: ChangeEmailRequest): ChangeEmailResult
 
-    /** Sessions live under auth/ so the path-scoped refresh cookie is in scope. */
     @GET("auth/sessions")
     suspend fun getSessions(): SessionsResult
 
@@ -162,8 +145,6 @@ interface ApiService {
     @POST("auth/lockdown")
     suspend fun setLockdown(@Body body: LockdownRequest): LockdownResult
 
-    // QR sign-in: the signed-in phone reports a scan, then approves it, opening
-    // a web session for this account.
     @POST("auth/qr/scan")
     suspend fun qrScan(@Body body: QrTokenRequest): QrActionResult
 
@@ -173,15 +154,12 @@ interface ApiService {
     @GET("security/standing")
     suspend fun getAccountStanding(): AccountStanding
 
-    // @HTTP rather than @DELETE: Retrofit's @DELETE can't carry a body, and the
-    // confirmation fields have to travel with the request.
     @HTTP(method = "DELETE", path = "security/account", hasBody = true)
     suspend fun deleteAccount(@Body body: DeleteAccountRequest): DeleteAccountResult
 
     @HTTP(method = "DELETE", path = "security/messages", hasBody = true)
     suspend fun deleteAllMessages(@Body body: DeleteAllMessagesRequest): DeleteAllMessagesResult
 
-    // ── servers.rs ──────────────────────────────────────
     @GET("servers")
     suspend fun listServers(): List<Server>
 
@@ -203,7 +181,6 @@ interface ApiService {
     @POST("servers/{serverId}/invites")
     suspend fun createInvite(@Path("serverId") serverId: String, @Body body: CreateInviteRequest): Invite
 
-    /** Leave under your own steam - distinct from being kicked. */
     @POST("servers/{serverId}/leave")
     suspend fun leaveServer(@Path("serverId") serverId: String): Response<Unit>
 
@@ -213,14 +190,12 @@ interface ApiService {
     @POST("invites/{code}")
     suspend fun joinInvite(@Path("code") code: String): Server
 
-    /** Resolve an invite link without joining, to show what it leads to. */
     @GET("invites/{code}")
     suspend fun invitePreview(@Path("code") code: String): InvitePreview
 
     @GET("servers/{serverId}/me/permissions")
     suspend fun myPermissions(@Path("serverId") serverId: String): MyPermissionsResponse
 
-    // ── channels.rs ─────────────────────────────────────
     @GET("channels/{channelId}/messages")
     suspend fun getHistory(
         @Path("channelId") channelId: String,
@@ -234,14 +209,12 @@ interface ApiService {
     @PATCH("channels/{channelId}")
     suspend fun patchChannel(@Path("channelId") channelId: String, @Body body: PatchChannelRequest): Channel
 
-    /** Set or clear a DM's shared chat background (plaintext, like avatars). */
     @PUT("channels/{channelId}/background")
     suspend fun putChannelBackground(
         @Path("channelId") channelId: String,
         @Body body: ChannelBackgroundRequest,
     ): Channel
 
-    /** Set or clear a group DM's icon (plaintext, like avatars). */
     @PUT("channels/{channelId}/icon")
     suspend fun putChannelIcon(
         @Path("channelId") channelId: String,
@@ -254,7 +227,6 @@ interface ApiService {
     @GET("channels/{channelId}/permissions")
     suspend fun listChannelPermissions(@Path("channelId") channelId: String): List<ChannelOverwrite>
 
-    /** Live voice/call participants of a channel. */
     @GET("channels/{channelId}/voice")
     suspend fun getVoiceParticipants(@Path("channelId") channelId: String): List<VoiceState>
 
@@ -273,8 +245,6 @@ interface ApiService {
     @DELETE("channels/{channelId}/draft")
     suspend fun deleteDraft(@Path("channelId") channelId: String): Response<Unit>
 
-    /** Send a message over REST. Used by the notification quick-reply, which has
-     *  no live socket to send over from a background broadcast. */
     @POST("channels/{channelId}/messages")
     suspend fun sendMessage(
         @Path("channelId") channelId: String,
@@ -293,7 +263,6 @@ interface ApiService {
     @GET("link-preview")
     suspend fun getLinkPreview(@Query("url") url: String): LinkPreviewData
 
-    // ── servers.rs (search) ─────────────────────────────
     @GET("servers/{serverId}/search")
     suspend fun searchMessages(
         @Path("serverId") serverId: String,
@@ -304,7 +273,6 @@ interface ApiService {
         @Query("offset") offset: Int = 0,
     ): Page<Message>
 
-    // ── dms.rs ──────────────────────────────────────────
     @GET("dms")
     suspend fun listDms(): List<Conversation>
 
@@ -314,11 +282,9 @@ interface ApiService {
     @POST("dms/{channelId}/participants")
     suspend fun addDmParticipants(@Path("channelId") channelId: String, @Body body: CreateDmRequest): Conversation
 
-    /** Leaves a group DM outright, or closes a one-on-one until it has something new. */
     @DELETE("dms/{channelId}")
     suspend fun leaveDm(@Path("channelId") channelId: String)
 
-    // ── friends.rs ──────────────────────────────────────
     @GET("friends")
     suspend fun listFriends(): List<Friend>
 
@@ -337,7 +303,6 @@ interface ApiService {
     @DELETE("friends/{userId}")
     suspend fun removeFriend(@Path("userId") userId: String): Response<Unit>
 
-    // ── roles.rs ────────────────────────────────────────
     @POST("servers/{serverId}/roles")
     suspend fun createRole(@Path("serverId") serverId: String, @Body body: CreateRoleRequest): Role
 
@@ -356,7 +321,6 @@ interface ApiService {
     @PATCH("servers/{serverId}/members/{userId}/nickname")
     suspend fun setNickname(@Path("serverId") serverId: String, @Path("userId") userId: String, @Body body: SetNicknameRequest): ServerMember
 
-    /** `durationSeconds = null` lifts the timeout. Capped server-side at 28 days. */
     @PATCH("servers/{serverId}/members/{userId}/timeout")
     suspend fun setTimeout(
         @Path("serverId") serverId: String,
@@ -387,7 +351,6 @@ interface ApiService {
     @DELETE("servers/{serverId}/bans/{userId}")
     suspend fun unbanMember(@Path("serverId") serverId: String, @Path("userId") userId: String): Response<Unit>
 
-    // ── channels.rs (pins) ──────────────────────────────
     @GET("channels/{channelId}/pins")
     suspend fun listPins(@Path("channelId") channelId: String): List<Message>
 
@@ -397,8 +360,6 @@ interface ApiService {
     @DELETE("channels/{channelId}/pins/{messageId}")
     suspend fun unpinMessage(@Path("channelId") channelId: String, @Path("messageId") messageId: String): Response<Unit>
 
-    // ── emojis.rs ───────────────────────────────────────
-    /** Every emoji the caller can type, across all their servers. */
     @GET("emojis")
     suspend fun listUsableEmojis(): List<Emoji>
 
@@ -423,11 +384,9 @@ interface ApiService {
     @DELETE("servers/{serverId}/emojis/{emojiId}")
     suspend fun deleteEmoji(@Path("serverId") serverId: String, @Path("emojiId") emojiId: String): Response<Unit>
 
-    // ── sounds.rs ───────────────────────────────────────
     @GET("servers/{serverId}/sounds")
     suspend fun listSounds(@Path("serverId") serverId: String): List<Sound>
 
-    /** Every sound the viewer can play, across their servers. */
     @GET("sounds")
     suspend fun listUsableSounds(): List<Sound>
 
@@ -450,7 +409,6 @@ interface ApiService {
     @DELETE("servers/{serverId}/sounds/{soundId}")
     suspend fun deleteSound(@Path("serverId") serverId: String, @Path("soundId") soundId: String): Response<Unit>
 
-    // ── uploads.rs ──────────────────────────────────────
     @Multipart
     @POST("uploads/image")
     suspend fun uploadImage(
@@ -458,9 +416,6 @@ interface ApiService {
         @Query("kind") kind: String = "avatar",
     ): UploadResponse
 
-    // ── e2ee.rs ─────────────────────────────────────────
-    // Everything here is public key material, signed statements, or ciphertext
-    // the server cannot open. See docs/E2EE.md.
     @GET("e2ee/devices")
     suspend fun getMyE2eeDevices(): E2eeDeviceList
 
@@ -476,7 +431,6 @@ interface ApiService {
     @POST("e2ee/devices/revoke")
     suspend fun revokeE2eeDevice(@Body body: E2eeRevokeRequest): E2eeDevice
 
-    /** Erases every key on the account at once, on a keyed device's signature. */
     @POST("e2ee/keys/deletion/now")
     suspend fun eraseE2eeKeysNow(@Body body: E2eeEraseKeysRequest): Response<Unit>
 
@@ -489,7 +443,6 @@ interface ApiService {
     @POST("e2ee/transfer-grant")
     suspend fun requestE2eeTransferGrant(@Body body: E2eeTransferGrantRequest): E2eeTransferGrant
 
-    /** One-time email code for accounts without an authenticator app. */
     @POST("e2ee/transfer-grant/email-code")
     suspend fun requestE2eeTransferEmailCode(): E2eeTransferEmailCode
 
@@ -520,10 +473,6 @@ interface ApiService {
         @Query("deviceId") deviceId: String,
     ): E2eeEpochKeys
 
-    // ── channels.rs: per-conversation strict mode ───────
-    // Stored server-side so that turning it on or off is an action the server
-    // carried out, and can therefore be announced by the server rather than by
-    // the client that asked for it.
 
     @GET("me/e2ee-strict")
     suspend fun getMyE2eeStrict(): E2eeStrictOverrides

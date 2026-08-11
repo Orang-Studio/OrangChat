@@ -105,9 +105,6 @@ describe('canonical encoding', () => {
 });
 
 describe('nonces', () => {
-  // The safety of a fixed nonce rests entirely on the message key being unique
-  // per (conversation key, device, seq). Randomising it here would start
-  // colliding around 2^32 messages under one key, so it is pinned.
   it('pins the message nonce to 12 zero bytes', () => {
     expect(MESSAGE_NONCE.length).toBe(12);
     expect([...MESSAGE_NONCE].every((b) => b === 0)).toBe(true);
@@ -158,9 +155,6 @@ describe('domain separation', () => {
     expect(new Set(all).size).toBe(3);
   });
 
-  // Pinned so the Rust server and the Kotlin client cannot drift into producing
-  // different bytes for the same statement, which would make every signature
-  // silently unverifiable across platforms.
   it('pins the statement encodings', () => {
     const bundle = { userId: 'u', ikSigPub: new Uint8Array([1]), ikDhPub: new Uint8Array([2]) };
     expect(toHex(deviceBundleBytes(bundle))).toBe(
@@ -179,10 +173,6 @@ describe('domain separation', () => {
     );
   });
 
-  // The server takes this signature as proof that the caller holds a key and
-  // erases the account's identity with no waiting period, so the one thing that
-  // must never happen is an erasure signature being obtainable from something
-  // else the same key already signs.
   it('cannot spend a revocation as an erasure', () => {
     expect(toHex(eraseKeysStatementBytes('u', 'd', 'now'))).not.toBe(
       toHex(revokeStatementBytes('u', 'd', 'now')),
@@ -291,10 +281,6 @@ describe('sealing and opening', () => {
     ).rejects.toThrow();
   });
 
-  // The whole point of the per-sender signature: everyone in a group holds the
-  // conversation key, so a GCM tag alone proves only that *someone* here wrote
-  // it. Re-signing under another device's key must not produce a message that
-  // opens as that device.
   it('refuses a message another member re-signed as someone else', async () => {
     const key = randomBytes(CONVERSATION_KEY_BYTES);
     const honest = await signingPair();
@@ -485,10 +471,6 @@ describe('identity verification', () => {
     }
   });
 
-  // The attack the whole signature graph exists to stop: an operator with full
-  // database access inserts a device it holds the private key for, hoping to be
-  // wrapped a conversation key. It has no authorization signature from an
-  // existing device, and no amount of server access can produce one.
   it('rejects a device the server invented', async () => {
     const account = await buildAccount('user-1');
     const sig = await signingPair();

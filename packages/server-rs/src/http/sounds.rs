@@ -1,4 +1,3 @@
-//! Soundboard REST, mounted under /api. No TS equivalent - new for the Rust port.
 
 use axum::extract::{DefaultBodyLimit, Multipart, Path, State};
 use axum::http::StatusCode;
@@ -15,18 +14,13 @@ use crate::permissions::MANAGE_EXPRESSIONS;
 use crate::services::{audio, membership, rate_limit, sound};
 use crate::state::AppState;
 
-/// Three seconds of audio is small at any sane bitrate; the rest of this budget
-/// is headroom for container overhead and lossless uploads.
 const MAX_SOUND_UPLOAD: usize = 1024 * 1024;
 
-/// Extensions we hand symphonia as a parsing hint and store under.
 const ALLOWED_EXT: [&str; 6] = ["mp3", "ogg", "wav", "flac", "m4a", "aac"];
 
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/servers/:serverId/sounds", get(list).post(create))
-        // Every sound the user can play, across their servers - the picker's
-        // source so the soundboard works outside any one server.
         .route("/sounds", get(list_usable))
         .route(
             "/servers/:serverId/sounds/:soundId",
@@ -40,8 +34,6 @@ async fn list(
     Path(server_id): Path<String>,
     State(state): State<AppState>,
 ) -> AppResult<Json<Vec<SoundDto>>> {
-    // Membership alone is the read gate: anyone who can play a sound here can
-    // see the board.
     membership::require_permission(&state, &server_id, &user.user_id, 0).await?;
     let rows = sound::list_sounds(&state, &server_id).await?;
     Ok(Json(rows.iter().map(to_sound).collect()))
@@ -82,8 +74,6 @@ async fn create(
     {
         match field.name() {
             Some("file") => {
-                // The filename is only ever a parsing hint for symphonia; the
-                // probe is what actually decides whether this is playable audio.
                 ext = field
                     .file_name()
                     .and_then(|f| f.rsplit_once('.'))
@@ -108,7 +98,6 @@ async fn create(
     let name = name.ok_or_else(|| AppError::BadRequest("No name provided".into()))?;
     let name = sound::normalize_name(&name)?;
 
-    // Decoding is CPU-bound and blocking - keep it off the runtime.
     let probe_bytes = bytes.clone();
     let probe_ext = ext.clone();
     let duration = tokio::task::spawn_blocking(move || {
@@ -117,8 +106,6 @@ async fn create(
     .await
     .map_err(|_| AppError::Internal("Audio processing failed".into()))??;
 
-    // Stored as uploaded: re-encoding audio needs an encoder we deliberately do
-    // not ship, and the probe has already bounded both length and size.
     let url = store_audio(&state, bytes, ext.as_deref().unwrap_or("mp3")).await?;
 
     let row = sound::create_sound(
@@ -176,8 +163,6 @@ async fn remove(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// The permission check is scoped to the server in the path, so the sound has to
-/// actually live there.
 async fn require_in_server(state: &AppState, sound_id: &str, server_id: &str) -> AppResult<()> {
     let row = sound::get_sound(state, sound_id).await?;
     if row.server_id != server_id {

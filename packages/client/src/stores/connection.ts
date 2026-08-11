@@ -5,9 +5,9 @@ export type ConnectionStatus = "connecting" | "connected" | "disconnected";
 interface ConnectionState {
   status: ConnectionStatus;
   socketId: string | null;
-  /** Last connect_error message, if any */
+
   error: string | null;
-  /** Reconnection attempts since the last successful connect */
+
   attempts: number;
 }
 

@@ -14,7 +14,7 @@ function ProfileThemeCard({
   preview,
 }: {
   theme: ProfileTheme;
-  /** The viewer's own card data; this theme's CSS is layered on top of it. */
+
   preview: ProfileCardData;
 }) {
   const user = useAuthStore((state) => state.user);
@@ -62,7 +62,7 @@ function ProfileThemeCard({
   );
 }
 
-/** PR-reviewed profile-card CSS bundled from the marketplace repository. */
+
 export function ProfileThemesTab() {
   const user = useAuthStore((state) => state.user);
   const [query, setQuery] = useState("");
@@ -77,8 +77,6 @@ export function ProfileThemesTab() {
     );
   }, [query]);
 
-  // Preview on the viewer's real card, hidden connections excluded - the same
-  // filtering the profile popup does.
   const { data: connections } = useQuery({
     queryKey: ["connections", "mine"],
     queryFn: getMyConnections,

@@ -1,4 +1,3 @@
-//! Channel-scoped REST, mounted under /api. Mirrors routes/channels.ts. Requires auth.
 
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
@@ -61,7 +60,6 @@ async fn mark_read(
         .io()
         .to(format!("user:{}", user.user_id))
         .emit("read:state", &json!({ "channelId": channel_id }));
-    // Take back any notification this channel left on the user's other devices.
     crate::services::push::notify_read(&state, &user.user_id, &channel_id).await;
     Ok(Json(json!({ "ok": true })))
 }
@@ -115,10 +113,6 @@ struct SendMessageBody {
     attachment_ids: Vec<String>,
     #[serde(default)]
     spoiler_attachment_ids: Vec<String>,
-    /// docs/E2EE.md §2. A quick reply into an encrypted conversation seals on
-    /// the device exactly as the app does; the server refuses plaintext into a
-    /// latched channel either way, so this is what makes the path work rather
-    /// than what makes it safe.
     #[serde(default)]
     ciphertext: Option<String>,
     #[serde(default)]
@@ -127,11 +121,6 @@ struct SendMessageBody {
     enc_version: Option<i32>,
 }
 
-/// REST twin of the socket `message:send`. Exists for callers with no live
-/// socket - chiefly the Android notification quick-reply, which posts here from
-/// a background broadcast rather than spinning up a connection. Runs the same
-/// guards and the same `deliver_message` fan-out, so a reply sent this way is
-/// indistinguishable from one typed in the app.
 async fn post_message(
     State(state): State<AppState>,
     user: AuthUser,
@@ -165,8 +154,6 @@ async fn post_message(
         sealed.as_ref(),
     )
     .await?;
-    // No originating socket: this sender was answered over HTTP, so everyone in
-    // the channel needs the broadcast.
     crate::socket::deliver_message(
         state.io(),
         &state,
@@ -271,7 +258,6 @@ async fn patch_channel(
     }
     if let Some(v) = obj.get("rateLimitPerUser") {
         let r = v.as_i64().ok_or_else(|| bad_request("Invalid input"))?;
-        // 0 = off, 6h ceiling, as Discord.
         if !(0..=21600).contains(&r) {
             return Err(bad_request("rateLimitPerUser must be 0-21600 seconds"));
         }
@@ -463,9 +449,6 @@ async fn delete_permission(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// Anyone who can see a channel can read its pins; changing them needs
-/// MANAGE_MESSAGES. In a DM there is no such role, so any participant may pin -
-/// require_channel_access has already established they are one.
 async fn require_pin_permission(
     state: &AppState,
     channel_id: &str,
@@ -522,11 +505,6 @@ struct BackgroundBody {
     url: Option<String>,
 }
 
-/// Set (or, with `null`, clear) the shared background image of a DM or group
-/// DM. Any participant may change it - there is no moderator in a DM - and the
-/// image is plaintext like an avatar, never E2EE like an attachment, because
-/// the whole point is one picture the server hands to everyone in the
-/// conversation, including people who join after it was set.
 async fn put_background(
     State(state): State<AppState>,
     user: AuthUser,
@@ -543,8 +521,6 @@ async fn put_background(
     let removed = url.is_none();
     let updated = channel::set_channel_background(&state, &channel_id, url).await?;
     let dto = to_channel(&updated);
-    // The background is shared, so changing it changes the room for everybody in
-    // it: the notice is how the others find out it was a person and not a bug.
     system_message::announce(
         &state,
         &channel_id,
@@ -556,8 +532,6 @@ async fn put_background(
         },
     )
     .await;
-    // DM participants live in the channel room (http::dms joins each socket on
-    // open), so this reaches exactly the people who may see it.
     let _ = state
         .io()
         .to(format!("channel:{channel_id}"))
@@ -565,9 +539,6 @@ async fn put_background(
     Ok(Json(json!(dto)))
 }
 
-/// An upload url we are willing to store. The upload endpoint returns only
-/// `/uploads/<id>.<ext>` and `https://res.cloudinary.com/...`; anything else is
-/// not something this app produced, so it is not an image we can vouch for.
 fn upload_url(url: String) -> AppResult<String> {
     let clean = url.trim().to_string();
     if clean.is_empty()
@@ -585,10 +556,6 @@ struct IconBody {
     url: Option<String>,
 }
 
-/// Set (or, with `null`, clear) a group DM's icon. Any participant may change
-/// it - a group DM has no owner - and like the background it is plaintext, so
-/// that everyone in the group, including people added later, is handed the same
-/// picture. One-on-one DMs are excluded: their icon is the other person.
 async fn put_icon(
     State(state): State<AppState>,
     user: AuthUser,
@@ -622,8 +589,6 @@ async fn put_icon(
     Ok(Json(json!(dto)))
 }
 
-/// Every conversation this user has an explicit strict override on. One request
-/// at startup, instead of threading a per-viewer field through the DM list.
 async fn my_e2ee_strict(State(state): State<AppState>, user: AuthUser) -> AppResult<Json<Value>> {
     let rows: Vec<(String, bool)> = sqlx::query_as(
         r#"SELECT "channelId", "e2eeStrict" FROM "ChannelParticipant"
@@ -639,22 +604,9 @@ async fn my_e2ee_strict(State(state): State<AppState>, user: AuthUser) -> AppRes
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct StrictBody {
-    /// `null` drops the override and returns this conversation to the account's
-    /// global "verify before messaging" setting.
     on: Option<bool>,
 }
 
-/// Set this user's "verify before messaging" rule for one conversation.
-///
-/// The rule itself is enforced on their own device - the server cannot stop a
-/// client from encrypting to whoever it likes. It is stored here so that turning
-/// it on or off is an action the *server* carried out, which is what lets the
-/// server author the notice about it: the other side is told the requirement
-/// changed by something they can trust, rather than by a sentence the peer's
-/// client typed and could have lied about. No key material is involved.
-///
-/// The cost, stated plainly: the server learns which DMs a user has marked
-/// strict. It learns nothing about the conversation's contents or keys.
 async fn put_e2ee_strict(
     State(state): State<AppState>,
     user: AuthUser,
@@ -679,8 +631,6 @@ async fn put_e2ee_strict(
         return Err(AppError::Permission("You are not in this conversation".into()));
     }
 
-    // Clearing the override is a return to whatever the account already does, so
-    // there is nothing to announce; only an explicit on or off is an event.
     if let Some(on) = body.on {
         system_message::announce(
             &state,

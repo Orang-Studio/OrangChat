@@ -9,19 +9,12 @@ import java.util.UUID
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 
-/** Small cache-backed recorder used by the message composer, not by LiveKit. */
 class VoiceMessageRecorder(private val context: Context) {
     private var recorder: MediaRecorder? = null
     private var output: File? = null
 
     val isRecording: Boolean get() = recorder != null
 
-    /**
-     * Opens the microphone and returns the file the clip is being written to.
-     *
-     * @param maxDuration hard cap on the clip; the recorder stops itself at the
-     *   cap and [onMaxDuration] fires so the caller can deliver what it has.
-     */
     fun start(maxDuration: Duration? = null, onMaxDuration: () -> Unit = {}): Uri {
         check(recorder == null) { "A voice message is already recording" }
         pruneStaleRecordings()
@@ -56,19 +49,12 @@ class VoiceMessageRecorder(private val context: Context) {
         return uriFor(file)
     }
 
-    /**
-     * Loudest sample since the previous call, normalised to `0f..1f`.
-     *
-     * Returns 0 rather than throwing when nothing is recording: the UI polls this
-     * on a timer, which inevitably races the stop.
-     */
     fun amplitude(): Float {
         val active = recorder ?: return 0f
         val peak = runCatching { active.maxAmplitude }.getOrDefault(0)
         return (peak / MAX_AMPLITUDE).coerceIn(0f, 1f)
     }
 
-    /** Stops and returns the finished file, or null if the clip was invalid. */
     fun stop(): Uri? {
         val active = recorder ?: return null
         val file = output
@@ -106,11 +92,6 @@ class VoiceMessageRecorder(private val context: Context) {
     private fun uriFor(file: File): Uri =
         FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
 
-    /**
-     * Drops clips left behind by a process death mid-recording. Nothing else ever
-     * cleans this directory: a sent clip is deleted once uploaded and a cancelled
-     * one on the spot, so anything still here past the window is an orphan.
-     */
     private fun pruneStaleRecordings() {
         val cutoff = System.currentTimeMillis() - STALE_AFTER.inWholeMilliseconds
         runCatching {
@@ -121,7 +102,6 @@ class VoiceMessageRecorder(private val context: Context) {
     }
 
     private companion object {
-        /** `maxAmplitude` is a signed 16-bit PCM peak. */
         const val MAX_AMPLITUDE = 32_767f
         val STALE_AFTER: Duration = 24.hours
     }

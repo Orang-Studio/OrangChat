@@ -15,11 +15,7 @@ export function useSounds(serverId: string | undefined) {
   });
 }
 
-/**
- * Every sound the viewer can play, from all their servers. This is what the
- * soundboard shows: your sounds follow you into any voice room, the way custom
- * emoji are usable in any channel.
- */
+
 export function useUsableSounds(enabled: boolean) {
   return useQuery({
     queryKey: soundKeys.usable,
@@ -28,11 +24,7 @@ export function useUsableSounds(enabled: boolean) {
   });
 }
 
-/**
- * Ask the server to play a clip. Fire-and-forget: the sound arrives back over
- * `soundboard:played` like everyone else's, so there is nothing to do locally.
- * The server may refuse (rate limit, no SPEAK) and that is its business.
- */
+
 export function playSound(channelId: string, soundId: string): void {
   socket.emit("soundboard:play", { channelId, soundId });
 }

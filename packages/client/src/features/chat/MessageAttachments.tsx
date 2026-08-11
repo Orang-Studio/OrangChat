@@ -27,46 +27,24 @@ import { ImageContextMenu } from './ImageContextMenu';
 import { VideoLightbox } from './VideoLightbox';
 import { t } from "../../lib/i18n";
 
-/**
- * Attachments on a sent message. Two kinds, told apart by `expiresAt`: local
- * files, which last as long as the message, and OrangMove files (anything over
- * 10MB), which its reaper deletes within the hour.
- *
- * The expiry is shown rather than hidden - a countdown that turns into "expired"
- * is a better answer than an image that silently breaks, and there's no way to
- * renew it from here: OrangMove's whole contract is that files don't persist.
- */
 
-/**
- * How far an inline video's box may stray from the shape of the clip inside it,
- * and how large it may get. A 9:16 phone clip is squeezed towards the low end
- * rather than being allowed to run the height of the viewport; anything wider
- * than 2:1 is a letterbox that would otherwise render as a thin strip. Android
- * clamps to the same range (`VideoPlayer.kt`), so a message looks the same on
- * both.
- */
+
+
 const MIN_ASPECT = 0.6;
 const MAX_ASPECT = 2;
 const DEFAULT_ASPECT = 16 / 9;
-/** `max-w-sm`, matching the image path. */
+
 const VIDEO_MAX_WIDTH = 384;
 const VIDEO_MAX_HEIGHT = 480;
 
-/**
- * The box an inline video occupies, from whatever the sender measured before
- * sealing it. Every state of a video - locked, decrypting, playable - lays out
- * through this, so the row keeps its size instead of resizing under the reader
- * as the poster and then the file arrive.
- */
+
 function videoBox(width?: number, height?: number) {
   const aspect =
     width && height ? Math.min(MAX_ASPECT, Math.max(MIN_ASPECT, width / height)) : DEFAULT_ASPECT;
-  // Portrait clips would otherwise be as tall as they are allowed to be wide;
-  // narrowing the box instead of capping its height keeps the frame filled.
   return { aspect, maxWidth: Math.min(VIDEO_MAX_WIDTH, VIDEO_MAX_HEIGHT * aspect) };
 }
 
-/** Reason for `expiresAt` when the file's already gone. */
+
 const isExpired = (a: Attachment) =>
   a.expiresAt !== undefined &&
   a.expiresAt !== null &&

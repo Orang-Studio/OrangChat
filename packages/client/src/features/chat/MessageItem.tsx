@@ -22,42 +22,41 @@ import { t } from "../../lib/i18n";
 
 export interface MessageItemProps {
   message: Message;
-  /** Optimistic local row waiting for server confirmation. */
+
   pending?: boolean;
-  /** The server rejected this row; it stays visible until retried. */
+
   failed?: boolean;
-  /** Server's reason for refusing the send. */
+
   failure?: string;
-  /** Re-send the failed row. */
+
   onRetry?: () => void;
-  /** Abandon the failed row. */
+
   onDiscard?: () => void;
-  /** Render compact (no avatar/header) - same author, close in time. */
+
   compact: boolean;
-  /** Last row of its group, so the group's trailing padding lands here. */
+
   groupEnd?: boolean;
-  /** The row sits on a group plate over a chat background picture, which owns
-   * the spacing between groups - so a lead row does not add its own. */
+
   plated?: boolean;
-  /** The message this one replies to, when loaded. */
+
   replyTo?: Message;
   isOwn: boolean;
-  /** Current user may delete others' messages (MANAGE_MESSAGES). */
+
   canManage: boolean;
   onReply: (message: Message) => void;
-  /** Scroll the list to another message (the one this replies to). */
+
   onJumpTo?: (messageId: string) => void;
-  /** Briefly highlighted because something just jumped to it. */
+
   flash?: boolean;
-  /** The message currently selected as the reply target. */
+
   replying?: boolean;
-  /** userId → display name, for resolving `<@id>` mentions in content. */
+
   mentionNames?: Record<string, string>;
-  /** username → user, for resolving `@username` mentions in content. */
+
   mentionUsers?: Record<string, { id: string; name: string }>;
-  /** The viewer's id, so mentions of them highlight. */
+
   selfId?: string;
-  /** Full users for resolved mentions, so a mention can open a profile. */
+
   mentionProfiles?: Record<string, User>;
 }
 
@@ -78,9 +77,6 @@ function EditForm({ message, onDone }: { message: Message; onDone: () => void })
     field.setSelectionRange(field.value.length, field.value.length);
   }, []);
 
-  // An attachment carries the message on its own, so clearing the text is a
-  // real edit there. Without something else on the row it would only leave a
-  // blank message, so an empty draft still means "never mind".
   const mayBeEmpty = message.attachments.length > 0;
 
   const save = async () => {
@@ -178,10 +174,8 @@ export function MessageItem({
     [usableEmojis, message.emojis],
   );
   const selfUsername = useAuthStore((s) => s.user?.username);
-  // highlight the whole row when the message pings us (but never our own).
   const pinged = !isOwn && !pending && mentionsViewer(message.content, selfId, selfUsername);
 
-  // Touch screens have no hover - tapping the message toggles the action bar.
   const onTap = (e: React.MouseEvent) => {
     if (!window.matchMedia("(pointer: coarse)").matches) return;
     if ((e.target as HTMLElement).closest("button, a, textarea")) return;
@@ -199,10 +193,6 @@ export function MessageItem({
               pending ? "Sending message" : failed ? "Message failed to send" : undefined
             }
             className={cn(
-              // Vertical padding belongs to the group, not to each row in it:
-              // a run of grouped messages is meant to read as one block, and
-              // padding on both sides of every internal seam opened a visible
-              // step between the lead and the first message under it.
               "oc-message group relative px-4 hover:bg-surface-3/40",
               compact ? "pt-0" : "pt-0.5",
               groupEnd ? "pb-0.5" : "pb-0",
@@ -212,7 +202,6 @@ export function MessageItem({
               failed && "bg-danger/5",
               pinged && "oc-message-pinged border-l-2 border-primary bg-primary/[0.06] hover:bg-primary/10",
               replying && "oc-message-replying bg-primary/[0.08] hover:bg-primary/10",
-              // Static rather than animated so it still lands under reduced motion.
               flash && "bg-primary/15 hover:bg-primary/15",
             )}
           >
@@ -285,9 +274,6 @@ export function MessageItem({
                 {editing ? (
                   <EditForm message={message} onDone={() => setEditing(false)} />
                 ) : (
-                  // A refused row keeps its words, and the words say so: the
-                  // label underneath is easy to miss when the text above it
-                  // still reads exactly like a message that went through.
                   <div
                     className={cn(
                       "break-words text-sm leading-relaxed",

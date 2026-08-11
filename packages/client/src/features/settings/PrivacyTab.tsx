@@ -106,8 +106,6 @@ export function PrivacyTab() {
         </p>
         <Toggle
           checked={user.e2eeStrict}
-          // Turning it on is free; turning it off is the direction that costs
-          // something, so a session alone must not be able to do it (§6.5).
           onChange={(e2eeStrict) =>
             e2eeStrict ? mutation.mutate({ e2eeStrict: true }) : setConfirmingOff(true)
           }

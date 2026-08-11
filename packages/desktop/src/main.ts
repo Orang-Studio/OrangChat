@@ -34,14 +34,10 @@ import {
   type UpdateCheckReport,
 } from "./updater";
 
-/** Bounds an icon data url; 256px of PNG is comfortably under this. */
+
 const MAX_ICON_DATA_URL = 2 * 1024 * 1024;
 
-/**
- * Point the window frame, taskbar and tray at `image`, or back at the bundled
- * mark when it is null. macOS has no per-window icon, so the frame call is a
- * no-op there and only the tray changes.
- */
+
 function applyAppIcon(window: BrowserWindow | null, image: Electron.NativeImage | null): void {
   const bundled = join(__dirname, "..", "build", "icon.png");
   const resolved = image ?? nativeImage.createFromPath(bundled);
@@ -54,16 +50,7 @@ let mainWindow: BrowserWindow | null = null;
 let gamePresence: GamePresence | null = null;
 let quitting = false;
 
-/**
- * False in a second copy launched while one is already running - which is what
- * the taskbar shortcut does every time, since closing only hides the first copy
- * to the tray.
- *
- * app.quit() is asynchronous and does not stop this script, so without the flag
- * the losing copy still reaches the ready handler below and stands up a second
- * tray icon, a second window and a competing global shortcut in the moment
- * before it dies. The copy that holds the lock takes over from "second-instance".
- */
+
 const isPrimaryInstance = app.requestSingleInstanceLock();
 if (!isPrimaryInstance) {
   app.quit();

@@ -6,7 +6,7 @@ import { qrPoll, qrStart } from "./api";
 import { applySession } from "./session";
 import { t } from "../../lib/i18n";
 
-/** The QR encodes a deep link the app recognises, not a bare token. */
+
 const linkFor = (token: string) => `orangchat://login?token=${token}`;
 
 /**

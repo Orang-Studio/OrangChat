@@ -43,14 +43,12 @@ function ControlButton({
   );
 }
 
-/** Sidebar strip shown while in (or joining) a voice channel or DM call. */
+
 export function VoicePanel() {
   const session = useVoiceStore((s) => s.session);
   const call = useCallStore((s) => s.current);
   if (!session) return null;
 
-  // A call still ringing out reads as "Calling…" rather than "Voice connected",
-  // even though we are already sitting in the LiveKit room.
   const ringingOut = call?.channelId === session.channelId && call.phase === "outgoing";
   const label =
     session.status === "error"
@@ -62,7 +60,6 @@ export function VoicePanel() {
           : "Connecting…";
 
   const hangUp = () => {
-    // Leaving voice without ending the call would strand it server-side.
     if (call?.channelId === session.channelId) void callActions.leave();
     else void voiceActions.leave();
   };

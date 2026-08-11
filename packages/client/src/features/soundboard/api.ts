@@ -3,9 +3,9 @@ import { api } from "../../lib/api";
 import { useAuthStore } from "../../stores/auth";
 import { refreshSession } from "../auth/session";
 
-/** Matches the server's cap. */
+
 export const MAX_SOUND_BYTES = 1024 * 1024;
-/** Matches services::audio::MAX_SOUND_SECS. */
+
 export const MAX_SOUND_SECS = 3;
 
 export const listSounds = (serverId: string) => api<Sound[]>(`/servers/${serverId}/sounds`);

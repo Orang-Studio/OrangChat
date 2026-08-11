@@ -29,9 +29,9 @@
     <string name="catalog_2fa_e8442a3a" formatted="false">2FA</string>
     <string name="catalog_a_dark_card_with_a_glowing_purple_1407c4d4" formatted="false">A dark card with a glowing purple name and a striped banner.</string>
     <string name="catalog_a_deleted_account_b1c40a9e" formatted="false">حذف شدہ اکاؤنٹ</string>
-    <string name="catalog_a_fast_self_hosted_chat_for_servers_fa05634c" formatted="false">سرورز، ذاتی پیغامات اور آواز کے لیے تیز، خود ہوسٹ کیا گیا چیٹ — Oranges.LT خاندان کا حصہ۔</string>
+    <string name="catalog_a_fast_self_hosted_chat_for_servers_fa05634c" formatted="false">سرورز، ذاتی پیغامات اور آواز کے لیے تیز، خود ہوسٹ کیا گیا چیٹ - Oranges.LT خاندان کا حصہ۔</string>
     <string name="catalog_a_green_on_black_monospace_card_for_9a798bea" formatted="false">A green-on-black monospace card for the command-line at heart.</string>
-    <string name="catalog_a_one_time_code_is_on_its_395743b6" formatted="false">ایک بار استعمال کا کوڈ آپ کے ای میل پر بھیجا جا رہا ہے — یہ 10 منٹ میں ختم ہو جائے گا۔</string>
+    <string name="catalog_a_one_time_code_is_on_its_395743b6" formatted="false">ایک بار استعمال کا کوڈ آپ کے ای میل پر بھیجا جا رہا ہے - یہ 10 منٹ میں ختم ہو جائے گا۔</string>
     <string name="catalog_a_passkey_only_works_on_the_site_ca725d27" formatted="false">A passkey only works on the site that created it, so it can\'t be phished - which is why we ask for one instead of an emailed code when your account has one.</string>
     <string name="catalog_a_warm_paper_toned_card_with_a_3ae147be" formatted="false">A warm, paper-toned card with a serif name.</string>
     <string name="catalog_about_6b21fb79" formatted="false">کے بارے میں</string>
@@ -39,7 +39,7 @@
     <string name="catalog_accent_color_e49578ed" formatted="false">نمایاں رنگ</string>
     <string name="catalog_accessibility_d660049b" formatted="false">رسائی</string>
     <string name="catalog_account_85dfa32c" formatted="false">اکاؤنٹ</string>
-    <string name="catalog_account_created_check_your_email_for_a_7d4a9ecd" formatted="false">اکاؤنٹ بن گیا۔ تصدیقی لنک کے لیے اپنا ای میل دیکھیں — </string>
+    <string name="catalog_account_created_check_your_email_for_a_7d4a9ecd" formatted="false">اکاؤنٹ بن گیا۔ تصدیقی لنک کے لیے اپنا ای میل دیکھیں - </string>
     <string name="catalog_account_standing_2b18a30b" formatted="false">اکاؤنٹ کی حالت</string>
     <string name="catalog_add_a_friend_by_their_username_c1584607" formatted="false">صارف نام سے دوست شامل کریں۔</string>
     <string name="catalog_add_a_passkey_0daca495" formatted="false">پاس کی شامل کریں</string>
@@ -75,7 +75,7 @@
     <string name="catalog_api_d93d10ff" formatted="false">API</string>
     <string name="catalog_app_icon_abde7a74" formatted="false">ایپ کا آئیکن</string>
     <string name="catalog_appearance_41def7a0" formatted="false">ظاہری شکل</string>
-    <string name="catalog_as_the_owner_you_cannot_leave_delete_030b7d7e" formatted="false">مالک ہونے کی وجہ سے آپ نہیں جا سکتے — اس کے بجائے سرور حذف کریں۔</string>
+    <string name="catalog_as_the_owner_you_cannot_leave_delete_030b7d7e" formatted="false">مالک ہونے کی وجہ سے آپ نہیں جا سکتے - اس کے بجائے سرور حذف کریں۔</string>
     <string name="catalog_ask_for_a_code_from_your_phone_b6d62586" formatted="false">سائن اِن کرتے وقت پاس ورڈ کے علاوہ فون سے کوڈ بھی مانگیں۔</string>
     <string name="catalog_ask_them_to_show_their_verification_qr_630e919c" formatted="false">ان سے کہیں کہ وہ اپنا تصدیقی QR دکھائیں، پھر اسے فریم کے اندر لائیں۔</string>
     <string name="catalog_at_least_8_characters_1fe494b2" formatted="false">کم از کم 8 حروف</string>
@@ -93,7 +93,7 @@
     <string name="catalog_before_a_message_leaves_this_phone_74f6bb9b" formatted="false">اس فون سے پیغام نکلنے سے پہلے</string>
     <string name="catalog_bot_account_a78d875e" formatted="false">بوٹ اکاؤنٹ</string>
     <string name="catalog_both_devices_show_six_digits_compare_them_4427b9f0" formatted="false">Both devices show six digits. Compare them and cancel if they differ.</string>
-    <string name="catalog_both_of_you_open_the_conversation_tap_bbf94671" formatted="false">دونوں گفتگو کھولیں، اوپر تالے پر ٹیپ کریں، اور ایک شخص دوسرے کا کوڈ اسکین کرے۔ پھر جگہ بدل کر الٹا بھی کریں — ایک اسکین صرف ایک سمت ثابت کرتا ہے۔ آپ ساتھ کھڑے ہوں تو تقریباً دس سیکنڈ لگتے ہیں۔</string>
+    <string name="catalog_both_of_you_open_the_conversation_tap_bbf94671" formatted="false">دونوں گفتگو کھولیں، اوپر تالے پر ٹیپ کریں، اور ایک شخص دوسرے کا کوڈ اسکین کرے۔ پھر جگہ بدل کر الٹا بھی کریں - ایک اسکین صرف ایک سمت ثابت کرتا ہے۔ آپ ساتھ کھڑے ہوں تو تقریباً دس سیکنڈ لگتے ہیں۔</string>
     <string name="catalog_both_options_encrypt_everything_the_difference_is_098d8758" formatted="false">دونوں اختیار ہر چیز کو انکرپٹ کرتے ہیں۔ فرق یہ ہے کہ بدلا ہوا تالا استعمال ہونے سے پہلے روک دیا جاتا ہے یا بعد میں پکڑا جاتا ہے۔</string>
     <string name="catalog_both_screens_must_show_the_same_six_a112273d" formatted="false">دونوں اسکرینوں پر وہی چھ ہندسے ہونے چاہییں۔ مختلف ہوں تو منسوخ کریں۔</string>
     <string name="catalog_browser_54a2cf5e" formatted="false">Browser</string>
@@ -120,11 +120,11 @@
     <string name="catalog_check_people_before_messaging_them_986118e4" formatted="false">لوگوں کو پیغام بھیجنے سے پہلے چیک کریں</string>
     <string name="catalog_check_them_again_feb54286" formatted="false">انہیں دوبارہ چیک کریں</string>
     <string name="catalog_check_them_first_27eeb4a8" formatted="false">پہلے انہیں چیک کریں</string>
-    <string name="catalog_check_them_first_a_swap_cannot_happen_82229615" formatted="false">پہلے انہیں چیک کریں — تب تبدیلی نہیں ہو سکتی۔ آپ دوسرے شخص کے تالے کو خود، سامنے یا کال پر، ان کو کچھ بھی بھیجنے سے پہلے چیک کرتے ہیں۔ اس وقت تک آپ کے لکھے ہوئے پیغامات اسی فون پر رہتے ہیں، اب بھی مقفل، اور کہیں نہیں جاتے۔ بدلے ہوئے تالے کے پاس کھولنے کو کچھ نہیں ہوتا۔</string>
+    <string name="catalog_check_them_first_a_swap_cannot_happen_82229615" formatted="false">پہلے انہیں چیک کریں - تب تبدیلی نہیں ہو سکتی۔ آپ دوسرے شخص کے تالے کو خود، سامنے یا کال پر، ان کو کچھ بھی بھیجنے سے پہلے چیک کرتے ہیں۔ اس وقت تک آپ کے لکھے ہوئے پیغامات اسی فون پر رہتے ہیں، اب بھی مقفل، اور کہیں نہیں جاتے۔ بدلے ہوئے تالے کے پاس کھولنے کو کچھ نہیں ہوتا۔</string>
     <string name="catalog_checking_820d6004" formatted="false">چیک ہو رہا ہے…</string>
     <string name="catalog_checking_someone_in_person_437f86fe" formatted="false">کسی کو سامنے چیک کرنا</string>
-    <string name="catalog_checking_someone_s_code_is_a_one_b6951560" formatted="false">کسی کا کوڈ چیک کرنا ایک سے ایک کا کام ہے، اس لیے یہ ان کے ساتھ آپ کے ذاتی پیغام میں ہوتا ہے — اور جنہیں آپ نے وہاں چیک کیا ہے وہ یہاں بھی چیک شدہ نظر آتے ہیں۔ گروپ میں سب کے چیک ہونے کا انتظار ان لوگوں کو روک دے گا جنہوں نے یہ مانگا ہی نہیں۔</string>
-    <string name="catalog_checking_them_here_is_safer_than_reading_faa9c2e1" formatted="false">یہاں چیک کرنا صرف پڑھ کر ملانے سے زیادہ محفوظ ہے — ساٹھ ہندسے کوئی واقعی آنکھ سے نہیں ملاتا۔</string>
+    <string name="catalog_checking_someone_s_code_is_a_one_b6951560" formatted="false">کسی کا کوڈ چیک کرنا ایک سے ایک کا کام ہے، اس لیے یہ ان کے ساتھ آپ کے ذاتی پیغام میں ہوتا ہے - اور جنہیں آپ نے وہاں چیک کیا ہے وہ یہاں بھی چیک شدہ نظر آتے ہیں۔ گروپ میں سب کے چیک ہونے کا انتظار ان لوگوں کو روک دے گا جنہوں نے یہ مانگا ہی نہیں۔</string>
+    <string name="catalog_checking_them_here_is_safer_than_reading_faa9c2e1" formatted="false">یہاں چیک کرنا صرف پڑھ کر ملانے سے زیادہ محفوظ ہے - ساٹھ ہندسے کوئی واقعی آنکھ سے نہیں ملاتا۔</string>
     <string name="catalog_choose_78b7c9f6" formatted="false">منتخب کریں</string>
     <string name="catalog_choose_files_5910acf0" formatted="false">فائلیں منتخب کریں</string>
     <string name="catalog_clear_css_6a933bda" formatted="false">CSS صاف کریں</string>
@@ -178,7 +178,7 @@
     <string name="catalog_could_not_start_the_call_925e1fa3" formatted="false">کال شروع نہیں ہو سکی</string>
     <string name="catalog_couldn_t_decrypt_this_file_08287a15" formatted="false">اس فائل کو ڈکرپٹ نہیں کیا جا سکا</string>
     <string name="catalog_couldn_t_load_gifs_e47c284a" formatted="false">GIFs لوڈ نہیں ہو سکیں</string>
-    <string name="catalog_couldn_t_reach_that_message_it_may_896fe39d" formatted="false">اس پیغام تک نہیں پہنچا جا سکا — یہ بہت پیچھے یا حذف ہو چکا ہو سکتا ہے۔</string>
+    <string name="catalog_couldn_t_reach_that_message_it_may_896fe39d" formatted="false">اس پیغام تک نہیں پہنچا جا سکا - یہ بہت پیچھے یا حذف ہو چکا ہو سکتا ہے۔</string>
     <string name="catalog_create_a_channel_3ac48642" formatted="false">چینل بنائیں</string>
     <string name="catalog_create_a_server_3a0ab422" formatted="false">سرور بنائیں</string>
     <string name="catalog_create_account_aaf37447" formatted="false">اکاؤنٹ بنائیں</string>
@@ -244,16 +244,16 @@
     <string name="catalog_erase_them_now_9964fd63" formatted="false">انہیں ابھی مٹا دیں</string>
     <string name="catalog_erase_your_encryption_keys_e1ad1aa2" formatted="false">اپنی انکرپشن کلیدیں مٹا دیں؟</string>
     <string name="catalog_erasing_fd30764f" formatted="false">مٹایا جا رہا ہے…</string>
-    <string name="catalog_every_device_added_or_removed_is_written_ec8b50d8" formatted="false">شامل یا ہٹایا گیا ہر ڈیوائس ایک ایسے رجسٹر میں لکھا جاتا ہے جس میں صرف اضافہ ہو سکتا ہے، اس میں ترمیم یا اسے مٹایا نہیں جا سکتا۔ آپ کے ڈیوائسز ہر شروع پر اسے پڑھتے ہیں، اس لیے جو ڈیوائس آپ نے شامل نہیں کیا وہ چپکے سے یہاں نہیں آ سکتا — آپ کو بتایا جاتا ہے اور اندراج رجسٹر میں رہتا ہے۔</string>
+    <string name="catalog_every_device_added_or_removed_is_written_ec8b50d8" formatted="false">شامل یا ہٹایا گیا ہر ڈیوائس ایک ایسے رجسٹر میں لکھا جاتا ہے جس میں صرف اضافہ ہو سکتا ہے، اس میں ترمیم یا اسے مٹایا نہیں جا سکتا۔ آپ کے ڈیوائسز ہر شروع پر اسے پڑھتے ہیں، اس لیے جو ڈیوائس آپ نے شامل نہیں کیا وہ چپکے سے یہاں نہیں آ سکتا - آپ کو بتایا جاتا ہے اور اندراج رجسٹر میں رہتا ہے۔</string>
     <string name="catalog_every_direct_message_is_encrypted_always_and_bacae7ec" formatted="false">ہر ذاتی پیغام ہمیشہ انکرپٹ ہوتا ہے اور اسے بند نہیں کیا جا سکتا۔ یہ ترتیب اس بات کے لیے ہے کہ آپ کے پیغامات بھیجنے سے پہلے دوسرے شخص کے تالے کو کتنی احتیاط سے چیک کیا جائے۔</string>
-    <string name="catalog_every_message_already_in_your_encrypted_conversations_ae9912e3" formatted="false">آپ کی انکرپٹ گفتگوؤں میں پہلے سے موجود ہر پیغام ہمیشہ کے لیے ناقابلِ پڑھائی ہو جائے گا — آپ کے لیے، ہمارے لیے، ہر کسی کے لیے۔ کچھ بھی انہیں واپس نہیں لا سکتا۔</string>
+    <string name="catalog_every_message_already_in_your_encrypted_conversations_ae9912e3" formatted="false">آپ کی انکرپٹ گفتگوؤں میں پہلے سے موجود ہر پیغام ہمیشہ کے لیے ناقابلِ پڑھائی ہو جائے گا - آپ کے لیے، ہمارے لیے، ہر کسی کے لیے۔ کچھ بھی انہیں واپس نہیں لا سکتا۔</string>
     <string name="catalog_everyone_930575f5" formatted="false">@everyone</string>
     <string name="catalog_everyone_applies_to_every_member_it_has_12e47659" formatted="false">@everyone ہر رکن پر لاگو ہوتا ہے۔ اس کا کوئی رنگ نہیں اور اسے تفویض یا حذف نہیں کیا جا سکتا۔</string>
     <string name="catalog_everyone_c756f6af" formatted="false">Everyone</string>
     <string name="catalog_everyone_here_02cadf2a" formatted="false">یہاں ہر کوئی</string>
     <string name="catalog_everyone_in_this_voice_channel_hears_it_df8e9c42" formatted="false">اس وائس چینل میں سب اسے سنتے ہیں۔</string>
     <string name="catalog_everything_sent_from_now_on_uses_a_4d8b70ec" formatted="false">اب سے بھیجی جانے والی ہر چیز نئی کلید استعمال کرے گی۔ موجودہ پیغامات قابلِ پڑھائی رہیں گے، اور گفتگو میں موجود سب کو رسائی ملتی رہے گی۔</string>
-    <string name="catalog_expired_large_files_are_only_kept_for_a9b2c12d" formatted="false">میعاد ختم — بڑی فائلیں صرف ایک گھنٹے کے لیے رکھی جاتی ہیں</string>
+    <string name="catalog_expired_large_files_are_only_kept_for_a9b2c12d" formatted="false">میعاد ختم - بڑی فائلیں صرف ایک گھنٹے کے لیے رکھی جاتی ہیں</string>
     <string name="catalog_expires_in_1_hour_26e2eae7" formatted="false">1 گھنٹے میں ختم ہوگا</string>
     <string name="catalog_fallback_mode_scan_this_code_from_an_45193b95" formatted="false">متبادل موڈ: اس کوڈ کو پہلے سے منظور شدہ فون سے اسکین کریں، یا اسے منظور شدہ کمپیوٹر پر چسپاں کریں۔</string>
     <string name="catalog_favourite_this_gif_a9fd24af" formatted="false">اس GIF کو پسندیدہ بنائیں</string>
@@ -270,10 +270,10 @@
     <string name="catalog_generate_fc45f9b7" formatted="false">Generate</string>
     <string name="catalog_get_notified_about_messages_d4bc1f2e" formatted="false">پیغامات کی اطلاع پائیں؟</string>
     <string name="catalog_hang_up_66be99b5" formatted="false">کال ختم کریں</string>
-    <string name="catalog_have_them_open_their_code_in_orangchat_9428c129" formatted="false">ان سے کہیں کہ OrangChat میں اپنا کوڈ کھولیں اور اس فون کا کیمرا اس کی طرف کریں۔ پھر فون اسی تالے کو یاد رکھے گا جو آپ نے واقعی دیکھا تھا، اس لیے بدلا ہوا تالا مزید نہیں ملے گا۔ ایک اسکین صرف ایک سمت ثابت کرتا ہے — اپنا کوڈ بھی انہیں دکھائیں۔</string>
+    <string name="catalog_have_them_open_their_code_in_orangchat_9428c129" formatted="false">ان سے کہیں کہ OrangChat میں اپنا کوڈ کھولیں اور اس فون کا کیمرا اس کی طرف کریں۔ پھر فون اسی تالے کو یاد رکھے گا جو آپ نے واقعی دیکھا تھا، اس لیے بدلا ہوا تالا مزید نہیں ملے گا۔ ایک اسکین صرف ایک سمت ثابت کرتا ہے - اپنا کوڈ بھی انہیں دکھائیں۔</string>
     <string name="catalog_hide_my_code_835d9e98" formatted="false">میرا کوڈ چھپائیں</string>
     <string name="catalog_hide_password_e40123b4" formatted="false">پاس ورڈ چھپائیں</string>
-    <string name="catalog_hold_steady_scanning_happens_automatically_ae832ed2" formatted="false">فون کو ساکن رکھیں — اسکین خودکار ہے</string>
+    <string name="catalog_hold_steady_scanning_happens_automatically_ae832ed2" formatted="false">فون کو ساکن رکھیں - اسکین خودکار ہے</string>
     <string name="catalog_hold_the_mic_to_record_then_let_48d81b83" formatted="false">ریکارڈ کرنے کے لیے مائیک کو دبائے رکھیں، پھر بھیجنے کے لیے چھوڑ دیں</string>
     <string name="catalog_hold_to_record_a_voice_message_06b1b5f5" formatted="false">وائس پیغام ریکارڈ کرنے کے لیے دبائے رکھیں</string>
     <string name="catalog_how_does_this_work_1ae14530" formatted="false">یہ کیسے کام کرتا ہے؟</string>
@@ -293,7 +293,7 @@
     <string name="catalog_invite_people_e1eb97af" formatted="false">لوگوں کو مدعو کریں</string>
     <string name="catalog_invite_to_get_back_into_any_of_016b015f" formatted="false">invite to get back into any of them.</string>
     <string name="catalog_ios_browser_1da182c5" formatted="false">iOS browser</string>
-    <string name="catalog_it_is_not_always_an_attack_it_c9d44cb1" formatted="false">یہ ہمیشہ حملہ نہیں ہوتا — ایسا تب بھی ہوتا ہے جب کوئی اپنے تمام ڈیوائسز کھو دے اور دوبارہ شروع کرے۔ ایپ کے اندر سے دونوں میں فرق نہیں کیا جا سکتا، اسی لیے یہ آپ سے کہتی ہے کہ کچھ بھی بھیجنے سے پہلے براہِ راست اس شخص سے چیک کریں۔</string>
+    <string name="catalog_it_is_not_always_an_attack_it_c9d44cb1" formatted="false">یہ ہمیشہ حملہ نہیں ہوتا - ایسا تب بھی ہوتا ہے جب کوئی اپنے تمام ڈیوائسز کھو دے اور دوبارہ شروع کرے۔ ایپ کے اندر سے دونوں میں فرق نہیں کیا جا سکتا، اسی لیے یہ آپ سے کہتی ہے کہ کچھ بھی بھیجنے سے پہلے براہِ راست اس شخص سے چیک کریں۔</string>
     <string name="catalog_join_a_server_d59b6aba" formatted="false">سرور میں شامل ہوں</string>
     <string name="catalog_join_muted_8ccaf5fe" formatted="false">مائیک بند کر کے شامل ہوں</string>
     <string name="catalog_join_with_camera_on_c39f4e79" formatted="false">کیمرہ آن کر کے شامل ہوں</string>
@@ -326,7 +326,7 @@
     <string name="catalog_log_in_f7c400ed" formatted="false">سائن اِن کریں</string>
     <string name="catalog_log_out_6e78c91f" formatted="false">سائن آؤٹ کریں</string>
     <string name="catalog_lost_your_authenticator_af902070" formatted="false">اپنا آتھنٹیکیٹر کھو دیا؟</string>
-    <string name="catalog_lowercase_letters_digits_and_2_to_32_7bec3c28" formatted="false">چھوٹے حروف، ہندسے، _ اور . — 2 سے 32 حروف</string>
+    <string name="catalog_lowercase_letters_digits_and_2_to_32_7bec3c28" formatted="false">چھوٹے حروف، ہندسے، _ اور . - 2 سے 32 حروف</string>
     <string name="catalog_lowercase_letters_numbers_underscores_and_dots_57155ecc" formatted="false">چھوٹے حروف، اعداد، انڈر اسکور اور نقطے۔</string>
     <string name="catalog_make_a_new_key_cde9afba" formatted="false">نئی کلید بنائیں</string>
     <string name="catalog_mark_as_read_c1ee860b" formatted="false">پڑھا ہوا نشان زد کریں</string>
@@ -360,14 +360,14 @@
     <string name="catalog_no_passkeys_yet_6dc4fe0f" formatted="false">ابھی کوئی پاس کی نہیں۔</string>
     <string name="catalog_no_pending_requests_aeedf949" formatted="false">کوئی زیرِ التوا درخواست نہیں۔</string>
     <string name="catalog_no_profile_themes_match_1_s_a67c627c" formatted="true">No profile themes match “%1$s”.</string>
-    <string name="catalog_no_saved_gifs_yet_tap_the_bookmark_75705898" formatted="false">ابھی کوئی محفوظ GIF نہیں — کسی بھی GIF پر بُک مارک ٹیپ کر کے اسے یہاں رکھیں۔</string>
+    <string name="catalog_no_saved_gifs_yet_tap_the_bookmark_75705898" formatted="false">ابھی کوئی محفوظ GIF نہیں - کسی بھی GIF پر بُک مارک ٹیپ کر کے اسے یہاں رکھیں۔</string>
     <string name="catalog_no_server_is_currently_restricting_you_061000ea" formatted="false">اس وقت کوئی سرور آپ کو محدود نہیں کر رہا۔</string>
     <string name="catalog_no_sounds_yet_someone_with_manage_expressions_011117e4" formatted="false">ابھی کوئی آواز نہیں۔ مینیج ایکسپریشنز کی اجازت والا شخص انہیں سرور کی ترتیبات میں شامل کر سکتا ہے۔</string>
     <string name="catalog_nobody_can_send_you_requests_5279aaea" formatted="false">Nobody can send you requests.</string>
     <string name="catalog_nobody_new_can_message_you_d72cdf15" formatted="false">Nobody new can message you.</string>
     <string name="catalog_none_set_4bf72e7e" formatted="false">کوئی مقرر نہیں</string>
     <string name="catalog_not_in_call_32010878" formatted="false">کال میں نہیں</string>
-    <string name="catalog_not_in_the_same_room_you_will_d53e345b" formatted="false">ایک ہی کمرے میں نہیں ہیں؟ آپ دونوں کو نمبروں کی ایک ہی مختصر قطار نظر آئے گی، جسے سیفٹی کوڈ کہتے ہیں۔ ان سے کہیں کہ اسے فون کال پر پڑھیں، یا کسی دوسری ایپ سے بھیجیں جس پر آپ پہلے سے بھروسا کرتے ہیں، اور کوڈ کے نیچے والے خانے میں درج کریں — ایپ تمام ساٹھ ہندسے ملاتی ہے، جو آنکھ سے ملانے سے کہیں زیادہ ہیں۔ اگر یہ مل جائیں تو بیچ میں کوئی نہیں۔ بس OrangChat کی وائس کال قابلِ قبول نہیں: اس کی آواز انہی سرورز سے گزرتی ہے جنہیں یہ جانچ پرکھ رہی ہے۔</string>
+    <string name="catalog_not_in_the_same_room_you_will_d53e345b" formatted="false">ایک ہی کمرے میں نہیں ہیں؟ آپ دونوں کو نمبروں کی ایک ہی مختصر قطار نظر آئے گی، جسے سیفٹی کوڈ کہتے ہیں۔ ان سے کہیں کہ اسے فون کال پر پڑھیں، یا کسی دوسری ایپ سے بھیجیں جس پر آپ پہلے سے بھروسا کرتے ہیں، اور کوڈ کے نیچے والے خانے میں درج کریں - ایپ تمام ساٹھ ہندسے ملاتی ہے، جو آنکھ سے ملانے سے کہیں زیادہ ہیں۔ اگر یہ مل جائیں تو بیچ میں کوئی نہیں۔ بس OrangChat کی وائس کال قابلِ قبول نہیں: اس کی آواز انہی سرورز سے گزرتی ہے جنہیں یہ جانچ پرکھ رہی ہے۔</string>
     <string name="catalog_not_me_1ad9a1eb" formatted="false">میں نہیں</string>
     <string name="catalog_not_now_e4571490" formatted="false">ابھی نہیں</string>
     <string name="catalog_not_sent_587c501e" formatted="false">نہیں بھیجا گیا</string>
@@ -389,7 +389,7 @@
     <string name="catalog_only_people_on_your_friends_list_a0690c48" formatted="false">Only people on your friends list.</string>
     <string name="catalog_only_people_you_share_a_friend_with_dd960ba7" formatted="false">Only people you share a friend with.</string>
     <string name="catalog_only_the_owner_can_rename_this_server_3db192cb" formatted="false">صرف مالک ہی اس سرور کا نام بدل سکتا ہے</string>
-    <string name="catalog_only_the_people_in_the_conversation_can_ae492280" formatted="false">صرف گفتگو کے لوگ انہیں کھول سکتے ہیں۔ نہ OrangChat، نہ کوئی جو ہمارا ڈیٹابیس چرا لے، نہ کوئی عدالتی حکم لے کر آئے — ہمارے پاس ایسی کلید ہی نہیں جو ہم دے سکیں۔ یہ ہر ذاتی پیغام کے لیے آن ہے اور اسے بند نہیں کیا جا سکتا۔</string>
+    <string name="catalog_only_the_people_in_the_conversation_can_ae492280" formatted="false">صرف گفتگو کے لوگ انہیں کھول سکتے ہیں۔ نہ OrangChat، نہ کوئی جو ہمارا ڈیٹابیس چرا لے، نہ کوئی عدالتی حکم لے کر آئے - ہمارے پاس ایسی کلید ہی نہیں جو ہم دے سکیں۔ یہ ہر ذاتی پیغام کے لیے آن ہے اور اسے بند نہیں کیا جا سکتا۔</string>
     <string name="catalog_open_app_permissions_893246fb" formatted="false">ایپ کی اجازتیں کھولیں</string>
     <string name="catalog_open_call_1c47457b" formatted="false">کال کھولیں</string>
     <string name="catalog_orangchat_can_let_you_know_when_someone_13d0aac2" formatted="false">OrangChat آپ کو بتا سکتا ہے جب کوئی پیغام بھیجے یا کال کرے </string>
@@ -434,7 +434,7 @@
     <string name="catalog_remove_from_favourites_624f82c1" formatted="false">پسندیدہ سے ہٹائیں</string>
     <string name="catalog_remove_group_icon_5869f3b2" formatted="false">گروپ آئیکن ہٹائیں</string>
     <string name="catalog_remove_passkey_988b1b7e" formatted="false">پاس کی ہٹائیں</string>
-    <string name="catalog_removes_every_message_you_ve_sent_in_f63902f1" formatted="false">آپ کے ہر سرور اور گروپ میں بھیجا گیا ہر پیغام حذف کر دیتا ہے — بشمول </string>
+    <string name="catalog_removes_every_message_you_ve_sent_in_f63902f1" formatted="false">آپ کے ہر سرور اور گروپ میں بھیجا گیا ہر پیغام حذف کر دیتا ہے - بشمول </string>
     <string name="catalog_removing_this_only_affects_orangchat_delete_it_28979691" formatted="false">اسے ہٹانے سے صرف OrangChat متاثر ہوتا ہے۔ اسے ڈیوائس کی اپنی </string>
     <string name="catalog_rename_d3f4cb89" formatted="false">Rename</string>
     <string name="catalog_rename_passkey_cb9298c9" formatted="false">پاس کی کا نام بدلیں</string>
@@ -460,7 +460,7 @@
     <string name="catalog_save_changes_179359b3" formatted="false">تبدیلیاں محفوظ کریں</string>
     <string name="catalog_save_nickname_51ddb3ea" formatted="false">عرف محفوظ کریں</string>
     <string name="catalog_save_profile_f597c0e8" formatted="false">پروفائل محفوظ کریں</string>
-    <string name="catalog_save_these_now_each_works_once_if_2a1aad82" formatted="false">انہیں ابھی محفوظ کریں — فون کھو جانے پر ہر ایک صرف ایک بار کام آتا ہے، اور یہ صرف ایک بار دکھائے جاتے ہیں۔</string>
+    <string name="catalog_save_these_now_each_works_once_if_2a1aad82" formatted="false">انہیں ابھی محفوظ کریں - فون کھو جانے پر ہر ایک صرف ایک بار کام آتا ہے، اور یہ صرف ایک بار دکھائے جاتے ہیں۔</string>
     <string name="catalog_scan_28cba55d" formatted="false">Scan</string>
     <string name="catalog_scan_code_from_pc_6c59b0aa" formatted="false">کمپیوٹر سے کوڈ اسکین کریں</string>
     <string name="catalog_scan_device_code_45e4e1cb" formatted="false">ڈیوائس کوڈ اسکین کریں</string>
@@ -480,7 +480,7 @@
     <string name="catalog_send_friend_request_c3ed810d" formatted="false">دوستی کی درخواست بھیجیں</string>
     <string name="catalog_send_report_a5b32af9" formatted="false">رپورٹ بھیجیں</string>
     <string name="catalog_send_straight_away_19f3932b" formatted="false">فوراً بھیجیں</string>
-    <string name="catalog_send_straight_away_a_swap_gets_caught_2e19b55a" formatted="false">فوراً بھیجیں — تبدیلی پکڑی جائے گی۔ جو بھی تالا کوئی شائع کرتا ہے وہ ایک ایسے رجسٹر میں لکھا جاتا ہے جس میں صرف اضافہ ہو سکتا ہے، اسے بدلا یا مٹایا نہیں جا سکتا۔ آپ کے اپنے ڈیوائسز ہر بار شروع ہونے پر آپ کے اکاؤنٹ کا صفحہ پڑھتے ہیں۔ اگر آپ کے نام سے کبھی ایسا تالا شائع ہو جو آپ کے ڈیوائسز نے نہیں بنایا، تو وہ آپ کو بتاتے ہیں، اور اندراج رجسٹر میں رہتا ہے جس کی طرف کوئی بھی اشارہ کر سکتا ہے۔ تبدیلی کی کوشش ہو سکتی ہے؛ مگر چپکے سے نہیں۔</string>
+    <string name="catalog_send_straight_away_a_swap_gets_caught_2e19b55a" formatted="false">فوراً بھیجیں - تبدیلی پکڑی جائے گی۔ جو بھی تالا کوئی شائع کرتا ہے وہ ایک ایسے رجسٹر میں لکھا جاتا ہے جس میں صرف اضافہ ہو سکتا ہے، اسے بدلا یا مٹایا نہیں جا سکتا۔ آپ کے اپنے ڈیوائسز ہر بار شروع ہونے پر آپ کے اکاؤنٹ کا صفحہ پڑھتے ہیں۔ اگر آپ کے نام سے کبھی ایسا تالا شائع ہو جو آپ کے ڈیوائسز نے نہیں بنایا، تو وہ آپ کو بتاتے ہیں، اور اندراج رجسٹر میں رہتا ہے جس کی طرف کوئی بھی اشارہ کر سکتا ہے۔ تبدیلی کی کوشش ہو سکتی ہے؛ مگر چپکے سے نہیں۔</string>
     <string name="catalog_send_typing_indicators_6ca26372" formatted="false">ٹائپ کرنے کے اشارے بھیجیں</string>
     <string name="catalog_sending_cf765512" formatted="false">بھیجا جا رہا ہے…</string>
     <string name="catalog_sending_encrypted_history_and_signing_the_new_6bfd242c" formatted="false">Sending encrypted history and signing the new device into your device log…</string>
@@ -525,7 +525,7 @@
     <string name="catalog_so_you_can_tell_it_apart_from_5878d69c" formatted="false">تاکہ بعد میں اسے اپنے دوسرے ڈیوائسز سے الگ پہچان سکیں۔</string>
     <string name="catalog_someone_here_f47623b5" formatted="false">یہاں کوئی ہے</string>
     <string name="catalog_someone_scanned_this_account_s_code_to_cd6f3892" formatted="false">کسی نے اس اکاؤنٹ کا کوڈ اسکین کر کے براؤزر میں OrangChat پر سائن اِن کیا۔ صرف تب منظوری دیں اگر یہ آپ تھے۔</string>
-    <string name="catalog_standing_together_scan_each_other_s_codes_faf20092" formatted="false">ساتھ کھڑے ہیں؟ ایک دوسرے کے کوڈ اسکین کریں — ایک اسکین صرف ایک سمت ثابت کرتا ہے، اس لیے دونوں کریں۔</string>
+    <string name="catalog_standing_together_scan_each_other_s_codes_faf20092" formatted="false">ساتھ کھڑے ہیں؟ ایک دوسرے کے کوڈ اسکین کریں - ایک اسکین صرف ایک سمت ثابت کرتا ہے، اس لیے دونوں کریں۔</string>
     <string name="catalog_start_a_call_d7f39160" formatted="false">کال شروع کریں</string>
     <string name="catalog_start_a_fresh_key_here_11c5421d" formatted="false">یہاں نئی کلید شروع کریں</string>
     <string name="catalog_start_calls_with_video_already_publishing_04f2d03f" formatted="false">کالز ویڈیو پہلے سے نشر کرتے ہوئے شروع کریں۔</string>
@@ -536,7 +536,7 @@
     <string name="catalog_status_bae7d5be" formatted="false">حیثیت</string>
     <string name="catalog_still_yours_1_s_42da6dc4" formatted="true"> Still yours: %1$s.</string>
     <string name="catalog_stop_9e253470" formatted="false">روکیں</string>
-    <string name="catalog_stored_on_this_device_only_never_uploaded_1373e7ad" formatted="false">صرف اس ڈیوائس پر محفوظ ہے — کبھی اپ لوڈ نہیں ہوتا۔</string>
+    <string name="catalog_stored_on_this_device_only_never_uploaded_1373e7ad" formatted="false">صرف اس ڈیوائس پر محفوظ ہے - کبھی اپ لوڈ نہیں ہوتا۔</string>
     <string name="catalog_style_your_card_for_everyone_who_views_08c9bf5c" formatted="false">جو بھی اسے دیکھے اس کے لیے اپنا کارڈ سجائیں۔ ہر حصے کا اپنا سیلیکٹر ہے: </string>
     <string name="catalog_synced_to_your_device_s_keychain_4f237bce" formatted="false">آپ کے ڈیوائس کے کی چین کے ساتھ ہم آہنگ ہے۔</string>
     <string name="catalog_system_bc0792d8" formatted="false">سسٹم</string>
@@ -548,7 +548,7 @@
     <string name="catalog_that_code_isn_t_right_e78cef5d" formatted="false">That code isn\'t right</string>
     <string name="catalog_that_didn_t_work_try_again_9ae914fa" formatted="false">That didn\'t work. Try again.</string>
     <string name="catalog_that_invite_is_expired_revoked_or_never_752c9ac3" formatted="false">یہ دعوت نامہ ختم ہو چکا، منسوخ ہو چکا، یا کبھی تھا ہی نہیں۔</string>
-    <string name="catalog_that_is_also_why_adding_a_second_4bac217f" formatted="false">اسی لیے دوسرا ڈیوائس شامل کرنا کاپی پیسٹ نہیں بلکہ چھوٹی سی رسم ہے۔ کسی چیز کے منتقل ہونے سے پہلے آپ کے پرانے ڈیوائس کو نیا ڈیوائس دیکھنا ہوتا ہے — اسکرین کا کوڈ، اس کی طرف کیا ہوا کیمرا۔</string>
+    <string name="catalog_that_is_also_why_adding_a_second_4bac217f" formatted="false">اسی لیے دوسرا ڈیوائس شامل کرنا کاپی پیسٹ نہیں بلکہ چھوٹی سی رسم ہے۔ کسی چیز کے منتقل ہونے سے پہلے آپ کے پرانے ڈیوائس کو نیا ڈیوائس دیکھنا ہوتا ہے - اسکرین کا کوڈ، اس کی طرف کیا ہوا کیمرا۔</string>
     <string name="catalog_that_was_cancelled_b8e83864" formatted="false">That was cancelled.</string>
     <string name="catalog_the_camera_could_not_start_you_can_a181859b" formatted="false">کیمرہ شروع نہیں ہو سکا۔ دوبارہ کوشش کریں یا سسٹم کی کیمرا ایپ استعمال کریں۔</string>
     <string name="catalog_the_device_could_not_be_revoked_8f71eb6b" formatted="false">The device could not be revoked.</string>
@@ -558,7 +558,7 @@
     <string name="catalog_the_encryption_device_was_revoked_5d4569c7" formatted="false">The encryption device was revoked.</string>
     <string name="catalog_the_keys_could_not_be_erased_fc80d5dd" formatted="false">The keys could not be erased.</string>
     <string name="catalog_the_logbook_0b3e99f4" formatted="false">رجسٹر</string>
-    <string name="catalog_the_messages_only_that_device_could_open_dd92a9bc" formatted="false">وہ پیغامات جو صرف وہ ڈیوائس کھول سکتا تھا، ہمیشہ کے لیے مقفل رہیں گے۔ ہم انہیں آپ کے لیے واپس نہیں لا سکتے — اگر لا سکتے تو اوپر کی کوئی بات درست نہ ہوتی۔</string>
+    <string name="catalog_the_messages_only_that_device_could_open_dd92a9bc" formatted="false">وہ پیغامات جو صرف وہ ڈیوائس کھول سکتا تھا، ہمیشہ کے لیے مقفل رہیں گے۔ ہم انہیں آپ کے لیے واپس نہیں لا سکتے - اگر لا سکتے تو اوپر کی کوئی بات درست نہ ہوتی۔</string>
     <string name="catalog_the_new_device_s_code_was_recognized_7c702591" formatted="false">The new device’s code was recognized. It is not authorized yet.</string>
     <string name="catalog_the_new_device_was_authorized_8ec267ba" formatted="false">نئے ڈیوائس کی منظوری دے دی گئی ہے۔</string>
     <string name="catalog_the_one_time_code_from_your_pc_15a1fb2d" formatted="false">The one-time code from your PC was recognized. Nothing has been transferred yet.</string>
@@ -569,7 +569,7 @@
     <string name="catalog_theme_a797e309" formatted="false">تھیم</string>
     <string name="catalog_there_is_no_code_to_compare_yet_5ce7929c" formatted="false">ابھی موازنہ کرنے کے لیے کوئی کوڈ نہیں۔</string>
     <string name="catalog_these_choices_are_stored_on_this_device_ac326393" formatted="false">یہ انتخاب صرف اس ڈیوائس پر محفوظ ہیں۔</string>
-    <string name="catalog_these_do_not_match_most_often_that_0139df50" formatted="false">یہ نہیں ملتے۔ عموماً کوئی ہندسہ غلط سنا یا ٹائپ کیا جاتا ہے، اس لیے ایک بار پھر دیکھیں۔ پھر بھی مختلف ہوں تو آپ کے درمیان کوئی کھڑا ہے — جب تک معلوم نہ ہو کہ کون، یہاں کچھ نہ بھیجیں۔</string>
+    <string name="catalog_these_do_not_match_most_often_that_0139df50" formatted="false">یہ نہیں ملتے۔ عموماً کوئی ہندسہ غلط سنا یا ٹائپ کیا جاتا ہے، اس لیے ایک بار پھر دیکھیں۔ پھر بھی مختلف ہوں تو آپ کے درمیان کوئی کھڑا ہے - جب تک معلوم نہ ہو کہ کون، یہاں کچھ نہ بھیجیں۔</string>
     <string name="catalog_these_numbers_appear_once_both_accounts_have_288c556c" formatted="false">یہ نمبر تب ظاہر ہوتے ہیں جب دونوں اکاؤنٹس کسی ڈیوائس پر انکرپشن ترتیب دے لیں۔</string>
     <string name="catalog_they_all_open_8a0f4e5d" formatted="false">وہ سب کھل جاتے ہیں</string>
     <string name="catalog_they_cannot_send_messages_react_or_speak_7fcf8d0c" formatted="false">میعاد ختم ہونے تک وہ پیغامات نہیں بھیج سکتے، ردعمل نہیں دے سکتے یا بول نہیں سکتے۔</string>
@@ -582,7 +582,7 @@
     <string name="catalog_this_device_fa5a6dd9" formatted="false">یہ ڈیوائس</string>
     <string name="catalog_this_device_stays_signed_in_795f19a1" formatted="false">This device stays signed in.</string>
     <string name="catalog_this_device_will_stop_receiving_new_conversation_45e9c7a1" formatted="false">یہ ڈیوائس نئی گفتگو کی کلیدیں وصول کرنا بند کر دے گی۔ یہ صرف اضافے والے ڈیوائس رجسٹر میں منسوخ شدہ کے طور پر رہے گا، اس لیے تبدیلی چھپ نہیں سکتی۔</string>
-    <string name="catalog_this_happens_the_moment_you_confirm_there_62922ade" formatted="false">آپ کی تصدیق کرتے ہی یہ ہو جاتا ہے — نہ انتظار ہے نہ منسوخ کرنے کا راستہ، کیونکہ یہ فون اپنی کلید سے اس پر دستخط کرتا ہے۔ اس اکاؤنٹ کا ہر انکرپٹ پیغام ہر ایک کے لیے ہمیشہ کے لیے ناقابلِ پڑھائی ہو جاتا ہے۔</string>
+    <string name="catalog_this_happens_the_moment_you_confirm_there_62922ade" formatted="false">آپ کی تصدیق کرتے ہی یہ ہو جاتا ہے - نہ انتظار ہے نہ منسوخ کرنے کا راستہ، کیونکہ یہ فون اپنی کلید سے اس پر دستخط کرتا ہے۔ اس اکاؤنٹ کا ہر انکرپٹ پیغام ہر ایک کے لیے ہمیشہ کے لیے ناقابلِ پڑھائی ہو جاتا ہے۔</string>
     <string name="catalog_this_is_your_code_they_can_scan_f71a20fe" formatted="false">یہ آپ کا کوڈ ہے۔ وہ آپ کی گفتگو کے اوپر والے تالے سے، یا اپنے فون کی اس اسکرین سے اسے اسکین کر سکتے ہیں۔</string>
     <string name="catalog_this_media_is_unavailable_1ed2c88e" formatted="false">یہ میڈیا دستیاب نہیں ہے</string>
     <string name="catalog_this_phone_7bcf6179" formatted="false">  ·  this phone</string>
@@ -657,7 +657,7 @@
     <string name="catalog_who_can_add_you_07e171de" formatted="false">آپ کو کون شامل کر سکتا ہے</string>
     <string name="catalog_who_can_message_you_e9356e11" formatted="false">آپ کو کون پیغام بھیج سکتا ہے</string>
     <string name="catalog_who_you_talk_to_when_and_how_96d03db2" formatted="false">• آپ کس سے بات کرتے ہیں، کب اور کتنی بار۔ مقفل ڈبوں کا بھی کسی کے نام ہونا ضروری ہے۔</string>
-    <string name="catalog_with_someone_new_your_messages_wait_on_376112de" formatted="false">نئے شخص کے ساتھ آپ کے پیغامات اس فون پر انتظار کرتے ہیں — مقفل، کہیں بھیجے بغیر — جب تک آپ ان کا کوڈ خود نہ دیکھ لیں یا کال پر ایک دوسرے کو نمبر نہ پڑھ لیں۔</string>
+    <string name="catalog_with_someone_new_your_messages_wait_on_376112de" formatted="false">نئے شخص کے ساتھ آپ کے پیغامات اس فون پر انتظار کرتے ہیں - مقفل، کہیں بھیجے بغیر - جب تک آپ ان کا کوڈ خود نہ دیکھ لیں یا کال پر ایک دوسرے کو نمبر نہ پڑھ لیں۔</string>
     <string name="catalog_yes_leave_them_all_8520c6e8" formatted="false">ہاں، سب چھوڑ دیں</string>
     <string name="catalog_yes_that_s_them_03f398c0" formatted="false">ہاں، یہی ہیں</string>
     <string name="catalog_you_can_also_scan_with_the_system_35d7d733" formatted="false">آپ سسٹم کی کیمرا ایپ سے بھی اسکین کر کے “OrangChat کھولیں” پر ٹیپ کر سکتے ہیں۔</string>
@@ -671,13 +671,13 @@
     <string name="catalog_your_account_is_in_good_standing_1806a501" formatted="false">آپ کے اکاؤنٹ کی حالت اچھی ہے</string>
     <string name="catalog_your_account_is_locked_down_d129bf10" formatted="false">آپ کا اکاؤنٹ لاک ڈاؤن میں ہے</string>
     <string name="catalog_your_current_password_6658f206" formatted="false">آپ کا موجودہ پاس ورڈ</string>
-    <string name="catalog_your_direct_messages_are_locked_on_this_0bc36ae0" formatted="false">آپ کے ذاتی پیغامات اس فون سے نکلنے سے پہلے اسی پر مقفل ہو جاتے ہیں۔ کلید یہیں بنائی گئی، فون کے محفوظ ہارڈویئر میں رہتی ہے، اور اسے کاپی نہیں کیا جا سکتا — نہ OrangChat، نہ کسی ڈیٹابیس بیک اپ رکھنے والے کے ذریعے۔</string>
+    <string name="catalog_your_direct_messages_are_locked_on_this_0bc36ae0" formatted="false">آپ کے ذاتی پیغامات اس فون سے نکلنے سے پہلے اسی پر مقفل ہو جاتے ہیں۔ کلید یہیں بنائی گئی، فون کے محفوظ ہارڈویئر میں رہتی ہے، اور اسے کاپی نہیں کیا جا سکتا - نہ OrangChat، نہ کسی ڈیٹابیس بیک اپ رکھنے والے کے ذریعے۔</string>
     <string name="catalog_your_messages_are_locked_before_they_leave_a431b93a" formatted="false">آپ کے پیغامات اس فون سے نکلنے سے پہلے مقفل ہو جاتے ہیں</string>
     <string name="catalog_your_messages_stay_in_the_conversations_they_34246f3c" formatted="false">آپ کے پیغامات ان گفتگوؤں میں رہتے ہیں جن کا وہ حصہ ہیں، اور یوں دکھتے ہیں جیسے یہ </string>
     <string name="catalog_your_old_keys_are_gone_this_phone_be322585" formatted="false">Your old keys are gone. This phone has fresh ones.</string>
     <string name="catalog_your_password_26d745d4" formatted="false">آپ کا پاس ورڈ</string>
     <string name="catalog_your_phone_and_pc_show_six_digits_07bd977d" formatted="false">Your phone and PC show six digits. Compare them and cancel if they differ.</string>
-    <string name="catalog_your_phone_and_your_computer_each_make_ade9350c" formatted="false">آپ کا فون اور آپ کا کمپیوٹر، جب آپ پہلی بار ان پر انکرپشن استعمال کرتے ہیں، ہر ایک اپنی کلید ڈیوائس پر ہی بناتا ہے۔ یہ ڈیوائس کے اس حصے میں جاتی ہے جو کلیدوں کی حفاظت کے لیے بنایا گیا ہے، اور اسے اس طرح بنایا جاتا ہے کہ واپس نکالا نہیں جا سکتا — نہ OrangChat، نہ کوئی دوسری ایپ، نہ آپ۔ رسنے یا کسی کو دینے کے لیے کچھ نہیں ہے۔</string>
+    <string name="catalog_your_phone_and_your_computer_each_make_ade9350c" formatted="false">آپ کا فون اور آپ کا کمپیوٹر، جب آپ پہلی بار ان پر انکرپشن استعمال کرتے ہیں، ہر ایک اپنی کلید ڈیوائس پر ہی بناتا ہے۔ یہ ڈیوائس کے اس حصے میں جاتی ہے جو کلیدوں کی حفاظت کے لیے بنایا گیا ہے، اور اسے اس طرح بنایا جاتا ہے کہ واپس نکالا نہیں جا سکتا - نہ OrangChat، نہ کوئی دوسری ایپ، نہ آپ۔ رسنے یا کسی کو دینے کے لیے کچھ نہیں ہے۔</string>
     <string name="catalog_your_phone_puts_the_message_in_a_10625561" formatted="false">آپ کا فون پیغام کو ایک ڈبے میں رکھ کر مقفل کر دیتا ہے۔ گفتگو کا ہر ڈیوائس، اور صرف وہی، اس ڈبے کی کلید رکھتا ہے۔ ہمارے سرورز مقفل ڈبے کو ذخیرہ اور آگے پہنچاتے ہیں۔</string>
 </resources>
 

@@ -6,8 +6,7 @@ export interface FriendRequests {
   outgoing: FriendRequest[];
 }
 
-/** Sending a request either lands a new pending request or, if it matched an
- * inbound one, immediately makes you friends. */
+
 export type SendFriendResult =
   | { accepted: true; friend: Friend }
   | { accepted: false; request: FriendRequest };
@@ -22,7 +21,7 @@ export const sendFriendRequest = (username: string) =>
     json: { username },
   });
 
-/** What a scanned contact code identifies someone by (docs/E2EE.md §6.7). */
+
 export const sendFriendRequestById = (userId: string) =>
   api<SendFriendResult>("/friends/requests", {
     method: "POST",

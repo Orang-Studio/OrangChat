@@ -28,7 +28,6 @@ use crate::state::AppState;
 
 static START: OnceLock<Instant> = OnceLock::new();
 
-/// Process uptime in seconds (for /health), mirroring process.uptime().
 pub fn uptime_seconds() -> f64 {
     START
         .get()
@@ -80,9 +79,6 @@ async fn main() {
 
     let state = AppState::new(pool, redis, config);
 
-    // Redis outlives this process, while its Socket.IO connections do not.
-    // Reconcile before opening the listener so a counter from an earlier
-    // process can never make a disconnected user appear online.
     match presence::clear_stale_startup_presence(&state).await {
         Ok(n) if n > 0 => tracing::info!("cleared {n} stale presence key(s) at startup"),
         Ok(_) => {}
@@ -92,8 +88,6 @@ async fn main() {
         }
     }
 
-    // Hand-awarded badges are declared in the badges file, so reconcile them
-    // here rather than leaving the database as the only record of who has one.
     match badge::sync_from_file(&state).await {
         Ok((0, 0)) => {}
         Ok((granted, revoked)) => {
@@ -102,8 +96,6 @@ async fn main() {
         Err(e) => tracing::warn!("badge reconciliation failed: {e}"),
     }
 
-    // Files get picked and never sent. Nothing else deletes those, so sweep them
-    // hourly rather than letting them pile up on disk.
     {
         let state = state.clone();
         tokio::spawn(async move {
@@ -119,11 +111,6 @@ async fn main() {
         });
     }
 
-    // Key erasures come due on a wall clock nobody is watching. Five minutes
-    // rather than the hourly cadence above because the delay the user was quoted
-    // should mean roughly what it said, and because every tick that passes after
-    // a request comes due is another tick in which a device could check in and
-    // abort a wipe the owner already stopped caring about.
     {
         let state = state.clone();
         tokio::spawn(async move {
@@ -143,8 +130,6 @@ async fn main() {
     state.set_io(io.clone());
     socket::setup(io.clone(), state.clone());
 
-    // Client heartbeats renew five-minute per-socket leases. Sweep often enough
-    // that a missed disconnect becomes visible promptly after its lease expires.
     {
         let state = state.clone();
         let io = io.clone();
@@ -164,9 +149,6 @@ async fn main() {
         });
     }
 
-    // Notifications held back from someone's phone while they were at their
-    // computer. Thirty seconds is fine grain against a five-minute hold, and the
-    // sweep costs nothing when nothing is due.
     {
         let state = state.clone();
         tokio::spawn(async move {
@@ -182,14 +164,11 @@ async fn main() {
         });
     }
 
-    // Spotify has no push event for track changes. Poll only currently-online
-    // linked users, then publish changes through the normal presence event.
     {
         let state = state.clone();
         tokio::spawn(async move { spotify::run_poll_loop(state).await });
     }
 
-    // CORS must be outermost so it also covers Socket.IO polling requests.
     let cors = http::cors_layer(&state);
     let app = http::router(state.clone()).layer(layer).layer(cors);
 
@@ -197,8 +176,6 @@ async fn main() {
     let listener = TcpListener::bind(&addr).await.expect("bind failed");
     tracing::info!("🍊 OrangChat (rust) listening on http://{addr}");
 
-    // with_connect_info so rate limiting still sees a real peer address when
-    // running without nginx in front (dev, or a direct bind).
     let service = app.into_make_service_with_connect_info::<std::net::SocketAddr>();
     if let Err(e) = axum::serve(listener, service).await {
         eprintln!("server error: {e}");

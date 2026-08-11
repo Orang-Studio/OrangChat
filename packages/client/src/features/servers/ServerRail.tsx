@@ -26,7 +26,7 @@ import { ServerContextMenu } from "./ServerContextMenu";
 import { ServerSettingsDialog } from "./ServerSettingsDialog";
 import { t } from "../../lib/i18n";
 
-/** Which of the rail's server dialogs is open, if any. */
+
 type ServerDialog =
   | "invite"
   | "settings"
@@ -38,7 +38,7 @@ type ServerDialog =
   | "leave"
   | null;
 
-/** Set your own nickname in this server. Needs the member row for the current value. */
+
 function NicknameDialog({
   server,
   open,

@@ -3,11 +3,7 @@ import { socket } from "../../lib/socket";
 import { getVoiceParticipants } from "./api";
 import { voiceActions } from "./store";
 
-/**
- * While mounted: join the socket rooms of the given voice channels (voice:state
- * fans out per channel room) and seed each channel's current participants.
- * Re-joins and re-seeds after reconnects.
- */
+
 export function useVoiceChannels(channelIds: string[]): void {
   const key = channelIds.join(",");
 
@@ -21,7 +17,7 @@ export function useVoiceChannels(channelIds: string[]): void {
         getVoiceParticipants(id)
           .then((list) => voiceActions.seedParticipants(id, list))
           .catch(() => {
-            /* channel may be gone; the sidebar will drop it */
+
           });
       }
     };

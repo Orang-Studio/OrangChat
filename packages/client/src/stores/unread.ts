@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 import type { UnreadState } from "@orangchat/shared";
 
-/** Counts stop here; the UI renders the cap as "99+". Matches the server's cap. */
+
 export const UNREAD_COUNT_CAP = 100;
 
 interface ChannelUnread {
@@ -13,14 +13,14 @@ interface ChannelUnread {
 }
 
 interface UnreadStore {
-  /** Keyed by channelId. Absent = fully read. */
+
   channels: Record<string, ChannelUnread>;
 }
 
 export const useUnreadStore = create<UnreadStore>(() => ({ channels: {} }));
 
 export const unreadActions = {
-  /** Replace all state from GET /me/unreads. */
+
   hydrate(list: UnreadState[]) {
     const channels: Record<string, ChannelUnread> = {};
     for (const u of list) {
@@ -34,7 +34,7 @@ export const unreadActions = {
     useUnreadStore.setState({ channels });
   },
 
-  /** A new message arrived in a channel the user isn't currently reading. */
+
   bump(channelId: string, serverId: string | null, mentioned: boolean) {
     useUnreadStore.setState((s) => {
       const prev = s.channels[channelId];
@@ -66,7 +66,7 @@ export const unreadActions = {
     }));
   },
 
-  /** The user opened / read a channel - clear its unread + mentions. */
+
   clear(channelId: string) {
     useUnreadStore.setState((s) => {
       if (!s.channels[channelId]) return s;
@@ -77,7 +77,7 @@ export const unreadActions = {
   },
 };
 
-/** Unread + mention state for a single channel. */
+
 export function useChannelUnread(channelId: string): ChannelUnread {
   return useUnreadStore(
     (s) => s.channels[channelId] ?? EMPTY,
@@ -91,7 +91,7 @@ const EMPTY: ChannelUnread = {
   serverId: null,
 };
 
-/** Aggregate unread/mention totals for a whole server (for the rail badge). */
+
 export function useServerUnread(serverId: string): {
   unread: boolean;
   unreadCount: number;
@@ -114,7 +114,7 @@ export function useServerUnread(serverId: string): {
   );
 }
 
-/** Total unread messages across every DM/group DM (for the home rail badge). */
+
 export function useDmUnreadTotal(): number {
   return useUnreadStore((s) => {
     let total = 0;

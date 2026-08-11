@@ -1,23 +1,13 @@
-//! Custom per-server emoji. No TS equivalent - new for the Rust port.
-//!
-//! Messages store `<:name:id>`, so the id is the durable reference and the name
-//! is only a handle: renaming an emoji leaves old messages rendering correctly,
-//! and deleting one leaves them rendering as literal text rather than breaking.
 
 use crate::error::{AppError, AppResult};
 use crate::ids::cuid;
 use crate::models::EmojiRow;
 use crate::state::AppState;
 
-/// Discord's own bound. Names are referenced inside `<:name:id>`, so anything
-/// that could terminate that token (`:` or `>`) or split it (whitespace) is out.
 const NAME_MAX: usize = 32;
 const NAME_MIN: usize = 2;
-/// A server's worth of emoji. Bounded because the whole set is sent to every
-/// client that opens the picker.
 pub const PER_SERVER_LIMIT: i64 = 200;
 
-/// Trim and validate a name, or explain why it will not do.
 pub fn normalize_name(raw: &str) -> AppResult<String> {
     let name = raw.trim().to_string();
     if name.len() < NAME_MIN || name.len() > NAME_MAX {
@@ -47,8 +37,6 @@ pub async fn list_emojis(state: &AppState, server_id: &str) -> AppResult<Vec<Emo
     Ok(rows)
 }
 
-/// Every emoji from every server the user is in - what the picker needs to show
-/// them everything they can actually type, including in DMs.
 pub async fn list_usable_emojis(state: &AppState, user_id: &str) -> AppResult<Vec<EmojiRow>> {
     let rows = sqlx::query_as::<_, EmojiRow>(
         r#"SELECT e.id, e."serverId", e.name, e.url, e.animated, e."creatorId", e."createdAt"
@@ -133,8 +121,6 @@ pub async fn delete_emoji(state: &AppState, emoji_id: &str) -> AppResult<()> {
     Ok(())
 }
 
-/// The (serverId, name) unique index is the race-proof half of the duplicate
-/// check, but on its own it surfaces as a 500. Name the real problem.
 fn unique_name_error(err: sqlx::Error) -> AppError {
     if let sqlx::Error::Database(db) = &err {
         if db.code().as_deref() == Some("23505") {

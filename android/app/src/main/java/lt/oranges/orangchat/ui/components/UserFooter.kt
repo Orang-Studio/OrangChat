@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.sp
 import lt.oranges.orangchat.data.model.SelfUser
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-/** Bottom-of-sidebar identity strip, matching the web client's UserFooter. */
 @Composable
 fun UserFooter(
     self: SelfUser,
@@ -38,8 +37,6 @@ fun UserFooter(
         modifier = modifier
             .fillMaxWidth()
             .background(c.surface0)
-            // Trimmed end padding: the settings target is 48dp wide now and carries
-            // its own slack, so the glyph stays where it was.
             .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -36,7 +36,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Thin repository over the server / channel / message / role / member REST. */
 @Singleton
 class ServerRepository @Inject constructor(
     private val api: ApiService,
@@ -48,10 +47,6 @@ class ServerRepository @Inject constructor(
 
     suspend fun getServer(serverId: String): ServerDetail = api.getServer(serverId)
 
-    /**
-     * One channel on its own. A notification names the conversation it came from
-     * and nothing else, so this is how a tap finds the server to open behind it.
-     */
     suspend fun getChannel(channelId: String): Channel = api.getChannel(channelId)
 
     suspend fun updateServer(serverId: String, name: String? = null, iconUrl: String? = null): Server =
@@ -78,22 +73,17 @@ class ServerRepository @Inject constructor(
         api.leaveServer(serverId)
     }
 
-    /** Leaves every server the user doesn't own; owned ones come back in `keptOwned`. */
     suspend fun leaveAllServers(): LeaveAllServersResult = api.leaveAllServers()
 
-    // Unread / read state
     suspend fun getUnreads(): List<UnreadState> = api.getUnreads()
 
     suspend fun markChannelRead(channelId: String) {
         api.markChannelRead(channelId)
     }
 
-    /** REST send, for callers with no live socket - the notification quick
-     *  reply and the queue of replies it could not get out at the time. */
     suspend fun sendMessage(channelId: String, content: String): Message =
         api.sendMessage(channelId, SendMessageRequest(content))
 
-    /** Search a server's messages the viewer can see. Offset-paginated. */
     suspend fun searchMessages(
         serverId: String,
         query: String,
@@ -106,7 +96,6 @@ class ServerRepository @Inject constructor(
     suspend fun getVoiceParticipants(channelId: String): List<VoiceState> =
         api.getVoiceParticipants(channelId)
 
-    // Roles
     suspend fun createRole(serverId: String, name: String, color: Int?, permissions: String?): Role =
         api.createRole(serverId, CreateRoleRequest(name, color, permissions))
 
@@ -121,7 +110,6 @@ class ServerRepository @Inject constructor(
     suspend fun unassignRole(serverId: String, userId: String, roleId: String): ServerMember =
         api.unassignRole(serverId, userId, roleId)
 
-    // Members / moderation
     suspend fun setNickname(serverId: String, userId: String, nickname: String?): ServerMember =
         api.setNickname(serverId, userId, SetNicknameRequest(nickname))
 
@@ -148,7 +136,6 @@ class ServerRepository @Inject constructor(
     suspend fun getAuditLog(serverId: String, limit: Int = 50, offset: Int = 0, action: String? = null): Page<AuditLogEntry> =
         api.getAuditLog(serverId, limit, offset, action)
 
-    // Channel settings
     suspend fun patchChannel(channelId: String, patch: PatchChannelRequest): Channel =
         api.patchChannel(channelId, patch)
 
@@ -158,14 +145,12 @@ class ServerRepository @Inject constructor(
     suspend fun updateServerSettings(serverId: String, patch: UpdateServerRequest): Server =
         api.updateServer(serverId, patch)
 
-    // Pins
     suspend fun listPins(channelId: String): List<Message> = api.listPins(channelId)
 
     suspend fun pinMessage(channelId: String, messageId: String) { api.pinMessage(channelId, messageId) }
 
     suspend fun unpinMessage(channelId: String, messageId: String) { api.unpinMessage(channelId, messageId) }
 
-    // Expressions
     suspend fun listUsableEmojis(): List<Emoji> = api.listUsableEmojis()
 
     suspend fun listEmojis(serverId: String): List<Emoji> = api.listEmojis(serverId)

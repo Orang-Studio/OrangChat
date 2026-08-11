@@ -20,31 +20,17 @@ import { normalizeCustomEmojiNames, useEmojiMap } from '../emojis/queries';
 import { clearDraft, loadDraft, saveDraft, saveDraftNow } from './drafts';
 import { t } from "../../lib/i18n";
 
-/**
- * One packet per window while the user is actually typing, and none at all in a
- * window they typed nothing in. Receivers hold the indicator for TYPING_TTL_MS
- * (a window plus grace), so a sender who closes the tab fades out on their own
- * rather than sticking forever.
- */
+
 const TYPING_THROTTLE_MS = 4_000;
 const MAX_LENGTH = 4_000;
-/** How close to MAX_LENGTH the draft has to get before the running count
- * shows up - close enough to matter, not wallpaper from the first character. */
+
 const LENGTH_WARNING_THRESHOLD = MAX_LENGTH - 400;
 const MENTION_LIMIT = 8;
 
-/**
- * How far the pointer has to travel off the mic before a swipe counts. Far
- * enough that the wobble of holding a phone one-handed never trips it, close
- * enough to reach with the same thumb that is already pressing.
- */
+
 const VOICE_SWIPE_PX = 72;
 
-/**
- * A press shorter than this was a click, not a hold. Anything this brief is
- * inaudible anyway, so it is discarded with a hint rather than sent as a
- * quarter-second of room tone.
- */
+
 const VOICE_MIN_HOLD_MS = 600;
 
 function recordingMimeType(): string | undefined {
@@ -56,8 +42,7 @@ function recordingMimeType(): string | undefined {
 
 type PastedTokenKind = 'login' | 'bot';
 
-/** Schema match only - nothing here is validated against the server. A login
- * token is a v4 UUID; a bot token is `<base64url(bot id)>.<32 random bytes>`. */
+
 function findPastedTokenKind(text: string): PastedTokenKind | null {
   if (/\b[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i.test(text)) {
     return 'login';
@@ -71,7 +56,6 @@ function findPastedTokenKind(text: string): PastedTokenKind | null {
 function recordingExtension(mimeType: string): string {
   if (mimeType.startsWith('audio/ogg')) return 'ogg';
   if (mimeType.startsWith('audio/mp4')) return 'm4a';
-  // `.weba` lets the server distinguish an audio WebM from a video WebM.
   return 'weba';
 }
 

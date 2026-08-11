@@ -1,5 +1,3 @@
-//! TOTP two-factor auth: secret provisioning, code verification, and
-//! single-use recovery codes.
 
 use totp_rs::{Algorithm, Secret, TOTP};
 
@@ -10,14 +8,12 @@ use crate::state::AppState;
 
 const ISSUER: &str = "OrangChat";
 const BACKUP_CODE_COUNT: usize = 10;
-/// No 0/O or 1/I/L - these get read off a printout and retyped.
 const BACKUP_ALPHABET: &[u8] = b"ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
 pub fn generate_secret() -> String {
     Secret::generate_secret().to_encoded().to_string()
 }
 
-/// SHA1/6 digits/30s: the defaults every authenticator app assumes.
 fn totp_for(secret: &str, account: &str) -> AppResult<TOTP> {
     let bytes = Secret::Encoded(secret.to_string())
         .to_bytes()
@@ -59,7 +55,6 @@ fn random_backup_code() -> String {
     format!("{}-{}", block(&mut rng), block(&mut rng))
 }
 
-/// Returns the plaintext codes - the only moment they exist unhashed.
 pub async fn regenerate_backup_codes(state: &AppState, user_id: &str) -> AppResult<Vec<String>> {
     let codes: Vec<String> = (0..BACKUP_CODE_COUNT)
         .map(|_| random_backup_code())
@@ -93,7 +88,6 @@ pub async fn count_unused_backup_codes(state: &AppState, user_id: &str) -> AppRe
     .await?)
 }
 
-/// Codes are hashed, so this verifies against each unused row in turn.
 pub async fn consume_backup_code(state: &AppState, user_id: &str, code: &str) -> AppResult<bool> {
     let normalized = code.trim().to_uppercase();
     let rows: Vec<(String, String)> = sqlx::query_as(
@@ -146,7 +140,6 @@ mod tests {
             .unwrap()
             .generate_current()
             .unwrap();
-        // Same length, definitely not the live code.
         let wrong = if current == "000000" {
             "111111"
         } else {

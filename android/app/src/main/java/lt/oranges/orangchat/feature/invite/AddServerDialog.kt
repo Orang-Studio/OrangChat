@@ -33,11 +33,6 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
 
 private val TABS = listOf("Create", "Join")
 
-/**
- * Create a server, or join one from an invite link - the two things the rail's
- * plus button can mean. Joining previews the server first, so nobody accepts a
- * link without seeing where it goes.
- */
 @Composable
 fun AddServerDialog(
     onDismiss: () -> Unit,
@@ -86,10 +81,6 @@ private fun CreateServerForm(onDismiss: () -> Unit, onCreate: (String) -> Unit) 
     }
 }
 
-/**
- * Paste a link, see the server, join it. The preview resolves as you type, so
- * the Join button only ever appears once there is something real to join.
- */
 @Composable
 private fun JoinServerForm(onDismiss: () -> Unit, onJoined: (Server) -> Unit) {
         val context = LocalContext.current
@@ -130,9 +121,6 @@ private fun JoinServerForm(onDismiss: () -> Unit, onJoined: (Server) -> Unit) {
             OrangButton(
                 text = if (preview?.isMember == true) "Open" else "Join",
                 onClick = {
-                    // Already a member: the join is a no-op the server would
-                    // happily accept, but going straight there is the honest
-                    // thing to do.
                     if (preview?.isMember == true) onJoined(preview.server) else vm.join(onJoined)
                 },
                 enabled = preview != null && preview.blockedReason == null,
@@ -152,10 +140,6 @@ private fun Hint(text: String) {
     )
 }
 
-/**
- * The sheet a tapped invite link raises: same join flow, but the code is a given
- * rather than something to type, so the card is all there is to show.
- */
 @Composable
 fun DeepLinkInviteDialog(
     code: String,

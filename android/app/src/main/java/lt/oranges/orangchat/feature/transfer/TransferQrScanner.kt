@@ -60,11 +60,6 @@ import lt.oranges.orangchat.ui.components.ButtonVariant
 import lt.oranges.orangchat.ui.components.OrangButton
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-/**
- * A camera preview that lives inside OrangChat. Only a structurally valid
- * device-transfer payload reaches [onScanned]; unrelated and role-swapped QR
- * codes never cross into the enrollment state machine.
- */
 @Composable
 fun TransferQrScanner(
     expectInvitation: Boolean,
@@ -76,7 +71,6 @@ fun TransferQrScanner(
     onCancel = onCancel,
 )
 
-/** The same in-app camera, domain-separated for a contact verification code. */
 @Composable
 fun ContactQrScanner(
     onScanned: (String) -> Unit,
@@ -343,10 +337,6 @@ private class TransferQrAnalyzer(
     }
 }
 
-/**
- * Camera Y planes may be padded per row (and, on unusual devices, per pixel).
- * ZXing needs a compact width × height array, so normalize it explicitly.
- */
 private fun contiguousLuma(image: ImageProxy): ByteArray {
     val plane = image.planes[0]
     val buffer = plane.buffer.duplicate()

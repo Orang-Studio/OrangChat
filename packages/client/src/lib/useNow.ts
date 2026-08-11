@@ -24,7 +24,7 @@ function subscribe(listener: () => void): () => void {
 
 const snapshot = () => now;
 
-/** A second-resolution clock backed by one interval for the whole client. */
+
 export function useNow(): number {
   return useSyncExternalStore(subscribe, snapshot, snapshot);
 }

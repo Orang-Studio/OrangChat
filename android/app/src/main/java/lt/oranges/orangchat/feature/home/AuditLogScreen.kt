@@ -35,11 +35,6 @@ import lt.oranges.orangchat.data.model.AuditLogEntry
 import lt.oranges.orangchat.ui.components.Text
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-/**
- * Human wording for each action the server records. An unknown action is shown
- * verbatim rather than hidden: the log is read when something has gone wrong,
- * and an entry nobody wrote a phrasing for still matters.
- */
 private val ACTION_LABELS = mapOf(
     "server.update" to "updated the server",
     "channel.create" to "created a channel",
@@ -106,8 +101,6 @@ private fun AuditRow(entry: AuditLogEntry) {
         val context = LocalContext.current
     val c = OrangTheme.colors
     val changed = remember(entry.id) { entry.changes.keys.toList() }
-    // A deleted account keeps its entries - the action still happened, and
-    // dropping it would make the log lie by omission.
     val actor = entry.actor?.displayName ?: AppStrings.get(context, R.string.catalog_a_deleted_account_b1c40a9e)
 
     Column(

@@ -14,20 +14,7 @@ import { Dialog, DialogContent } from '../../components/ui/Dialog';
 import { cn } from '../../lib/cn';
 import { t } from "../../lib/i18n";
 
-/**
- * The plain-language explanation of end-to-end encryption, written for somebody
- * with no technical background and no interest in acquiring one.
- *
- * Everything here is a metaphor of locks, keys and a logbook, deliberately: the
- * accurate words (identity key, epoch, transparency log, safety number) mean
- * nothing to the person the copy is for, and a reader who bounces off paragraph
- * one has learned less than one who reads a slightly lossy version to the end.
- *
- * Two things it must not do. It must not oversell the default - docs/E2EE.md
- * §6.4 is explicit that the honest sentence is "cannot read your messages
- * without being caught", not "cannot read your messages" - and it must not treat
- * the unverified default as a deficiency the reader should feel bad about.
- */
+
 
 function Section({
   icon: Icon,
@@ -167,7 +154,7 @@ export function HowEncryptionWorksDialog({
   );
 }
 
-/** The way into the explainer from anywhere encryption is mentioned. */
+
 export function HowEncryptionWorksLink({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
   return (

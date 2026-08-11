@@ -8,7 +8,7 @@ interface UpdateManifest {
   changelogUrl?: unknown;
 }
 
-/** A release is new unless this user already acknowledged this exact version. */
+
 export function shouldShowReleaseNotes(version: string, acknowledgedVersion: string | null): boolean {
   return version.trim().length > 0 && version !== acknowledgedVersion;
 }

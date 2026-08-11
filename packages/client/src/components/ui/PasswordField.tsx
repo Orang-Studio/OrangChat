@@ -4,7 +4,7 @@ import { TextField, type TextFieldProps } from "./TextField";
 
 type PasswordFieldProps = Omit<TextFieldProps, "type" | "trailing">;
 
-/** TextField with a show/hide-password eye toggle. */
+
 export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
   function PasswordField(props, ref) {
     const [visible, setVisible] = useState(false);

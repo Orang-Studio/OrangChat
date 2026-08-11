@@ -22,13 +22,13 @@ interface EventsDialogProps {
   server: Server;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Land straight on the form instead of the list. */
+
   startCreating?: boolean;
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-/** `YYYY-MM-DDTHH:mm` in local time, an hour from now, for the datetime input. */
+
 function defaultStart(): string {
   const d = new Date(Date.now() + 60 * 60_000);
   d.setMinutes(0, 0, 0);

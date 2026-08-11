@@ -1,11 +1,9 @@
-//! Effective-permission computation, mirroring membership-service.ts.
 
 use crate::error::{AppError, AppResult};
 use crate::models::ChannelOverwriteRow;
 use crate::permissions::{self, ALL_PERMISSIONS, DEFAULT_EVERYONE_PERMISSIONS};
 use crate::state::AppState;
 
-/// Effective server-wide permission bitfield for a member, or None if not a member.
 pub async fn effective_permissions(
     state: &AppState,
     server_id: &str,
@@ -55,7 +53,6 @@ pub async fn effective_permissions(
     Ok(Some(permissions::combine(&bitfields)))
 }
 
-/// Channel-scoped effective permissions with overwrites layered on, Discord-style.
 pub async fn channel_permissions(
     state: &AppState,
     channel_id: &str,
@@ -76,7 +73,7 @@ pub async fn channel_permissions(
         None => return Ok(None),
     };
     if permissions::has_permission(base, ALL_PERMISSIONS) {
-        return Ok(Some(base)); // admin/owner bypass
+        return Ok(Some(base));
     }
 
     let overwrites: Vec<ChannelOverwriteRow> =
@@ -112,11 +109,6 @@ pub async fn channel_permissions(
     )))
 }
 
-/// Layers one channel's overwrites onto a server-wide bitfield, in Discord's
-/// order: @everyone, then the union of the member's other roles, then the
-/// member-specific entry. Shared so the per-channel and batched callers below
-/// cannot drift apart - a difference between them would silently show someone a
-/// channel they cannot open, or hide one they can.
 fn apply_overwrites<'a>(
     base: i64,
     mut overwrites: impl Iterator<Item = &'a ChannelOverwriteRow> + Clone,
@@ -126,7 +118,6 @@ fn apply_overwrites<'a>(
 ) -> i64 {
     let mut perms = base;
 
-    // 1. @everyone role overwrite.
     if let Some(eid) = everyone_id {
         if let Some(ow) = overwrites
             .clone()
@@ -136,7 +127,6 @@ fn apply_overwrites<'a>(
         }
     }
 
-    // 2. Union of the member's other role overwrites.
     let mut role_allow = 0i64;
     let mut role_deny = 0i64;
     for ow in overwrites.clone() {
@@ -150,7 +140,6 @@ fn apply_overwrites<'a>(
     }
     perms = (perms & !role_deny) | role_allow;
 
-    // 3. Member-specific overwrite.
     if let Some(ow) = overwrites.find(|o| o.ow_type == "member" && o.target_id == user_id) {
         perms = (perms & !ow.deny) | ow.allow;
     }
@@ -158,13 +147,6 @@ fn apply_overwrites<'a>(
     perms
 }
 
-/// Ids of the server's text channels the user may read, resolved in a fixed
-/// number of queries.
-///
-/// The obvious spelling - `channel_permissions` in a loop - costs five or so
-/// round trips per channel and re-derives the same server-wide answer every
-/// time, so a large server spent hundreds of queries deciding what to search
-/// before searching anything.
 pub async fn viewable_text_channels(
     state: &AppState,
     server_id: &str,
@@ -180,7 +162,6 @@ pub async fn viewable_text_channels(
             .fetch_all(&state.pool)
             .await?;
 
-    // Admin/owner bypass, exactly as channel_permissions short-circuits.
     if permissions::has_permission(base, ALL_PERMISSIONS) {
         return Ok(channels);
     }
@@ -244,17 +225,9 @@ pub async fn is_server_member(state: &AppState, server_id: &str, user_id: &str) 
         .is_some())
 }
 
-// ── Hierarchy ───────────────────────────────────────────
-//
-// MANAGE_ROLES / KICK_MEMBERS / BAN_MEMBERS say *whether* someone may act, never
-// *on whom*. Without a second axis any moderator can edit the owner's roles or
-// grant themselves ADMINISTRATOR, so every mutation below is additionally gated
-// on position: you may only act strictly below your own highest role.
 
 pub const OWNER_POSITION: i32 = i32::MAX;
 
-/// `OWNER_POSITION` for the owner, None if not a member. Roleless members sit at
-/// @everyone's 0.
 pub async fn highest_role_position(
     state: &AppState,
     server_id: &str,
@@ -294,8 +267,6 @@ pub async fn highest_role_position(
     Ok(Some(highest.unwrap_or(0)))
 }
 
-/// Assert the actor may act on a role at `role_position`. Strict inequality:
-/// holding a role does not let you edit it, matching Discord.
 pub async fn assert_role_below(
     state: &AppState,
     server_id: &str,
@@ -313,7 +284,6 @@ pub async fn assert_role_below(
     Ok(())
 }
 
-/// Assert the actor may moderate `target_id` (kick/ban/timeout/nickname/roles).
 pub async fn assert_outranks(
     state: &AppState,
     server_id: &str,
@@ -326,9 +296,6 @@ pub async fn assert_outranks(
     if actor == OWNER_POSITION {
         return Ok(());
     }
-    // A non-member has no roles to outrank. Bans legitimately target people who
-    // were never here (pre-emptive bans); callers that require membership, like
-    // kick, check for it themselves.
     let Some(target) = highest_role_position(state, server_id, target_id).await? else {
         return Ok(());
     };
@@ -340,8 +307,6 @@ pub async fn assert_outranks(
     Ok(())
 }
 
-/// Reject the action if the member is timed out. Timeouts are server-wide, so DM
-/// channels are never affected.
 pub async fn assert_not_timed_out(
     state: &AppState,
     channel: &crate::models::ChannelRow,
@@ -369,11 +334,6 @@ pub async fn assert_not_timed_out(
     Ok(())
 }
 
-/// Assert the actor is not handing out permissions they do not hold themselves.
-///
-/// Compares the *delta*, not the new value: a moderator may rename a role that
-/// already carries BAN_MEMBERS without holding it, but may neither add nor strip
-/// that bit. ADMINISTRATOR implies every bit, so admins pass unconditionally.
 pub fn assert_no_escalation(actor_perms: i64, old_perms: i64, new_perms: i64) -> AppResult<()> {
     if permissions::has_permission(actor_perms, permissions::ADMINISTRATOR) {
         return Ok(());
@@ -387,7 +347,6 @@ pub fn assert_no_escalation(actor_perms: i64, old_perms: i64, new_perms: i64) ->
     Ok(())
 }
 
-/// Assert `required` permissions; returns the effective bitfield or a 403.
 pub async fn require_permission(
     state: &AppState,
     server_id: &str,
@@ -414,14 +373,11 @@ mod tests {
     fn grants_only_permissions_the_actor_holds() {
         let actor = MANAGE_ROLES | KICK_MEMBERS;
         assert!(assert_no_escalation(actor, 0, KICK_MEMBERS).is_ok());
-        // BAN_MEMBERS is not the actor's to give.
         assert!(assert_no_escalation(actor, 0, BAN_MEMBERS).is_err());
     }
 
     #[test]
     fn blocks_self_promotion_to_administrator() {
-        // The bug this guard exists for: MANAGE_ROLES alone used to be enough to
-        // write ADMINISTRATOR onto any role, including one's own.
         let actor = MANAGE_ROLES;
         assert!(assert_no_escalation(actor, 0, ADMINISTRATOR).is_err());
         assert!(assert_no_escalation(actor, SEND_MESSAGES, SEND_MESSAGES | ADMINISTRATOR).is_err());
@@ -434,15 +390,12 @@ mod tests {
 
     #[test]
     fn untouched_bits_the_actor_lacks_are_allowed() {
-        // Renaming a role that already carries BAN_MEMBERS must not require
-        // holding BAN_MEMBERS -- only the delta is checked.
         let actor = MANAGE_ROLES;
         assert!(assert_no_escalation(actor, BAN_MEMBERS, BAN_MEMBERS).is_ok());
     }
 
     #[test]
     fn revoking_a_permission_the_actor_lacks_is_blocked() {
-        // Stripping is as much a privilege as granting: it must clear the same bar.
         let actor = MANAGE_ROLES;
         assert!(assert_no_escalation(actor, BAN_MEMBERS, 0).is_err());
     }

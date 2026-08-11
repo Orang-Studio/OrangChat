@@ -1,4 +1,3 @@
-//! LiveKit token minting + voice-state tracking in Redis. Mirrors voice-service.ts.
 
 use chrono::Utc;
 use jsonwebtoken::{encode, EncodingKey, Header};
@@ -22,7 +21,6 @@ pub struct VoiceStatePayload {
     pub screen_sharing: bool,
 }
 
-/// Persisted subset (Omit channelId|joined) - camelCase to match the TS server.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct StoredState {
@@ -52,18 +50,13 @@ fn state_key(channel_id: &str) -> String {
     format!("voice:state:{channel_id}")
 }
 
-/// One user's voice connections, keyed by socket. The per-channel state above is
-/// keyed by user and so cannot answer "am I in this call somewhere else?" - which
-/// is the whole question a second device needs answered.
 fn devices_key(user_id: &str) -> String {
     format!("voice:devices:{user_id}")
 }
 
-/// One of the user's own devices sitting in a voice channel.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceSession {
-    /// The socket id, which is what identifies a device to disconnect.
     pub session_id: String,
     pub channel_id: String,
 }
@@ -99,8 +92,6 @@ pub async fn list_devices(state: &AppState, user_id: &str) -> AppResult<Vec<Devi
         .collect())
 }
 
-/// True when this user has another socket sitting in the same channel - the one
-/// thing a disconnect must check before wiping their presence from it.
 pub async fn has_other_device_in(
     state: &AppState,
     user_id: &str,
@@ -121,8 +112,6 @@ struct VideoGrant {
     can_publish: bool,
     can_subscribe: bool,
     can_publish_data: bool,
-    /// LiveKit reads an absent/empty list as "every source allowed", so this is
-    /// only ever emitted alongside `can_publish: false` when it would be empty.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     can_publish_sources: Vec<String>,
 }
@@ -138,12 +127,6 @@ struct LiveKitClaims {
     video: VideoGrant,
 }
 
-/// Which media a member may publish. `None` means unrestricted - a DM call,
-/// where there are no roles to grant anything.
-///
-/// Enforced in the token rather than the client because the client is the one
-/// thing a determined user can rewrite: revoking SCREEN_SHARE has to stop the
-/// SFU from accepting the track, not just grey out the button.
 pub fn publish_sources(perms: i64) -> Vec<String> {
     let mut sources = Vec::new();
     if has_permission(perms, SPEAK) {
@@ -171,8 +154,6 @@ pub fn mint_voice_token(
             "Voice is not configured on this server".into(),
         ));
     }
-    // A member with no publish permission at all still joins - listening is the
-    // whole point of a listen-only role - but publishes nothing.
     let (can_publish, can_publish_sources) = match sources {
         None => (true, Vec::new()),
         Some(list) => (!list.is_empty(), list),
@@ -184,7 +165,7 @@ pub fn mint_voice_token(
         jti: user_id.to_string(),
         name: username.to_string(),
         nbf: now,
-        exp: now + 7200, // 2h
+        exp: now + 7200,
         video: VideoGrant {
             room_join: true,
             room: room_name(channel_id),
@@ -204,8 +185,6 @@ pub fn mint_voice_token(
     Ok((token, cfg.livekit_url.clone().unwrap()))
 }
 
-/// Upsert a member's voice state - this is the *join* path, so a missing entry
-/// is created. Callers must have already enforced CONNECT and capacity.
 pub async fn set_voice_state(
     state: &AppState,
     channel_id: &str,
@@ -215,11 +194,6 @@ pub async fn set_voice_state(
     apply_voice_patch(state, channel_id, user_id, patch, false).await
 }
 
-/// Patch an *existing* voice state. Unlike [`set_voice_state`] this refuses to
-/// create the entry: joining is the only way onto a roster, and it is where
-/// CONNECT and `userLimit` are enforced. Creating here would let a member
-/// denied CONNECT forge presence and then pass the "are you in this channel?"
-/// check that soundboard playback relies on.
 pub async fn patch_voice_state(
     state: &AppState,
     channel_id: &str,
@@ -308,12 +282,6 @@ pub async fn list_voice_participants(
     Ok(out)
 }
 
-/// Enforce a voice channel's `userLimit`.
-///
-/// MANAGE_CHANNELS holders bypass it, as in Discord - a full channel must not be
-/// able to lock out the person who can change the limit. Someone already in the
-/// channel is let through so a reconnect can't be refused by their own ghost
-/// state.
 pub async fn assert_capacity(
     state: &AppState,
     channel: &crate::models::ChannelRow,
@@ -336,7 +304,6 @@ pub async fn assert_capacity(
     Ok(())
 }
 
-/// A "left" state payload (all flags false), for leave/disconnect fan-out.
 pub fn left_payload(channel_id: &str, user_id: &str) -> VoiceStatePayload {
     VoiceStatePayload {
         channel_id: channel_id.to_string(),

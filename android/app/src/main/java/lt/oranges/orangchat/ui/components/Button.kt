@@ -33,10 +33,6 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
 enum class ButtonVariant { Primary, Secondary, Ghost, Danger }
 enum class ButtonSize { Sm, Md, Lg, Icon }
 
-/**
- * Port of components/ui/Button.tsx. Variants and sizes match the cva() config;
- * CSS hover states become pressed states (touch has no hover). Corner = rounded-lg.
- */
 @Composable
 fun OrangButton(
     onClick: () -> Unit,
@@ -114,7 +110,6 @@ fun OrangButton(
     }
 }
 
-/** Convenience overload for a text-labelled button. */
 @Composable
 fun OrangButton(
     text: String,

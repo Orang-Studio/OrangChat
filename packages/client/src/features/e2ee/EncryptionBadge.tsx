@@ -7,15 +7,7 @@ import { useSecurityAlerts } from './alerts';
 import { isVerified } from './strict';
 import { VerifyDialog } from './VerifyDialog';
 
-/**
- * The persistent affordance from §6.6: three states, always available, never in
- * the way.
- *
- * Unverified is deliberately *not* decorated as a problem. Default mode is
- * secure - the key is authenticated against the transparency log and monitored
- * from then on - and badging it with a warning colour would train people to
- * ignore the one state that actually matters.
- */
+
 export function EncryptionBadge({
   peers,
   groupName,

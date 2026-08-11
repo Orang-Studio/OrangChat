@@ -59,10 +59,6 @@ import lt.oranges.orangchat.ui.components.Avatar
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-/**
- * Dedicated DM call screen. It shows everybody in the conversation, separating
- * connected people from those still ringing, and highlights active speakers.
- */
 @Composable
 fun DmCallScreen(
     state: ActiveCall,
@@ -92,15 +88,10 @@ fun DmCallScreen(
     val ringing = roster?.ringing.orEmpty().toSet()
     val trackById = tracks.associateBy { it.identity }
 
-    /** Whose camera is blown up, if any. */
     var focusedId by remember { mutableStateOf<String?>(null) }
     val focusedTrack = focusedId?.let { trackById[it] }
-    // Their camera going off (or them leaving) takes the fullscreen view with
-    // it, rather than stranding a black rectangle over the call.
     LaunchedEffect(focusedTrack) { if (focusedId != null && focusedTrack == null) focusedId = null }
 
-    // Back closes the expanded camera first - minimizing the whole call out from
-    // under it would be the wrong thing to undo.
     BackHandler { if (focusedId != null) focusedId = null else onMinimize() }
 
     Column(
@@ -142,9 +133,6 @@ fun DmCallScreen(
             modifier = Modifier.weight(1f),
         ) {
             items(users, key = { it.id }) { user ->
-                // Our own switches are authoritative here: the roster echo of
-                // them arrives a round-trip late, and lagging our own button is
-                // more jarring than lagging someone else's.
                 val voice = voiceStates[user.id]
                 val isSelf = user.id == selfId
                 ParticipantTile(
@@ -186,11 +174,6 @@ fun DmCallScreen(
 
 private enum class ParticipantStatus { CONNECTED, RINGING, WAITING }
 
-/**
- * Draw everything inside desaturated. Compose has no grayscale modifier, and a
- * ColorFilter on the leaf would miss the video surface, so the whole subtree is
- * composited into an offscreen layer and the matrix applied to that.
- */
 private fun Modifier.grayscale(): Modifier = this.then(
     Modifier.drawWithCache {
         val paint = Paint().apply {
@@ -247,12 +230,9 @@ private fun ParticipantTile(
             .clip(shape)
             .background(c.surface2)
             .border(if (speaking) 3.dp else 1.dp, if (speaking) c.success else c.border, shape)
-            // Only a camera is worth opening; an avatar looks the same at any size.
             .then(if (track != null) Modifier.clickable(onClick = onExpand) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
-        // Anyone not actually in the call yet is drained of colour and dimmed, so
-        // a glance at the stage says who is present without reading the pills.
         val pending = status != ParticipantStatus.CONNECTED
         Box(
             modifier = Modifier.fillMaxSize().then(if (pending) Modifier.grayscale() else Modifier),
@@ -269,14 +249,10 @@ private fun ParticipantTile(
                 Avatar(user = user, size = 84.dp, status = user.status)
             }
         }
-        // A wash rather than alpha: it darkens the tile without also fading the
-        // name and status text layered over it.
         if (pending) {
             Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)))
         }
 
-        // Muted and deafened are independent - you can be deafened and still
-        // talk - so neither icon stands in for the other.
         if (muted || deafened) {
             Row(
                 modifier = Modifier
@@ -309,7 +285,6 @@ private fun ParticipantTile(
     }
 }
 
-/** One mic-off / headset-off pill, legible over a camera tile or an avatar. */
 @Composable
 private fun VoiceStateBadge(icon: ImageVector, label: String) {
     Box(
@@ -327,13 +302,6 @@ private fun VoiceStateBadge(icon: ImageVector, label: String) {
     }
 }
 
-/**
- * One camera filling the screen, over everything else.
- *
- * A LiveKit track renders into as many views as you like, so this is a second
- * view of the same track rather than a handover - the grid tile underneath keeps
- * playing and is still there on the way back.
- */
 @Composable
 private fun FocusedVideo(track: CallVideoTrack, room: Room, onDismiss: () -> Unit) {
     Dialog(
@@ -362,7 +330,6 @@ private fun FocusedVideo(track: CallVideoTrack, room: Room, onDismiss: () -> Uni
     }
 }
 
-/** Small video grid retained for server voice channels. */
 @Composable
 fun CallStage(
     tracks: List<CallVideoTrack>,

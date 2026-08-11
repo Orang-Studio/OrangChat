@@ -15,11 +15,11 @@ import { searchMessages } from "./api";
 import { t, tNodes } from "../../lib/i18n";
 
 interface SearchDialogProps {
-  /** Absent in a DM, where there is no server-side index to search. */
+
   serverId?: string;
-  /** When set, a toggle lets the user scope results to this channel. */
+
   currentChannelId?: string;
-  /** Who can appear as an author locally; DMs have no member directory. */
+
   authors?: User[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -46,18 +46,13 @@ export function SearchDialog({
   const [query, setQuery] = useState("");
   const [thisChannel, setThisChannel] = useState(false);
 
-  // A conversation the server cannot read is searched here instead. There is no
-  // "and also ask the server" fallback: its copy of `content` is the empty
-  // string, so a server-side answer would be a silent lie rather than a miss.
   const local = serverId === undefined || (!!currentChannelId && isEncrypted(currentChannelId));
 
-  // Debounce the query so we don't hit the API on every keystroke.
   useEffect(() => {
     const timer = setTimeout(() => setQuery(raw.trim()), 300);
     return () => clearTimeout(timer);
   }, [raw]);
 
-  // Reset on close.
   useEffect(() => {
     if (!open) {
       setRaw("");
@@ -111,7 +106,6 @@ export function SearchDialog({
 
   const results = data ?? [];
 
-  // `?m=` lands on the hit itself rather than at the bottom of the channel.
   const jump = (channelId: string, messageId: string) => {
     onOpenChange(false);
     navigate(

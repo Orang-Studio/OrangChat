@@ -14,7 +14,7 @@ import { TextField } from "../../components/ui/TextField";
 import { PasswordField } from "../../components/ui/PasswordField";
 import { t, tNodes } from "../../lib/i18n";
 
-/** Form-side variant: an empty display name means "not provided". */
+
 const signupFormSchema = signupSchema.extend({
   displayName: displayNameSchema.or(z.literal("")),
 });

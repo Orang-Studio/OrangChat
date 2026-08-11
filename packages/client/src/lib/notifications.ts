@@ -4,22 +4,14 @@ import { NOTIFICATION_PREVIEWS, getSetting, setSetting } from "../features/e2ee/
 
 const PREF_KEY = "oc-notifications";
 
-/**
- * Whether a notification may show what a message actually said.
- *
- * Kept in IndexedDB rather than localStorage because the service worker is the
- * other half of this setting and cannot see localStorage - and the worker is
- * what runs when the app is closed, which is exactly when a push arrives. The
- * page mirrors it in memory so a socket-driven notification, which has no
- * business awaiting a database, can be composed synchronously.
- */
+
 let previews = true;
 
 export function messagePreviewsEnabled(): boolean {
   return previews;
 }
 
-/** Load the mirror. Until this resolves the default (show) stands. */
+
 export async function loadMessagePreviews(): Promise<void> {
   previews = await getSetting(NOTIFICATION_PREVIEWS, true).catch(() => true);
 }
@@ -121,8 +113,6 @@ export function notify({ title, body, icon, href, tag }: NotifyOptions): void {
   void navigator.serviceWorker.ready.then(async (registration) => {
     if (tag && notificationGenerations.get(tag) !== generation) return;
     await registration.showNotification(title, { body, icon, tag, data: { href } });
-    // A read can race an in-flight showNotification call. If it did, close the
-    // notification after the browser finishes creating it.
     if (tag && notificationGenerations.get(tag) !== generation) {
       const stale = await registration.getNotifications({ tag });
       stale.forEach((notification) => notification.close());
@@ -130,7 +120,7 @@ export function notify({ title, body, icon, href, tag }: NotifyOptions): void {
   });
 }
 
-/** Dismiss message notifications collapsed under a channel/DM tag. */
+
 export async function clearConversationNotifications(channelId: string): Promise<void> {
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
   bumpNotificationGeneration(channelId);
@@ -139,11 +129,7 @@ export async function clearConversationNotifications(channelId: string): Promise
   notifications?.forEach((notification) => notification.close());
 }
 
-/**
- * Point the server at a subscription the browser replaced on its own. The
- * worker resubscribes the moment it happens; this is what tells the server,
- * since a worker holds no access token of its own.
- */
+
 async function registerRenewedSubscription(subscription: PushSubscriptionJSON): Promise<void> {
   if (!subscription.endpoint) return;
   await api<void>("/push/subscriptions", {
@@ -161,14 +147,9 @@ async function registerRenewedSubscription(subscription: PushSubscriptionJSON): 
 if (notificationsSupported()) {
   navigator.serviceWorker.addEventListener("message", (event) => {
     if (event.data?.type === "notification:navigate" && navigatorFn) navigatorFn(event.data.href);
-    // The browser retired this device's subscription and the worker made a new
-    // one. Until the server has it, every push goes to an endpoint that is gone.
     if (event.data?.type === "push:resubscribed" && event.data.subscription) {
       void registerRenewedSubscription(event.data.subscription).catch(() => {});
     }
-    // A push envelope could not be opened and the worker is asking for the
-    // keys it is missing - rotations sync on channel open, and this tab may
-    // have been asleep through one. Best effort: a retry covers it if so.
     if (event.data?.type === "e2ee:sync" && typeof event.data.channelId === "string") {
       void syncEpochKeys(event.data.channelId).catch(() => {});
     }

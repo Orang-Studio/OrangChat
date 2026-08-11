@@ -1,10 +1,3 @@
-//! Recipient-initiated message reporting, including E2EE message franking.
-//!
-//! A reporter discloses one HKDF-derived message key. The server uses it to
-//! authenticate and open the exact ciphertext already stored for that message,
-//! then verifies the sender-device ECDSA signature. A group recipient knows CK
-//! and could forge a GCM tag; they cannot forge this signature. Disclosing the
-//! derived key does not expose CK or any other message.
 
 use aes_gcm::aead::{Aead, Payload};
 use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
@@ -206,7 +199,6 @@ async fn open_reported_message(
     ))
 }
 
-/// Message fields needed for a report, as read by `message`.
 type MessageRow = (
     String,
     String,

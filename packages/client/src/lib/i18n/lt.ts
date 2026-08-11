@@ -1,6 +1,6 @@
 import type { Catalog } from "./en";
 
-/** Complete Lithuanian translation catalogue. Generated from en.ts with placeholders preserved. */
+
 export const lt: Catalog = {
   "common.save": "Išsaugoti",
   "common.cancel": "Atšaukti",

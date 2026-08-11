@@ -12,16 +12,11 @@ export const getTwoFactorStatus = () => api<TwoFactorStatus>('/security/2fa');
 
 export const getAccountStanding = () => api<AccountStanding>('/security/standing');
 
-// ── Passkeys ────────────────────────────────────────────
-//
-// Enrolment is two round trips because WebAuthn is: the server states a
-// challenge, the authenticator signs it, the server checks its own challenge
-// back. `ceremonyToken` is the thread between them.
 
 export interface Passkey {
   id: string;
   name: string;
-  /** Whether the authenticator syncs it - i.e. whether losing the device loses it. */
+
   backedUp: boolean;
   createdAt: string;
   lastUsedAt: string | null;
@@ -29,7 +24,7 @@ export interface Passkey {
 
 export const getPasskeys = () => api<{ passkeys: Passkey[]; max: number }>('/security/passkeys');
 
-/** Password-gated (plus a 2FA code when on): adding a passkey adds a way in. */
+
 export const startPasskeyRegistration = (password: string, code: string) =>
   api<{ challenge: CreationChallenge; ceremonyToken: string }>(
     '/security/passkeys/register/start',

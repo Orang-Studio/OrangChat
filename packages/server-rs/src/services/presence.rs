@@ -1,10 +1,3 @@
-//! Presence leases in Redis.
-//!
-//! Every current client refreshes its Socket.IO connection's five-minute lease
-//! once a minute. Aggregate presence is derived from the unexpired leases
-//! instead of a counter, so a missed disconnect cannot leave a user online
-//! indefinitely. A new connection starts with a compatibility lease so clients
-//! installed before heartbeats were introduced do not disappear immediately.
 
 use std::collections::{HashMap, HashSet};
 
@@ -45,17 +38,12 @@ fn lease_deadline_ms(ttl_seconds: i64) -> i64 {
     now_ms() + ttl_seconds * 1_000
 }
 
-/// Remove presence left by a previous server process.
-///
-/// Socket.IO connections are process-local and cannot survive a backend
-/// restart, while Redis does. This server is deployed as a single Socket.IO
-/// process, so no lease can still be valid before the new listener opens.
 pub async fn clear_stale_startup_presence(state: &AppState) -> AppResult<u64> {
     let mut con = state.rd();
     let mut stale_keys = Vec::new();
 
     for pattern in [
-        "presence:count:*", // Legacy counter keys from before socket leases.
+        "presence:count:*",
         "presence:leases:*",
         "presence:status:*",
         "presence:devices:*",
@@ -81,8 +69,6 @@ pub async fn clear_stale_startup_presence(state: &AppState) -> AppResult<u64> {
     }
     stale_keys.push(users_key().to_string());
 
-    // Mutating the keyspace during SCAN can cause entries to be skipped, so
-    // collect the full snapshot first and only then delete it in bounded batches.
     let mut deleted = 0_u64;
     for keys in stale_keys.chunks(100) {
         deleted += redis::cmd("DEL")
@@ -136,9 +122,6 @@ async fn upsert_socket(
     Ok(first == 1)
 }
 
-/// Register a newly-connected socket. The first lease lasts for the legacy
-/// data TTL; current clients immediately replace it with a five-minute lease on
-/// their first heartbeat.
 pub async fn add_socket(
     state: &AppState,
     user_id: &str,
@@ -148,8 +131,6 @@ pub async fn add_socket(
     upsert_socket(state, user_id, socket_id, device, DATA_TTL).await
 }
 
-/// Renew one socket's five-minute lease. Returns true when every prior lease
-/// expired and this heartbeat brought the user back online.
 pub async fn refresh_socket(
     state: &AppState,
     user_id: &str,
@@ -159,7 +140,6 @@ pub async fn refresh_socket(
     upsert_socket(state, user_id, socket_id, device, LEASE_TTL_SECONDS).await
 }
 
-/// Deregister one socket. Returns true if it was the user's final live lease.
 pub async fn remove_socket(state: &AppState, user_id: &str, socket_id: &str) -> AppResult<bool> {
     let mut con = state.rd();
     let last: i64 = Script::new(
@@ -195,8 +175,6 @@ pub async fn remove_socket(state: &AppState, user_id: &str, socket_id: &str) -> 
     Ok(last == 1)
 }
 
-/// Prune expired socket ids for one user. The second return value is true only
-/// for the sweep that observed an online -> offline transition.
 async fn prune_user(state: &AppState, user_id: &str) -> AppResult<(bool, bool)> {
     let mut con = state.rd();
     let result: Vec<i64> = Script::new(
@@ -229,7 +207,6 @@ async fn prune_user(state: &AppState, user_id: &str) -> AppResult<(bool, bool)> 
     Ok((result.first() == Some(&1), result.get(1) == Some(&1)))
 }
 
-/// Remove expired leases and return the users that need one offline broadcast.
 pub async fn sweep_expired_leases(state: &AppState) -> AppResult<Vec<String>> {
     let mut con = state.rd();
     let users: Vec<String> = con.smembers(users_key()).await?;
@@ -255,8 +232,6 @@ pub async fn get_activities(state: &AppState, user_id: &str) -> AppResult<Vec<Ac
         .unwrap_or_default())
 }
 
-/// Replace one provider's activity while preserving future activity providers.
-/// Returns true only when the public value changed and needs broadcasting.
 pub async fn set_activity(
     state: &AppState,
     user_id: &str,
@@ -324,8 +299,6 @@ fn effective_status(base: Option<String>, lifecycle: Vec<String>) -> String {
     }
 }
 
-/// Update foreground/background state for one socket without overwriting the
-/// user's explicit status selection on their other clients.
 pub async fn set_socket_lifecycle(
     state: &AppState,
     user_id: &str,
@@ -384,7 +357,6 @@ pub async fn get_statuses(
     Ok(result)
 }
 
-/// Distinct client kinds with at least one live socket, in stable UI order.
 pub async fn get_devices(state: &AppState, user_id: &str) -> AppResult<Vec<String>> {
     let (online, _) = prune_user(state, user_id).await?;
     if !online {
@@ -400,17 +372,12 @@ pub async fn get_devices(state: &AppState, user_id: &str) -> AppResult<Vec<Strin
         .collect())
 }
 
-/// The kinds in [`get_devices`] order, keeping only sockets that last reported
-/// themselves foreground.
 fn foreground_kinds(
     devices: HashMap<String, String>,
     lifecycle: &HashMap<String, String>,
 ) -> Vec<String> {
     let active: HashSet<String> = devices
         .into_iter()
-        // A socket with no lifecycle entry is treated as foreground: the upsert
-        // seeds 'online' and only a client that has since backgrounded itself
-        // ever writes 'idle'.
         .filter(|(socket_id, _)| lifecycle.get(socket_id).map(String::as_str) != Some("idle"))
         .map(|(_, kind)| kind)
         .collect();
@@ -421,14 +388,6 @@ fn foreground_kinds(
         .collect()
 }
 
-/// Which kinds of client the user is actually sitting in front of.
-///
-/// [`get_devices`] answers "where is this account signed in", which is the wrong
-/// question for a notification: a phone holding a socket open in the background
-/// is precisely the phone that still needs waking. This keeps only the sockets
-/// whose client reported itself foreground, so "mobile" here means the app is
-/// open in front of the user and "browser"/"desktop" mean they are at their
-/// computer rather than merely logged in on it.
 pub async fn active_devices(state: &AppState, user_id: &str) -> AppResult<Vec<String>> {
     let (online, _) = prune_user(state, user_id).await?;
     if !online {

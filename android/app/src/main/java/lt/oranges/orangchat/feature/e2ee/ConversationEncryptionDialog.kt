@@ -52,32 +52,15 @@ import lt.oranges.orangchat.ui.components.Text
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-/**
- * What the lock in a conversation header opens onto, rewritten as something a
- * person can read (docs/E2EE.md §6.6).
- *
- * It used to be an AlertDialog holding a sentence about safety numbers, a wall
- * of digits, a scan button, an inline QR code, an unlabelled switch and a bare
- * "Reset encryption key" link, in that order, with nothing saying what any of it
- * was for. Someone who tapped a padlock out of curiosity met six controls and no
- * explanation.
- *
- * The order here is the order the questions arrive in: what state am I in, how
- * does this work, what is the choice, how do I check this person, and only then
- * the digits - which mean nothing without the sentence above them.
- */
 @Composable
 fun ConversationEncryptionDialog(
     info: AppViewModel.ConversationEncryptionInfo,
     peerName: String?,
-    /** False when there is nobody scannable here - a group, or no contact route. */
     canScan: Boolean,
     onScan: () -> Unit,
     onSetStrict: ((Boolean) -> Unit)?,
-    /** Turning verification off needs the screen lock first (§6.5). */
     onRelaxStrict: () -> Unit,
     onResetEncryption: (() -> Unit)?,
-    /** Compares a code read out over some other channel (§6.6); see below. */
     onCompareSafetyNumber: ((String, (AppViewModel.SafetyNumberVerdict) -> Unit) -> Unit)? = null,
     onDismiss: () -> Unit,
 ) {
@@ -298,12 +281,6 @@ private fun StateCard(
     }
 }
 
-/**
- * The two modes of §6, as the choice they are. A lone switch reads as
- * "encryption: off/on" to anybody who has not read the design doc - the exact
- * misreading §6 forbids - so both options say plainly that they encrypt, and
- * neither is drawn as the deficient one.
- */
 @Composable
 private fun ModeChoice(strict: Boolean, onStandard: () -> Unit, onStrict: () -> Unit) {
         val context = LocalContext.current
@@ -383,10 +360,6 @@ private fun ModeCard(
     }
 }
 
-/**
- * Groups are standard-only in v1 (§6.3), and the reason has to be visible rather
- * than looking like a missing feature.
- */
 @Composable
 private fun GroupModeNote() {
         val context = LocalContext.current
@@ -401,17 +374,6 @@ private fun GroupModeNote() {
     }
 }
 
-/**
- * Somewhere to type the code the other person just read out, and a machine to
- * compare it (docs/E2EE.md §6.6).
- *
- * Printing the digits and leaving it there asked the user to compare sixty of
- * them by eye and then told the app nothing about the answer - so this phone
- * never learned it had checked anybody, and verify-first mode stayed out of
- * reach for anyone not stood next to their contact. Typing is no weaker than
- * scanning: the digits still had to travel over a channel the server does not
- * control, and it is the user's ear that authenticates the voice reading them.
- */
 @Composable
 private fun TypedSafetyNumberCheck(
     group: Boolean,

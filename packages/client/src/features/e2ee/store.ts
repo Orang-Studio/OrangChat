@@ -3,12 +3,7 @@ import { getChannelE2eeState, type E2eeChannelState } from './api';
 
 interface E2eeStoreState {
   channels: Record<string, E2eeChannelState>;
-  /**
-   * Channels this client has ever seen encrypted. `Channel.e2ee` is a latch on
-   * the server, and this is the client's own copy of it: a server that flipped
-   * the flag back would be trying to talk us into sending plaintext, so we
-   * refuse based on what we remember rather than what we are told.
-   */
+
   latched: Record<string, true>;
 }
 
@@ -27,8 +22,6 @@ function persistLatched(latched: Record<string, true>): void {
   try {
     localStorage.setItem(LATCH_KEY, JSON.stringify(latched));
   } catch {
-    // A full or blocked storage is not a reason to fail a send; the server-side
-    // latch still holds and this is the belt to its braces.
   }
 }
 
@@ -65,8 +58,6 @@ export function noteEpoch(channelId: string, epoch: number): void {
           ? { ...existing, e2ee: true, epochNumber: Math.max(existing.epochNumber, epoch) }
           : {
               channelId,
-              // A ciphertext only ever arrives in a direct conversation, and the
-              // real state replaces this the moment it is fetched.
               channelType: 'dm',
               e2ee: true,
               epochNumber: epoch,

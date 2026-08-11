@@ -12,11 +12,8 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-/** App-level theme preference; persisted in settings. */
 enum class ThemePreference { SYSTEM, DARK, LIGHT }
 
-/** Bridge the OrangColors token set into a Material3 ColorScheme so stock M3
- *  components (ripples, text fields, etc.) inherit the brand automatically. */
 private fun OrangColors.toMaterialScheme() = if (isDark) {
     darkColorScheme(
         primary = primary,

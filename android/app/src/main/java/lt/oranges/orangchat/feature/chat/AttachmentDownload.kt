@@ -48,29 +48,12 @@ import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-/**
- * Saving an attachment to the phone's Downloads folder.
- *
- * DownloadManager rather than a hand-rolled fetch: it survives the app being
- * backgrounded or killed, shows its own progress notification, and puts the
- * file somewhere other apps can open - all of which a 1GB attachment needs and
- * none of which is worth rebuilding here.
- *
- * Attachment URLs carry no session (nginx serves `/attachments/` and the
- * OrangMove proxy straight off disk), so handing one to another process
- * downloads what it says and leaks nothing.
- */
 
-/** Before Android 10, writing to the public Downloads folder is a permission. */
 private fun needsLegacyStoragePermission(context: Context): Boolean =
     Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
         ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
         PackageManager.PERMISSION_GRANTED
 
-/**
- * The server already strips separators from uploaded names, but this one is
- * about to become a path - belt and braces, since the cost is a `replace`.
- */
 private fun safeName(filename: String): String {
     val cleaned = filename.replace(Regex("""[/\\]"""), "_").trim()
     return cleaned.ifEmpty { "attachment" }
@@ -93,11 +76,8 @@ private fun enqueue(context: Context, attachment: Attachment) {
         .setDescription("OrangChat attachment")
         .setMimeType(attachment.contentType)
         .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-        // Name collisions are DownloadManager's problem; it appends a counter.
         .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, safeName(attachment.filename))
 
-    // Enqueueing can fail outright - the Downloads app may be disabled, and the
-    // external volume may not be mounted.
     val queued = runCatching { manager.enqueue(request) }
     Toast.makeText(
         context,
@@ -108,64 +88,27 @@ private fun enqueue(context: Context, attachment: Attachment) {
 
 private const val MAX_INLINE_SEALED = 64L * 1024 * 1024
 
-/** Give up rather than retry forever on a connection that keeps dying. */
 private const val MAX_FETCH_ATTEMPTS = 5
 
-/**
- * How much ciphertext is handed to the cipher at a time.
- *
- * Not a tuning knob so much as the whole fix. `CipherInputStream` reads its
- * source 512 bytes at a time no matter what buffer the caller copies with, and
- * Android's GCM cipher is one-shot underneath (BoringSSL's EVP_AEAD), so every
- * `update` appends to an internal buffer that is regrown to the exact new size.
- * 512-byte increments over a 30 MB file is sixty thousand reallocations copying
- * fifteen megabytes on average - hundreds of gigabytes of memcpy to decrypt one
- * clip, which is where the two minutes went. Feeding it a megabyte at a time
- * leaves thirty of those copies.
- */
 private const val DECRYPT_CHUNK = 1 shl 20
 
-/** Which half of "opening a sealed file" is currently running. */
 internal enum class SealedPhase { DOWNLOAD, DECRYPT }
 
-/** How far along one sealed attachment is, and at what. */
 internal data class SealedProgress(
     val phase: SealedPhase = SealedPhase.DOWNLOAD,
     val fraction: Float = 0f,
 )
 
-/**
- * Opening sealed attachments, once each, off the composition's lifetime.
- *
- * Three things went wrong here and they compounded. Every composable that
- * rendered the file - the image, the video, the lightbox, the download button -
- * started its own decrypt; each one ran inside a `LaunchedEffect`, so leaving
- * the composition (a scroll, a recomposition, opening the lightbox) cancelled
- * the transfer; and each restart began at byte zero. A 39 MB attachment was
- * requested sixteen times and never once arrived: the server logs show a stack
- * of concurrent reads for the same file, each cut off after a few megabytes.
- *
- * So: one job per attachment, shared by every caller; run in a scope that
- * outlives the composables watching it, so a cancelled *observer* no longer
- * cancels the *work*; and the ciphertext lands in a `.part` file that a dropped
- * connection resumes from with a `Range` request instead of starting over.
- */
 internal object SealedFiles {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    /** For saving to Downloads, which must also outlive the screen it started on. */
     val saves = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Mutex()
     private val inFlight = mutableMapOf<String, Deferred<File?>>()
 
-    /** Per attachment id, how far it has got and whether it is still fetching. */
     private val _progress = MutableStateFlow<Map<String, SealedProgress>>(emptyMap())
     val progress: StateFlow<Map<String, SealedProgress>> = _progress.asStateFlow()
 
-    /**
-     * The decrypted file, fetching and decrypting it if this is the first ask.
-     * Cancelling the caller abandons the wait, never the download.
-     */
     suspend fun open(context: Context, attachment: Attachment, ref: SealedAttachmentRef): File? {
         val opened = File(context.cacheDir, "opened-${attachment.id}")
         if (opened.isFile && opened.length() == ref.size) return opened
@@ -211,15 +154,6 @@ internal object SealedFiles {
         return result
     }
 
-    /**
-     * Downloads to [part], resuming it if some of the file is already there.
-     *
-     * How long the file is comes from the response, never from the attachment
-     * row: by the time a sealed attachment is rendered its `size` has been
-     * replaced with the *plaintext* length from inside the message, which is
-     * short of the ciphertext by the GCM tag. Stopping there would leave every
-     * file a few bytes shy and fail the tag on decrypt.
-     */
     private fun fetch(url: String, part: File, onProgress: (Float) -> Unit): Boolean {
         var total = -1L
         repeat(MAX_FETCH_ATTEMPTS) {
@@ -236,13 +170,11 @@ internal object SealedFiles {
                 val resuming = code == HttpURLConnection.HTTP_PARTIAL
                 if (code != HttpURLConnection.HTTP_OK && !resuming) return false
                 total = if (resuming) {
-                    // "bytes 1024-2047/4096" - the whole length is after the slash.
                     connection.getHeaderField("Content-Range")
                         ?.substringAfterLast('/')
                         ?.toLongOrNull()
                         ?: -1L
                 } else {
-                    // A server that ignored the range sends the whole file again.
                     if (have > 0) {
                         part.delete()
                         have = 0
@@ -267,7 +199,6 @@ internal object SealedFiles {
                 }
                 drained = true
             } catch (_: Exception) {
-                // Whatever arrived stays on disk; the next attempt resumes it.
             } finally {
                 connection.disconnect()
             }
@@ -275,21 +206,12 @@ internal object SealedFiles {
             if (total > 0) {
                 if (part.isFile && part.length() >= total) return true
             } else if (drained) {
-                // No length to check against, but the stream ended cleanly.
                 return part.isFile && part.length() > 0
             }
         }
         return false
     }
 
-    /**
-     * Decrypts [part] into [opened], reporting how much ciphertext has been fed
-     * through so a large clip shows movement rather than a frozen bar.
-     *
-     * Deliberately not `CipherInputStream` - see [DECRYPT_CHUNK] for why that
-     * combination is quadratic. Feeding the cipher directly also means the
-     * fraction here is the real unit of work, not a guess.
-     */
     private fun decrypt(
         part: File,
         ref: SealedAttachmentRef,
@@ -308,16 +230,12 @@ internal object SealedFiles {
             cipher.updateAAD(E2ee.attachmentAad(ref.fileId))
             val total = part.length()
             var consumed = 0L
-            // Plaintext only becomes visible outside the private temp file after
-            // doFinal verifies the GCM tag successfully.
             part.inputStream().use { encrypted ->
                 FileOutputStream(temp).use { output ->
                     val buffer = ByteArray(DECRYPT_CHUNK)
                     while (true) {
                         val read = encrypted.read(buffer)
                         if (read <= 0) break
-                        // Providers that buffer internally return nothing here
-                        // and hand everything back from doFinal; both are fine.
                         cipher.update(buffer, 0, read)?.let(output::write)
                         consumed += read
                         if (total > 0) {
@@ -348,43 +266,19 @@ private suspend fun decryptToCache(
     return SealedFiles.open(context, attachment, ref)
 }
 
-/**
- * Where an attachment's bytes can be read from right now.
- *
- * A sealed file has no url until it has been fetched and opened, which is work
- * and therefore takes time. "Not yet" and "never" have to be told apart by
- * anything that renders it: treating the gap before decryption as a failure is
- * what turned every encrypted image into a download card.
- */
 internal data class AttachmentSource(
     val url: String?,
     val resolving: Boolean,
-    /** Sealed, and nobody has asked for it yet - a tap is all it needs. */
     val deferred: Boolean = false,
-    /** 0-1 through whatever [phase] is currently doing. */
     val progress: Float = 0f,
-    /**
-     * Downloading or decrypting. Worth telling apart: decrypting a large clip
-     * takes long enough that a bar labelled "downloading" sitting at 100% is
-     * what made it look stuck.
-     */
     val phase: SealedPhase = SealedPhase.DOWNLOAD,
 ) {
     val unavailable: Boolean get() = url == null && !resolving && !deferred
 
-    /** A word for what is happening, for anything with room to say it. */
     val phaseLabel: String
         get() = if (phase == SealedPhase.DECRYPT) "Decrypting" else "Downloading"
 }
 
-/**
- * Where to read [attachment] from, decrypting it first when it is sealed.
- *
- * [wanted] is what keeps a channel of clips from fetching itself: a sealed
- * video or sound is not touched until its play button is pressed. It has no
- * effect on a file that is not sealed - there is nothing to fetch ahead of
- * time, the player streams those itself when it starts.
- */
 @Composable
 internal fun rememberAttachmentSource(
     attachment: Attachment,
@@ -406,8 +300,6 @@ internal fun rememberAttachmentSource(
 
     LaunchedEffect(attachment.id, wanted) {
         if (!wanted || opened != null || failed) return@LaunchedEffect
-        // Uri.fromFile, not File.toURI: the latter writes file:/path with one
-        // slash, which not every loader parses back.
         val file = decryptToCache(context, attachment, keystore)
         if (file == null) failed = true else opened = Uri.fromFile(file).toString()
     }
@@ -460,11 +352,6 @@ private suspend fun saveOpenedAttachment(context: Context, attachment: Attachmen
         }
     }
 
-/**
- * Returns a callback that saves an attachment, asking for the legacy storage
- * permission first where that's still a thing and resuming the download once
- * it's answered.
- */
 @Composable
 fun rememberAttachmentDownloader(): (Attachment) -> Unit {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -492,10 +379,6 @@ fun rememberAttachmentDownloader(): (Attachment) -> Unit {
             if (e2eeKeystore.sealedAttachment(attachment.id) != null) {
                 val app = context.applicationContext
                 Toast.makeText(app, "Saving ${attachment.filename}…", Toast.LENGTH_SHORT).show()
-                // Deliberately not the composition's scope: saving a large file
-                // takes long enough to outlive the screen it was started from,
-                // and cancelling it there is what made the download button on a
-                // big attachment look like it did nothing at all.
                 SealedFiles.saves.launch {
                     val saved = saveOpenedAttachment(app, attachment)
                     withContext(Dispatchers.Main) {

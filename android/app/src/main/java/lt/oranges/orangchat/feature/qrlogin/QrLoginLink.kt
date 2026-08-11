@@ -2,18 +2,9 @@ package lt.oranges.orangchat.feature.qrlogin
 
 import java.net.URI
 
-/**
- * The QR sign-in deep link, `orangchat://login?token=<token>`. The web client
- * renders this as a QR; scanning it with the phone's camera opens the app here.
- *
- * Parsed with java.net.URI rather than android.net.Uri so it is reachable from
- * plain JVM unit tests, matching how [lt.oranges.orangchat.util.InviteLink]
- * handles invite links.
- */
 object QrLoginLink {
     private val TOKEN = Regex("^[A-Za-z0-9-]{1,64}$")
 
-    /** The token in a login deep link, or null if it isn't one. */
     fun tokenFrom(url: String): String? {
         val uri = runCatching { URI(url) }.getOrNull() ?: return null
         if (uri.scheme?.lowercase() != "orangchat") return null

@@ -18,8 +18,6 @@ pub fn routes() -> Router<AppState> {
 struct ReportBody {
     #[serde(default)]
     reason: Option<String>,
-    /// Present only for E2EE. This is HKDF(CK, senderDeviceId || seq), not CK:
-    /// it opens one exact ciphertext and cannot derive any neighbouring key.
     #[serde(default)]
     message_key: Option<String>,
 }

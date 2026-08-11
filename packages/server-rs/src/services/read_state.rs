@@ -1,6 +1,3 @@
-//! Per-user, per-channel read state: what the user has seen and how many times
-//! they've been @mentioned in a channel they haven't opened. Drives unread dots
-//! and mention badges. No Prisma equivalent - new for the unread feature.
 
 use sqlx::FromRow;
 
@@ -8,21 +5,12 @@ use crate::error::AppResult;
 use crate::models::ChannelRow;
 use crate::state::AppState;
 
-/// Explicit users mentioned by id (`<@id>`) or handle (`@username`), plus
-/// whether `@everyone`/`@here` was used.
 pub struct ParsedMentions {
     pub user_ids: Vec<String>,
-    /// Lowercased handles; usernames are stored lowercase-insensitively.
     pub usernames: Vec<String>,
     pub everyone: bool,
 }
 
-/// Extract mention targets and detect `@everyone`/`@here`. Hand-rolled to avoid
-/// a regex dependency.
-///
-/// Both encodings are accepted. Clients now write plain `@username` so the raw
-/// message text stays readable, but `<@id>` predates that and still sits in
-/// every older message, so it keeps resolving.
 pub fn parse_mentions(content: &str) -> ParsedMentions {
     let bytes = content.as_bytes();
     let mut user_ids: Vec<String> = Vec::new();
@@ -41,7 +29,6 @@ pub fn parse_mentions(content: &str) -> ParsedMentions {
                 continue;
             }
         }
-        // An `@` glued to the end of a word is an email host, not a mention.
         if bytes[i] == b'@' && !(i > 0 && bytes[i - 1].is_ascii_alphanumeric()) {
             let start = i + 1;
             let mut j = start;
@@ -50,8 +37,6 @@ pub fn parse_mentions(content: &str) -> ParsedMentions {
             {
                 j += 1;
             }
-            // A trailing dot is the full stop of a sentence, not part of the
-            // handle. Only ASCII is consumed above, so these stay char bounds.
             while j > start && bytes[j - 1] == b'.' {
                 j -= 1;
             }
@@ -76,7 +61,6 @@ pub fn parse_mentions(content: &str) -> ParsedMentions {
     }
 }
 
-/// The user ids that belong to a channel (server members, or DM participants).
 pub async fn channel_member_ids(state: &AppState, channel: &ChannelRow) -> AppResult<Vec<String>> {
     let rows: Vec<(String,)> = if let Some(server_id) = &channel.server_id {
         sqlx::query_as(r#"SELECT "userId" FROM "ServerMember" WHERE "serverId" = $1"#)
@@ -92,9 +76,6 @@ pub async fn channel_member_ids(state: &AppState, channel: &ChannelRow) -> AppRe
     Ok(rows.into_iter().map(|(id,)| id).collect())
 }
 
-/// The (id, lowercased username) of everyone in a channel. Resolving handles
-/// needs the username alongside the id, which `channel_member_ids` does not
-/// carry.
 async fn channel_member_handles(
     state: &AppState,
     channel: &ChannelRow,
@@ -121,9 +102,6 @@ async fn channel_member_handles(
     Ok(rows)
 }
 
-/// Resolve who should get a mention badge for a message: `<@id>` or `@username`
-/// targets that are actually in the channel, or everyone (minus the author) for
-/// `@everyone`/`@here`. Returns deduped recipient ids, never including `author_id`.
 pub async fn resolve_mention_recipients(
     state: &AppState,
     channel: &ChannelRow,
@@ -150,8 +128,6 @@ pub async fn resolve_mention_recipients(
     Ok(recipients)
 }
 
-/// Increment the mention counter for each recipient in a channel, creating a
-/// read-state row if none exists yet.
 pub async fn add_mentions(
     state: &AppState,
     channel_id: &str,
@@ -173,8 +149,6 @@ pub async fn add_mentions(
     Ok(())
 }
 
-/// Mark a channel fully read for a user: point at the latest message and clear
-/// mentions.
 pub async fn mark_read(state: &AppState, user_id: &str, channel_id: &str) -> AppResult<()> {
     let latest: Option<String> = sqlx::query_scalar(
         r#"SELECT id FROM "Message" WHERE "channelId" = $1
@@ -200,12 +174,6 @@ pub async fn mark_read(state: &AppState, user_id: &str, channel_id: &str) -> App
     Ok(())
 }
 
-/// Whether one particular message is still sitting unread for a user.
-///
-/// The unread queries next to this one count a channel; a held-back notification
-/// needs to know about the message it was raised for, because by the time it
-/// comes due the channel may well have moved on. A message that no longer exists
-/// counts as read: there is nothing left to notify anybody about.
 pub async fn is_message_unread(
     state: &AppState,
     user_id: &str,
@@ -233,20 +201,12 @@ pub async fn is_message_unread(
     Ok(unread.unwrap_or(false))
 }
 
-/// Rewind a user's read cursor so `message_id` and everything after it count as
-/// unread again. The cursor lands on the message immediately before it, or is
-/// cleared when there is nothing before it (the whole channel goes unread).
-///
-/// Mentions are left alone: the badge is a running count the client owns, and
-/// re-deriving it here would double-count the ones already acknowledged.
 pub async fn mark_unread(
     state: &AppState,
     user_id: &str,
     channel_id: &str,
     message_id: &str,
 ) -> AppResult<()> {
-    // (createdAt, id) is the same ordering the history pages use, so the cursor
-    // can't land on the wrong side of two messages sharing a timestamp.
     let previous: Option<String> = sqlx::query_scalar(
         r#"SELECT m.id FROM "Message" m
            WHERE m."channelId" = $1
@@ -274,8 +234,6 @@ pub async fn mark_unread(
     Ok(())
 }
 
-/// Unread counting stops here. Bounds the per-channel COUNT for users who have
-/// never opened a busy channel; clients render the cap as "99+".
 pub const UNREAD_COUNT_CAP: i64 = 100;
 
 #[derive(FromRow)]
@@ -286,23 +244,15 @@ struct UnreadRow {
     unread_count: i64,
 }
 
-/// A channel with unread activity for the user. Serializes to the wire shape
-/// `{ channelId, serverId, unread, unreadCount, mentionCount }`.
 pub struct Unread {
     pub channel_id: String,
     pub server_id: Option<String>,
     pub unread: bool,
-    /// Unread messages from other people, saturating at [`UNREAD_COUNT_CAP`].
     pub unread_count: i64,
     pub mention_count: i32,
 }
 
-/// Every channel (server text channels the user belongs to + their DMs) that has
-/// unread messages or pending mentions. Channels that are fully caught up are
-/// omitted to keep the payload small.
 pub async fn get_unreads(state: &AppState, user_id: &str) -> AppResult<Vec<Unread>> {
-    // The count is taken over a LIMIT'd subquery so a never-opened channel with
-    // years of history costs at most UNREAD_COUNT_CAP index rows, not a full scan.
     let rows: Vec<UnreadRow> = sqlx::query_as(
         r#"
         WITH accessible AS (
@@ -354,9 +304,6 @@ pub async fn get_unreads(state: &AppState, user_id: &str) -> AppResult<Vec<Unrea
         .collect())
 }
 
-/// Unread state for a single channel, recomputed from the cursor. Used after a
-/// mark-unread so the client (and the user's other devices) can update a badge
-/// without refetching the whole unread list.
 pub async fn get_channel_unread(
     state: &AppState,
     user_id: &str,

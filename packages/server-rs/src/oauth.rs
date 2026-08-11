@@ -1,5 +1,3 @@
-//! Minimal OAuth 2.0 authorization-code clients for Google and Discord.
-//! Mirrors src/auth/oauth.ts - no SDK, plain HTTP via reqwest.
 
 use serde_json::Value;
 
@@ -10,9 +8,6 @@ pub struct OAuthProfile {
     pub provider: String,
     pub provider_id: String,
     pub email: Option<String>,
-    /// Whether the *provider* vouches for the address. An unverified address
-    /// proves nothing about who owns it, so it must never match an existing
-    /// account - see `find_or_create_oauth_user`.
     pub email_verified: bool,
     pub display_name: String,
     pub avatar_url: Option<String>,
@@ -204,7 +199,6 @@ async fn fetch_discord(client: &reqwest::Client, access_token: &str) -> AppResul
     })
 }
 
-/// Tiny x-www-form-urlencoded encoder for the authorization query string.
 fn serde_urlencoded_lite(params: &[(&str, String)]) -> String {
     params
         .iter()

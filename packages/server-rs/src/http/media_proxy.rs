@@ -1,18 +1,3 @@
-//! Same-origin media proxy.
-//!
-//! Chat messages and link previews can reference images/video/audio on
-//! arbitrary third-party hosts. Rendering those directly means the *viewer's*
-//! browser connects to that host, handing a message author a zero-click IP log
-//! of everyone who so much as scrolls past. This proxy makes the server the
-//! only party that talks to the remote host, so a reader's browser only ever
-//! touches our origin.
-//!
-//! Access is by a short-lived HMAC-signed URL rather than a session: an `<img>`
-//! or `<video>` tag can't carry a bearer token, so the mint step (`/media/sign`,
-//! authenticated) issues a signed `/media/proxy?t=…` URL that the fetch step
-//! verifies on its own. That signature is what proves *our* server authorized
-//! the fetch; the fetch itself re-runs the SSRF checks and is rate-limited per
-//! address so the signed URL can't be turned into an open proxy.
 
 use std::time::Duration;
 
@@ -40,13 +25,7 @@ use crate::state::AppState;
 
 const ISSUER: &str = "orangchat";
 const PURPOSE: &str = "media-proxy";
-/// A signed URL outlives a viewport: a reader may scroll a message back hours
-/// later and the thumbnail should still load without a re-mint. The token only
-/// authorizes fetching one public URL through the SSRF-checked proxy, so a long
-/// window is cheap.
 const TOKEN_TTL_SECONDS: i64 = 12 * 60 * 60;
-/// Upstream media is streamed straight through, but a declared length past this
-/// is refused up front so the proxy can't be aimed at a multi-gigabyte file.
 const MAX_BYTES: u64 = 50 * 1024 * 1024;
 const MAX_REDIRECTS: usize = 3;
 
@@ -59,19 +38,13 @@ pub fn routes() -> Router<AppState> {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct MediaClaims {
-    /// The third-party URL this token authorizes a fetch of.
     url: String,
-    /// Pins the token to this route; an access token decoded here lacks it (and
-    /// `url`), so the two kinds can't be swapped even though both are HS256 over
-    /// the same secret.
     purpose: String,
     iss: String,
     iat: i64,
     exp: i64,
 }
 
-/// Mint a signed same-origin proxy URL for `target`. `target` is trusted to be
-/// an already-parsed absolute http(s) URL; the fetch step re-validates it.
 pub fn sign_media_url(secret: &str, target: &str) -> AppResult<String> {
     let now = Utc::now().timestamp();
     let claims = MediaClaims {
@@ -117,10 +90,6 @@ struct SignResponse {
     url: String,
 }
 
-/// Authenticated: hands the client a signed proxy URL for a remote media link.
-/// Kept cheap and does no fetch - it only confirms the URL is a public http(s)
-/// address worth minting a token for. The proxy revalidates before any bytes
-/// move, so a host that turns private between mint and fetch is still refused.
 async fn sign(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -142,10 +111,6 @@ async fn sign(
     }))
 }
 
-/// The stored-asset kinds, as `(url path segment, table, url column)`. These are
-/// rows *we* wrote - an avatar upload, a soundboard clip - so the url is trusted
-/// enough to name by row id instead of by signed token, and the resulting url is
-/// stable and cacheable rather than changing on every mint.
 const ASSET_KINDS: &[(&str, &str, &str)] = &[
     ("avatar", "User", "avatarUrl"),
     ("banner", "User", "bannerUrl"),
@@ -156,16 +121,10 @@ const ASSET_KINDS: &[(&str, &str, &str)] = &[
     ("sound", "Sound", "url"),
 ];
 
-/// The same-origin url for a stored asset of `kind` on row `id`.
 pub fn asset_url(kind: &str, id: &str) -> String {
     format!("/api/media/asset/{kind}/{id}")
 }
 
-/// Wire form of a stored asset url. Anything absolute lives on a third-party
-/// host (Cloudinary, or an OAuth provider's CDN for an imported avatar) and is
-/// swapped for its same-origin route: the page's `img-src`/`media-src` is
-/// `'self'` precisely so a third-party host can't be handed a viewer's IP, and
-/// a raw cdn url simply would not render. Relative urls are already ours.
 pub fn same_origin_asset(url: Option<&str>, kind: &str, id: &str) -> Option<String> {
     let url = url?;
     if url.starts_with("http://") || url.starts_with("https://") {
@@ -175,13 +134,6 @@ pub fn same_origin_asset(url: Option<&str>, kind: &str, id: &str) -> Option<Stri
     }
 }
 
-/// Whether `url` is one of the asset routes above - a url this api *hands out*,
-/// never one to store. `same_origin_asset` rewrites a row's real url on the way
-/// out, so any client that echoes a user object back (the web settings dialog
-/// seeds its avatar field from `user.avatarUrl` and saves it verbatim) would
-/// otherwise overwrite the row with a route that resolves to itself: `asset`
-/// reads the column, finds a relative url, and redirects to the url it is
-/// already serving, forever.
 pub fn is_asset_url(url: &str) -> bool {
     url.starts_with("/api/media/asset/")
 }
@@ -191,7 +143,6 @@ struct ProxyQuery {
     t: String,
 }
 
-/// Unauthenticated but signed: streams the remote media through this origin.
 async fn proxy(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
@@ -202,15 +153,11 @@ async fn proxy(
 
     let target = verify_media_token(&state.config.jwt_access_secret, &query.t)?;
     let url = Url::parse(&target).map_err(|_| AppError::BadRequest("Invalid media URL".into()))?;
-    // Only a byte range is worth forwarding; the browser sets it while seeking a
-    // <video>/<audio>, and dropping it would force a full download per seek.
     let range = headers
         .get(RANGE)
         .and_then(|v| v.to_str().ok())
         .map(str::to_owned);
 
-    // A range request is asking for a slice of something it already has, so the
-    // conditional shortcut does not apply to it.
     let etag = media_etag(&url);
     if range.is_none() && etag_matches(&headers, &etag) {
         return Ok(not_modified(&etag, PROXY_CACHE_CONTROL, CORP_SAME_ORIGIN));
@@ -225,10 +172,6 @@ async fn proxy(
     .await
 }
 
-/// Unauthenticated: streams a stored asset (avatar, emoji, soundboard clip)
-/// through this origin. Unauthenticated because an `<img>` carries no token and
-/// these bytes sat on a public cdn url until now; what the route adds is that
-/// the *viewer* no longer connects to that cdn.
 async fn asset(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
@@ -241,7 +184,6 @@ async fn asset(
         .iter()
         .find(|(name, _, _)| *name == kind)
         .ok_or_else(|| AppError::NotFound("Unknown asset".into()))?;
-    // Identifiers come from the table above, never from the request.
     let stored: Option<String> = sqlx::query_scalar(&format!(
         r#"SELECT "{column}" FROM "{table}" WHERE id = $1"#
     ))
@@ -251,15 +193,10 @@ async fn asset(
     .flatten();
     let stored = stored.ok_or_else(|| AppError::NotFound("Asset not found".into()))?;
 
-    // A row poisoned by a client echoing the wire form back (see `is_asset_url`)
-    // points at this very route. Redirecting would loop until the client gives
-    // up; 404 lets it fall back to the initial-letter placeholder instead.
     if is_asset_url(&stored) {
         return Err(AppError::NotFound("Asset not found".into()));
     }
 
-    // A row written before Cloudinary was configured stores a relative url that
-    // nginx serves directly; there is nothing to proxy.
     if !(stored.starts_with("http://") || stored.starts_with("https://")) {
         return Ok(axum::response::Redirect::temporary(&stored).into_response());
     }
@@ -269,13 +206,6 @@ async fn asset(
         .get(RANGE)
         .and_then(|v| v.to_str().ok())
         .map(str::to_owned);
-    // Unlike the signed proxy, these bytes are public and unauthenticated by
-    // design, so `same-origin` buys nothing - and it breaks the one embedder
-    // that is not same-origin: the Android profile card renders user profile
-    // CSS in a WebView loaded via loadDataWithBaseURL(null, ...), whose document
-    // has an opaque origin. Every avatar there is a cross-origin image load.
-    // The etag covers the stored url, so a re-uploaded avatar misses and a
-    // returning viewer hits - without this route reading Cloudinary at all.
     let etag = media_etag(&url);
     if range.is_none() && etag_matches(&headers, &etag) {
         return Ok(not_modified(&etag, ASSET_CACHE_CONTROL, CORP_CROSS_ORIGIN));
@@ -290,30 +220,13 @@ async fn asset(
     .await
 }
 
-/// `Cross-Origin-Resource-Policy` for the signed proxy: arbitrary remote media,
-/// only ever embedded by our own pages.
 const CORP_SAME_ORIGIN: &str = "same-origin";
-/// As above, for stored assets - public bytes with no embedder restriction.
 const CORP_CROSS_ORIGIN: &str = "cross-origin";
 
-/// What a signed proxy url is worth caching for. The token it carries expires in
-/// `TOKEN_TTL_SECONDS`, and until then the url names one fixed remote resource,
-/// so there is nothing to revalidate inside that window. A re-signed url is a
-/// different cache entry anyway.
 const PROXY_CACHE_CONTROL: &str = "public, max-age=43200, immutable";
 
-/// Stored assets get a stable url whose bytes *can* change - a new avatar keeps
-/// `/api/media/asset/avatar/{id}`. So they are revalidated rather than pinned:
-/// a day of silence, then a conditional request that almost always comes back
-/// 304 from the entity tag below without touching the upstream cdn.
-/// `stale-while-revalidate` keeps the old pixels on screen while that happens.
 const ASSET_CACHE_CONTROL: &str = "public, max-age=86400, stale-while-revalidate=604800";
 
-/// An entity tag for proxied media, derived from the upstream url. That url is
-/// what decides the bytes - a changed avatar is a different Cloudinary public
-/// id, a re-signed proxy token still points at the same resource - so matching
-/// tags mean matching content, and a hit is answered without a fetch at all.
-/// Hashed rather than used raw because the url is not ours to disclose.
 fn media_etag(url: &Url) -> String {
     let digest = Sha256::digest(url.as_str().as_bytes());
     let mut tag = String::with_capacity(18);
@@ -325,8 +238,6 @@ fn media_etag(url: &Url) -> String {
     tag
 }
 
-/// True when the client already holds this entity. Same list/weak-prefix rules
-/// as `attachments.rs`.
 fn etag_matches(headers: &HeaderMap, etag: &str) -> bool {
     headers
         .get(IF_NONE_MATCH)
@@ -339,7 +250,6 @@ fn etag_matches(headers: &HeaderMap, etag: &str) -> bool {
         })
 }
 
-/// A conditional hit, answered without contacting the upstream host.
 fn not_modified(etag: &str, cache_control: &'static str, corp: &str) -> Response {
     let mut builder = Response::builder().status(StatusCode::NOT_MODIFIED);
     let out = builder.headers_mut().expect("fresh builder has headers");
@@ -369,8 +279,6 @@ async fn fetch_media(
             .connect_timeout(Duration::from_secs(4))
             .timeout(Duration::from_secs(30))
             .user_agent("OrangChat-MediaProxy/1.0")
-            // Pin to the address we validated so the name can't re-resolve to a
-            // private host between the check and the connection.
             .resolve(&host, address)
             .build()
             .map_err(|e| AppError::Internal(format!("media proxy client: {e}")))?;
@@ -400,8 +308,6 @@ async fn fetch_media(
             continue;
         }
 
-        // 200 for a whole file, 206 when the range was honoured; anything else
-        // (403/404/416/5xx) isn't media we should relay.
         if status != StatusCode::OK && status != StatusCode::PARTIAL_CONTENT {
             return Err(AppError::BadRequest("Unable to fetch media".into()));
         }
@@ -439,9 +345,6 @@ async fn fetch_media(
     Err(AppError::BadRequest("Unable to fetch media".into()))
 }
 
-/// Relay the upstream response: its status (200/206), the validated content
-/// type, and the range plumbing a media element needs to seek - but served
-/// inert (nosniff + a null CSP) so a mislabelled HTML polyglot can't run.
 fn build_response(
     status: StatusCode,
     content_type: String,
@@ -450,7 +353,6 @@ fn build_response(
     cache_control: &'static str,
     etag: &str,
 ) -> Response {
-    // Pull the passthrough headers before bytes_stream() consumes the response.
     let content_length = upstream.headers().get(CONTENT_LENGTH).cloned();
     let content_range = upstream.headers().get(CONTENT_RANGE).cloned();
 
@@ -479,8 +381,6 @@ fn build_response(
         out.insert("cross-origin-resource-policy", value);
     }
     out.insert(CACHE_CONTROL, HeaderValue::from_static(cache_control));
-    // Not on a 206: the tag describes the whole entity, and handing it out
-    // beside a partial body invites a cache to store the slice as the file.
     if status == StatusCode::OK {
         if let Ok(value) = HeaderValue::from_str(etag) {
             out.insert(ETAG, value);
@@ -509,9 +409,6 @@ mod tests {
         );
     }
 
-    /// A changed avatar is a different upstream url, so the tag has to change
-    /// with it - otherwise a viewer holding the old pixels never sees the new
-    /// ones. The url itself must not be readable back out of the tag.
     #[test]
     fn etag_follows_the_upstream_url() {
         let old = media_etag(&Url::parse("https://res.cloudinary.com/x/v1/a.png").unwrap());
@@ -536,7 +433,6 @@ mod tests {
 
         assert!(with(&etag));
         assert!(with("*"));
-        // Browsers echo the tag weakly, and send lists after a redirect chain.
         assert!(with(&format!("W/{etag}")));
         assert!(with(&format!("\"other\", {etag}")));
         assert!(!with("\"other\""));
@@ -549,7 +445,6 @@ mod tests {
             same_origin_asset(Some("https://res.cloudinary.com/x/a.gif"), "avatar", "u1"),
             Some("/api/media/asset/avatar/u1".into())
         );
-        // Already ours: left alone, so pre-Cloudinary rows keep working.
         assert_eq!(
             same_origin_asset(Some("/uploads/a.png"), "avatar", "u1"),
             Some("/uploads/a.png".into())
@@ -557,15 +452,12 @@ mod tests {
         assert_eq!(same_origin_asset(None, "avatar", "u1"), None);
     }
 
-    /// The wire form must be recognisable on the way back in, or a client that
-    /// echoes it lands it in the column and the route redirects to itself.
     #[test]
     fn wire_form_is_detected_as_an_asset_url() {
         assert!(is_asset_url(
             &same_origin_asset(Some("https://res.cloudinary.com/x/a.gif"), "avatar", "u1").unwrap()
         ));
         assert!(is_asset_url("/api/media/asset/server-icon/s1"));
-        // Real stored urls, which must still be writable.
         assert!(!is_asset_url("/uploads/a.png"));
         assert!(!is_asset_url("https://res.cloudinary.com/x/a.gif"));
         assert!(!is_asset_url("https://cdn.discordapp.com/avatars/1/h.png"));
@@ -579,8 +471,6 @@ mod tests {
 
     #[test]
     fn rejects_a_token_missing_the_media_purpose() {
-        // A well-formed HS256 token over the same secret but without our
-        // `url`/`purpose` claims (shape of an access token) must not verify.
         #[derive(Serialize)]
         struct Other {
             sub: String,

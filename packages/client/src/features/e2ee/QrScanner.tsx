@@ -4,13 +4,7 @@ import { qrKindOf, type QrKind } from '@orangchat/shared';
 import { Button } from '../../components/ui/Button';
 import { t } from "../../lib/i18n";
 
-/**
- * Reads one of the three OrangChat QR codes. They are visually identical and one
- * of them authorises a new device, so `expect` is mandatory and a code of the
- * wrong kind is rejected by name rather than "not recognised" - §6.7 exists
- * because "scan this to add me" otherwise ends with somebody scanning a
- * transfer code.
- */
+
 
 type Detector = {
   detect: (source: CanvasImageSource) => Promise<{ rawValue: string }[]>;

@@ -48,7 +48,7 @@ interface MemberListProps {
   members: ServerMember[];
 }
 
-/** Highest-positioned colored role tints the member's name, Discord-style. */
+
 function memberColor(member: ServerMember, roles: Role[]): string | undefined {
   const colored = roles
     .filter((r) => member.roleIds.includes(r.id) && r.color !== 0)

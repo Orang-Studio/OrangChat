@@ -1,5 +1,3 @@
-//! Permission bitfield - Discord-style, mirrors shared/permissions.ts.
-//! Bitfields fit comfortably in i64 (highest bit is 1<<24).
 
 pub const ADMINISTRATOR: i64 = 1 << 0;
 pub const MANAGE_SERVER: i64 = 1 << 1;
@@ -28,18 +26,13 @@ pub const MUTE_MEMBERS: i64 = 1 << 20;
 pub const DEAFEN_MEMBERS: i64 = 1 << 21;
 #[allow(dead_code)]
 pub const MOVE_MEMBERS: i64 = 1 << 22;
-/// Time a member out: no sending, reacting, or speaking until it expires.
 pub const MODERATE_MEMBERS: i64 = 1 << 23;
 pub const VIEW_AUDIT_LOG: i64 = 1 << 24;
-/// Upload, rename and delete the server's custom emoji and soundboard sounds.
 pub const MANAGE_EXPRESSIONS: i64 = 1 << 25;
-/// Create, edit and cancel the server's scheduled events.
 pub const MANAGE_EVENTS: i64 = 1 << 26;
 
-/// Every permission bit set - the owner/admin superset (bits 0..=26).
 pub const ALL_PERMISSIONS: i64 = (1 << 27) - 1;
 
-/// Default permissions granted to @everyone on a new server.
 pub const DEFAULT_EVERYONE_PERMISSIONS: i64 = VIEW_CHANNEL
     | SEND_MESSAGES
     | EMBED_LINKS
@@ -51,7 +44,6 @@ pub const DEFAULT_EVERYONE_PERMISSIONS: i64 = VIEW_CHANNEL
     | VIDEO
     | SCREEN_SHARE;
 
-/// True if `permissions` grants `required`. ADMINISTRATOR short-circuits.
 pub fn has_permission(permissions: i64, required: i64) -> bool {
     if permissions & ADMINISTRATOR == ADMINISTRATOR {
         return true;
@@ -63,7 +55,6 @@ pub fn combine(bitfields: &[i64]) -> i64 {
     bitfields.iter().fold(0i64, |acc, b| acc | b)
 }
 
-/// Wire encoding: decimal string (JSON has no BigInt).
 pub fn serialize(permissions: i64) -> String {
     permissions.to_string()
 }

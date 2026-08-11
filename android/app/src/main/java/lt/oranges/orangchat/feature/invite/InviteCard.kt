@@ -29,14 +29,8 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.absoluteUrl
 
-/** "12 members", but "1 member". */
 private fun memberLabel(count: Int) = "$count ${if (count == 1) "member" else "members"}"
 
-/**
- * The server an invite leads to. The action beside it is the caller's, so this
- * same card serves the add-server sheet, the deep-link sheet, and an invite
- * posted in chat.
- */
 @Composable
 fun InviteCard(
     preview: InvitePreview,

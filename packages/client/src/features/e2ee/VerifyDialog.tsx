@@ -36,21 +36,7 @@ import { t } from "../../lib/i18n";
 
 type Step = 'overview' | 'scan' | 'show';
 
-/**
- * Everything a conversation's lock icon opens onto (§6.6/§6.7): what state it is
- * in, which of the two modes it is running, how to check who you are talking to,
- * and the safety code for doing that at a distance.
- *
- * Ordered for somebody who tapped the lock out of curiosity rather than intent.
- * The state and the plain-language way out come first; the safety code - a wall
- * of digits that means nothing without the sentence explaining it - comes after
- * the thing it is for.
- *
- * The dialog never claims a contact is mutually verified after one scan. A scan
- * pins what *this* device saw; the other person has pinned nothing until they
- * scan back, and pretending otherwise is exactly the bug §6.7 was written to
- * prevent.
- */
+
 export function VerifyDialog({
   open,
   onOpenChange,
@@ -60,11 +46,11 @@ export function VerifyDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Everyone in the conversation but the viewer. */
+
   peers: User[];
-  /** Set for a group DM, where the group safety number is what is shown. */
+
   groupName?: string | null;
-  /** Enables the per-conversation strict override (§6.5). */
+
   channelId?: string;
 }) {
   const queryClient = useQueryClient();
@@ -78,8 +64,6 @@ export function VerifyDialog({
   const globalStrict = useAuthStore((s) => s.user?.e2eeStrict === true);
 
   const isGroup = peers.length > 1;
-  // Strict is DM-only in v1 (§6.3): one member must not be able to hold a group
-  // hostage until they have personally verified everybody in it.
   const canOverride = !isGroup && channelId !== undefined;
   const strictHere = canOverride ? (overrides[channelId!] ?? globalStrict) : false;
 
@@ -88,23 +72,9 @@ export function VerifyDialog({
     s.alerts.some((alert) => peerIds.includes(alert.userId)),
   );
 
-  /**
-   * §6.5's conversion: a fresh key wrapped only to verified devices. Without the
-   * rotation, switching an already-verified conversation to strict would carry
-   * on under an epoch whose CK was wrapped to whatever devices existed when it
-   * was minted - which is the thing strict mode exists to stop.
-   *
-   * With an unverified peer the rotation legitimately cannot happen, and that is
-   * the state the user just asked for; `StrictModeError` is the gate working,
-   * not a failure to report.
-   */
+
   const tighten = () => {
     if (!channelId) return;
-    // Both directions are announced, not just the downgrade: a rule that only
-    // one side set is a rule the other side can only discover by tripping over
-    // it, and a message that suddenly won't send reads as a bug. The notice is
-    // written by the server when it stores the setting, so it cannot be skipped
-    // by a client that would rather the other side didn't know.
     setStrictFor(channelId, true);
     void rotate(channelId).catch((error: unknown) => {
       if (error instanceof StrictModeError) return;
@@ -114,7 +84,6 @@ export function VerifyDialog({
 
   const relax = () => {
     if (!channelId) return;
-    // §6.5: neither party can be downgraded without the other seeing it.
     setStrictFor(channelId, false);
     retryBlockedMessages();
   };
@@ -156,10 +125,8 @@ export function VerifyDialog({
     onSuccess: ({ userId }) => {
       setError(null);
       setJustScanned(userId);
-      // Whatever strict mode was holding for this person can go now.
       retryBlockedMessages();
       void queryClient.invalidateQueries({ queryKey: ['e2ee'] });
-      // One scan is one direction. Straight to our own code, with the ask.
       setStep('show');
     },
     onError: (e: Error) => setError(e.message),
@@ -180,9 +147,6 @@ export function VerifyDialog({
   const reset = useMutation({
     mutationFn: () => {
       if (!channelId) throw new Error('No conversation selected');
-      // Only the reset somebody asked for is announced. The automatic rotations
-      // - a device joining, an epoch expiring - happen constantly and say
-      // nothing about the conversation that anyone chose.
       return rotate(channelId, { announce: true });
     },
     onSuccess: () => setError(null),

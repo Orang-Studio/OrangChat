@@ -5,12 +5,12 @@ export interface SearchParams {
   q: string;
   channelId?: string;
   authorId?: string;
-  /** Offset for pagination; the previous page's `nextCursor`. */
+
   offset?: number;
   limit?: number;
 }
 
-/** Search a server's readable text channels. `nextCursor` is the next offset. */
+
 export function searchMessages(serverId: string, params: SearchParams) {
   const qs = new URLSearchParams({ q: params.q });
   if (params.channelId) qs.set("channelId", params.channelId);

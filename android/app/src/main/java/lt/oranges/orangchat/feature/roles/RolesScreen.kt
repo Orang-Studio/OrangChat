@@ -53,7 +53,6 @@ import lt.oranges.orangchat.ui.components.OrangTextField
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-/** Discord's role palette, matching the web client's swatches. */
 private val ROLE_COLORS = listOf(
     0x99AAB5, 0x1ABC9C, 0x2ECC71, 0x3498DB, 0x9B59B6, 0xE91E63,
     0xF1C40F, 0xE67E22, 0xE74C3C, 0x95A5A6, 0x11806A, 0x1F8B4C,
@@ -63,11 +62,6 @@ private val ROLE_COLORS = listOf(
 fun roleColor(value: Int, fallback: Color): Color =
     if (value == 0) fallback else Color(0xFF000000L.toInt() or value)
 
-/**
- * Role list + editor. Every gate here mirrors services/membership.rs; the server
- * re-checks all of it, so this only decides what is offered, never what is
- * allowed.
- */
 @Composable
 fun RolesScreen(
     detail: ServerDetail,
@@ -231,8 +225,6 @@ private fun RoleEditor(
     var confirmDelete by remember { mutableStateOf(false) }
 
     val original = role.permissions.toPermissionBits()
-    // Bits the actor may flip. Anything else renders disabled rather than
-    // failing at save time with a 403.
     val allowed = Hierarchy.togglableBits(detail, selfId)
 
     val dirty = name.trim() != role.name || color != role.color || hoist != role.hoist ||

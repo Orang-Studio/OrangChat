@@ -1,4 +1,3 @@
-//! Role / member / moderation REST, mounted under /api. Mirrors routes/roles.ts.
 
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -76,9 +75,6 @@ async fn create_role(
     let hoist = body.get("hoist").and_then(Value::as_bool);
     let mentionable = body.get("mentionable").and_then(Value::as_bool);
 
-    // MANAGE_ROLES and the escalation check are enforced inside create_role,
-    // which is the only place that has both the actor's bitfield and the
-    // requested one.
     let r = role::create_role(
         &state,
         &server_id,
@@ -190,7 +186,6 @@ async fn update_role(
     Ok(Json(json!(dto)))
 }
 
-/// Bulk reorder for drag-and-drop role lists: `[{ id, position }, …]`.
 async fn reorder_roles(
     State(state): State<AppState>,
     user: AuthUser,
@@ -214,16 +209,11 @@ async fn reorder_roles(
             .get("position")
             .and_then(Value::as_i64)
             .ok_or_else(|| bad_request("Invalid input"))?;
-        // 0 is allowed through here so a client can send its whole list back with
-        // @everyone still at 0. reorder_roles skips unchanged entries and is what
-        // rejects an actual move to or from position 0.
         if !(0..=100_000).contains(&pos) {
             return Err(bad_request("Invalid position"));
         }
         positions.push((id.to_string(), pos as i32));
     }
-    // A duplicate id in one payload would make the final position depend on
-    // statement order, which the caller cannot predict.
     let mut seen: Vec<&str> = positions.iter().map(|(id, _)| id.as_str()).collect();
     seen.sort_unstable();
     let unique = seen.len();
@@ -339,7 +329,6 @@ async fn set_nickname(
         target_param
     };
 
-    // nickname is required in body; null clears it.
     if !body
         .as_object()
         .map(|o| o.contains_key("nickname"))
@@ -373,12 +362,6 @@ async fn set_nickname(
     ))))
 }
 
-/// `{ "durationSeconds": 600 }` to time someone out, `{ "durationSeconds": null }`
-/// to lift it.
-///
-/// Takes a duration rather than an absolute timestamp so the deadline is set by
-/// the server's clock: a client with a skewed or forged clock cannot ask for a
-/// timeout that expires in the past.
 async fn set_timeout(
     State(state): State<AppState>,
     user: AuthUser,
@@ -392,7 +375,7 @@ async fn set_timeout(
     {
         return Err(bad_request("durationSeconds is required"));
     }
-    const MAX_TIMEOUT_SECONDS: i64 = 28 * 24 * 3600; // Discord's 28-day ceiling
+    const MAX_TIMEOUT_SECONDS: i64 = 28 * 24 * 3600;
     let until = match body.get("durationSeconds") {
         Some(Value::Null) => None,
         Some(v) => {
@@ -436,8 +419,6 @@ async fn kick_member(
 ) -> AppResult<impl IntoResponse> {
     membership::require_permission(&state, &server_id, &user.user_id, KICK_MEMBERS).await?;
     moderation::kick_member(&state, &server_id, &target_id, &user.user_id).await?;
-    // A bot leaving is not a moderation event, and `bot.remove` keeps it
-    // distinguishable from member.kick in the audit log, matching bot.add.
     let (action, target_type) = if bot::is_bot(&state, &target_id).await? {
         (audit::action::BOT_REMOVE, "user")
     } else {

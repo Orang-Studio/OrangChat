@@ -7,12 +7,6 @@ import okhttp3.HttpUrl
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Minimal persistent CookieJar so the httpOnly refresh-token cookie survives
- * process death. Backed by the encrypted TokenStore prefs. Keyed by cookie name
- * (the backend uses a single rotating refresh cookie), stored as its Set-Cookie
- * serialization so attributes (path, expiry, httpOnly, secure) round-trip.
- */
 @Singleton
 class PersistentCookieJar @Inject constructor(
     private val tokenStore: TokenStore,

@@ -1,15 +1,5 @@
 package lt.oranges.orangchat.util
 
-/**
- * Discord-style markdown, parsed into a structure Compose can render. Port of
- * the web client's lib/markdown.tsx - same subset, same precedence:
- *   **bold**  *italic* / _italic_  __underline__  ~~strike~~  `code`
- *   ```fenced code```  > blockquote  [label](url)  bare http(s) links
- *   @username and <@userId> mentions  @everyone / @here
- *
- * Parsing is kept free of Compose types so it stays unit-testable; MessageText
- * turns these nodes into an AnnotatedString.
- */
 
 sealed interface MdNode {
     data class Text(val text: String) : MdNode
@@ -19,10 +9,8 @@ sealed interface MdNode {
     data class Strike(val children: List<MdNode>) : MdNode
     data class Code(val text: String) : MdNode
     data class Link(val label: List<MdNode>, val url: String) : MdNode
-    /** [name] is already resolved; [isSelf] marks a mention of the viewer. */
     data class Mention(val userId: String, val name: String, val isSelf: Boolean) : MdNode
     data class Everyone(val keyword: String) : MdNode
-    /** A resolved `<:name:id>`. Unresolvable ones stay Text, Discord-style. */
     data class CustomEmoji(val id: String, val name: String, val url: String, val animated: Boolean) : MdNode
 }
 
@@ -32,10 +20,8 @@ sealed interface MdBlock {
     data class CodeBlock(val lang: String, val body: String) : MdBlock
 }
 
-/** A mentionable user, keyed by handle: the stable id plus the label to show. */
 data class MentionUser(val id: String, val name: String)
 
-/** Just enough of a custom emoji to draw it; mirrors the shared `Emoji` type. */
 data class EmojiRef(
     val id: String,
     val name: String,
@@ -43,7 +29,6 @@ data class EmojiRef(
     val animated: Boolean = false,
 )
 
-/** Convert manually typed `:name:` references to durable message tokens. */
 fun normalizeCustomEmojiNames(content: String, emojis: Map<String, EmojiRef>): String {
     val byName = emojis.values.associateBy { it.name.lowercase() }
     return EmojiTokens.resolveShortcodes(content) { name ->
@@ -51,26 +36,16 @@ fun normalizeCustomEmojiNames(content: String, emojis: Map<String, EmojiRef>): S
     }
 }
 
-/**
- * Names for mention resolution plus the viewer, so self-mentions stand out.
- *
- * Two encodings are live at once: composers write plain `@username` so the raw
- * text stays readable, while `<@id>` predates it and still sits in older
- * messages. [names] resolves the latter, [usernames] the former.
- */
 data class MentionContext(
     val names: Map<String, String> = emptyMap(),
-    /** username (lowercased) -> (userId, label), for resolving `@username`. */
     val usernames: Map<String, MentionUser> = emptyMap(),
     val selfId: String? = null,
-    /** emojiId -> emoji, for resolving `<:name:id>` tokens. */
     val emojis: Map<String, EmojiRef> = emptyMap(),
 )
 
 private val FENCE = Regex("```([\\w+-]*)\\n?([\\s\\S]*?)```")
 private val QUOTE_LINE = Regex("^>\\s?(.*)$")
 
-// Ordered so greedier delimiters win (*** before **, ** before *).
 private val INLINE_CODE = Regex("^`([^`\\n]+)`")
 private val BOLD_ITALIC = Regex("^\\*\\*\\*([\\s\\S]+?)\\*\\*\\*")
 private val BOLD = Regex("^\\*\\*([\\s\\S]+?)\\*\\*")

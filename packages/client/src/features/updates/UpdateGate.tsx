@@ -6,18 +6,10 @@ import { desktop } from "../../lib/desktop";
 import { fetchUpdatePolicy, shouldPrompt, useUpgradeGate } from "./upgradeGate";
 import { t } from "../../lib/i18n";
 
-/** Re-ask periodically so a long-running window notices a release. */
+
 const POLL_MS = 6 * 60 * 60 * 1000;
 
-/**
- * The three update severities, rendered.
- *
- * `optional` and `recommended` differ only in insistence - both are dismissible
- * and neither blocks anything. `required` is different in kind: the server has
- * already stopped answering this build, so the overlay is not a warning about a
- * future problem but an explanation of a present one, and there is nothing
- * useful behind it to dismiss it back to.
- */
+
 export function UpdateGate() {
   const severity = useUpgradeGate((s) => s.severity);
   const latest = useUpgradeGate((s) => s.latest);
@@ -84,10 +76,7 @@ function UpgradeWall({ latest }: { latest: string | null }) {
   );
 }
 
-/**
- * The desktop shell can fetch and stage the update itself; anywhere else the
- * only honest action is to reload and take whatever the server now serves.
- */
+
 function UpdateAction() {
   const check = desktop?.checkForUpdates;
   if (check) {

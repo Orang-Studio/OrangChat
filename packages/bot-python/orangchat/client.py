@@ -19,7 +19,6 @@ DEFAULT_BASE_URL = "https://orangchat.lt"
 Handler = Callable[..., Awaitable[None] | None]
 H = TypeVar("H", bound=Handler)
 
-#: Gateway event -> the name handlers register under.
 _EVENT_MAP = {
     "message:new": "message",
     "message:updated": "message_update",
@@ -66,7 +65,6 @@ class Client:
         """The bot's own account, once :meth:`start` has connected."""
         return self._user
 
-    # ── handler registration ────────────────────────────
 
     def event(self, func: H) -> H:
         """Register a handler by name: ``on_message`` handles ``message``."""
@@ -90,23 +88,15 @@ class Client:
                 if inspect.isawaitable(result):
                     await result
             except Exception:
-                # One bad handler must not take the gateway down. Logged with a
-                # traceback rather than swallowed, so it is still diagnosable.
                 log.exception("error in '%s' handler", event)
 
-    # ── gateway ─────────────────────────────────────────
 
     def _register_gateway_handlers(self) -> None:
         @self._sio.on("message:new")
         async def _on_message(data: dict[str, Any]) -> None:
-            # A bot has no key for an encrypted message and would only ever see
-            # an empty body, so it never reaches a handler as a blank message.
             if data.get("ciphertext"):
                 return
             author = data.get("author") or {}
-            # Bots that answer themselves loop forever. This is the most common
-            # way a first bot takes a server down, so it is prevented here
-            # rather than left to every handler to remember.
             if self._user and author.get("id") == self._user.id:
                 return
             await self._dispatch("message", Message.from_dict(data, self))
@@ -143,15 +133,12 @@ class Client:
             raise OrangChatError(400, str(message))
         return res.get("data")
 
-    # ── lifecycle ───────────────────────────────────────
 
     async def start(self) -> None:
         """Connect to the gateway and block until disconnected."""
         self._user = await self.rest.me()
         await self._sio.connect(
             self._base_url,
-            # `Bot <token>`, mirroring the REST scheme. The server reads this
-            # same field for people's JWTs and branches on the prefix.
             auth={"token": f"Bot {self._token}"},
             transports=["websocket"],
         )
@@ -176,7 +163,6 @@ class Client:
         except KeyboardInterrupt:
             pass
 
-    # ── actions ─────────────────────────────────────────
 
     async def send_message(
         self, channel_id: str, content: str, *, reply_to_id: str | None = None

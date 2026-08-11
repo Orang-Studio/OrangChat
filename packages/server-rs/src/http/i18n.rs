@@ -1,21 +1,3 @@
-//! Server-served string catalogs.
-//!
-//! The Android APK bakes ten locales in at build time, which means a typo
-//! fix or a brand-new language costs an APK release - and the release channel
-//! is a full download plus the system installer's confirmation. This is the
-//! lightweight path: the server serves the same catalogs the app already
-//! ships, keyed by resource name, so a fix is a commit of a JSON file and the
-//! app picks it up on its next poll. The bundled resources stay the offline
-//! fallback; the fetched catalog only overrides individual keys.
-//!
-//! Catalogs live in the repo under `<dir>/<platform>/<code>.json`, authored by
-//! `android/tools/export_server_catalogs.py` from `res/values-*/strings.xml`
-//! and loaded once at startup. Adding a language is adding a `values-xx/`
-//! directory, exporting, and restarting - no database, no admin surface.
-//!
-//! Deliberately unauthenticated and exempt from the version wall (merged after
-//! it, like `/updates/policy`): a retired build still gets string fixes, and
-//! the request is only ever three small GETs per device per hour.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -33,10 +15,6 @@ use crate::state::AppState;
 
 pub const DEFAULT_PLATFORM: &str = "android";
 
-/// One language's full catalogue: every bundled string key plus its
-/// translation, as shipped by the export script. `rev` is a content hash, so
-/// clients can short-circuit the fetch and the hash never needs manual
-/// bookkeeping when a translator edits a file.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Catalog {
     pub code: String,
@@ -45,18 +23,11 @@ pub struct Catalog {
     pub strings: HashMap<String, String>,
 }
 
-/// All catalogs the server can serve, laid out as platform → code → catalog so
-/// a future web client can hold its own key space (`i18n/web/`) without
-/// changing the Android contract.
 pub struct I18nStore {
     platforms: HashMap<String, HashMap<String, Arc<Catalog>>>,
 }
 
 impl I18nStore {
-    /// Reads every `<dir>/<platform>/*.json`. A missing or unreadable entry
-    /// logs and is skipped; a missing root logs once and yields an empty
-    /// store, so an unconfigured deployment keeps serving with resources-only
-    /// fallback rather than failing to boot.
     pub fn load(dir: &str) -> Self {
         let mut platforms: HashMap<String, HashMap<String, Arc<Catalog>>> = HashMap::new();
         let Ok(root) = std::fs::read_dir(dir) else {
@@ -107,8 +78,6 @@ impl I18nStore {
         I18nStore { platforms }
     }
 
-    /// The catalogs for `platform`, in language-code order so the picker list
-    /// is deterministic across restarts.
     pub fn languages(&self, platform: &str) -> Vec<Arc<Catalog>> {
         let mut list: Vec<Arc<Catalog>> = self
             .platforms
@@ -133,9 +102,6 @@ pub fn routes() -> Router<AppState> {
         .route("/i18n/catalog", get(catalog))
 }
 
-/// Every language the server can serve for a platform. The client merges this
-/// with what it shipped, which is what lets a language appear in the picker
-/// without an app update.
 async fn languages(
     State(state): State<AppState>,
     Query(q): Query<HashMap<String, String>>,
@@ -156,8 +122,6 @@ async fn languages(
     Ok(Json(json!(list)))
 }
 
-/// A language's full catalogue. The client sends the `rev` it has cached; a
-/// match answers 304 and the client keeps what it has.
 async fn catalog(
     State(state): State<AppState>,
     Query(q): Query<HashMap<String, String>>,

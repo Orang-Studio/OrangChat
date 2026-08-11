@@ -13,7 +13,7 @@ import type {
 } from "@orangchat/shared";
 import { api } from "../../lib/api";
 
-/** GET /servers/:id response - server plus everything the shell needs. */
+
 export interface ServerDetail {
   server: Server;
   channels: Channel[];

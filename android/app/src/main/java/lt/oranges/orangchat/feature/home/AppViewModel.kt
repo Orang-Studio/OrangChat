@@ -53,12 +53,6 @@ import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
 
-/**
- * Activity-scoped store for the authenticated app: server rail, channel/member
- * lists, per-channel message caches, DMs, friends, presence and typing. Applies
- * live Socket.IO events so the UI stays in sync with the backend.
- */
-/** Senders refresh every 4s (ChatPane's TYPING_THROTTLE_MS); this is that plus grace. */
 private const val TYPING_TTL_MS = 6_000L
 
 @HiltViewModel
@@ -88,29 +82,18 @@ class AppViewModel @Inject constructor(
         val myCode: String? = null,
         val strictHere: Boolean = false,
         val error: String? = null,
-        /**
-         * Participants with no device that can hold a key, which is the only
-         * reason a direct conversation is still plaintext (docs/E2EE.md §10.1).
-         * Non-empty means the conversation must be labelled plaintext rather
-         * than dressed up as encrypted-and-pending.
-         */
         val waitingOn: List<String> = emptyList(),
     )
 
-    /** Unread dots + mention badges; hydrated on login, then kept live. */
     val unreads = unreadStore.states
 
-    /** A conversation a notification, shortcut or bubble asked us to open. */
     val pendingConversation = pendingConversationStore.channelId
 
-    /** An invite link the app was opened with, once there's a shell to show it. */
     val pendingInvite = pendingInviteStore.code
     val pendingShare = pendingShareStore.share
 
-    /** A QR sign-in token the app was opened with, once there's a signed-in shell. */
     val pendingQrLogin = pendingQrLoginStore.token
 
-    /** A contact code the app was opened with (docs/E2EE.md §6.7). */
     val pendingVerify = pendingVerifyStore.code
     val pendingTransfer = pendingTransferStore.code
 
@@ -128,7 +111,6 @@ class AppViewModel @Inject constructor(
     private val _qrError = MutableStateFlow<String?>(null)
     val qrError: StateFlow<String?> = _qrError.asStateFlow()
 
-    /** Confirm a web sign-in: report the scan, then approve. onDone on success. */
     fun approveQrLogin(token: String, onDone: () -> Unit) {
         viewModelScope.launch {
             _qrApproving.value = true
@@ -147,15 +129,10 @@ class AppViewModel @Inject constructor(
     }
 
     private val _loadingOlder = MutableStateFlow<Set<String>>(emptySet())
-    /** Channels with an older-page fetch in flight. */
     val loadingOlder: StateFlow<Set<String>> = _loadingOlder.asStateFlow()
 
     private val _channelsAtStart = MutableStateFlow<Set<String>>(emptySet())
 
-    /**
-     * Channels whose history we have reached the start of. Exposed because a
-     * jump to a search hit has to know when to stop asking for older pages.
-     */
     val channelsAtStart: StateFlow<Set<String>> = _channelsAtStart.asStateFlow()
 
     val session: StateFlow<SessionState> = authRepository.session
@@ -172,16 +149,9 @@ class AppViewModel @Inject constructor(
     private val _messages = MutableStateFlow<Map<String, List<Message>>>(emptyMap())
     val messages: StateFlow<Map<String, List<Message>>> = _messages.asStateFlow()
 
-    /** Local optimistic rows that have not yet been confirmed by the server. */
     private val _pendingMessageIds = MutableStateFlow<Set<String>>(emptySet())
     val pendingMessageIds: StateFlow<Set<String>> = _pendingMessageIds.asStateFlow()
 
-    /**
-     * Rows the server refused, still on screen awaiting a retry or a delete.
-     *
-     * Disjoint from [pendingMessageIds] by construction: a row is in flight or
-     * it has failed, never both, and retrying moves it back across.
-     */
     private val _failedMessageIds = MutableStateFlow<Set<String>>(emptySet())
     val failedMessageIds: StateFlow<Set<String>> = _failedMessageIds.asStateFlow()
 
@@ -196,23 +166,12 @@ class AppViewModel @Inject constructor(
 
     private val pendingOutbox = mutableListOf<PendingOutgoing>()
 
-    /**
-     * What a rejected row needs to be sent again, held out of [pendingOutbox]
-     * so the flush loop does not pick it back up on its own - the server said
-     * no, and retrying is the user's call.
-     *
-     * In memory only, unlike [pendingOutbox], which is mirrored into the
-     * encrypted queue store. Persisting these would put them back through
-     * restorePendingMessages on the next launch, which re-sends them - the
-     * exact loop the reject path exists to break.
-     */
     private val failedOutbox = mutableListOf<PendingOutgoing>()
     private var outboxJob: Job? = null
 
     private val _typing = MutableStateFlow<Map<String, Set<String>>>(emptyMap())
     val typing: StateFlow<Map<String, Set<String>>> = _typing.asStateFlow()
 
-    /** "channelId:userId" → the pending expiry, cancelled by every refresh. */
     private val typingExpiry = mutableMapOf<String, Job>()
 
     private val _presence = MutableStateFlow<Map<String, PresenceStatus>>(emptyMap())
@@ -245,13 +204,11 @@ class AppViewModel @Inject constructor(
     private val _emojis = MutableStateFlow<Map<String, EmojiRef>>(emptyMap())
     val emojis: StateFlow<Map<String, EmojiRef>> = _emojis.asStateFlow()
 
-    /** The rows [_emojis] was built from, kept so they can be written back out. */
     private var emojiCatalog: List<Emoji> = emptyList()
 
     private val _sounds = MutableStateFlow<List<Sound>>(emptyList())
     val sounds: StateFlow<List<Sound>> = _sounds.asStateFlow()
 
-    /** Coalesce bursts of message/realtime updates into one encrypted file write. */
     private val messageCacheJobs = mutableMapOf<String, Job>()
     private var navigationCacheJob: Job? = null
     private var serverDetailCacheJob: Job? = null
@@ -259,8 +216,6 @@ class AppViewModel @Inject constructor(
 
     init {
         observeSocket()
-        // The push path runs in this process but has no view of navigation, so
-        // the open conversation is mirrored somewhere both paths can read it.
         viewModelScope.launch {
             _currentChannelId.collect { AppForegroundState.setVisibleChannel(it) }
         }
@@ -270,15 +225,12 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch { authRepository.restoreSession() }
     }
 
-    /** Load everything the home shell needs once authenticated. */
     fun loadInitialData() {
         restorePendingMessages()
         flushQueuedReplies()
         syncEncryptionIdentity()
         viewModelScope.launch {
             hydrateNavigationCache()
-            // Cached rows paint first; these requests then replace them with
-            // current server truth whenever the network is reachable.
             refreshServers()
             refreshDms()
             refreshFriends()
@@ -306,23 +258,12 @@ class AppViewModel @Inject constructor(
 
     private val _e2eeError = MutableStateFlow<String?>(null)
 
-    /** Whatever is currently wrong with this device's encryption identity. */
     val e2eeError: StateFlow<String?> = _e2eeError.asStateFlow()
     private val _conversationEncryption =
         MutableStateFlow<Map<String, ConversationEncryptionInfo>>(emptyMap())
     val conversationEncryption: StateFlow<Map<String, ConversationEncryptionInfo>> =
         _conversationEncryption.asStateFlow()
 
-    /**
-     * Gives a signed-in account an encryption identity if it has none, and
-     * audits its own device log on every start.
-     *
-     * Self-monitoring is the part that matters: if the server ever mints a
-     * device or a whole identity in this account's name, this is where the
-     * account's own devices see something they never created. Catching it here
-     * is what lets a conversation be protected without asking the other person
-     * to do anything (docs/E2EE.md §6.1).
-     */
     private fun syncEncryptionIdentity() = viewModelScope.launch {
         val userId = authRepository.currentUser?.id ?: return@launch
         e2eeRepository.setGlobalStrict(authRepository.currentUser?.e2eeStrict == true)
@@ -330,9 +271,6 @@ class AppViewModel @Inject constructor(
         if (local == null || local.userId != userId) {
             val enrolled = runCatching { e2eeRepository.enrol(userId) }
             if (enrolled.isSuccess) return@launch
-            // An account that already has devices is the normal case here: this
-            // phone simply is not one of them yet, and adding it needs the
-            // transfer flow and a code from a device that is.
         }
         runCatching { e2eeRepository.selfMonitor(userId) }
             .onFailure { _e2eeError.value = it.message }
@@ -342,7 +280,6 @@ class AppViewModel @Inject constructor(
         _e2eeError.value = null
     }
 
-    /** Contact verification scanned in from a code (§6.7). */
     fun verifyScannedContact(raw: String, onDone: (Boolean, String?) -> Unit) {
         viewModelScope.launch {
             runCatching { e2eeRepository.acceptScannedContact(raw) }
@@ -354,7 +291,6 @@ class AppViewModel @Inject constructor(
         }
     }
 
-    /** DM-scoped scanner: never verify a different account than the header names. */
     fun verifyScannedContactFor(
         raw: String,
         expectedUserId: String,
@@ -379,19 +315,8 @@ class AppViewModel @Inject constructor(
 
     fun myContactQr(): String? = e2eeRepository.myContactQr()
 
-    /** How a typed safety code compared with the one this device derived (§6.6). */
     enum class SafetyNumberVerdict { MATCH, MISMATCH, INCOMPLETE, UNAVAILABLE }
 
-    /**
-     * The half of verification that works at a distance. Reading sixty digits
-     * down a phone call was already the documented way out, but with nowhere to
-     * type the answer it ended in a comparison the app never learned the result
-     * of - so a remote pair could never reach verified, and verify-first mode
-     * was reachable only by people standing next to each other.
-     *
-     * A group's number stays informational (§6.3): a match confirms everyone is
-     * in the same group with the same people, and pins nothing.
-     */
     fun compareSafetyNumber(
         channelId: String,
         peerUserIds: List<String>,
@@ -428,9 +353,6 @@ class AppViewModel @Inject constructor(
         group: Boolean,
     ) = viewModelScope.launch {
         runCatching {
-            // A conversation still in plaintext has to say so and name who it is
-            // waiting on; treating "no lock yet" as an absent icon leaves people
-            // assuming a protection they do not have.
             val channel = runCatching { e2eeRepository.channelState(channelId) }.getOrNull()
             val waitingOn = if (channel != null && !channel.e2ee && !channel.capable) {
                 val withDevices = channel.memberDevices.map { it.userId }.toSet()
@@ -462,10 +384,6 @@ class AppViewModel @Inject constructor(
     }
 
     fun resetConversationEncryption(channelId: String) = viewModelScope.launch {
-        // Only the reset somebody asked for is announced, and the server writes
-        // that notice itself. The automatic rotations - a device joining, an
-        // epoch expiring - happen constantly and say nothing about the
-        // conversation that anyone chose, so they stay silent.
         runCatching { e2eeRepository.rotate(channelId, announce = true) }
             .onFailure { _error.value = it.message ?: "Could not reset encryption" }
     }
@@ -476,15 +394,8 @@ class AppViewModel @Inject constructor(
             val info = current[channelId] ?: ConversationEncryptionInfo()
             current + (channelId to info.copy(strictHere = enabled))
         }
-        // Stored server-side so the server is the one that announces it, in both
-        // directions: a rule only one side set is one the other can discover only
-        // by tripping over it.
         viewModelScope.launch { runCatching { e2eeRepository.pushStrictFor(channelId, enabled) } }
         if (enabled) {
-            // §6.5: a fresh key wrapped only to checked devices. It legitimately
-            // cannot be minted until this contact *is* checked, and that is the
-            // state the user just asked for - reporting it as a failure would
-            // make the setting look broken at the moment it started working.
             viewModelScope.launch {
                 runCatching { e2eeRepository.rotate(channelId) }.onFailure { error ->
                     if (error !is E2eeRepository.VerificationRequiredException) {
@@ -495,18 +406,11 @@ class AppViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Quick replies still in the outbox when the app opens. The retry job
-     * normally gets there first; this only matters when the app is opened
-     * before the system has run it.
-     */
     private fun flushQueuedReplies() = viewModelScope.launch {
         replyOutbox.all().forEach { entry ->
             runCatching { serverRepository.sendMessage(entry.channelId, entry.text) }
                 .onSuccess { sent ->
                     replyOutbox.remove(entry)
-                    // Only into a channel already held: seeding a cache with one
-                    // message would make opening it skip its history load.
                     if (_messages.value.containsKey(sent.channelId)) appendMessage(sent)
                     notificationHelper.clearUnsentMarkers(entry.channelId)
                 }
@@ -546,10 +450,6 @@ class AppViewModel @Inject constructor(
         scheduleNavigationCache()
     }
 
-    /**
-     * Every emoji the viewer can type, across all their servers - messages carry
-     * ids, so a DM can legitimately show an emoji from a shared server.
-     */
     fun refreshEmojis() = viewModelScope.launch {
         runCatching { serverRepository.listUsableEmojis() }
             .onSuccess { list ->
@@ -565,14 +465,6 @@ class AppViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Sounds from every server the user is in, so the soundboard works in any
-     * voice room, mirroring how usable emoji span servers.
-     *
-     * A failed fetch says nothing about which sounds exist, so the cached set
-     * is left alone; emptying it here left an offline start with a blank
-     * soundboard it had no way to refill.
-     */
     fun refreshSounds() = viewModelScope.launch {
         runCatching { serverRepository.listUsableSounds() }
             .onSuccess {
@@ -638,23 +530,12 @@ class AppViewModel @Inject constructor(
         _currentChannelId.value = channelId
         socketManager.joinChannel(channelId)
         if (_messages.value[channelId] == null) loadHistory(channelId)
-        // Opening a channel reads it, locally and on the server.
         unreadStore.setActiveChannel(channelId)
         scheduleNavigationCache()
         notificationHelper.clearConversationNotifications(channelId)
         viewModelScope.launch { runCatching { serverRepository.markChannelRead(channelId) } }
     }
 
-    /**
-     * Open a conversation named from outside the shell - a notification tap, a
-     * conversation shortcut, a bubble - reporting whether it turned out to be a
-     * DM so the caller can put the right area behind it.
-     *
-     * A notification carries a channel id and nothing else, and on a cold start
-     * neither the DM list nor any server is loaded yet. Asking the server which
-     * one owns the channel is what keeps the chat from opening nameless, with no
-     * members to mention and nothing behind the back button.
-     */
     fun openConversation(channelId: String, onOpened: (isDm: Boolean) -> Unit) = viewModelScope.launch {
         val known = _dms.value.any { it.id == channelId } ||
             _serverDetail.value?.channels?.any { it.id == channelId } == true
@@ -667,12 +548,9 @@ class AppViewModel @Inject constructor(
             selectServer(serverId).join()
         }
         selectChannel(channelId)
-        // Nothing owns it, so it is a DM - including one whose list has not
-        // arrived yet, which is the usual case on a cold start from a tap.
         onOpened(serverId == null)
     }
 
-    /** Read a conversation without opening it - the long-press menu's action. */
     fun markChannelRead(channelId: String) = viewModelScope.launch {
         unreadStore.markRead(channelId)
         scheduleNavigationCache()
@@ -680,15 +558,10 @@ class AppViewModel @Inject constructor(
         runCatching { serverRepository.markChannelRead(channelId) }
     }
 
-    /** The chat pane closed; activity in that channel counts as unread again. */
     fun clearActiveChannel() {
         unreadStore.setActiveChannel(null)
     }
 
-    /**
-     * Fetch the page before the oldest message we hold. Channels we have read to
-     * the end of are remembered so scrolling up cannot re-request forever.
-     */
     fun loadOlderMessages(channelId: String) = viewModelScope.launch {
         if (channelId in _loadingOlder.value || channelId in _channelsAtStart.value) return@launch
         val oldest = _messages.value[channelId]?.firstOrNull() ?: return@launch
@@ -701,11 +574,6 @@ class AppViewModel @Inject constructor(
                     val items = e2eeRepository.decryptAll(page.items.reversed())
                     _messages.update { m ->
                         val held = m[channelId].orEmpty()
-                        // A decrypted row's ordering time can disagree with the
-                        // server's keyset (sender-local clocks), so the page
-                        // cursor can straddle a message we already hold. Dropping
-                        // held ids here is what keeps one id on the list - a
-                        // duplicate would collide in the chat list's LazyColumn.
                         val fresh = items.distinctBy(Message::id).filterNot { pageRow ->
                             held.any { it.id == pageRow.id }
                         }
@@ -729,17 +597,9 @@ class AppViewModel @Inject constructor(
         }
         runCatching { serverRepository.getHistory(channelId) }
             .onSuccess { page ->
-                // History comes newest-first from the cursor API. Keep any
-                // optimistic rows created while this request was in flight.
-                // Encrypted rows arrive with an empty `content`; opening them
-                // here means everything downstream keeps working on plain
-                // messages and never has to know about envelopes.
                 val items = e2eeRepository.decryptAll(page.items.reversed())
                 _messages.update { current ->
                     val existing = current[channelId].orEmpty()
-                    // Failed rows are local-only too, and the server knows
-                    // nothing about them - without this a history refresh would
-                    // quietly delete the very rows the retry affordance is for.
                     val local = _pendingMessageIds.value + _failedMessageIds.value
                     val pending = existing.filter { it.id in local }
                     current + (channelId to mergeHistoryPage(existing, items, pending))
@@ -749,18 +609,6 @@ class AppViewModel @Inject constructor(
             .onFailure { if (cached.isEmpty()) _error.value = it.message }
     }
 
-    /**
-     * Fold a freshly fetched newest page into the history already held.
-     *
-     * Overwriting is what threw the offline cache away: a channel holding 250
-     * cached messages collapsed to the 50 this page carries the moment the
-     * network answered, so scrolling up - or jumping to a search hit - had to
-     * refetch history the app had just deleted.
-     *
-     * Anything older than the page survives, because the page says nothing
-     * about it. Inside the page's own window the server is the whole truth, so
-     * a held message it no longer lists there was deleted and goes with it.
-     */
     private fun mergeHistoryPage(
         existing: List<Message>,
         page: List<Message>,
@@ -817,8 +665,6 @@ class AppViewModel @Inject constructor(
         flushPendingMessages()
     }
 
-    /** Send queued rows in order. Disconnecting cancels the active ack wait; the
-     * same row is tried again after the next connection event. */
     private fun flushPendingMessages() {
         if (!_connected.value || !socketManager.isConnected || outboxJob?.isActive == true) return
         outboxJob = viewModelScope.launch {
@@ -826,9 +672,6 @@ class AppViewModel @Inject constructor(
             try {
                 while (_connected.value && socketManager.isConnected) {
                     val pending = pendingOutbox.firstOrNull() ?: break
-                    // Sealing happens here rather than when the row is queued, so
-                    // a message that waited out a disconnect is encrypted under
-                    // the epoch current when it actually goes.
                     val result = runCatching {
                         val sealed = if (e2eeRepository.shouldEncrypt(pending.channelId)) {
                             e2eeRepository.seal(
@@ -864,26 +707,11 @@ class AppViewModel @Inject constructor(
                             heldForVerification = true
                             return@launch
                         }
-                        // A live server rejection (permissions, slowmode, etc.)
-                        // will not improve after reconnecting, so the row comes
-                        // out of the queue rather than being retried forever.
-                        // It moves to the failed set instead of being deleted:
-                        // the text stays on screen with a retry against it, for
-                        // the case where the reason was temporary after all.
                         rejectPendingMessage(pending.localId)
                         failedOutbox += pending
                         pendingOutbox.removeAll { it.localId == pending.localId }
                         e2eeRepository.removeQueuedMessage(pending.localId)
-                        // The server's own rejections are written for people and
-                        // are worth showing. Anything else is an exception whose
-                        // message is a Kotlin class name, which tells the user
-                        // nothing and hides the real failure - log that instead,
-                        // under a tag that can actually be found in logcat.
                         android.util.Log.e(SEND_TAG, "send failed in ${pending.channelId}", error)
-                        // SerializationException is itself a RuntimeException, so
-                        // it has to be excluded by name rather than by category -
-                        // it is exactly the case that was leaking a model class
-                        // name into the UI where the real error should have been.
                         _error.value = when {
                             error is kotlinx.serialization.SerializationException -> FAILED_TO_SEND
                             else -> error.message?.takeIf { it.isNotBlank() } ?: FAILED_TO_SEND
@@ -892,9 +720,6 @@ class AppViewModel @Inject constructor(
                 }
             } finally {
                 outboxJob = null
-                // A message can be queued after the loop observes an empty
-                // outbox but before this job completes. Do not leave that race
-                // waiting for a future reconnect that may never happen.
                 if (!heldForVerification && _connected.value && pendingOutbox.isNotEmpty()) {
                     flushPendingMessages()
                 }
@@ -905,9 +730,6 @@ class AppViewModel @Inject constructor(
     private fun restorePendingMessages() = viewModelScope.launch {
         val author = authRepository.currentUser?.asUser() ?: return@launch
         val known = pendingOutbox.map(PendingOutgoing::localId).toSet()
-        // Reading the queue walks every entry in the encrypted preference store
-        // and decrypts each one, and that store grows with the message cache.
-        // On the main thread it is a startup freeze that gets worse with use.
         val queued = withContext(Dispatchers.IO) { e2eeRepository.queuedMessages() }
         for (saved in queued) {
             if (saved.id in known) continue
@@ -939,14 +761,6 @@ class AppViewModel @Inject constructor(
     }
 
     private fun confirmPendingMessage(localId: String, sent: Message, opened: Boolean = false) {
-        // Socket acks contain the persisted wire row. In an encrypted
-        // conversation that row has empty `content`, so replacing the optimistic
-        // plaintext with it makes the message disappear until history reloads.
-        //
-        // `opened` is what ends this, rather than the row having gained text: a
-        // message that is only an attachment has no text to gain, so testing for
-        // that looped - decrypt, still empty, decrypt again - and never confirmed
-        // the send.
         if (!opened && sent.ciphertext != null) {
             viewModelScope.launch {
                 confirmPendingMessage(localId, e2eeRepository.decrypt(sent), opened = true)
@@ -954,12 +768,8 @@ class AppViewModel @Inject constructor(
             return
         }
         _pendingMessageIds.update { it - localId }
-        // A retry that lands clears the failure with it.
         _failedMessageIds.update { it - localId }
         failedOutbox.removeAll { it.localId == localId }
-        // Carry the local id onto the confirmed row. The list keys on it, so the
-        // message keeps its identity across the id changing and simply loses the
-        // pending styling instead of being torn down and re-inserted.
         val confirmed = sent.copy(clientId = localId)
         _messages.update { current ->
             val existing = current[confirmed.channelId].orEmpty()
@@ -972,28 +782,16 @@ class AppViewModel @Inject constructor(
         scheduleMessageCache(confirmed.channelId)
     }
 
-    /**
-     * The server refused this row. Keep it on screen, marked as failed.
-     *
-     * It used to be deleted outright, which threw away text the user had
-     * written and typically could not reproduce, with nothing left behind to
-     * say it had happened. Now the row stays put and the chat offers a retry
-     * and a delete against it.
-     */
     private fun rejectPendingMessage(localId: String) {
         _pendingMessageIds.update { it - localId }
         _failedMessageIds.update { it + localId }
     }
 
-    /** Put a rejected row back in the queue and try it again. */
     fun retryFailedMessage(localId: String) {
         val failed = failedOutbox.firstOrNull { it.localId == localId } ?: return
         failedOutbox.removeAll { it.localId == localId }
         _failedMessageIds.update { it - localId }
         pendingOutbox += failed
-        // Back into the queue store as well, so a retry that is still waiting
-        // on a reconnect survives the app being closed - the same guarantee an
-        // ordinary send gets.
         e2eeRepository.saveQueuedMessage(
             failed.localId,
             failed.channelId,
@@ -1006,7 +804,6 @@ class AppViewModel @Inject constructor(
         flushPendingMessages()
     }
 
-    /** Drop a rejected row for good - the old reject behaviour, now on request. */
     fun discardFailedMessage(localId: String) {
         failedOutbox.removeAll { it.localId == localId }
         _failedMessageIds.update { it - localId }
@@ -1073,7 +870,6 @@ class AppViewModel @Inject constructor(
             )
         }
             .onSuccess { updated ->
-                // The ack is authoritative even if the broadcast races or is lost.
                 replaceMessage(updated)
                 onDone(null)
             }
@@ -1113,7 +909,6 @@ class AppViewModel @Inject constructor(
             .onFailure { _error.value = it.message }
     }
 
-    /** Adopt a server just joined by invite - the rail hasn't heard of it yet. */
     fun serverJoined(serverId: String) {
         refreshServers()
         selectServer(serverId)
@@ -1125,10 +920,6 @@ class AppViewModel @Inject constructor(
             .onFailure { _error.value = it.message }
     }
 
-    /**
-     * Reload the detail in place. Unlike selectServer this keeps the open
-     * channel, so a role or member edit does not bounce the user elsewhere.
-     */
     fun refreshServerDetail(serverId: String) = viewModelScope.launch {
         runCatching { serverRepository.getServer(serverId) }
             .onSuccess { detail ->
@@ -1155,7 +946,6 @@ class AppViewModel @Inject constructor(
     private val _serverIconUploading = MutableStateFlow(false)
     val serverIconUploading: StateFlow<Boolean> = _serverIconUploading.asStateFlow()
 
-    /** Upload a picked image and point the server's icon at it. */
     fun uploadServerIcon(serverId: String, uri: android.net.Uri) = viewModelScope.launch {
         _serverIconUploading.value = true
         runCatching {
@@ -1171,15 +961,9 @@ class AppViewModel @Inject constructor(
         _serverIconUploading.value = false
     }
 
-    /**
-     * Clear the icon. "" rather than null: kotlinx is configured with
-     * `explicitNulls = false`, so a null field is dropped before it reaches the
-     * wire and the patch would be a no-op. The server reads "" as a clear.
-     */
     fun removeServerIcon(serverId: String) =
         updateServerSettings(serverId, UpdateServerRequest(iconUrl = ""))
 
-    /** Upload a picked image and point the DM's shared chat background at it. */
     fun setDmBackground(channelId: String, uri: android.net.Uri) = viewModelScope.launch {
         runCatching {
             val part = withContext(Dispatchers.IO) { buildImagePart(appContext, uri) }
@@ -1187,30 +971,23 @@ class AppViewModel @Inject constructor(
             socialRepository.setDmBackground(channelId, uploaded.url)
         }
             .onSuccess {
-                // The background is shared, so changing it changes the room for
-                // everybody in it. The server writes the notice on the same
-                // request, which is how the others find out it was a person and
-                // not a bug.
                 applyDmBackground(channelId, it.backgroundUrl)
             }
             .onFailure { _error.value = it.message ?: "Upload failed" }
     }
 
-    /** Clear the shared chat background. Explicit null, not a patch. */
     fun clearDmBackground(channelId: String) = viewModelScope.launch {
         runCatching { socialRepository.setDmBackground(channelId, null) }
             .onSuccess { applyDmBackground(channelId, null) }
             .onFailure { _error.value = it.message ?: "Failed to clear background" }
     }
 
-    /** Keep the DM list entry in sync with the canonical channel row. */
     private fun applyDmBackground(channelId: String, url: String?) {
         _dms.update { conversations ->
             conversations.map { if (it.id == channelId) it.copy(backgroundUrl = url) else it }
         }
     }
 
-    /** Upload a picked image and make it the group DM's icon. */
     fun setDmIcon(channelId: String, uri: android.net.Uri) = viewModelScope.launch {
         runCatching {
             val part = withContext(Dispatchers.IO) { buildImagePart(appContext, uri) }
@@ -1221,7 +998,6 @@ class AppViewModel @Inject constructor(
             .onFailure { _error.value = it.message ?: "Upload failed" }
     }
 
-    /** Clear the group DM's icon. Explicit null, not a patch. */
     fun clearDmIcon(channelId: String) = viewModelScope.launch {
         runCatching { socialRepository.setDmIcon(channelId, null) }
             .onSuccess { applyDmIcon(channelId, null) }
@@ -1246,7 +1022,6 @@ class AppViewModel @Inject constructor(
             .onFailure { _error.value = it.message }
     }
 
-    // Roles
     fun createRole(serverId: String, name: String) = viewModelScope.launch {
         runCatching { serverRepository.createRole(serverId, name, null, null) }
             .onSuccess { refreshServerDetail(serverId) }
@@ -1265,7 +1040,6 @@ class AppViewModel @Inject constructor(
             .onFailure { _error.value = it.message }
     }
 
-    // Members
     fun assignRole(serverId: String, userId: String, roleId: String) = viewModelScope.launch {
         runCatching { serverRepository.assignRole(serverId, userId, roleId) }
             .onSuccess { refreshServerDetail(serverId) }
@@ -1308,7 +1082,6 @@ class AppViewModel @Inject constructor(
             .onFailure { _error.value = it.message }
     }
 
-    /** Leave a server, then fall back to the DM home. */
     fun leaveServer(serverId: String, onDone: () -> Unit = {}) = viewModelScope.launch {
         runCatching { serverRepository.leaveServer(serverId) }
             .onSuccess {
@@ -1331,7 +1104,6 @@ class AppViewModel @Inject constructor(
             .onFailure { _error.value = it.message }
     }
 
-    /** Mint an invite code for sharing. */
     fun createInvite(serverId: String, onCode: (String) -> Unit) = viewModelScope.launch {
         runCatching { serverRepository.createInvite(serverId) }
             .onSuccess { onCode(it.code) }
@@ -1349,7 +1121,6 @@ class AppViewModel @Inject constructor(
             .onFailure { _error.value = it.message }
     }
 
-    // ── friends actions ─────────────────────────────────
     fun sendFriendRequest(username: String, onDone: (Boolean) -> Unit = {}) = viewModelScope.launch {
         runCatching { socialRepository.sendRequest(username) }
             .onSuccess { refreshFriends(); onDone(true) }
@@ -1368,12 +1139,6 @@ class AppViewModel @Inject constructor(
         runCatching { socialRepository.removeFriend(userId) }.onSuccess { refreshFriends() }
     }
 
-    /**
-     * Drops a conversation from the list. The server decides whether that means
-     * leaving a group for good or just closing a one-on-one, so nothing here
-     * needs to branch on the type - but the open channel does have to be let go
-     * of, or the pane keeps showing a conversation that is no longer listed.
-     */
     fun leaveConversation(channelId: String) = viewModelScope.launch {
         runCatching { socialRepository.leaveDm(channelId) }
             .onSuccess {
@@ -1389,7 +1154,6 @@ class AppViewModel @Inject constructor(
             .onFailure { _error.value = it.message }
     }
 
-    /** Start a group DM with the picked friends. Needs at least two people. */
     fun createGroupDm(userIds: List<String>, onOpened: (String) -> Unit) = viewModelScope.launch {
         if (userIds.size < 2) return@launch
         runCatching { socialRepository.createDm(userIds) }
@@ -1397,7 +1161,6 @@ class AppViewModel @Inject constructor(
             .onFailure { _error.value = it.message }
     }
 
-    /** Add friends to an existing group DM. */
     fun addGroupParticipants(channelId: String, userIds: List<String>, onDone: () -> Unit) = viewModelScope.launch {
         if (userIds.isEmpty()) return@launch
         runCatching { socialRepository.addDmParticipants(channelId, userIds) }
@@ -1428,7 +1191,6 @@ class AppViewModel @Inject constructor(
 
     fun clearError() { _error.value = null }
 
-    // ── realtime ────────────────────────────────────────
     private fun observeSocket() = viewModelScope.launch {
         socketManager.events.collect { event -> applyEvent(event) }
     }
@@ -1444,9 +1206,6 @@ class AppViewModel @Inject constructor(
                 } else if (!event.connected && wasConnected) {
                     outboxJob?.cancel()
                     outboxJob = null
-                    // Once the socket is down, its cached online values are no
-                    // longer trustworthy: offline events may be missed until
-                    // reconnect. Never keep presenting those values as live.
                     _presence.update { statuses ->
                         statuses.mapValues { PresenceStatus.OFFLINE }
                     }
@@ -1456,9 +1215,6 @@ class AppViewModel @Inject constructor(
             }
             is SocketEvent.MessageNew -> {
                 viewModelScope.launch {
-                    // Encrypted broadcasts carry an empty wire `content`.
-                    // Decrypt before matching so the echo can confirm the
-                    // pending plaintext even if the socket ack is lost.
                     val message = e2eeRepository.decrypt(event.message)
                     val selfId = authRepository.currentUser?.id
                     val pending = pendingOutbox.firstOrNull {
@@ -1470,19 +1226,15 @@ class AppViewModel @Inject constructor(
                     if (pending != null) {
                         confirmPendingMessage(pending.localId, message)
                         pendingOutbox.removeAll { it.localId == pending.localId }
-                        // The ack path clears the queue store; this path must too,
-                        // or a restart re-sends a message the server already has.
                         e2eeRepository.removeQueuedMessage(pending.localId)
                     } else {
                         appendMessage(message)
                     }
-                    // Their message landed - stop showing them as typing.
                     clearTyping(message.channelId, message.author.id)
                 }
             }
             is SocketEvent.UnreadActivityEvent -> {
                 val selfId = authRepository.currentUser?.id
-                // Our own messages are not unread to us.
                 if (event.activity.authorId != selfId) {
                     unreadStore.onActivity(
                         channelId = event.activity.channelId,
@@ -1512,7 +1264,6 @@ class AppViewModel @Inject constructor(
             is SocketEvent.ChannelUpdated -> updateServerChannels { list ->
                 list.map { if (it.id == event.channel.id) event.channel else it }
             }.also {
-                // DM background and group-icon changes arrive here too (no serverId).
                 if (event.channel.serverId == null) {
                     applyDmBackground(event.channel.id, event.channel.backgroundUrl)
                     applyDmIcon(event.channel.id, event.channel.iconUrl)
@@ -1568,9 +1319,6 @@ class AppViewModel @Inject constructor(
                 val items = e2eeRepository.decryptAll(page.items)
                 _messages.update { map ->
                     val existing = map[channelId].orEmpty()
-                    // Server rows win, but they carry no local id. Re-attach the
-                    // one we already had or a message confirmed moments ago gets
-                    // re-keyed by this resync and re-animates as if it were new.
                     val localIds = existing.mapNotNull { m -> m.clientId?.let { m.id to it } }.toMap()
                     val merged = (existing + items.map { it.copy(clientId = localIds[it.id]) })
                         .associateBy { it.id }
@@ -1583,19 +1331,11 @@ class AppViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Reload the open server after a reconnect. Presence events sent while the
-     * app had no socket cannot be replayed, while GET /servers/:id overlays the
-     * backend's current Redis presence snapshot onto every member.
-     */
     private fun refreshSelectedServer() {
         val serverId = _serverDetail.value?.server?.id ?: return
         viewModelScope.launch {
             runCatching { serverRepository.getServer(serverId) }
                 .onSuccess { refreshed ->
-                    // A user may switch servers while this request is running.
-                    // In that case the result still contains valid presence,
-                    // but must not replace the newly selected server detail.
                     _serverDetail.update { current ->
                         if (current?.server?.id == serverId) refreshed else current
                     }
@@ -1620,9 +1360,6 @@ class AppViewModel @Inject constructor(
     }
 
     private fun appendMessage(message: Message) {
-        // An encrypted message arrives with an empty `content`, so it has to be
-        // opened before it is stored or notified on - otherwise it lands as a
-        // blank bubble and a blank notification.
         if (message.ciphertext != null) {
             viewModelScope.launch { insertMessage(e2eeRepository.decrypt(message)) }
             return
@@ -1640,7 +1377,6 @@ class AppViewModel @Inject constructor(
                 }) map
             else { isNew = true; map + (message.channelId to (list + message)) }
         }
-        // Clear the author's typing indicator on new message.
         _typing.update { it + (message.channelId to (it[message.channelId].orEmpty() - message.author.id)) }
         if (isNew) {
             updateConversationLatest(message)
@@ -1649,25 +1385,14 @@ class AppViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Local notification decision, driven by the live socket. Fires when the
-     * message is not our own AND (the app is backgrounded OR the message's
-     * channel isn't the focused one), prioritising DMs and @mentions of us.
-     */
     private fun maybeNotify(message: Message) {
         val me = authRepository.currentUser
         if (me == null || message.author.id == me.id) return
-        // Nobody typed a system notice, and buzzing a phone because someone
-        // picked a wallpaper is how a useful notice becomes a muted thread. It
-        // is still there to read when the conversation is opened.
         if (message.isSystemNotice()) return
 
         val isDm = _dms.value.any { it.id == message.channelId }
         val mentionsMe = Mentions.mentionsUser(message.content, me.id, me.username)
         if (AppForegroundState.isOnScreen(message.channelId)) return
-        // Non-DM, non-mention server chatter while merely backgrounded is noisy;
-        // notify for DMs and mentions always, and for other messages only when
-        // that channel isn't the one currently open in the foreground.
         if (!isDm && !mentionsMe && AppForegroundState.isForeground) return
 
         val title = when {
@@ -1693,9 +1418,6 @@ class AppViewModel @Inject constructor(
     }
 
     private fun replaceMessage(message: Message, opened: Boolean = false) {
-        // decrypt() returns the row with its envelope intact, so without this
-        // gate the edited row would loop forever: forget cache, decrypt, still
-        // ciphertext, forget cache, decrypt ... and never reach the list below.
         if (!opened && message.ciphertext != null) {
             e2eeRepository.forgetCachedMessage(message.id)
             viewModelScope.launch {
@@ -1722,11 +1444,6 @@ class AppViewModel @Inject constructor(
         scheduleMessageCache(channelId)
     }
 
-    /**
-     * Senders refresh every 4s, so the expiry is a window plus grace. Each
-     * refresh cancels the pending removal: without that, the timer armed by the
-     * first packet still fires mid-sentence and blinks the indicator off.
-     */
     private fun addTyping(channelId: String, userId: String) {
         _typing.update { it + (channelId to (it[channelId].orEmpty() + userId)) }
         val key = "$channelId:$userId"
@@ -1738,7 +1455,6 @@ class AppViewModel @Inject constructor(
         }
     }
 
-    /** Expiry, or their message arriving - either way they stopped typing. */
     private fun clearTyping(channelId: String, userId: String) {
         typingExpiry.remove("$channelId:$userId")?.cancel()
         _typing.update { it + (channelId to (it[channelId].orEmpty() - userId)) }
@@ -1812,8 +1528,6 @@ class AppViewModel @Inject constructor(
         serverDetailCacheJob = viewModelScope.launch {
             kotlinx.coroutines.delay(CACHE_WRITE_DEBOUNCE_MS)
             if (authRepository.currentUser?.id != userId) return@launch
-            // Do not let a late write from the previously selected server use
-            // the newly selected detail under the old id.
             if (_serverDetail.value?.server?.id == detail.server.id) {
                 runCatching {
                     offlineCache.storeServerDetail(userId, _serverDetail.value ?: detail)
@@ -1857,7 +1571,6 @@ private const val SEND_TAG = "OrangChatSend"
 private const val FAILED_TO_SEND = "Couldn't send that message."
 private const val CACHE_WRITE_DEBOUNCE_MS = 300L
 
-/** Local StateFlow.update shim (kotlinx has it; aliased for older BOMs). */
 private inline fun <T> MutableStateFlow<T>.update(function: (T) -> T) {
     while (true) {
         val prev = value

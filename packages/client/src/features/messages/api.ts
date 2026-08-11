@@ -5,7 +5,7 @@ import { reportKeyFor } from "../e2ee/conversation";
 
 export const PAGE_SIZE = 50;
 
-/** Newest-first page of messages; `before` is the id of the oldest loaded message. */
+
 export async function getMessages(channelId: string, before?: string) {
   const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
   if (before) params.set("before", before);

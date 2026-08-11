@@ -17,17 +17,14 @@ import { PROVIDER_LABEL, ProviderIcon } from "../connections/icons";
 import { SectionTitle } from "./controls";
 import { t } from "../../lib/i18n";
 
-/** Outcome of an OAuth round trip, reported back via the callback redirect. */
+
 const RESULT_MESSAGE: Record<string, string> = {
   linked: "Account linked.",
   cancelled: "Linking was cancelled.",
   failed: "That account couldn't be linked. Please try again.",
 };
 
-/**
- * Read the ?connection= result the callback redirected us back with, then strip
- * it from the URL so a refresh doesn't replay the banner.
- */
+
 function useLinkResult() {
   const [result, setResult] = useState<string | null>(null);
   useEffect(() => {

@@ -32,11 +32,9 @@ interface ProfileDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/** Discord-style profile popup: the shared ProfileCard plus relationship
- * actions (message / add / remove / accept friend). */
+
 export function ProfileDialog({ user, open, onOpenChange }: ProfileDialogProps) {
   const selfId = useAuthStore((s) => s.user?.id);
-  // The card is opened with a copy of the user, so follow presence live instead.
   const presence = usePresenceStore((s) => s[user.id]);
   const client = useQueryClient();
   const navigate = useNavigate();
@@ -47,8 +45,6 @@ export function ProfileDialog({ user, open, onOpenChange }: ProfileDialogProps) 
   const isFriend = friends?.some((f) => f.user.id === user.id) ?? false;
   const outgoing = requests?.outgoing.some((r) => r.user.id === user.id) ?? false;
 
-  // Connections aren't on the User DTO - they'd ride along on every message
-  // author. Fetch them only while a profile is actually open.
   const { data: connections } = useQuery({
     queryKey: ["connections", "user", user.id],
     queryFn: () => getUserConnections(user.id),

@@ -4,8 +4,8 @@ OrangChat bots are ordinary accounts driven by code. They post, react, read
 channel history and respond to events in real time, and they appear in the
 member list with a `BOT` label beside the name.
 
-There are two official SDKs — `@orangchat/bot` for JavaScript/TypeScript and
-`orangchat` for Python — but neither is required. The whole surface is a REST API
+There are two official SDKs - `@orangchat/bot` for JavaScript/TypeScript and
+`orangchat` for Python - but neither is required. The whole surface is a REST API
 plus a Socket.IO gateway, and a bot can be written against those directly.
 
 ## 1. What a bot is
@@ -19,7 +19,7 @@ checks as a person, and anything you can express with roles you can apply to it.
 The consequences are worth stating plainly:
 
 - A bot has no password and no email it can receive at. It cannot sign in to the
-  apps, reset anything, or be recovered — its token is its only credential.
+  apps, reset anything, or be recovered - its token is its only credential.
 - A bot **cannot read DMs.** See §5.
 - Deleting the owner's account deletes their bots.
 
@@ -42,7 +42,7 @@ it more from the roles screen like any other member.
 
 The permission bitfield you request is **intersected with what you hold
 yourself**. Inviting a bot cannot be used to manufacture permissions you were
-never granted — the same rule that governs editing a role.
+never granted - the same rule that governs editing a role.
 
 ## 3. Authentication
 
@@ -76,7 +76,7 @@ identity instead.
 
 The gateway is the same Socket.IO namespace people's clients use. On connect, a
 bot joins the room of every server it is a member of, and receives that traffic
-with no further setup — there is no subscribe step and there are no intents. What
+with no further setup - there is no subscribe step and there are no intents. What
 a bot can see is decided entirely by where it has been invited and what
 permissions it holds there.
 
@@ -175,7 +175,7 @@ async def on_message(message):
 client.run()
 ```
 
-Handlers are registered by name — `on_message` handles `message`. Events:
+Handlers are registered by name - `on_message` handles `message`. Events:
 `ready`, `message`, `message_update`, `message_delete`, `reaction_add`,
 `reaction_remove`, `typing`, `disconnect`. Handlers may be sync or async, and one
 raising an exception is logged rather than taking the gateway down.

@@ -34,10 +34,7 @@ import {
 } from "./api";
 import { t, tCount } from "../../lib/i18n";
 
-/**
- * Rendered client-side so the secret never rides in an image URL. qrcode is
- * ~20 kB, and only ever needed on this screen.
- */
+
 function QrCode({ text }: { text: string }) {
   const [svg, setSvg] = useState<string | null>(null);
 

@@ -1,18 +1,11 @@
-/**
- * The invite link scheme, shared by everything that mints, recognises or
- * follows one: `https://chat.oranges.lt/invite/<code>`.
- */
 
-/**
- * Hosts whose /invite/ links are ours. The deployed origin is listed outright
- * rather than inferred, so a link pasted from production still renders as an
- * invite card when the client is served from localhost in dev.
- */
+
+
 const APP_HOSTS = ["chat.oranges.lt"];
 
 const INVITE_PATH = /^\/invite\/([A-Za-z0-9_-]{1,32})\/?$/;
 
-/** The canonical link to hand to someone. */
+
 export function inviteUrl(code: string): string {
   return `${window.location.origin}/invite/${encodeURIComponent(code)}`;
 }

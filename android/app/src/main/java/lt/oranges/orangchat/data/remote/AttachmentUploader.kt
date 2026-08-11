@@ -45,19 +45,6 @@ import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-/**
- * Turns a picked file into an attachment id that [SocketManager.sendMessage] can
- * reference. Which route it takes depends only on size:
- *
- * * **<= 10MB** - posted to OrangChat, which keeps it as long as the message.
- * * **> 10MB** - posted straight to OrangMove, then registered with OrangChat by
- *   token. The bytes never pass through OrangChat, so a big file is only
- *   uploaded once.
- *
- * OrangMove is an ephemeral store - an hour is the longest it keeps anything -
- * so large attachments come back with an `expiresAt` and stop resolving after
- * it. Nothing here can extend that; the UI shows the deadline instead.
- */
 @Singleton
 class AttachmentUploader @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -69,49 +56,18 @@ class AttachmentUploader @Inject constructor(
 
     companion object {
         private const val TAG = "OrangChatUpload"
-        /** Must match MAX_LOCAL_ATTACHMENT in server-rs/src/http/attachments.rs. */
-        // The encrypted envelope consumes 36 bytes of Cloudinary's 10 MiB cap.
         const val MAX_LOCAL_ATTACHMENT = 10L * 1024 * 1024 - 36
-        /** OrangMove's hard ceiling (MAX_SIZE); nothing larger can be sent. */
         const val MAX_ATTACHMENT = 1024L * 1024 * 1024
-        /** Mirrors attachmentIds.max(10) in shared/schemas.ts. */
         const val MAX_PER_MESSAGE = 10
-        /** OrangMove's MAX_TTL, and so the longest a large file can live. */
         private const val ORANGMOVE_TTL_SECONDS = 3600
-        /**
-         * Long edge of the inline blur, in pixels.
-         *
-         * The binding constraint is MAX_PUSH_CIPHERTEXT_CHARS in server-rs
-         * (services/push.rs): a message whose ciphertext runs past 2600
-         * characters is pushed *without* its envelope, so an over-generous
-         * stamp would trade a black rectangle for a notification that no longer
-         * says anything. The stamp costs roughly 1.8 characters of ciphertext
-         * per byte - base64 into the payload, then base64 again out of the seal
-         * - which leaves about a kilobyte to spend alongside a message's text
-         * and its attachment keys.
-         *
-         * Sixteen pixels is still more detail than BlurHash carries, and blown
-         * up and blurred it is indistinguishable from a bigger one.
-         */
         private const val BLUR_EDGE = 16
-        /**
-         * Hard ceiling, not a target: at [BLUR_EDGE] even pure noise encodes
-         * smaller than this, so tripping it means something is wrong.
-         */
         private const val MAX_BLUR_BYTES = 1024
     }
 
-    /** What the content resolver can tell us about a picked file. */
     data class FileInfo(val name: String, val size: Long, val mimeType: String?) {
-        /** Bound for OrangMove, so it will expire an hour after it's sent. */
         val isEphemeral: Boolean get() = size > MAX_LOCAL_ATTACHMENT
     }
 
-    /**
-     * Name and size for a picked uri. Both are needed before uploading: size
-     * picks the route, and a file with no size can't be streamed with a
-     * Content-Length.
-     */
     fun describe(uri: Uri): FileInfo {
         val resolver = context.contentResolver
         var name: String? = null
@@ -128,15 +84,11 @@ class AttachmentUploader @Inject constructor(
 
         return FileInfo(
             name = name ?: uri.lastPathSegment ?: "file",
-            // A provider that won't report a size can't be uploaded; 0 makes the
-            // caller's own empty-file check report it.
             size = size ?: 0L,
             mimeType = resolver.getType(uri),
         )
     }
 
-    /** Some document providers omit MIME metadata; the extension still tells us
-     * enough to probe media and preserve the sealed payload's real type. */
     private fun resolvedMimeType(info: FileInfo): String? {
         info.mimeType?.takeUnless { it == "application/octet-stream" }?.let { return it }
         return when (info.name.substringAfterLast('.', "").lowercase()) {
@@ -161,10 +113,6 @@ class AttachmentUploader @Inject constructor(
         }
     }
 
-    /**
-     * Upload one file. [onProgress] reports 0–1 as the bytes go out; cancelling
-     * the calling coroutine cancels the request in flight.
-     */
     suspend fun upload(
         uri: Uri,
         info: FileInfo = describe(uri),
@@ -178,15 +126,8 @@ class AttachmentUploader @Inject constructor(
         else uploadToChat(uri, info, onProgress, meta)
     }
 
-    /** Duration (seconds) and, for video, a first-frame still. */
     private data class MediaMeta(val durationSeconds: Double?, val thumbnail: File?)
 
-    /**
-     * Reads a media file's headers on-device so the length - and for video the
-     * first frame - can be attached to the upload. The server stores whatever
-     * the bytes are behind encryption it cannot decode, so this is the only way
-     * a receiver gets a preview without downloading the whole file.
-     */
     private fun probeMedia(uri: Uri, mimeType: String?): MediaMeta {
         val isVideo = mimeType?.startsWith("video/") == true
         val isAudio = mimeType?.startsWith("audio/") == true
@@ -194,7 +135,6 @@ class AttachmentUploader @Inject constructor(
 
         val retriever = MediaMetadataRetriever()
         return try {
-            // A corrupt file throws here; it costs the preview, never the send.
             runCatching { retriever.setDataSource(context, uri) }
                 .getOrElse { return MediaMeta(null, null) }
             val durationMs = runCatching {
@@ -202,8 +142,6 @@ class AttachmentUploader @Inject constructor(
             }.getOrNull()
             val durationSeconds = durationMs?.takeIf { it > 0 }?.div(1000.0)
             val thumbnail = if (isVideo) {
-                // A hair past the very start: some encoders paint their first
-                // frames black.
                 runCatching {
                     retriever.getFrameAtTime(1_000_000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
                 }.getOrNull()?.let { frame -> scaleAndSaveThumb(frame) }
@@ -216,7 +154,6 @@ class AttachmentUploader @Inject constructor(
         }
     }
 
-    /** Scale a video frame down and write it as a JPEG temp file. */
     private fun scaleAndSaveThumb(frame: Bitmap): File? {
         val scale = minOf(1f, 400f / maxOf(frame.width, frame.height))
         val width = maxOf(1, (frame.width * scale).toInt())
@@ -248,11 +185,6 @@ class AttachmentUploader @Inject constructor(
         val ref: SealedAttachmentRef,
     )
 
-    /**
-     * Encrypts before upload. The temporary file contains ciphertext only; the
-     * filename, MIME type, key and nonce travel inside the E2EE message payload.
-     * Streaming through CipherOutputStream avoids holding a large file in heap.
-     */
     suspend fun uploadSealed(
         uri: Uri,
         info: FileInfo = describe(uri),
@@ -289,8 +221,6 @@ class AttachmentUploader @Inject constructor(
             val dimensions = imageDimensions(uri, mimeType)
             val meta = probeMedia(uri, mimeType)
             val preview = createThumbnail(uri, mimeType) ?: meta.thumbnail
-            // Taken before the seal, because the seal deletes its input and
-            // because this one has to survive that upload failing.
             val blur = preview?.let { blurStamp(it) }
             val thumbnail = preview?.let { plain ->
                 try {
@@ -323,10 +253,6 @@ class AttachmentUploader @Inject constructor(
         }
     }
 
-    /**
-     * Makes the preview on-device. Cloudinary never receives readable pixels in
-     * an E2EE conversation, so it cannot make this transformation for us.
-     */
     private fun createThumbnail(uri: Uri, mimeType: String?): File? {
         if (mimeType?.startsWith("image/") != true) return null
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -369,15 +295,6 @@ class AttachmentUploader @Inject constructor(
         }
     }
 
-    /**
-     * The same preview again at postage-stamp size, base64, to travel inside the
-     * message payload rather than as a second upload.
-     *
-     * Decoded from the 400px JPEG the caller already wrote, so it costs one
-     * small decode and no second pass over the original. Returns null rather
-     * than throwing: this is the cheapest thing in the pipeline and the least
-     * worth failing a send over.
-     */
     private fun blurStamp(preview: File): String? = try {
         val decoded = BitmapFactory.decodeFile(preview.path)
         if (decoded == null) {
@@ -404,7 +321,6 @@ class AttachmentUploader @Inject constructor(
         null
     }
 
-    /** Seals and uploads a generated preview as a second opaque blob. */
     private suspend fun sealThumbnail(plain: File): SealedAttachmentRef.Thumb {
         val fileId = E2ee.toHex(E2ee.randomBytes(16))
         val key = E2ee.randomBytes(32)
@@ -491,8 +407,6 @@ class AttachmentUploader @Inject constructor(
                 decodeAttachment(text)
             }
         } finally {
-            // The body streams the file while the call runs, so it must outlive
-            // the response above.
             thumb?.delete()
         }
     }
@@ -530,8 +444,6 @@ class AttachmentUploader @Inject constructor(
     ): Attachment {
         val form = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
-            // Order matters: OrangMove reads fields as they stream in and wants
-            // the ttl before it validates, so it has to precede the file.
             .addFormDataPart("ttl", ORANGMOVE_TTL_SECONDS.toString())
             .addFormDataPart("file", info.name, body(uri, info, onProgress))
             .build()
@@ -544,16 +456,11 @@ class AttachmentUploader @Inject constructor(
         val token = orangMoveClient.newCall(request).await().use { response ->
             val text = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                // OrangMove takes any file type, so a rejection here is about
-                // size, a full store or a bad TTL rather than what the file is.
                 throw IOException(errorFrom(text, "The file service could not accept this file"))
             }
             JSONObject(text).getString("token")
         }
 
-        // The still is small, so it rides the direct route and the registration
-        // claims it by id. A preview that failed to upload costs a thumbnail,
-        // not the file.
         val thumbnail = meta.thumbnail
         val thumbnailId = thumbnail?.let { thumb ->
             try {
@@ -568,7 +475,6 @@ class AttachmentUploader @Inject constructor(
         return registerExternal(token, thumbnailId, meta.durationSeconds)
     }
 
-    /** A client-made video still, posted as its own small attachment. */
     private suspend fun uploadThumbnail(thumb: File): Attachment {
         val form = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
@@ -614,12 +520,6 @@ class AttachmentUploader @Inject constructor(
         return registerExternal(token)
     }
 
-    /**
-     * Hand the token to OrangChat, which reads the file's real name and size back
-     * from OrangMove rather than trusting anything sent from here. The duration
-     * and the claimed preview row are the two things only the sender's device
-     * can know, so they come along explicitly.
-     */
     private suspend fun registerExternal(
         token: String,
         thumbnailId: String? = null,
@@ -644,14 +544,6 @@ class AttachmentUploader @Inject constructor(
         }
     }
 
-    /**
-     * Decode an upload response, saying which body failed when it does.
-     *
-     * A kotlinx failure here names only a model class, and the response that
-     * caused it is gone by the time anyone reads the message - which left an
-     * unexplainable upload error with nothing to debug it from. Log the body,
-     * then rethrow so callers still see a failure.
-     */
     private fun decodeAttachment(text: String): Attachment =
         try {
             json.decodeFromString(text)
@@ -660,7 +552,6 @@ class AttachmentUploader @Inject constructor(
             throw e
         }
 
-    /** OrangChat answers with `{"error": ...}`; OrangMove answers in plain text. */
     private fun errorFrom(body: String, fallback: String): String {
         val text = body.trim()
         if (text.isEmpty()) return fallback
@@ -691,11 +582,6 @@ private class ProgressRequestBody(
     }
 }
 
-/**
- * Streams the picked file straight from the content provider. Reading it into a
- * ByteArray first would mean holding up to a gigabyte in the heap - an OOM on
- * any real device.
- */
 private class UriRequestBody(
     private val resolver: ContentResolver,
     private val uri: Uri,
@@ -725,17 +611,14 @@ private class UriRequestBody(
     }
 }
 
-/** Suspending [Call.enqueue] that cancels the request when the coroutine is cancelled. */
 private suspend fun Call.await(): Response = suspendCancellableCoroutine { cont ->
     cont.invokeOnCancellation { runCatching { cancel() } }
     enqueue(object : Callback {
         override fun onResponse(call: Call, response: Response) {
-            // Nobody is left to close it if the caller already walked away.
             if (cont.isCancelled) response.close() else cont.resume(response)
         }
 
         override fun onFailure(call: Call, e: IOException) {
-            // Cancelling a call surfaces here too; that continuation is gone.
             if (!cont.isCancelled) cont.resumeWithException(e)
         }
     })

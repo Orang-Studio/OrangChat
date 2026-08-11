@@ -5,7 +5,7 @@ export interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   error?: string;
   hint?: string;
-  /** Element rendered inside the field on the right (e.g. a visibility toggle). */
+
   trailing?: ReactNode;
 }
 

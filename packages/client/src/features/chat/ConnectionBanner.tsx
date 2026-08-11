@@ -1,12 +1,7 @@
 import { WifiOff } from "lucide-react";
 import { useConnectionStore } from "../../stores/connection";
 
-/**
- * Live connection status inside an open conversation - the one screen where a
- * dead socket matters. Messages sent while offline stay queued in the outbox
- * and flush on reconnect, so the banner says so instead of leaving sends
- * silently hanging.
- */
+
 export function ConnectionBanner() {
   const status = useConnectionStore((s) => s.status);
 
@@ -21,7 +16,7 @@ export function ConnectionBanner() {
       <span>
         {status === "connecting"
           ? "Connecting…"
-          : "Offline — messages are saved and will be sent when you reconnect"}
+          : "Offline - messages are saved and will be sent when you reconnect"}
       </span>
     </div>
   );

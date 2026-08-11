@@ -26,11 +26,6 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.absoluteUrl
 
-/**
- * Preview of a stored image with Upload and Remove actions. Shared by profile
- * avatars/banners and the server icon - the upload endpoint is the same one in
- * every case, and it re-encodes server-side.
- */
 @Composable
 fun ImageField(
     label: String,

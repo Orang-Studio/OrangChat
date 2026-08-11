@@ -925,7 +925,7 @@ Consequences:
   second blob is sharp, but it is an upload: the frame grab can fail, the upload
   can fail, the row can go unclaimed and be swept, or it can simply not come down
   beside the message. Each of those ends in a permanently black video, and a
-  measurable share of sent clips hit one — so the payload also carries `blur`, a
+  measurable share of sent clips hit one - so the payload also carries `blur`, a
   16px JPEG in base64, which renderers upscale and blur behind the play button.
   It needs no fetch and no row, so it is there offline, in search, and before the
   first paint; the sealed blob replaces it when and if it resolves. Sizing is set
@@ -967,9 +967,9 @@ Both clients can decrypt in the notification path, so the payload becomes:
 - **The decrypt is opt-out.** A device-local "Show message text" setting (web:
   Settings → System → Notifications; Android: Settings → Privacy →
   Notifications) turns the placeholder into the only thing a notification ever
-  says. When it is off the envelope is never opened at all — the keys stay
+  says. When it is off the envelope is never opened at all - the keys stay
   unused rather than producing a plaintext the device has been told to withhold
-  — and the server-composed `body` for a plaintext channel is dropped with it,
+  - and the server-composed `body` for a plaintext channel is dropped with it,
   so the setting does not lie about which conversations it covers. Device-local
   because which screens are safe to read over is a property of the phone, not of
   the account; the web copy lives in IndexedDB (`orangchat-e2ee`, store

@@ -10,15 +10,11 @@ interface Platform {
   href: string;
   Icon: IconType;
   iconClass: string;
-  // Optional extra download shown as a small sub-link (e.g. Linux tarball).
   secondary?: { label: string; href: string };
 }
 
 const BASE = "https://chat.oranges.lt/download";
 
-// Bump these when cutting a release. Filenames are versioned on purpose: the
-// /download/ nginx blocks cache immutably, so a stable name would strand
-// clients on an old build.
 const ANDROID_VER = "0.5.8";
 const DESKTOP_VER = "0.1.5";
 

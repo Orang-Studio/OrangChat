@@ -41,25 +41,14 @@ function VideoSurface({ tile, contain = false }: { tile: VideoTile; contain?: bo
       muted={tile.isLocal}
       className={cn(
         "size-full",
-        // Cropping a thumbnail to fill its cell is fine; cropping the one you
-        // opened to look at properly is not. A screen is never cropped: the
-        // half-read text at its edges is the part being shared.
         contain || screen ? "object-contain" : "object-cover",
-        // Mirroring is what makes your own camera feel like a mirror. Doing it
-        // to your own screen would just render it backwards.
         tile.isLocal && !screen && "-scale-x-100",
       )}
     />
   );
 }
 
-/**
- * One camera filling the window.
- *
- * A livekit Track attaches to as many elements as you like, so this is a second
- * view of the same track rather than a handover - the grid tile underneath keeps
- * playing and is still there when this closes.
- */
+
 function FocusedVideo({ tile, onClose }: { tile: VideoTile; onClose: () => void }) {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -85,7 +74,7 @@ function FocusedVideo({ tile, onClose }: { tile: VideoTile; onClose: () => void 
   );
 }
 
-/** Stable per-track identity: one person can be a camera and a screen at once. */
+
 const keyOf = (tile: VideoTile) =>
   `${tile.identity}:${tile.isLocal ? "self" : "remote"}:${tile.source}`;
 
@@ -249,7 +238,7 @@ function Control({
   );
 }
 
-/** Dedicated DM-call screen, with a compact in-app popup when minimized. */
+
 function DmCallScreen() {
   const call = useCallStore((s) => s.current);
   const session = useVoiceStore((s) => s.session);
@@ -259,13 +248,11 @@ function DmCallScreen() {
   const self = useAuthStore((s) => s.user);
   const { data: conversations } = useConversations();
   const [minimized, setMinimized] = useState(false);
-  /** Which video is blown up, by tile key. */
+
   const [focused, setFocused] = useState<string | null>(null);
   const focusedTile = tiles.find((tile) => keyOf(tile) === focused);
 
   useEffect(() => setMinimized(false), [call?.channelId]);
-  // Their camera going off (or them leaving) takes the fullscreen view with it,
-  // rather than stranding a black rectangle over the call.
   useEffect(() => {
     if (focused && !focusedTile) setFocused(null);
   }, [focused, focusedTile]);
@@ -287,9 +274,6 @@ function DmCallScreen() {
   );
   const screenTiles = tiles.filter((tile) => tile.source === "screen");
 
-  // Our own switches are authoritative here: the roster echo of them arrives a
-  // round-trip late, and lagging our own button is more jarring than lagging
-  // someone else's.
   const voiceFor = (userId: string) =>
     userId === self?.id
       ? { muted: session.muted, deafened: session.deafened }
@@ -453,14 +437,13 @@ function DmCallScreen() {
   );
 }
 
-/** DM calls use a full call screen; server voice video keeps a small grid. */
+
 export function CallStage() {
   const call = useCallStore((s) => s.current);
   const tiles = useVoiceStore((s) => s.videoTiles);
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
 
   const focusedTile = tiles.find((tile) => keyOf(tile) === focusedKey);
-  // A camera that went away cannot stay expanded over everything.
   useEffect(() => {
     if (focusedKey && !focusedTile) setFocusedKey(null);
   }, [focusedKey, focusedTile]);

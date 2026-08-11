@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.dp
 import lt.oranges.orangchat.ui.components.Text
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-/** Startup-only prompt: the existing About screen remains the manual fallback. */
 @Composable
 fun UpdateAvailableDialog(
     manifest: UpdateManifest,

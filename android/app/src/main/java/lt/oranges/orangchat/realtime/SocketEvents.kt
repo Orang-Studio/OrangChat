@@ -14,10 +14,6 @@ import lt.oranges.orangchat.data.model.User
 import lt.oranges.orangchat.data.model.UserActivity
 import lt.oranges.orangchat.data.model.VoiceState
 
-/**
- * Typed mirror of ServerToClientEvents (packages/shared/src/events.ts). The raw
- * Socket.IO JSON payloads are decoded into these and pushed on a SharedFlow.
- */
 sealed interface SocketEvent {
     data class MessageNew(val message: Message) : SocketEvent
     data class MessageUpdated(val message: Message) : SocketEvent
@@ -58,10 +54,6 @@ sealed interface SocketEvent {
     data class DmCallFinished(val ended: DmCallEnded) : SocketEvent
     data class UnreadActivityEvent(val activity: UnreadActivity) : SocketEvent
     data class ChannelRead(val channelId: String) : SocketEvent
-    /**
-     * Carries the url and volume rather than only an id: the clip has to start
-     * the moment it lands, and fetching first would make every punchline late.
-     */
     data class SoundboardPlayed(
         val channelId: String,
         val soundId: String,

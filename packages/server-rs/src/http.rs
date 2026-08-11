@@ -40,22 +40,12 @@ use crate::services::rate_limit;
 use crate::services::update_policy;
 use crate::state::AppState;
 
-/// Whether a request is being made by a person or by a bot. Almost every route
-/// treats the two identically - a bot is a `User` row and the permission checks
-/// are the same - but the handful that must not be reachable by a bot need to be
-/// able to tell. See [`deny_bots`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CallerKind {
     User,
     Bot,
 }
 
-/// Authenticated caller, extracted from the `Authorization` header.
-///
-/// Two schemes: `Bearer <jwt>` for a signed-in person, `Bot <token>` for a bot.
-/// The scheme is explicit rather than sniffed from the token's shape - guessing
-/// would mean a malformed JWT could be probed against the bot-token table, and
-/// SDK authors expect to state which credential they are presenting.
 pub struct AuthUser {
     pub user_id: String,
     pub kind: CallerKind,
@@ -112,22 +102,6 @@ impl FromRequestParts<AppState> for AuthUser {
     }
 }
 
-/// Refuses bot tokens outright, for the route groups that belong to a person.
-///
-/// Bots authenticate as `User` rows, which is what makes them work everywhere
-/// without touching a single existing handler - and is exactly why this exists.
-/// Without it, minting a bot token would also hand out account deletion, session
-/// management, E2EE key material and the owner's linked accounts. Applied per
-/// nest as a default-deny list, so the dangerous surface is enumerated in one
-/// readable place rather than opted into route by route.
-///
-/// This inspects the header rather than extracting `AuthUser`, and that is not
-/// an optimisation. These nests include the routes that *establish* a session -
-/// login, signup, refresh, email verification, the OAuth and QR callbacks - all
-/// of which are reached with no credential at all. Demanding a valid `AuthUser`
-/// here would 401 every one of them and lock the whole site out. A bot token is
-/// only ever presented as the `Bot` scheme, so refusing that scheme is both
-/// sufficient and safe for anonymous callers.
 pub async fn deny_bots(req: Request, next: Next) -> Result<Response, AppError> {
     let presents_bot_token = req
         .headers()
@@ -141,13 +115,6 @@ pub async fn deny_bots(req: Request, next: Next) -> Result<Response, AppError> {
     Ok(next.run(req).await)
 }
 
-/// The user, if there is one. For routes a signed-out visitor may reach but
-/// whose answer is richer once we know who is asking - an invite link lands on
-/// a logged-out browser as readily as an authenticated one.
-///
-/// A bad or expired token reads as absent rather than failing the request: the
-/// caller wanted the anonymous answer to be acceptable, and a stale token that
-/// hard-errored would be worse than no token at all.
 pub struct OptionalAuthUser(pub Option<String>);
 
 #[axum::async_trait]
@@ -167,13 +134,6 @@ impl FromRequestParts<AppState> for OptionalAuthUser {
     }
 }
 
-/// The requesting client's address, for rate-limit bucketing.
-///
-/// `X-Real-IP` is what the nginx vhost in front of us sets from `$remote_addr`,
-/// overwriting anything the client sent, so it is the only header here a caller
-/// can't forge. `X-Forwarded-For` is a fallback for other deployments - its last
-/// entry is the nearest hop's observation - and the peer address covers running
-/// without a proxy at all.
 pub struct ClientIp(pub String);
 
 fn client_ip(headers: &HeaderMap, peer: Option<&SocketAddr>) -> String {
@@ -205,15 +165,6 @@ impl<S: Send + Sync> FromRequestParts<S> for ClientIp {
     }
 }
 
-/// Coarse per-address ceiling over the whole API. Individual routes layer their
-/// own tighter quotas on top; this one only exists to stop blunt hammering.
-/// Refuses any client build below its platform's `min_supported`.
-///
-/// This is the whole point of deciding severity on the server: a retired build
-/// is one whose own update prompt may be exactly what is broken, so the refusal
-/// has to happen where the client cannot route around it. Everything reachable
-/// through /api is covered; `/updates/policy` is excluded by the caller so a
-/// walled client can still discover what to install.
 pub async fn require_supported_client(
     State(state): State<AppState>,
     headers: axum::http::HeaderMap,
@@ -251,8 +202,6 @@ pub async fn api_rate_limit(
     Ok(next.run(req).await)
 }
 
-/// Credentialed CORS: explicit origin + mirrored header list (Any is invalid with credentials).
-/// Applied as the outermost layer in main so it also covers Socket.IO requests.
 pub fn cors_layer(state: &AppState) -> CorsLayer {
     CorsLayer::new()
         .allow_origin(
@@ -282,10 +231,6 @@ pub fn cors_layer(state: &AppState) -> CorsLayer {
 }
 
 pub fn router(state: AppState) -> Router {
-    // Route groups that belong to a person and must never accept a bot token:
-    // credentials and sessions, E2EE key material, the owner's linked accounts,
-    // their drafts and push endpoints, and the friend graph. A bot authenticates
-    // as a User row, so this has to be refused explicitly.
     let humans_only = Router::new()
         .nest("/auth", auth::routes())
         .nest("/security", security::routes())
@@ -315,10 +260,6 @@ pub fn router(state: AppState) -> Router {
         .merge(sounds::routes())
         .merge(uploads::routes())
         .merge(attachments::routes())
-        // The version wall covers everything merged above it. `route_layer`
-        // rather than `layer` so it only runs for routes that actually matched,
-        // and so /updates/policy - merged after it - stays reachable: a client
-        // that was just refused still has to be able to ask what to upgrade to.
         .route_layer(axum::middleware::from_fn_with_state(
             state.clone(),
             require_supported_client,
@@ -355,7 +296,6 @@ async fn health(State(state): State<AppState>) -> impl IntoResponse {
     }))
 }
 
-// ── Validation helpers (mirror the zod schemas) ─────────
 
 pub fn valid_email(s: &str) -> bool {
     let parts: Vec<&str> = s.split('@').collect();
@@ -398,10 +338,6 @@ mod deny_bots_tests {
             .status()
     }
 
-    /// The regression this guard nearly shipped: these nests contain the routes
-    /// that *establish* a session, so an anonymous caller must sail through.
-    /// An earlier version extracted `AuthUser` here and would have 401'd every
-    /// login and signup on the site.
     #[tokio::test]
     async fn an_anonymous_caller_is_not_challenged() {
         assert_eq!(status_with_auth(None).await, StatusCode::OK);
@@ -446,8 +382,6 @@ mod client_ip_tests {
         assert_eq!(client_ip(&h, Some(&peer())), "1.2.3.4");
     }
 
-    /// A forged XFF prefix must not become the bucket key; the last entry is the
-    /// only one a proxy actually observed.
     #[test]
     fn falls_back_to_the_last_forwarded_for_entry() {
         let h = headers(&[("x-forwarded-for", "6.6.6.6, 1.2.3.4")]);

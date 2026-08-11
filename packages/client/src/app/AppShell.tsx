@@ -20,18 +20,16 @@ import { WhatsNewDialog } from "../features/updates/WhatsNewDialog";
 import { UpdateGate } from "../features/updates/UpdateGate";
 import { SecurityAlertOverlay } from "../features/e2ee/SecurityAlertOverlay";
 
-/** Authenticated frame: each layout renders its own PanelShell inside. */
+
 export function AppShell() {
   useCustomCss();
   useAppIcon();
   const navigate = useNavigate();
 
-  // Let notification clicks deep-link into the app.
   useEffect(() => {
     setNotificationNavigator((href) => navigate(href));
   }, [navigate]);
 
-  // Seed unread + mention badges from the server on load.
   useEffect(() => {
     getUnreads()
       .then((items) => {
@@ -41,14 +39,9 @@ export function AppShell() {
       .catch(() => {});
     void restorePushNotifications().catch(() => {});
     void loadMessagePreviews();
-    // Which conversations this account has marked "verify before messaging".
-    // Cached locally too, so the gate holds before this lands.
     void loadStrictOverrides();
   }, []);
 
-  // Someone who signed in to accept an invite lands here first - OAuth in
-  // particular reloads the page and drops the router's own return-to. Take them
-  // the last step to the invite they were actually after.
   useEffect(() => {
     const code = takePendingInvite();
     if (code) navigate(`/invite/${code}`, { replace: true });

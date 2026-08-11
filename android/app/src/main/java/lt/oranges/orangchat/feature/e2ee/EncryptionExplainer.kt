@@ -41,20 +41,6 @@ import lt.oranges.orangchat.ui.components.Text
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-/**
- * The plain-language explanation of end-to-end encryption, mirroring the web
- * client's `HowEncryptionWorks.tsx` sentence for sentence so the two platforms
- * do not teach people two different mental models.
- *
- * Locks, keys and a logbook, deliberately. The accurate words - identity key,
- * epoch, transparency log, safety number - mean nothing to the person this copy
- * exists for, and a reader who bounces off the first paragraph has learned less
- * than one who reads a slightly lossy version to the end.
- *
- * It must not oversell the default. docs/E2EE.md §6.4 is explicit that the
- * honest sentence is "cannot read your messages without being caught", and the
- * unverified default is the normal state rather than a chore left undone.
- */
 
 @Composable
 private fun ExplainerSection(icon: ImageVector, title: String, body: @Composable () -> Unit) {
@@ -210,7 +196,6 @@ fun EncryptionExplainerDialog(onDismiss: () -> Unit) {
     }
 }
 
-/** The way into the explainer from anywhere encryption is mentioned. */
 @Composable
 fun HowEncryptionWorksLink(onClick: () -> Unit, modifier: Modifier = Modifier) {
         val context = LocalContext.current

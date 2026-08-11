@@ -1,4 +1,3 @@
-//! Custom emoji REST, mounted under /api. No TS equivalent - new for the Rust port.
 
 use axum::extract::{DefaultBodyLimit, Multipart, Path, State};
 use axum::http::StatusCode;
@@ -15,8 +14,6 @@ use crate::permissions::MANAGE_EXPRESSIONS;
 use crate::services::{emoji, membership, rate_limit};
 use crate::state::AppState;
 
-/// The upload cap users are told about. Emoji are re-encoded to 128px anyway, so
-/// this only bounds what has to be read and decoded before that happens.
 const MAX_EMOJI_UPLOAD: usize = 256 * 1024;
 
 pub fn routes() -> Router<AppState> {
@@ -30,7 +27,6 @@ pub fn routes() -> Router<AppState> {
         .layer(DefaultBodyLimit::max(MAX_EMOJI_UPLOAD + 64 * 1024))
 }
 
-/// Every emoji the caller can type, across all their servers.
 async fn list_usable(
     user: AuthUser,
     State(state): State<AppState>,
@@ -44,8 +40,6 @@ async fn list(
     Path(server_id): Path<String>,
     State(state): State<AppState>,
 ) -> AppResult<Json<Vec<EmojiDto>>> {
-    // Membership alone is the read gate: anyone who can type an emoji here can
-    // see the list of them.
     membership::require_permission(&state, &server_id, &user.user_id, 0).await?;
     let rows = emoji::list_emojis(&state, &server_id).await?;
     Ok(Json(rows.iter().map(to_emoji).collect()))
@@ -95,16 +89,12 @@ async fn create(
 
     let bytes = bytes.ok_or_else(|| AppError::BadRequest("No file provided".into()))?;
     let name = name.ok_or_else(|| AppError::BadRequest("No name provided".into()))?;
-    // Reject a bad name before spending CPU on the image.
     let name = emoji::normalize_name(&name)?;
 
-    // Image decode/encode is CPU-bound and blocking - keep it off the runtime.
     let (out, ext) = tokio::task::spawn_blocking(move || process_image(&bytes, "emoji"))
         .await
         .map_err(|_| AppError::Internal("Image processing failed".into()))??;
 
-    // The re-encode is what decides this, not the upload's filename: a .gif that
-    // turned out to hold a single frame is a static emoji.
     let animated = ext == "gif";
     let url = store_image(&state, out, ext).await?;
 
@@ -140,9 +130,6 @@ async fn remove(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// The permission check is scoped to the server in the path, so the emoji has to
-/// actually live there - otherwise MANAGE_EXPRESSIONS on any one server would be
-/// MANAGE_EXPRESSIONS on all of them.
 async fn require_in_server(state: &AppState, emoji_id: &str, server_id: &str) -> AppResult<()> {
     let row = emoji::get_emoji(state, emoji_id).await?;
     if row.server_id != server_id {

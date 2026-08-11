@@ -1,6 +1,6 @@
 import type { Catalog } from "./en";
 
-/** Hindi translation of the complete English catalogue. */
+
 export const hi: Catalog = {
   "common.save": "बचाना",
   "common.cancel": "रद्द करना",

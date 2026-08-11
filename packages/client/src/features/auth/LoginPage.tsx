@@ -31,21 +31,7 @@ import { TextField } from '../../components/ui/TextField';
 import { PasswordField } from '../../components/ui/PasswordField';
 import { t } from "../../lib/i18n";
 
-/**
- * The password buys one second factor, and the account stops at the strongest
- * one it has: a passkey, else an authenticator code, else a code to its inbox.
- * Whichever rung it lands on is the one that returns the session - nobody is
- * asked to clear two.
- *
- * Both upper rungs are skippable downwards ("email me a code instead", "lost
- * your authenticator?") because a device that isn't to hand must not be a
- * lockout. Each of those is a deliberate step down in strength, so each is a
- * button and never the default.
- *
- * A passkey can also replace the whole sequence: it proves the device, the
- * person and the origin in one gesture, so an account signing in that way skips
- * straight past the password.
- */
+
 type Step = 'credentials' | 'totp' | 'emailCode' | 'passkey';
 
 export function LoginPage() {
@@ -66,9 +52,6 @@ export function LoginPage() {
   const [emailCode, setEmailCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  // The server starts demanding a captcha after a couple of failed attempts on
-  // an account. Without a token to hand it, the form could never recover from
-  // one mistyped password; invisible reCAPTCHA collects it silently.
   const recaptcha = useRef<RecaptchaHandle>(null);
   const [recaptchaReady, setRecaptchaReady] = useState(false);
   const onCaptchaRequired = useCallback(() => setRecaptchaReady(true), []);
@@ -82,7 +65,7 @@ export function LoginPage() {
     defaultValues: { email: '', password: '' },
   });
 
-  /** The one place a passkey turns into a session, whichever flow started it. */
+
   const finishPasskey = useCallback(
     async (ceremonyToken: string, response: unknown) => {
       const result = await passkeyFinish(ceremonyToken, response);
@@ -105,7 +88,7 @@ export function LoginPage() {
     }
   };
 
-  /** Sign-in with nothing typed at all: the credential names the account. */
+
   const signInWithPasskey = async () => {
     setError(null);
     setNotice(null);
@@ -122,10 +105,6 @@ export function LoginPage() {
     }
   };
 
-  // Conditional mediation: a request left open in the background so saved
-  // passkeys appear in the browser's own dropdown on the email field. Most of
-  // these are abandoned - somebody types a password instead - which is why it
-  // aborts on unmount and why a cancellation is not reported as an error.
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
@@ -170,14 +149,9 @@ export function LoginPage() {
         setStep('passkey');
         setError(null);
         setNotice(null);
-        // Straight into the system sheet: the click that submitted the password
-        // is the gesture, and making them click again would only add a step.
         void answerPasskey(result);
         return;
       }
-      // An authenticator code sent with the password finishes the sign-in there
-      // and then: the account already proved a second factor, so routing it
-      // through a mailbox afterwards would only weaken what it just proved.
       if (result.user && result.tokens) {
         applySession(result.user, result.tokens);
         navigate(from, { replace: true });
@@ -199,7 +173,6 @@ export function LoginPage() {
       if (err instanceof ApiError && err.code === '2fa_required') {
         setCredentials(input);
         setStep('totp');
-        // Only a rejected code is worth an alert; the first prompt is not a failure.
         setError(input.totpCode ? err.message : null);
         setTotpCode('');
         return;
@@ -392,8 +365,6 @@ export function LoginPage() {
           <TextField
             label={t("loginPage.email")}
             type="email"
-            // "webauthn" is what lets the browser list saved passkeys in this
-            // field's own dropdown, alongside the conditional request above.
             autoComplete="email webauthn"
             error={errors.email?.message}
             {...register('email')}

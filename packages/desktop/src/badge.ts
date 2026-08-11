@@ -1,8 +1,6 @@
 import { app, nativeImage, type BrowserWindow } from "electron";
 import { join } from "node:path";
 
-// app.setBadgeCount() is a no-op on Windows; the taskbar needs an overlay image.
-// build/badges/{1..9,9plus}.png are pre-rendered from the same source as the icon.
 export function setUnreadBadge(window: BrowserWindow | null, count: number): void {
   const n = Math.max(0, Math.trunc(count));
 

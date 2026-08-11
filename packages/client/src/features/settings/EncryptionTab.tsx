@@ -135,8 +135,6 @@ export function EncryptionTab() {
   const identity = local.data ?? null;
   const list = devices.data?.list;
   const verifyFailure = devices.error instanceof Error ? devices.error.message : null;
-  // An account with devices cannot mint a second genesis - §6 allows exactly
-  // one - so this browser's only way in is being signed in by one of them.
   const hasOtherDevices = (list?.devices ?? []).some((d) => d.revokedAt === null);
 
   return (

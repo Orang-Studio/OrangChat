@@ -5,10 +5,7 @@ import { Dialog, DialogContent } from "../../components/ui/Dialog";
 import { callActions, useCallStore } from "./callStore";
 import { t } from "../../lib/i18n";
 
-/**
- * The ringing popup. Mounted once app-wide (see AppShell) rather than under a
- * route, because a call can arrive whatever the user is looking at.
- */
+
 export function IncomingCallDialog() {
   const incoming = useCallStore((s) => s.incoming);
   if (!incoming) return null;
@@ -19,8 +16,6 @@ export function IncomingCallDialog() {
   return (
     <Dialog
       open
-      // Dismissing a ringing call - Escape, the close button, a click outside -
-      // means declining it, never silently ignoring it.
       onOpenChange={(open) => {
         if (!open) callActions.decline();
       }}

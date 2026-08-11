@@ -47,11 +47,7 @@ export interface ServerContextMenuProps {
   onLeave: () => void;
 }
 
-/**
- * Right-click menu for a server on the rail. Mounted only while the menu is
- * open (Radix portals its content), so the permission fetch it needs happens on
- * demand instead of once per server icon at boot.
- */
+
 export function ServerContextMenu({
   server,
   onInvite,
@@ -65,8 +61,6 @@ export function ServerContextMenu({
 }: ServerContextMenuProps) {
   const { data: perms } = useMyPermissions(server.id);
   const prefs = useServerNotificationPrefs(server.id);
-  // useShallow: the selector builds a fresh array, and an unstable snapshot
-  // would re-render forever.
   const unreadChannelIds = useUnreadStore(
     useShallow((s) =>
       Object.entries(s.channels)

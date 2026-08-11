@@ -26,7 +26,6 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.absoluteUrl
 
-/** Presence dot colors, mirroring Avatar.tsx STATUS_COLOR. */
 @Composable
 fun statusColor(status: PresenceStatus): Color {
     val c = OrangTheme.colors
@@ -38,7 +37,6 @@ fun statusColor(status: PresenceStatus): Color {
     }
 }
 
-/** Presence labels, mirroring Avatar.tsx STATUS_LABEL. */
 fun statusLabel(status: PresenceStatus): String = when (status) {
     PresenceStatus.ONLINE -> "Online"
     PresenceStatus.IDLE -> "Idle"
@@ -46,7 +44,6 @@ fun statusLabel(status: PresenceStatus): String = when (status) {
     PresenceStatus.OFFLINE -> "Offline"
 }
 
-/** Port of components/Avatar.tsx: image with initial fallback + optional dot. */
 @Composable
 fun Avatar(
     user: User,
@@ -100,9 +97,6 @@ fun Avatar(
             }
         }
         if (status != null) {
-            // The badge scales with the avatar - a 16dp dot pinned to an 80dp
-            // profile avatar reads as a rendering mistake - and the surface-2
-            // disc behind it is what shows through the shape's cut-outs.
             val badge = (size.value * 0.38f).coerceAtLeast(16f).dp
             val device = when {
                 PresenceDevice.DESKTOP in devices -> AppStrings.get(context, R.string.catalog_desktop_app_f7a44c6b)

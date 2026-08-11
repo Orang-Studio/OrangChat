@@ -13,11 +13,6 @@ import lt.oranges.orangchat.realtime.SocketManager
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Who is sitting in which voice channel. Port of the web client's voice store
- * `participants` map, fed by `voice:state` and seeded per channel from
- * GET /channels/:id/voice.
- */
 @Singleton
 class VoiceParticipantStore @Inject constructor(
     private val socketManager: SocketManager,
@@ -26,7 +21,6 @@ class VoiceParticipantStore @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob())
 
     private val _participants = MutableStateFlow<Map<String, Map<String, VoiceState>>>(emptyMap())
-    /** channelId -> userId -> live voice state. */
     val participants: StateFlow<Map<String, Map<String, VoiceState>>> = _participants.asStateFlow()
 
     init {
@@ -43,7 +37,6 @@ class VoiceParticipantStore @Inject constructor(
         _participants.value = _participants.value + (state.channelId to channel)
     }
 
-    /** Seed a channel's roster; realtime events keep it current afterwards. */
     fun seed(channelId: String) {
         scope.launch {
             runCatching { serverRepository.getVoiceParticipants(channelId) }
@@ -54,7 +47,6 @@ class VoiceParticipantStore @Inject constructor(
         }
     }
 
-    /** Seed every voice channel of a server at once, for the channel list. */
     fun seedAll(channelIds: List<String>) {
         channelIds.forEach(::seed)
     }
