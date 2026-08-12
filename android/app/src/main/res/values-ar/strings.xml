@@ -1,684 +1,688 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-     <string name="app_name">OrangChat</string>
-     <string name="language_arabic">العربية</string>
-     <string name="language_bengali">البنغالية</string>
-     <string name="language_chinese">الصينية</string>
-     <string name="language_english">الإنجليزية</string>
-     <string name="language_french">الفرنسية</string>
-     <string name="language_hindi">الهندية</string>
-     <string name="language_hint">سيُطبَّق اختيار اللغة في كل مكان بعد إعادة تشغيل التطبيق.</string>
-     <string name="language_lithuanian">الليتوانية</string>
-     <string name="language_portuguese">البرتغالية</string>
-     <string name="language_russian">الروسية</string>
-     <string name="language_spanish">الإسبانية</string>
-     <string name="language_subtitle">اختر لغة التطبيق</string>
-     <string name="language_system">مطابقة النظام</string>
-     <string name="language_title">اللغة</string>
-     <string name="language_urdu">الأردية</string>
-     <string name="catalog_1_add_this_key_to_your_app_c5c6bb28" formatted="false">1. أضف هذا المفتاح إلى تطبيقك</string>
-     <string name="catalog_1_attachment_82c9f82a" formatted="false">مرفق واحد</string>
-     <string name="catalog_1_s_2_s_78c505fe" formatted="true">%1$s %2$s</string>
-     <string name="catalog_1_s_entries_head_2_s_f1d9bc39" formatted="true">%1$s entries · head %2$s…</string>
-     <string name="catalog_1_s_entry_head_2_s_8bef329a" formatted="true">%1$s entry · head %2$s…</string>
-     <string name="catalog_1_s_may_not_survive_a_restart_c2a049ce" formatted="true">%1$s (may not survive a restart)</string>
-     <string name="catalog_1_s_on_2_s_105d6e4b" formatted="true">%1$s on %2$s</string>
-     <string name="catalog_1_s_recovery_code_left_fb553535" formatted="true">%1$s recovery code left.</string>
-     <string name="catalog_1_s_recovery_codes_left_da20cfb2" formatted="true">%1$s recovery codes left.</string>
-     <string name="catalog_2026_oranges_lt_made_with_c3b7fea5" formatted="false">© 2026 Oranges.LT · صُنع بـ 🍊</string>
-     <string name="catalog_2_enter_the_6_digit_code_183ee7cb" formatted="false">2. أدخل الرمز المكوّن من 6 أرقام</string>
-     <string name="catalog_2fa_e8442a3a" formatted="false">2FA</string>
-     <string name="catalog_a_dark_card_with_a_glowing_purple_1407c4d4" formatted="false">A dark card with a glowing purple name and a striped banner.</string>
-     <string name="catalog_a_deleted_account_b1c40a9e" formatted="false">حساب محذوف</string>
-     <string name="catalog_a_fast_self_hosted_chat_for_servers_fa05634c" formatted="false">دردشة سريعة ومستضافة ذاتيًا للخوادم والرسائل المباشرة والمكالمات الصوتية - من عائلة Oranges.LT.</string>
-     <string name="catalog_a_green_on_black_monospace_card_for_9a798bea" formatted="false">A green-on-black monospace card for the command-line at heart.</string>
-     <string name="catalog_a_one_time_code_is_on_its_395743b6" formatted="false">رمز لمرة واحدة في طريقه إلى بريدك الإلكتروني - تنتهي صلاحيته خلال 10 دقائق.</string>
-     <string name="catalog_a_passkey_only_works_on_the_site_ca725d27" formatted="false">A passkey only works on the site that created it, so it can\'t be phished - which is why we ask for one instead of an emailed code when your account has one.</string>
-     <string name="catalog_a_warm_paper_toned_card_with_a_3ae147be" formatted="false">A warm, paper-toned card with a serif name.</string>
-     <string name="catalog_about_6b21fb79" formatted="false">عن</string>
-     <string name="catalog_about_me_e3ba4ef3" formatted="false">نبذة عني</string>
-     <string name="catalog_accent_color_e49578ed" formatted="false">اللون المميز</string>
-     <string name="catalog_accessibility_d660049b" formatted="false">إمكانية الوصول</string>
-     <string name="catalog_account_85dfa32c" formatted="false">الحساب</string>
-     <string name="catalog_account_created_check_your_email_for_a_7d4a9ecd" formatted="false">تم إنشاء الحساب. تحقّق من بريدك الإلكتروني بحثًا عن رابط التحقق - </string>
-     <string name="catalog_account_standing_2b18a30b" formatted="false">حالة الحساب</string>
-     <string name="catalog_add_a_friend_by_their_username_c1584607" formatted="false">أضف صديقًا باسم المستخدم الخاص به.</string>
-     <string name="catalog_add_a_passkey_0daca495" formatted="false">إضافة مفتاح مرور</string>
-     <string name="catalog_add_a_server_5ee1e413" formatted="false">إضافة خادم</string>
-     <string name="catalog_add_another_device_67696610" formatted="false">إضافة جهاز آخر</string>
-     <string name="catalog_add_channel_901e4868" formatted="false">إضافة قناة</string>
-     <string name="catalog_add_context_for_the_reviewer_e44f9147" formatted="false">أضف سياقًا للمراجع</string>
-     <string name="catalog_add_device_2d2367c4" formatted="false">إضافة جهاز</string>
-     <string name="catalog_add_emoji_or_gif_1d91d61d" formatted="false">إضافة رمز تعبيري أو GIF</string>
-     <string name="catalog_add_friend_e0a731d8" formatted="false">إضافة صديق</string>
-     <string name="catalog_add_friends_2dcf4e38" formatted="false">إضافة أصدقاء</string>
-     <string name="catalog_add_people_b9c735ea" formatted="false">إضافة أشخاص</string>
-     <string name="catalog_add_reaction_cf05eca8" formatted="false">إضافة تفاعل</string>
-     <string name="catalog_add_this_phone_94a65dcf" formatted="false">إضافة هذا الهاتف</string>
-     <string name="catalog_added_1_s_76044af1" formatted="true">Added %1$s</string>
-     <string name="catalog_added_by_another_authorized_device_bab74dd1" formatted="false">Added by another authorized device</string>
-     <string name="catalog_adding_a_second_device_before_you_need_1f6a418c" formatted="false">إضافة جهاز ثانٍ قبل أن تحتاج إليه هي الحل الكامل. ولهذا يجب تفعيل المصادقة الثنائية أولًا: الجهاز الاحتياطي يعني وجود مجموعة مفاتيح احتياطية، ويجب أن يتطلب إنشاؤه أكثر من كلمة مرور.</string>
-     <string name="catalog_all_your_friends_are_already_here_45cf3604" formatted="false">أصدقاؤك موجودون هنا بالفعل.</string>
-     <string name="catalog_allow_anyone_to_mention_c6fe8761" formatted="false">السماح لأي شخص باستخدام @mention</string>
-     <string name="catalog_allow_camera_1dfb1b87" formatted="false">السماح بالكاميرا</string>
-     <string name="catalog_allow_camera_access_to_scan_without_leaving_ca7cd21f" formatted="false">السماح بالوصول إلى الكاميرا للمسح الضوئي دون مغادرة OrangChat.</string>
-     <string name="catalog_allow_installs_first_a339d45d" formatted="false">السماح بالتثبيت أولًا</string>
-     <string name="catalog_already_have_an_account_log_in_b3a34236" formatted="false">لديك حساب بالفعل؟ سجّل الدخول</string>
-     <string name="catalog_already_on_this_call_abb9cae6" formatted="false">أنت في هذه المكالمة بالفعل</string>
-     <string name="catalog_android_browser_05f5cb3d" formatted="false">Android browser</string>
-     <string name="catalog_android_cannot_repoint_its_own_launcher_icon_cdbe2f10" formatted="false">لا يمكن لنظام Android تغيير أيقونة المشغّل الخاصة به، لذلك يظهر التغيير على هذا الجهاز في تطبيق الويب وتطبيق سطح المكتب.</string>
-     <string name="catalog_android_is_not_letting_orangchat_notify_you_eb9878eb" formatted="false">لا يسمح Android لـ OrangChat بإخطارك بالرسائل أو المكالمات. فعّلها من إعدادات النظام.</string>
-     <string name="catalog_android_native_a2dee752" formatted="false">Android (native)</string>
-     <string name="catalog_answer_without_camera_979e59f8" formatted="false">الرد دون كاميرا</string>
-     <string name="catalog_anyone_can_start_a_conversation_fa59af86" formatted="false">Anyone can start a conversation.</string>
-     <string name="catalog_anyone_who_knows_your_username_b7505a81" formatted="false">Anyone who knows your username.</string>
-     <string name="catalog_anything_on_a_phone_that_is_already_7e329eae" formatted="false">• أي شيء على هاتف مفتوح القفل بالفعل وفي يد شخص آخر. عندها يقرؤونه بالطريقة نفسها التي تقرؤها بها.</string>
-     <string name="catalog_api_d93d10ff" formatted="false">API</string>
-     <string name="catalog_app_icon_abde7a74" formatted="false">أيقونة التطبيق</string>
-     <string name="catalog_appearance_41def7a0" formatted="false">المظهر</string>
-     <string name="catalog_as_the_owner_you_cannot_leave_delete_030b7d7e" formatted="false">بصفتك المالك، لا يمكنك المغادرة - احذف الخادم بدلًا من ذلك.</string>
-     <string name="catalog_ask_for_a_code_from_your_phone_b6d62586" formatted="false">اطلب رمزًا من هاتفك بالإضافة إلى كلمة المرور عند تسجيل الدخول.</string>
-     <string name="catalog_ask_them_to_show_their_verification_qr_630e919c" formatted="false">اطلب منهم إظهار رمز QR للتحقق، ثم ضعه داخل الإطار.</string>
-     <string name="catalog_at_least_8_characters_1fe494b2" formatted="false">8 أحرف على الأقل</string>
-     <string name="catalog_at_least_8_characters_6089e5f3" formatted="false">8 أحرف على الأقل.</string>
-     <string name="catalog_attach_files_137135db" formatted="false">إرفاق ملفات</string>
-     <string name="catalog_audio_call_fb04a1a1" formatted="false">مكالمة صوتية</string>
-     <string name="catalog_audit_log_3cfc5f1c" formatted="false">سجل التدقيق</string>
-     <string name="catalog_authentication_code_b4f3ff1d" formatted="false">رمز المصادقة</string>
-     <string name="catalog_authenticator_code_2908b4e9" formatted="false">رمز تطبيق المصادقة</string>
-     <string name="catalog_authorized_encryption_devices_1f60a639" formatted="false">أجهزة التشفير المصرّح بها</string>
-     <string name="catalog_authorizing_the_new_device_7d6e30db" formatted="false">جارٍ التصريح بالجهاز الجديد</string>
-     <string name="catalog_back_b52b36b7" formatted="false">رجوع</string>
-     <string name="catalog_backend_e758ca64" formatted="false">Backend</string>
-     <string name="catalog_banned_from_b1b7bda2" formatted="false">محظور من</string>
-     <string name="catalog_before_a_message_leaves_this_phone_74f6bb9b" formatted="false">قبل أن تغادر الرسالة هذا الهاتف</string>
-     <string name="catalog_bot_account_a78d875e" formatted="false">حساب روبوت</string>
-     <string name="catalog_both_devices_show_six_digits_compare_them_4427b9f0" formatted="false">Both devices show six digits. Compare them and cancel if they differ.</string>
-     <string name="catalog_both_of_you_open_the_conversation_tap_bbf94671" formatted="false">افتحا المحادثة، واضغطا على القفل في الأعلى، وليمسح أحدكما رمز الآخر. ثم بدّلا الأدوار وافعلا الأمر بالعكس - عملية مسح واحدة تثبت اتجاهًا واحدًا فقط. يستغرق ذلك نحو عشر ثوانٍ أثناء وقوفكما معًا.</string>
-     <string name="catalog_both_options_encrypt_everything_the_difference_is_098d8758" formatted="false">كلا الخيارين يشفّران كل شيء. الفرق هو ما إذا كان القفل المستبدل يُوقَف قبل استخدامه أم يُكتَشَف بعد ذلك.</string>
-     <string name="catalog_both_screens_must_show_the_same_six_a112273d" formatted="false">يجب أن تعرض كلتا الشاشتين الأرقام الستة نفسها. إذا اختلفت، فألغِ العملية.</string>
-     <string name="catalog_browser_54a2cf5e" formatted="false">Browser</string>
-     <string name="catalog_build_bbd80cf7" formatted="false">Build</string>
-     <string name="catalog_by_1_s_7930f2dd" formatted="true">by %1$s</string>
-     <string name="catalog_call_connected_78e88c19" formatted="false">تم الاتصال بالمكالمة</string>
-     <string name="catalog_call_connected_dce17207" formatted="false">تم الاتصال بالمكالمة</string>
-     <string name="catalog_call_ringtone_0618e939" formatted="false">نغمة المكالمة</string>
-     <string name="catalog_call_sharing_defaults_c39b7d94" formatted="false">الإعدادات الافتراضية لمشاركة المكالمات</string>
-     <string name="catalog_calling_acd4a67d" formatted="false">جارٍ الاتصال…</string>
-     <string name="catalog_camera_access_is_needed_to_scan_the_dcfe064f" formatted="false">يلزم الوصول إلى الكاميرا لمسح الرمز الظاهر على الكمبيوتر.</string>
-     <string name="catalog_camera_microphone_abf47618" formatted="false">الكاميرا &amp; الميكروفون</string>
-     <string name="catalog_cancel_77dfd213" formatted="false">Cancel</string>
-     <string name="catalog_cancel_reply_bd62d2dd" formatted="false">إلغاء الرد</string>
-     <string name="catalog_cancel_scanning_f1f3d169" formatted="false">إلغاء المسح</string>
-     <string name="catalog_change_audio_output_ccb8eada" formatted="false">تغيير إخراج الصوت</string>
-     <string name="catalog_change_background_0c868243" formatted="false">تغيير الخلفية</string>
-     <string name="catalog_change_email_8f1514b5" formatted="false">تغيير البريد الإلكتروني</string>
-     <string name="catalog_change_group_icon_715ac3cf" formatted="false">تغيير أيقونة المجموعة</string>
-     <string name="catalog_change_password_8c684290" formatted="false">تغيير كلمة المرور</string>
-     <string name="catalog_changing_your_password_signs_out_every_other_062a10ab" formatted="false">يؤدي تغيير كلمة المرور إلى تسجيل الخروج من كل جلسة أخرى.</string>
-     <string name="catalog_channel_name_3be87bdd" formatted="false">اسم القناة</string>
-     <string name="catalog_check_for_updates_736b9062" formatted="false">التحقق من وجود تحديثات</string>
-     <string name="catalog_check_people_before_messaging_them_986118e4" formatted="false">تحقّق من الأشخاص قبل مراسلتهم</string>
-     <string name="catalog_check_them_again_feb54286" formatted="false">تحقّق منهم مرة أخرى</string>
-     <string name="catalog_check_them_first_27eeb4a8" formatted="false">تحقّق منهم أولًا</string>
-     <string name="catalog_check_them_first_a_swap_cannot_happen_82229615" formatted="false">تحقّق منهم أولًا - لا يمكن أن يحدث استبدال. أنت تتحقّق بنفسك من قفل الشخص الآخر، وجهًا لوجه أو أثناء مكالمة، قبل إرسال أي شيء إليه. إلى أن تفعل ذلك، تبقى الرسائل التي تكتبها على هذا الهاتف، مقفلة، ولا تذهب إلى أي مكان. لا يوجد شيء يمكن لقفل مستبدل فتحه.</string>
-     <string name="catalog_checking_820d6004" formatted="false">جارٍ التحقق…</string>
-     <string name="catalog_checking_someone_in_person_437f86fe" formatted="false">التحقق من شخص وجهًا لوجه</string>
-     <string name="catalog_checking_someone_s_code_is_a_one_b6951560" formatted="false">التحقق من رمز شخص ما أمر فردي، لذلك يحدث في رسالتك المباشرة معه - وكل من تحقّقت منه هناك يظهر كمتحقَّق منه هنا أيضًا. انتظار التحقق من الجميع في مجموعة سيؤخر أشخاصًا لم يطلبوا ذلك.</string>
-     <string name="catalog_checking_them_here_is_safer_than_reading_faa9c2e1" formatted="false">التحقق منهم هنا أكثر أمانًا من القراءة أثناء التمرير - فستون رقمًا أكثر مما يقارنه أي شخص فعليًا بعينه.</string>
-     <string name="catalog_choose_78b7c9f6" formatted="false">اختر</string>
-     <string name="catalog_choose_files_5910acf0" formatted="false">اختيار الملفات</string>
-     <string name="catalog_clear_css_6a933bda" formatted="false">مسح CSS</string>
-     <string name="catalog_client_1bdd79b1" formatted="false">Client</string>
-     <string name="catalog_close_dm_43823b56" formatted="false">إغلاق الرسائل المباشرة</string>
-     <string name="catalog_code_from_your_app_2e089607" formatted="false">الرمز من تطبيقك</string>
-     <string name="catalog_code_from_your_app_or_a_recovery_c6308bc3" formatted="false">الرمز من تطبيقك (أو رمز استرداد)</string>
-     <string name="catalog_communication_ade0d50c" formatted="false">التواصل</string>
-     <string name="catalog_compact_messages_8efe5e6b" formatted="false">رسائل مضغوطة</string>
-     <string name="catalog_compare_8d105cf4" formatted="false">Compare</string>
-     <string name="catalog_comparing_ad916050" formatted="false">جارٍ المقارنة…</string>
-     <string name="catalog_confirm_2fa_on_the_authorized_pc_7bc4ca9d" formatted="false">Confirm 2FA on the authorized PC.</string>
-     <string name="catalog_confirm_new_password_f85039fd" formatted="false">تأكيد كلمة المرور الجديدة</string>
-     <string name="catalog_confirm_the_digits_and_enter_the_security_cd1b28db" formatted="false">Confirm the digits and enter the security code on the authorized device. This phone is waiting for the encrypted history and its signed authorization…</string>
-     <string name="catalog_confirm_with_your_passkey_to_finish_signing_a7480f38" formatted="false">أكّد باستخدام مفتاح المرور لإكمال تسجيل الدخول.</string>
-     <string name="catalog_confirm_your_password_198b73ff" formatted="false">تأكيد كلمة المرور</string>
-     <string name="catalog_connect_b65463cb" formatted="false">Connect</string>
-     <string name="catalog_connected_c2f9b7b4" formatted="false">Connected</string>
-     <string name="catalog_connecting_fd3e7969" formatted="false">جارٍ الاتصال…</string>
-     <string name="catalog_connection_6512ee15" formatted="false">Connection</string>
-     <string name="catalog_connection_and_server_info_b1f3ef22" formatted="false">معلومات الاتصال والخادم</string>
-     <string name="catalog_continue_transfer_8ea86ccd" formatted="false">متابعة النقل</string>
-     <string name="catalog_copy_af74f7c5" formatted="false">Copy</string>
-     <string name="catalog_copy_channel_id_c32cdc5d" formatted="false">نسخ معرّف القناة</string>
-     <string name="catalog_copy_message_26902efd" formatted="false">نسخ الرسالة</string>
-     <string name="catalog_copy_user_id_6fff306b" formatted="false">نسخ معرّف المستخدم</string>
-     <string name="catalog_could_not_change_email_0f20cf3a" formatted="false">Could not change email</string>
-     <string name="catalog_could_not_change_lockdown_fec83d39" formatted="false">Could not change lockdown</string>
-     <string name="catalog_could_not_change_password_ccfd53b0" formatted="false">Could not change password</string>
-     <string name="catalog_could_not_connect_to_the_call_a713db79" formatted="false">تعذّر الاتصال بالمكالمة</string>
-     <string name="catalog_could_not_delete_account_b721f0dc" formatted="false">Could not delete account</string>
-     <string name="catalog_could_not_delete_messages_6af8eeaf" formatted="false">Could not delete messages</string>
-     <string name="catalog_could_not_join_the_call_a95443d4" formatted="false">تعذّر الانضمام إلى المكالمة</string>
-     <string name="catalog_could_not_leave_servers_eb0a0647" formatted="false">Could not leave servers</string>
-     <string name="catalog_could_not_load_devices_6cf850e0" formatted="false">Could not load devices</string>
-     <string name="catalog_could_not_load_passkeys_dd561090" formatted="false">Could not load passkeys</string>
-     <string name="catalog_could_not_load_standing_51712f13" formatted="false">Could not load standing</string>
-     <string name="catalog_could_not_open_the_installer_a59d8717" formatted="false">Could not open the installer</string>
-     <string name="catalog_could_not_open_this_image_cb0d1e2e" formatted="false">تعذّر فتح هذه الصورة</string>
-     <string name="catalog_could_not_play_that_sound_5f4f3c4c" formatted="false">تعذّر تشغيل ذلك الصوت</string>
-     <string name="catalog_could_not_play_this_video_8540287d" formatted="false">تعذّر تشغيل هذا الفيديو</string>
-     <string name="catalog_could_not_reach_the_update_server_58cd6971" formatted="false">Could not reach the update server</string>
-     <string name="catalog_could_not_remove_the_icon_fdb51d9b" formatted="false">Could not remove the icon</string>
-     <string name="catalog_could_not_remove_the_image_a332686e" formatted="false">تعذرت إزالة الصورة</string>
-     <string name="catalog_could_not_remove_the_passkey_5245ad98" formatted="false">Could not remove the passkey</string>
-     <string name="catalog_could_not_rename_deb92092" formatted="false">Could not rename</string>
-     <string name="catalog_could_not_revoke_361c2e4b" formatted="false">Could not revoke</string>
-     <string name="catalog_could_not_save_your_privacy_settings_fddd2cf0" formatted="false">Could not save your privacy settings</string>
-     <string name="catalog_could_not_save_your_profile_e13d9374" formatted="false">تعذر حفظ ملفك الشخصي</string>
-     <string name="catalog_could_not_start_setup_0c01e9d7" formatted="false">Could not start setup</string>
-     <string name="catalog_could_not_start_the_call_925e1fa3" formatted="false">تعذر بدء المكالمة</string>
-     <string name="catalog_couldn_t_decrypt_this_file_08287a15" formatted="false">تعذر فك تشفير هذا الملف</string>
-     <string name="catalog_couldn_t_load_gifs_e47c284a" formatted="false">تعذر تحميل صور GIF</string>
-     <string name="catalog_couldn_t_reach_that_message_it_may_896fe39d" formatted="false">تعذر الوصول إلى تلك الرسالة - قد تكون قديمة جدًا أو محذوفة.</string>
-     <string name="catalog_create_a_channel_3ac48642" formatted="false">إنشاء قناة</string>
-     <string name="catalog_create_a_server_3a0ab422" formatted="false">إنشاء خادم</string>
-     <string name="catalog_create_account_aaf37447" formatted="false">إنشاء حساب</string>
-     <string name="catalog_create_another_8b69f57c" formatted="false">إنشاء آخر</string>
-     <string name="catalog_create_group_5a0b1c17" formatted="false">إنشاء مجموعة</string>
-     <string name="catalog_create_invite_a8404622" formatted="false">إنشاء دعوة</string>
-     <string name="catalog_create_passkey_500022b0" formatted="false">إنشاء مفتاح مرور</string>
-     <string name="catalog_create_role_db859bad" formatted="false">إنشاء دور</string>
-     <string name="catalog_create_your_account_4046b581" formatted="false">أنشئ حسابك</string>
-     <string name="catalog_creating_this_phone_s_protected_encryption_identity_f14e4807" formatted="false">جارٍ إنشاء هوية التشفير المحمية لهذا الهاتف…</string>
-     <string name="catalog_current_password_19dff4da" formatted="false">كلمة المرور الحالية</string>
-     <string name="catalog_custom_ringtone_fd009ada" formatted="false">نغمة رنين مخصصة</string>
-     <string name="catalog_danger_zone_963a652e" formatted="false">منطقة الخطر</string>
-     <string name="catalog_dark_ae1ef014" formatted="false">داكن</string>
-     <string name="catalog_debug_bd604d99" formatted="false">Debug</string>
-     <string name="catalog_delete_account_1753c206" formatted="false">حذف الحساب</string>
-     <string name="catalog_delete_all_my_messages_3549d600" formatted="false">حذف جميع رسائلي</string>
-     <string name="catalog_delete_all_your_messages_f9463fad" formatted="false">حذف جميع رسائلك</string>
-     <string name="catalog_delete_my_account_2ae3a019" formatted="false">حذف حسابي</string>
-     <string name="catalog_delete_recording_8b58ce23" formatted="false">حذف التسجيل</string>
-     <string name="catalog_delete_role_fbf0667e" formatted="false">حذف الدور</string>
-     <string name="catalog_delete_server_fb695fc6" formatted="false">حذف الخادم</string>
-     <string name="catalog_delete_them_all_a3132ab8" formatted="false">احذفها كلها</string>
-     <string name="catalog_deleted_1_s_message_8ffc45b2" formatted="true">Deleted %1$s message.</string>
-     <string name="catalog_deleted_1_s_messages_9ec1f966" formatted="true">Deleted %1$s messages.</string>
-     <string name="catalog_deleted_user_everything_else_profile_connections_friends_6e1c6e09" formatted="false">deleted user. Everything else - profile, connections, friends, server memberships - is erased. This can\'t be undone.</string>
-     <string name="catalog_desktop_app_f7a44c6b" formatted="false">تطبيق سطح المكتب</string>
-     <string name="catalog_device_1_s_91ca155d" formatted="true">Device %1$s</string>
-     <string name="catalog_device_default_f9aac6c5" formatted="false">إعداد الجهاز الافتراضي</string>
-     <string name="catalog_device_transfer_code_10d0a8b9" formatted="false">رمز نقل الجهاز</string>
-     <string name="catalog_device_transfer_qr_code_d3864e5b" formatted="false">Device transfer QR code</string>
-     <string name="catalog_devices_df485c87" formatted="false">الأجهزة</string>
-     <string name="catalog_digits_confirmed_4ecb4c0f" formatted="false">تم تأكيد الأرقام</string>
-     <string name="catalog_direct_messages_e7596a09" formatted="false">رسائل مباشرة</string>
-     <string name="catalog_direct_messages_f1b1f5c2" formatted="false">الرسائل المباشرة</string>
-     <string name="catalog_disconnected_771e05f2" formatted="false">Disconnected</string>
-     <string name="catalog_display_574ff9b0" formatted="false">Display</string>
-     <string name="catalog_display_name_avatar_bio_accent_css_e2684739" formatted="false">اسم العرض، الصورة الرمزية، النبذة، اللون المميز، CSS</string>
-     <string name="catalog_display_name_c7874aaa" formatted="false">اسم العرض</string>
-     <string name="catalog_display_name_optional_23d1974a" formatted="false">اسم العرض (اختياري)</string>
-     <string name="catalog_display_separately_ecf9d1a7" formatted="false">اعرض بشكل منفصل</string>
-     <string name="catalog_do_not_disturb_875ba794" formatted="false">عدم الإزعاج</string>
-     <string name="catalog_done_e9b450d1" formatted="false">Done</string>
-     <string name="catalog_download_failed_01125e1b" formatted="false">Download failed</string>
-     <string name="catalog_download_install_7db0bddc" formatted="false">Download &amp; install</string>
-     <string name="catalog_downloading_1_s_66b84142" formatted="true">Downloading %1$s…</string>
-     <string name="catalog_each_entry_is_a_device_with_a_8778c193" formatted="false">كل إدخال يمثل جهازًا سجّل الدخول حاليًا. يؤدي إلغاء تفويضه إلى إيقافه </string>
-     <string name="catalog_edit_message_96116a52" formatted="false">تعديل الرسالة</string>
-     <string name="catalog_edit_role_61dd63e9" formatted="false">تعديل الدور</string>
-     <string name="catalog_edited_b6da09e0" formatted="false">(معدّلة)</string>
-     <string name="catalog_email_changed_to_1_s_2755e486" formatted="true">Email changed to %1$s.</string>
-     <string name="catalog_email_code_5cb76e8c" formatted="false">رمز البريد الإلكتروني</string>
-     <string name="catalog_email_me_a_code_cc025d42" formatted="false">أرسل إليّ رمزًا عبر البريد الإلكتروني</string>
-     <string name="catalog_email_me_a_code_instead_44cc1833" formatted="false">أرسل إليّ رمزًا عبر البريد الإلكتروني بدلًا من ذلك</string>
-     <string name="catalog_email_password_8973dcae" formatted="false">البريد الإلكتروني &amp; كلمة المرور</string>
-     <string name="catalog_encrypted_history_keys_are_sent_and_the_aa611cee" formatted="false">Encrypted history keys are sent and the new device is recorded as authorized.</string>
-     <string name="catalog_encryption_0af149c2" formatted="false">التشفير</string>
-     <string name="catalog_encryption_security_alert_7b6e7671" formatted="false">تنبيه أمان التشفير</string>
-     <string name="catalog_enter_a_fresh_two_factor_authentication_code_9784e1c2" formatted="false">أدخل رمزًا جديدًا للمصادقة الثنائية. سيُسجَّل الجهاز الجديد في سجل أجهزتك الذي لا يقبل إلا الإضافة.</string>
-     <string name="catalog_enter_the_6_digit_code_from_your_0a98bcca" formatted="false">أدخل الرمز المكوّن من 6 أرقام من تطبيقك، أو رمز استرداد.</string>
-     <string name="catalog_enter_to_save_shift_enter_for_a_74c26ca9" formatted="false">اضغط Enter للحفظ · Shift+Enter لسطر جديد</string>
-     <string name="catalog_erase_my_encryption_keys_65f08bd6" formatted="false">امسح مفاتيح التشفير الخاصة بي</string>
-     <string name="catalog_erase_them_now_9964fd63" formatted="false">امسحها الآن</string>
-     <string name="catalog_erase_your_encryption_keys_e1ad1aa2" formatted="false">مسح مفاتيح التشفير الخاصة بك؟</string>
-     <string name="catalog_erasing_fd30764f" formatted="false">جارٍ المسح…</string>
-     <string name="catalog_every_device_added_or_removed_is_written_ec8b50d8" formatted="false">يُسجَّل كل جهاز تتم إضافته أو إزالته في دفتر سجل لا يقبل إلا الإضافة؛ لا يمكن تعديله أو محوه. تقرأ أجهزتك هذا السجل عند كل تشغيل، لذلك لا يمكن أن يظهر هنا جهاز لم تضفه بصمت - ستتلقى إشعارًا، ويبقى الإدخال في السجل.</string>
-     <string name="catalog_every_direct_message_is_encrypted_always_and_bacae7ec" formatted="false">كل رسالة مباشرة مشفّرة دائمًا، ولا يمكن إيقاف ذلك. يتعلق هذا الإعداد بمدى التحقق من قفل الشخص الآخر قبل إرسال رسائلك إليه.</string>
-     <string name="catalog_every_message_already_in_your_encrypted_conversations_ae9912e3" formatted="false">تصبح كل رسالة موجودة بالفعل في محادثاتك المشفّرة غير قابلة للقراءة نهائيًا - لك ولنا ولأي شخص. لا شيء يعيدها.</string>
-     <string name="catalog_everyone_930575f5" formatted="false">@everyone</string>
-     <string name="catalog_everyone_applies_to_every_member_it_has_12e47659" formatted="false">ينطبق @everyone على كل عضو. ليس له لون ولا يمكن إسناده أو حذفه.</string>
-     <string name="catalog_everyone_c756f6af" formatted="false">Everyone</string>
-     <string name="catalog_everyone_here_02cadf2a" formatted="false">الجميع هنا</string>
-     <string name="catalog_everyone_in_this_voice_channel_hears_it_df8e9c42" formatted="false">يسمعه كل من في هذه القناة الصوتية.</string>
-     <string name="catalog_everything_sent_from_now_on_uses_a_4d8b70ec" formatted="false">كل ما يُرسل من الآن فصاعدًا يستخدم مفتاحًا جديدًا. تظل الرسائل الحالية قابلة للقراءة، ويحتفظ كل من لا يزال في المحادثة بالوصول.</string>
-     <string name="catalog_expired_large_files_are_only_kept_for_a9b2c12d" formatted="false">منتهية الصلاحية - لا تُحتفَظ بالملفات الكبيرة إلا لمدة ساعة</string>
-     <string name="catalog_expires_in_1_hour_26e2eae7" formatted="false">تنتهي خلال ساعة واحدة</string>
-     <string name="catalog_fallback_mode_scan_this_code_from_an_45193b95" formatted="false">وضع بديل: امسح هذا الرمز بهاتف مُصرَّح له بالفعل، أو الصقه في كمبيوتر مُصرَّح له.</string>
-     <string name="catalog_favourite_this_gif_a9fd24af" formatted="false">أضف صورة GIF هذه إلى المفضلة</string>
-     <string name="catalog_find_a_member_036dc8dd" formatted="false">ابحث عن عضو</string>
-     <string name="catalog_find_friends_2fd354c9" formatted="false">ابحث عن أصدقاء</string>
-     <string name="catalog_finish_b74bdee9" formatted="false">Finish</string>
-     <string name="catalog_first_device_on_this_account_452cc989" formatted="false">First device on this account</string>
-     <string name="catalog_flip_camera_ed114d76" formatted="false">بدّل الكاميرا</string>
-     <string name="catalog_follow_the_installer_to_finish_updating_2742868e" formatted="false">اتبع برنامج التثبيت لإتمام التحديث</string>
-     <string name="catalog_for_permission_the_first_time_you_join_1cbeb90e" formatted="false">for permission the first time you join one.</string>
-     <string name="catalog_freezes_the_account_if_you_think_someone_09f45852" formatted="false">يجمّد الحساب إذا كنت تعتقد أن شخصًا آخر بداخله: يسجّل خروج كل </string>
-     <string name="catalog_friends_of_friends_9abdf2fe" formatted="false">Friends of friends</string>
-     <string name="catalog_friends_only_0b2d5f25" formatted="false">Friends only</string>
-     <string name="catalog_generate_fc45f9b7" formatted="false">Generate</string>
-     <string name="catalog_get_notified_about_messages_d4bc1f2e" formatted="false">هل تريد تلقي إشعارات بالرسائل؟</string>
-     <string name="catalog_hang_up_66be99b5" formatted="false">إنهاء المكالمة</string>
-     <string name="catalog_have_them_open_their_code_in_orangchat_9428c129" formatted="false">اطلب من الطرف الآخر فتح رمزه في OrangChat ووجّه كاميرا هذا الهاتف إليه. سيتذكر هاتفك بعد ذلك القفل الذي رأيته فعلًا، لذلك لن يعود القفل المستبدل مطابقًا. يثبت مسح واحد اتجاهًا واحدًا - اعرض له رمزك أيضًا.</string>
-     <string name="catalog_hide_my_code_835d9e98" formatted="false">إخفاء رمزي</string>
-     <string name="catalog_hide_password_e40123b4" formatted="false">إخفاء كلمة المرور</string>
-     <string name="catalog_hold_steady_scanning_happens_automatically_ae832ed2" formatted="false">ثبّت الهاتف - يتم المسح تلقائيًا</string>
-     <string name="catalog_hold_the_mic_to_record_then_let_48d81b83" formatted="false">اضغط باستمرار على الميكروفون للتسجيل، ثم ارفع إصبعك للإرسال</string>
-     <string name="catalog_hold_to_record_a_voice_message_06b1b5f5" formatted="false">اضغط باستمرار لتسجيل رسالة صوتية</string>
-     <string name="catalog_how_does_this_work_1ae14530" formatted="false">كيف يعمل هذا؟</string>
-     <string name="catalog_how_your_messages_are_protected_bb07e15c" formatted="false">كيف تُحمى رسائلك</string>
-     <string name="catalog_i_understand_842a9bdd" formatted="false">أفهم</string>
-     <string name="catalog_i_ve_saved_them_d4c0b9ed" formatted="false">لقد حفظتها</string>
-     <string name="catalog_icon_716f63b9" formatted="false">أيقونة</string>
-     <string name="catalog_idle_cc1ebdd0" formatted="false">خامل</string>
-     <string name="catalog_if_a_safety_code_changes_or_a_fdad80c2" formatted="false">إذا تغيّر رمز أمان، أو ظهر في حسابك جهاز لم تضفه، يوقف OrangChat العملية ويخبرك مباشرة بدلًا من عرض إشعار قد تمرر عليه.</string>
-     <string name="catalog_in_call_07d16f43" formatted="false">في مكالمة</string>
-     <string name="catalog_in_plain_language_with_no_jargon_to_b56795a6" formatted="false">بلغة بسيطة، بلا مصطلحات معقدة تحتاج إلى تجاوزها.</string>
-     <string name="catalog_inappropriate_content_62db8957" formatted="false">محتوى غير مناسب</string>
-     <string name="catalog_incorrect_password_b68db3d0" formatted="false">Incorrect password.</string>
-     <string name="catalog_install_fd6c3ebf" formatted="false">Install</string>
-     <string name="catalog_installed_7bb4405c" formatted="false">Installed</string>
-     <string name="catalog_invite_link_601e9d6c" formatted="false">رابط الدعوة</string>
-     <string name="catalog_invite_people_e1eb97af" formatted="false">ادعُ أشخاصًا</string>
-     <string name="catalog_invite_to_get_back_into_any_of_016b015f" formatted="false">invite to get back into any of them.</string>
-     <string name="catalog_ios_browser_1da182c5" formatted="false">iOS browser</string>
-     <string name="catalog_it_is_not_always_an_attack_it_c9d44cb1" formatted="false">ليس الأمر هجومًا دائمًا - فقد يحدث أيضًا عندما يفقد شخص كل أجهزته ويضطر إلى البدء من جديد. لا توجد طريقة لتمييز الحالتين من داخل التطبيق، ولهذا يطلب منك التحقق من الشخص مباشرة قبل إرسال أي شيء آخر.</string>
-     <string name="catalog_join_a_server_d59b6aba" formatted="false">انضم إلى خادم</string>
-     <string name="catalog_join_muted_8ccaf5fe" formatted="false">انضم مع كتم الصوت</string>
-     <string name="catalog_join_with_camera_on_c39f4e79" formatted="false">انضم مع تشغيل الكاميرا</string>
-     <string name="catalog_jump_to_latest_5aa2e089" formatted="false">انتقل إلى الأحدث</string>
-     <string name="catalog_keys_device_log_verifying_people_0828f752" formatted="false">المفاتيح، سجل الأجهزة، التحقق من الأشخاص</string>
-     <string name="catalog_last_active_1_s_df09e3bb" formatted="true"> · last active %1$s</string>
-     <string name="catalog_last_used_1_s_c8f76185" formatted="true"> · last used %1$s</string>
-     <string name="catalog_leave_all_servers_65e7741b" formatted="false">مغادرة جميع الخوادم</string>
-     <string name="catalog_leave_group_92578912" formatted="false">مغادرة المجموعة</string>
-     <string name="catalog_leave_server_da6fea13" formatted="false">مغادرة الخادم</string>
-     <string name="catalog_leaves_every_server_you_re_in_except_bcbf7a17" formatted="false">يغادر كل الخوادم التي أنت فيها، باستثناء ما تملكه. ستحتاج إلى </string>
-     <string name="catalog_leaving_it_off_is_not_unprotected_every_94d76940" formatted="false">إيقافه لا يعني أنك \"غير محمي\". يظل كل قفل متحققًا منه مقابل دفتر سجل لا يقبل إلا الإضافة، تقرؤه أجهزتك عند كل تشغيل. الفرق هو هل يُمنع القفل المستبدل قبل استخدامه أم يُكتشف بعد ذلك مباشرة. تُرسل محادثات المجموعات فورًا في كلتا الحالتين.</string>
-     <string name="catalog_left_1_s_server_2619a08f" formatted="true">Left %1$s server.</string>
-     <string name="catalog_left_1_s_servers_8833549c" formatted="true">Left %1$s servers.</string>
-     <string name="catalog_let_people_see_when_you_re_typing_eb96518c" formatted="false">دع الآخرين يرون عندما تكتب.</string>
-     <string name="catalog_lift_lockdown_4131d82c" formatted="false">إلغاء قفل الحساب</string>
-     <string name="catalog_lift_timeout_560ca50c" formatted="false">إلغاء المهلة</string>
-     <string name="catalog_light_a36ef8ab" formatted="false">فاتح</string>
-     <string name="catalog_linked_image_96960966" formatted="false">صورة مرتبطة</string>
-     <string name="catalog_listening_to_aad82f87" formatted="false">يستمع إلى</string>
-     <string name="catalog_listening_to_b35b0e8e" formatted="false">يستمع إلى </string>
-     <string name="catalog_load_more_dfe60ca9" formatted="false">تحميل المزيد</string>
-     <string name="catalog_loading_33ce4174" formatted="false">جارٍ التحميل…</string>
-     <string name="catalog_lock_down_my_account_c7b52afc" formatted="false">تأمين حسابي</string>
-     <string name="catalog_lockdown_8ba04349" formatted="false">Lockdown</string>
-     <string name="catalog_lockdown_lifted_f4f1b05c" formatted="false">Lockdown lifted.</string>
-     <string name="catalog_locked_down_1dc1036e" formatted="false">Locked down.</string>
-     <string name="catalog_locked_down_signed_out_1_s_other_d382c238" formatted="true">Locked down. Signed out %1$s other session.</string>
-     <string name="catalog_locked_down_signed_out_1_s_other_ecca9d9f" formatted="true">Locked down. Signed out %1$s other sessions.</string>
-     <string name="catalog_log_in_f7c400ed" formatted="false">تسجيل الدخول</string>
-     <string name="catalog_log_out_6e78c91f" formatted="false">تسجيل الخروج</string>
-     <string name="catalog_lost_your_authenticator_af902070" formatted="false">فقدت تطبيق المصادقة؟</string>
-     <string name="catalog_lowercase_letters_digits_and_2_to_32_7bec3c28" formatted="false">أحرف صغيرة وأرقام و _ و . - من 2 إلى 32 حرفًا</string>
-     <string name="catalog_lowercase_letters_numbers_underscores_and_dots_57155ecc" formatted="false">أحرف صغيرة وأرقام وشرطات سفلية ونقاط.</string>
-     <string name="catalog_make_a_new_key_cde9afba" formatted="false">إنشاء مفتاح جديد</string>
-     <string name="catalog_mark_as_read_c1ee860b" formatted="false">وضع علامة كمقروء</string>
-     <string name="catalog_messages_friend_requests_typing_notifications_17b64746" formatted="false">رسائل، طلبات صداقة، كتابة، إشعارات</string>
-     <string name="catalog_messages_go_as_soon_as_you_send_e76569f5" formatted="false">تُرسل الرسائل فور إرسالها. إذا استبدل أي شخص قفل هذا الشخص يومًا ما، ستلاحظ أجهزتك ذلك وتخبرك.</string>
-     <string name="catalog_microphone_access_is_needed_to_record_a_9afc8aaa" formatted="false">يلزم الوصول إلى الميكروفون لتسجيل رسالة صوتية</string>
-     <string name="catalog_minimize_call_6cb0f0f8" formatted="false">تصغير المكالمة</string>
-     <string name="catalog_missed_call_0200c293" formatted="false">مكالمة فائتة</string>
-     <string name="catalog_my_contact_verification_qr_code_44a80ea4" formatted="false">My contact verification QR code</string>
-     <string name="catalog_my_orange_grove_c6cfda8f" formatted="false">بستان البرتقال الخاص بي</string>
-     <string name="catalog_name_709a2322" formatted="false">Name</string>
-     <string name="catalog_need_an_account_sign_up_77472065" formatted="false">تحتاج إلى حساب؟ أنشئ حسابًا</string>
-     <string name="catalog_neon_00706b5e" formatted="false">Neon</string>
-     <string name="catalog_never_used_8c1c3645" formatted="false"> · لم يُستخدم مطلقًا</string>
-     <string name="catalog_new_email_b07e22b0" formatted="false">بريد إلكتروني جديد</string>
-     <string name="catalog_new_group_f9850c0b" formatted="false">مجموعة جديدة</string>
-     <string name="catalog_new_key_for_this_conversation_651d7e16" formatted="false">مفتاح جديد لهذه المحادثة</string>
-     <string name="catalog_new_messages_6d867124" formatted="false">رسائل جديدة</string>
-     <string name="catalog_new_password_d850ee18" formatted="false">كلمة مرور جديدة</string>
-     <string name="catalog_new_recovery_codes_90b8afc8" formatted="false">رموز استرداد جديدة</string>
-     <string name="catalog_new_roles_start_just_above_everyone_so_700d0555" formatted="false">تبدأ الأدوار الجديدة فوق @everyone مباشرةً، لذلك لا تتفوق أبدًا على من أنشأها.</string>
-     <string name="catalog_new_update_available_b0be29b0" formatted="false">يتوفر تحديث جديد</string>
-     <string name="catalog_no_answer_a9c16dd0" formatted="false">لا رد</string>
-     <string name="catalog_no_devices_are_enrolled_on_this_account_025829c1" formatted="false">لا توجد أجهزة مسجّلة في هذا الحساب.</string>
-     <string name="catalog_no_friends_yet_add_someone_first_a7ccf9a9" formatted="false">لا أصدقاء بعد. أضف شخصًا أولًا.</string>
-     <string name="catalog_no_friends_yet_add_someone_from_the_7d7f43ab" formatted="false">لا أصدقاء بعد. أضف شخصًا من علامة التبويب \"إضافة\".</string>
-     <string name="catalog_no_gifs_found_0d358df4" formatted="false">لم يتم العثور على صور GIF</string>
-     <string name="catalog_no_matches_0be6a257" formatted="false">لا نتائج.</string>
-     <string name="catalog_no_matching_friends_or_channels_fd0c1248" formatted="false">لا أصدقاء أو قنوات مطابقة</string>
-     <string name="catalog_no_one_41c06c15" formatted="false">No one</string>
-     <string name="catalog_no_passkeys_yet_6dc4fe0f" formatted="false">لا مفاتيح مرور بعد.</string>
-     <string name="catalog_no_pending_requests_aeedf949" formatted="false">لا طلبات معلّقة.</string>
-     <string name="catalog_no_profile_themes_match_1_s_a67c627c" formatted="true">No profile themes match “%1$s”.</string>
-     <string name="catalog_no_saved_gifs_yet_tap_the_bookmark_75705898" formatted="false">لا توجد صور GIF محفوظة بعد - اضغط على أيقونة العلامة المرجعية في أي صورة GIF للاحتفاظ بها هنا.</string>
-     <string name="catalog_no_server_is_currently_restricting_you_061000ea" formatted="false">لا يوجد خادم يقيّدك حاليًا.</string>
-     <string name="catalog_no_sounds_yet_someone_with_manage_expressions_011117e4" formatted="false">لا أصوات بعد. يمكن لشخص لديه صلاحية إدارة التعبيرات إضافتها من إعدادات الخادم.</string>
-     <string name="catalog_nobody_can_send_you_requests_5279aaea" formatted="false">Nobody can send you requests.</string>
-     <string name="catalog_nobody_new_can_message_you_d72cdf15" formatted="false">Nobody new can message you.</string>
-     <string name="catalog_none_set_4bf72e7e" formatted="false">لم يتم ضبط أي شيء</string>
-     <string name="catalog_not_in_call_32010878" formatted="false">لست في مكالمة</string>
-     <string name="catalog_not_in_the_same_room_you_will_d53e345b" formatted="false">لستما في الغرفة نفسها؟ سيرى كل منكما الصف القصير نفسه من الأرقام، المسمّى رمز الأمان. اطلب من الطرف الآخر قراءته بصوت عالٍ في مكالمة هاتفية، أو إرساله عبر تطبيق آخر تثق به بالفعل، ثم اكتبه في المربع أسفل الرمز - يقارن التطبيق الأرقام الستين كلها، وهذا أكثر مما يستطيع أي شخص مقارنته بالعين. إذا تطابقت الأرقام، فلا أحد يتوسطكما. الشيء الوحيد الذي لا يُعتدّ به هو مكالمة OrangChat الصوتية - إذ يمر صوتها عبر الخوادم نفسها التي وُجد هذا التحقق لاختبارها.</string>
-     <string name="catalog_not_me_1ad9a1eb" formatted="false">لست أنا</string>
-     <string name="catalog_not_now_e4571490" formatted="false">ليس الآن</string>
-     <string name="catalog_not_sent_587c501e" formatted="false">لم تُرسل</string>
-     <string name="catalog_nothing_can_sign_in_and_no_new_e0c687ac" formatted="false">لن يتمكن أحد من تسجيل الدخول، ولا تصلك أي رسائل مباشرة أو طلبات صداقة جديدة. </string>
-     <string name="catalog_nothing_has_been_logged_yet_e4080778" formatted="false">لم يُسجَّل أي شيء بعد.</string>
-     <string name="catalog_nothing_is_sent_until_you_have_checked_6db8aee8" formatted="false">لا يُرسل أي شيء حتى تتحقق من رمزه شخصيًا أو عبر مكالمة. حتى ذلك الحين، تنتظر رسائلك هنا مقفلة ولا تذهب إلى أي مكان.</string>
-     <string name="catalog_notifications_753a22b2" formatted="false">Notifications</string>
-     <string name="catalog_notifications_are_turned_off_e638becc" formatted="false">الإشعارات متوقفة</string>
-     <string name="catalog_now_playing_586fa7a8" formatted="false">قيد التشغيل الآن</string>
-     <string name="catalog_oc_pf_name_color_ff6a1a_9442cf4e" formatted="false">.oc-pf-name { color: #ff6a1a; }</string>
-     <string name="catalog_off_the_shade_and_lock_screen_show_29ea09db" formatted="false">عند إيقافه، يعرض شريط الإشعارات وشاشة القفل من كتب الرسالة ولا شيء غير ذلك. ولا تُفك رسائل التشفير عندئذٍ لإنشاء إشعار أصلًا. هذا الهاتف فقط.</string>
-     <string name="catalog_offline_e01fa717" formatted="false">غير متصل</string>
-     <string name="catalog_on_call_fdd219b2" formatted="false">في مكالمة</string>
-     <string name="catalog_on_e0049a66" formatted="false">مفعّل</string>
-     <string name="catalog_on_your_pc_open_settings_encryption_add_5a070e42" formatted="false">على الكمبيوتر، افتح الإعدادات → التشفير → إضافة جهاز آخر. سيعرض الكمبيوتر رمز QR يُستخدم مرة واحدة.</string>
-     <string name="catalog_ongoing_call_5ae739b8" formatted="false">مكالمة جارية</string>
-     <string name="catalog_online_c3e839df" formatted="false">متصل</string>
-     <string name="catalog_only_continue_if_you_started_this_transfer_d563e585" formatted="false">تابع فقط إذا كنت قد بدأت هذا النقل ويمكنك رؤية الجهازين.</string>
-     <string name="catalog_only_people_on_your_friends_list_a0690c48" formatted="false">Only people on your friends list.</string>
-     <string name="catalog_only_people_you_share_a_friend_with_dd960ba7" formatted="false">Only people you share a friend with.</string>
-     <string name="catalog_only_the_owner_can_rename_this_server_3db192cb" formatted="false">المالك وحده يمكنه إعادة تسمية هذا الخادم</string>
-     <string name="catalog_only_the_people_in_the_conversation_can_ae492280" formatted="false">لا يستطيع فتحها إلا الأشخاص في المحادثة. لا يستطيع OrangChat فتحها، ولا من يسرق قاعدة بياناتنا، ولا من يأتي بأمر قضائي - فنحن لا نحتفظ بمفتاح يمكننا تسليمه. التشفير مفعّل لكل رسالة مباشرة، ولا يمكن إيقافه.</string>
-     <string name="catalog_open_app_permissions_893246fb" formatted="false">فتح أذونات التطبيق</string>
-     <string name="catalog_open_call_1c47457b" formatted="false">فتح المكالمة</string>
-     <string name="catalog_orangchat_can_let_you_know_when_someone_13d0aac2" formatted="false">يمكن لـ OrangChat إعلامك عندما يراسلك شخص أو يتصل بك </string>
-     <string name="catalog_orangchat_desktop_app_ffb92600" formatted="false">OrangChat desktop app</string>
-     <string name="catalog_orangchat_device_transfer_9d5395e9" formatted="false">orangchat://device-transfer?…</string>
-     <string name="catalog_orangchat_for_android_3f20ca31" formatted="false">OrangChat for Android</string>
-     <string name="catalog_orangchat_only_opens_your_camera_and_microphone_16da857f" formatted="false">لا يفتح OrangChat الكاميرا والميكروفون إلا أثناء مكالمة. يطلب Android </string>
-     <string name="catalog_other_device_blocks_new_sign_ins_and_6199dab7" formatted="false">other device, blocks new sign-ins, and closes new DMs and friend requests until you lift it.</string>
-     <string name="catalog_otherwise_only_members_with_mention_everyone_can_a0476dcf" formatted="false">وإلا فلا يمكن إلا للأعضاء ذوي صلاحية الإشارة إلى الجميع.</string>
-     <string name="catalog_package_7431e3df" formatted="false">Package</string>
-     <string name="catalog_parchment_4761c103" formatted="false">Parchment</string>
-     <string name="catalog_passkey_e35828da" formatted="false">Passkey</string>
-     <string name="catalog_passkey_settings_too_or_it_will_keep_26130742" formatted="false">passkey settings too, or it will keep showing up there.</string>
-     <string name="catalog_passkeys_caab7827" formatted="false">Passkeys</string>
-     <string name="catalog_password_changed_1_s_other_session_was_10fc8ee3" formatted="true">Password changed. %1$s other session was signed out.</string>
-     <string name="catalog_password_changed_1_s_other_sessions_were_64e22cd3" formatted="true">Password changed. %1$s other sessions were signed out.</string>
-     <string name="catalog_password_changed_47fa5289" formatted="false">Password changed.</string>
-     <string name="catalog_permanently_delete_2eea1fa8" formatted="false">حذف نهائيًا</string>
-     <string name="catalog_personal_phone_a154b2eb" formatted="false">هاتف شخصي</string>
-     <string name="catalog_phone_connected_ac1141af" formatted="false">الهاتف متصل</string>
-     <string name="catalog_pick_at_least_one_more_friend_for_1cd89bd0" formatted="false">اختر صديقًا آخر على الأقل للمجموعة.</string>
-     <string name="catalog_point_this_phone_at_the_qr_code_cea07275" formatted="false">وجّه هذا الهاتف إلى رمز QR الظاهر في OrangChat على الكمبيوتر.</string>
-     <string name="catalog_point_this_phone_at_the_transfer_code_d6baae81" formatted="false">وجّه هذا الهاتف إلى رمز النقل الظاهر على الجهاز الجديد.</string>
-     <string name="catalog_preview_f1fbb2b4" formatted="false">معاينة</string>
-     <string name="catalog_privacy_cf01481f" formatted="false">الخصوصية</string>
-     <string name="catalog_privacy_security_9bb6e9c0" formatted="false">الخصوصية &amp; الأمان</string>
-     <string name="catalog_profile_ff4fc027" formatted="false">الملف الشخصي</string>
-     <string name="catalog_profile_themes_3d7fccd2" formatted="false">سمات الملف الشخصي</string>
-     <string name="catalog_profile_themes_style_your_public_profile_card_7965d778" formatted="false">تُنسّق سمات الملف الشخصي بطاقتك العامة. يراجع كل إدخال عبر طلب سحب، ويُضمّن مع التطبيق، ويُنقّى قبل عرضه.</string>
-     <string name="catalog_qr_code_abba02fc" formatted="false">QR code</string>
-     <string name="catalog_ready_made_styles_for_your_profile_card_83af5cba" formatted="false">أنماط جاهزة لبطاقة ملفك الشخصي</string>
-     <string name="catalog_realtime_5973df61" formatted="false">Realtime</string>
-     <string name="catalog_reason_1_s_bce5b2c7" formatted="true">Reason: %1$s</string>
-     <string name="catalog_recording_locked_32fe3a05" formatted="false">التسجيل مقفل</string>
-     <string name="catalog_recovery_codes_b3f5f8ca" formatted="false">رموز الاسترداد</string>
-     <string name="catalog_reduce_motion_25a5aef5" formatted="false">تقليل الحركة</string>
-     <string name="catalog_release_d41f56ce" formatted="false">Release</string>
-     <string name="catalog_release_to_cancel_29bd6c29" formatted="false">حرّر للإلغاء</string>
-     <string name="catalog_remove_background_for_everyone_275dc99e" formatted="false">إزالة الخلفية للجميع</string>
-     <string name="catalog_remove_e963907d" formatted="false">Remove</string>
-     <string name="catalog_remove_friend_b16fc7ff" formatted="false">إزالة صديق</string>
-     <string name="catalog_remove_from_favourites_624f82c1" formatted="false">إزالة من المفضلة</string>
-     <string name="catalog_remove_group_icon_5869f3b2" formatted="false">إزالة أيقونة المجموعة</string>
-     <string name="catalog_remove_passkey_988b1b7e" formatted="false">إزالة مفتاح المرور</string>
-     <string name="catalog_removes_every_message_you_ve_sent_in_f63902f1" formatted="false">يزيل كل رسالة أرسلتها في كل خادم ومجموعة - بما في ذلك </string>
-     <string name="catalog_removing_this_only_affects_orangchat_delete_it_28979691" formatted="false">لا تؤثر إزالة هذا إلا في OrangChat. احذفه من إعدادات الجهاز نفسها </string>
-     <string name="catalog_rename_d3f4cb89" formatted="false">Rename</string>
-     <string name="catalog_rename_passkey_cb9298c9" formatted="false">إعادة تسمية مفتاح المرور</string>
-     <string name="catalog_renewing_it_loses_access_within_a_few_1d7c7abe" formatted="false">renewing; it loses access within a few minutes.</string>
-     <string name="catalog_replaces_the_key_used_from_now_on_c57ccaed" formatted="false">يستبدل المفتاح المستخدم من الآن فصاعدًا، حتى لا يتمكن جهاز أُزيل منذ ذلك الحين من قراءة أي شيء جديد. تظل الرسائل الموجودة هنا قابلة للقراءة، ولا يُمنع أحد من الوصول.</string>
-     <string name="catalog_replaces_the_orangchat_mark_for_you_everywhere_109fab70" formatted="false">يستبدل شعار OrangChat لك في كل مكان سجّلت الدخول فيه. </string>
-     <string name="catalog_report_message_babfeaf5" formatted="false">الإبلاغ عن رسالة</string>
-     <string name="catalog_report_received_2568a541" formatted="false">تم استلام البلاغ</string>
-     <string name="catalog_reporting_reveals_this_one_decrypted_message_and_1e7d77a7" formatted="false">يكشف الإبلاغ هذه الرسالة المفكوكة ومفتاح رسالة واحدة. ولا يكشف مفتاح المحادثة أو أي رسالة أخرى.</string>
-     <string name="catalog_request_sent_168996e3" formatted="false">تم إرسال الطلب</string>
-     <string name="catalog_resend_email_code_9a8ba727" formatted="false">إعادة إرسال رمز البريد الإلكتروني</string>
-     <string name="catalog_reset_44c57abd" formatted="false">إعادة تعيين</string>
-     <string name="catalog_reset_to_defaults_ddefe47d" formatted="false">إعادة الضبط إلى الإعدادات الافتراضية</string>
-     <string name="catalog_resolving_invite_62cce3b8" formatted="false">جارٍ التحقق من الدعوة…</string>
-     <string name="catalog_revoke_0be72075" formatted="false">Revoke</string>
-     <string name="catalog_revoke_1_s_357dcc1d" formatted="true">Revoke %1$s?</string>
-     <string name="catalog_revoke_device_66468c17" formatted="false">إلغاء تفويض الجهاز</string>
-     <string name="catalog_revoked_d8230020" formatted="false">  ·  revoked</string>
-     <string name="catalog_revoking_2c8a0ed4" formatted="false">جارٍ إلغاء التفويض…</string>
-     <string name="catalog_ringing_417814b1" formatted="false">جارٍ الرنين…</string>
-     <string name="catalog_role_name_4204d818" formatted="false">اسم الدور</string>
-     <string name="catalog_roles_grant_permissions_and_a_colour_members_51c7e585" formatted="false">تمنح الأدوار أذونات ولونًا. يأخذ الأعضاء لون أعلى دور لديهم.</string>
-     <string name="catalog_save_changes_179359b3" formatted="false">حفظ التغييرات</string>
-     <string name="catalog_save_nickname_51ddb3ea" formatted="false">حفظ الاسم المستعار</string>
-     <string name="catalog_save_profile_f597c0e8" formatted="false">حفظ الملف الشخصي</string>
-     <string name="catalog_save_these_now_each_works_once_if_2a1aad82" formatted="false">احفظها الآن - يعمل كل منها مرة واحدة إذا فقدت هاتفك، ولا تظهر إلا هذه المرة.</string>
-     <string name="catalog_scan_28cba55d" formatted="false">Scan</string>
-     <string name="catalog_scan_code_from_pc_6c59b0aa" formatted="false">مسح الرمز من الكمبيوتر</string>
-     <string name="catalog_scan_device_code_45e4e1cb" formatted="false">مسح رمز الجهاز</string>
-     <string name="catalog_scan_the_code_shown_by_the_new_953d3dac" formatted="false">امسح الرمز الظاهر على الجهاز الجديد، أو الصق رمز orangchat://device-transfer الكامل هنا.</string>
-     <string name="catalog_scan_their_code_b273ef3b" formatted="false">امسح رمزه</string>
-     <string name="catalog_scan_verification_code_9569a83c" formatted="false">مسح رمز التحقق</string>
-     <string name="catalog_search_bce06414" formatted="false">Search</string>
-     <string name="catalog_search_by_name_or_username_9c923df6" formatted="false">ابحث بالاسم أو اسم المستخدم</string>
-     <string name="catalog_search_friends_and_channels_57990af1" formatted="false">ابحث عن الأصدقاء والقنوات</string>
-     <string name="catalog_search_klipy_9e867d1a" formatted="false">ابحث في KLIPY</string>
-     <string name="catalog_search_messages_abea65ae" formatted="false">البحث في الرسائل</string>
-     <string name="catalog_search_profile_themes_99f3d314" formatted="false">ابحث في سمات الملف الشخصي</string>
-     <string name="catalog_searched_on_this_device_messages_not_opened_4abe22a1" formatted="false">تم البحث على هذا الجهاز. قد تكون الرسائل التي لم تُفتح هنا مفقودة.</string>
-     <string name="catalog_security_f25ce1b8" formatted="false">الأمان</string>
-     <string name="catalog_send_a_new_code_91904a28" formatted="false">إرسال رمز جديد</string>
-     <string name="catalog_send_anyway_911263fe" formatted="false">إرسال على أي حال</string>
-     <string name="catalog_send_friend_request_c3ed810d" formatted="false">إرسال طلب صداقة</string>
-     <string name="catalog_send_report_a5b32af9" formatted="false">إرسال البلاغ</string>
-     <string name="catalog_send_straight_away_19f3932b" formatted="false">أرسل فورًا</string>
-     <string name="catalog_send_straight_away_a_swap_gets_caught_2e19b55a" formatted="false">أرسل فورًا - يُكتشف الاستبدال. يُكتب كل قفل ينشره أي شخص في دفتر سجل لا يقبل إلا الإضافة، ولا يمكن تعديله أو محوه. تقرأ أجهزتك صفحة حسابك عند كل تشغيل. إذا نُشر يومًا قفل باسمك لم تنشئه أجهزتك، فستخبرك بذلك، ويبقى الإدخال في السجل حيث يمكن لأي شخص الإشارة إليه. يمكن محاولة الاستبدال، لكن لا يمكن محاولته في الخفاء.</string>
-     <string name="catalog_send_typing_indicators_6ca26372" formatted="false">إرسال مؤشرات الكتابة</string>
-     <string name="catalog_sending_cf765512" formatted="false">جارٍ الإرسال…</string>
-     <string name="catalog_sending_encrypted_history_and_signing_the_new_6bfd242c" formatted="false">Sending encrypted history and signing the new device into your device log…</string>
-     <string name="catalog_sending_straight_away_is_what_every_conversation_68012f61" formatted="false">الإرسال فورًا هو ما تحصل عليه كل محادثة. التحقق أولًا هو الخطوة الإضافية، ولا يستحق تفعيله إلا للأشخاص الذين يمكنك مقابلتهم أو الاتصال بهم واقعيًا.</string>
-     <string name="catalog_sending_voice_message_a48b5648" formatted="false">جارٍ إرسال رسالة صوتية…</string>
-     <string name="catalog_server_cb0cb170" formatted="false">Server</string>
-     <string name="catalog_server_channels_those_have_shared_history_moderation_c68bcd1b" formatted="false">• قنوات الخادم. لها سجل مشترك وإشراف وبحث، وكل ذلك يتطلب أن يقرأها الخادم. لا تُشفّر بهذه الطريقة إلا الرسائل المباشرة ورسائل المجموعات المباشرة.</string>
-     <string name="catalog_server_icon_8bf2f95a" formatted="false">أيقونة الخادم</string>
-     <string name="catalog_server_name_738825fc" formatted="false">اسم الخادم</string>
-     <string name="catalog_server_settings_28af3cc7" formatted="false">إعدادات الخادم</string>
-     <string name="catalog_set_a_password_f5c8f412" formatted="false">عيّن كلمة مرور</string>
-     <string name="catalog_set_chat_background_d07e7165" formatted="false">تعيين خلفية الدردشة</string>
-     <string name="catalog_set_group_icon_48042fd7" formatted="false">تعيين أيقونة المجموعة</string>
-     <string name="catalog_set_password_94408e41" formatted="false">تعيين كلمة المرور</string>
-     <string name="catalog_set_up_this_phone_again_6f53f3fd" formatted="false">أعِد إعداد هذا الهاتف</string>
-     <string name="catalog_set_up_two_factor_a6722c51" formatted="false">إعداد المصادقة الثنائية</string>
-     <string name="catalog_setting_up_cef9b69d" formatted="false">جارٍ الإعداد…</string>
-     <string name="catalog_settings_c7f73bb5" formatted="false">الإعدادات</string>
-     <string name="catalog_share_to_orangchat_8cb49ef7" formatted="false">المشاركة عبر OrangChat</string>
-     <string name="catalog_shared_text_4517f1e8" formatted="false">نص مشترك</string>
-     <string name="catalog_sharing_ad005909" formatted="false">جارٍ المشاركة…</string>
-     <string name="catalog_show_fallback_code_on_this_phone_90acc27c" formatted="false">إظهار الرمز الاحتياطي على هذا الهاتف</string>
-     <string name="catalog_show_members_with_this_role_in_their_f0fb058c" formatted="false">عرض الأعضاء الذين لديهم هذا الدور في مجموعتهم الخاصة.</string>
-     <string name="catalog_show_message_text_66bf26b1" formatted="false">إظهار نص الرسالة</string>
-     <string name="catalog_show_my_code_342b7a4e" formatted="false">إظهار رمزي</string>
-     <string name="catalog_show_password_044b852f" formatted="false">إظهار كلمة المرور</string>
-     <string name="catalog_shown_on_the_invite_page_28e6606d" formatted="false">يظهر في صفحة الدعوة.</string>
-     <string name="catalog_sign_in_ada2e9e9" formatted="false">تسجيل الدخول</string>
-     <string name="catalog_sign_in_before_adding_this_device_8327420f" formatted="false">Sign in before adding this device.</string>
-     <string name="catalog_sign_in_on_the_web_94061c18" formatted="false">تسجيل الدخول على الويب؟</string>
-     <string name="catalog_sign_in_with_a_passkey_cf1c7263" formatted="false">سجّل الدخول باستخدام مفتاح مرور</string>
-     <string name="catalog_sign_in_with_your_fingerprint_face_or_ec24e91a" formatted="false">سجّل الدخول ببصمتك أو وجهك أو رمز PIN للجهاز بدلًا من كلمة المرور. </string>
-     <string name="catalog_sign_out_1_s_other_device_24648e43" formatted="true">Sign out %1$s other device</string>
-     <string name="catalog_sign_out_1_s_other_devices_5bd5b0ba" formatted="true">Sign out %1$s other devices</string>
-     <string name="catalog_sign_out_dc1649a1" formatted="false">تسجيل الخروج</string>
-     <string name="catalog_signed_in_1_s_3b0f6db2" formatted="true">Signed in %1$s</string>
-     <string name="catalog_signed_in_as_1_s_21660e7d" formatted="true">Signed in as %1$s.</string>
-     <string name="catalog_skip_the_scroll_and_swipe_animations_3bb4a091" formatted="false">تخطي رسوم التمرير والسحب المتحركة.</string>
-     <string name="catalog_slide_to_cancel_8f64a698" formatted="false">مرّر للإلغاء →</string>
-     <string name="catalog_slide_to_cancel_9c411f6d" formatted="false">‹ مرّر للإلغاء</string>
-     <string name="catalog_slide_up_to_lock_recording_52127830" formatted="false">مرّر لأعلى لقفل التسجيل</string>
-     <string name="catalog_so_you_can_tell_it_apart_from_5878d69c" formatted="false">حتى تتمكن من تمييزه عن أجهزتك الأخرى لاحقًا.</string>
-     <string name="catalog_someone_here_f47623b5" formatted="false">شخص هنا</string>
-     <string name="catalog_someone_scanned_this_account_s_code_to_cd6f3892" formatted="false">مسح شخص ما رمز هذا الحساب لتسجيل الدخول إلى OrangChat في متصفح. وافق فقط إذا كنت أنت.</string>
-     <string name="catalog_standing_together_scan_each_other_s_codes_faf20092" formatted="false">تقفان معًا؟ امسحا رمزَي بعضكما - يثبت مسح واحد اتجاهًا واحدًا، لذا افعلا الأمرين.</string>
-     <string name="catalog_start_a_call_d7f39160" formatted="false">بدء مكالمة</string>
-     <string name="catalog_start_a_fresh_key_here_11c5421d" formatted="false">ابدأ مفتاحًا جديدًا هنا</string>
-     <string name="catalog_start_calls_with_video_already_publishing_04f2d03f" formatted="false">ابدأ المكالمات مع تفعيل بث الفيديو مسبقًا.</string>
-     <string name="catalog_start_every_call_with_your_microphone_off_087b5564" formatted="false">ابدأ كل مكالمة مع كتم صوت الميكروفون.</string>
-     <string name="catalog_start_over_with_new_keys_328f6a4a" formatted="false">ابدأ من جديد بمفاتيح جديدة</string>
-     <string name="catalog_start_video_call_dac036c6" formatted="false">بدء مكالمة فيديو</string>
-     <string name="catalog_start_voice_call_f5e80dd9" formatted="false">بدء مكالمة صوتية</string>
-     <string name="catalog_status_bae7d5be" formatted="false">الحالة</string>
-     <string name="catalog_still_yours_1_s_42da6dc4" formatted="true"> Still yours: %1$s.</string>
-     <string name="catalog_stop_9e253470" formatted="false">إيقاف</string>
-     <string name="catalog_stored_on_this_device_only_never_uploaded_1373e7ad" formatted="false">محفوظ على هذا الجهاز فقط - لا يُرفع أبدًا.</string>
-     <string name="catalog_style_your_card_for_everyone_who_views_08c9bf5c" formatted="false">نسّق بطاقتك لكل من يراها. لكل جزء موضع ربط: </string>
-     <string name="catalog_synced_to_your_device_s_keychain_4f237bce" formatted="false">متزامن مع سلسلة مفاتيح جهازك.</string>
-     <string name="catalog_system_bc0792d8" formatted="false">النظام</string>
-     <string name="catalog_take_a_picture_6d76bc64" formatted="false">التقط صورة</string>
-     <string name="catalog_tap_the_key_to_copy_it_1965f6e7" formatted="false">اضغط على المفتاح لنسخه.</string>
-     <string name="catalog_terminal_a1f52cdc" formatted="false">Terminal</string>
-     <string name="catalog_text_size_3cc6e124" formatted="false">حجم النص</string>
-     <string name="catalog_text_size_motion_density_a9cc0369" formatted="false">حجم النص، الحركة، الكثافة</string>
-     <string name="catalog_that_code_isn_t_right_e78cef5d" formatted="false">That code isn\'t right</string>
-     <string name="catalog_that_didn_t_work_try_again_9ae914fa" formatted="false">That didn\'t work. Try again.</string>
-     <string name="catalog_that_invite_is_expired_revoked_or_never_752c9ac3" formatted="false">انتهت صلاحية تلك الدعوة أو أُلغيت أو لم تكن موجودة قط.</string>
-     <string name="catalog_that_is_also_why_adding_a_second_4bac217f" formatted="false">ولهذا أيضًا فإن إضافة جهاز ثانٍ طقس صغير بدلًا من النسخ واللصق. يجب أن يرى جهازك القديم الجديد - رمز على الشاشة وكاميرا موجهة إليه - قبل أن ينتقل أي شيء.</string>
-     <string name="catalog_that_was_cancelled_b8e83864" formatted="false">That was cancelled.</string>
-     <string name="catalog_the_camera_could_not_start_you_can_a181859b" formatted="false">تعذر بدء الكاميرا. يمكنك إعادة المحاولة أو استخدام تطبيق الكاميرا في النظام.</string>
-     <string name="catalog_the_device_could_not_be_revoked_8f71eb6b" formatted="false">The device could not be revoked.</string>
-     <string name="catalog_the_device_transfer_failed_7a70c4fe" formatted="false">The device transfer failed.</string>
-     <string name="catalog_the_digits_match_809c13bc" formatted="false">الأرقام متطابقة</string>
-     <string name="catalog_the_email_code_could_not_be_sent_7bee875a" formatted="false">The email code could not be sent.</string>
-     <string name="catalog_the_encryption_device_was_revoked_5d4569c7" formatted="false">The encryption device was revoked.</string>
-     <string name="catalog_the_keys_could_not_be_erased_fc80d5dd" formatted="false">The keys could not be erased.</string>
-     <string name="catalog_the_logbook_0b3e99f4" formatted="false">دفتر السجل</string>
-     <string name="catalog_the_messages_only_that_device_could_open_dd92a9bc" formatted="false">تظل الرسائل التي لا يستطيع فتحها إلا ذلك الجهاز مقفلة إلى الأبد. لا يمكننا استعادتها لك - ولو استطعنا لما كان أي مما سبق صحيحًا.</string>
-     <string name="catalog_the_new_device_s_code_was_recognized_7c702591" formatted="false">The new device’s code was recognized. It is not authorized yet.</string>
-     <string name="catalog_the_new_device_was_authorized_8ec267ba" formatted="false">تمت المصادقة على الجهاز الجديد.</string>
-     <string name="catalog_the_one_time_code_from_your_pc_15a1fb2d" formatted="false">The one-time code from your PC was recognized. Nothing has been transferred yet.</string>
-     <string name="catalog_the_ones_you_ve_left_attachments_you_87419c2e" formatted="false">the ones you\'ve left. Attachments you uploaded aren\'t removed from storage. This can\'t be undone.</string>
-     <string name="catalog_the_pc_sends_encrypted_history_keys_and_e368a88b" formatted="false">The PC sends encrypted history keys and records this phone as authorized.</string>
-     <string name="catalog_the_quick_brown_fox_jumps_over_the_408d9438" formatted="false">الثعلب البني السريع يقفز فوق الكلب الكسول.</string>
-     <string name="catalog_the_right_person_3860646e" formatted="false">الشخص الصحيح</string>
-     <string name="catalog_theme_a797e309" formatted="false">السمة</string>
-     <string name="catalog_there_is_no_code_to_compare_yet_5ce7929c" formatted="false">لا يوجد رمز للمقارنة بعد.</string>
-     <string name="catalog_these_choices_are_stored_on_this_device_ac326393" formatted="false">تُخزّن هذه الخيارات على هذا الجهاز فقط.</string>
-     <string name="catalog_these_do_not_match_most_often_that_0139df50" formatted="false">هذه لا تتطابق. غالبًا ما يكون السبب رقمًا سُمع أو كُتب خطأ، لذا تحقّق مرة أخرى. إن ظلت مختلفة، فهناك شخص يتوسطكما - لا ترسل شيئًا هنا حتى تعرف من هو.</string>
-     <string name="catalog_these_numbers_appear_once_both_accounts_have_288c556c" formatted="false">تظهر هذه الأرقام بعد إعداد التشفير على جهاز لكل حساب.</string>
-     <string name="catalog_they_all_open_8a0f4e5d" formatted="false">تفتحها جميعًا</string>
-     <string name="catalog_they_cannot_send_messages_react_or_speak_7fcf8d0c" formatted="false">لا يمكنهم إرسال رسائل أو التفاعل أو التحدث حتى تنتهي المدة.</string>
-     <string name="catalog_they_do_not_match_a5d86ddf" formatted="false">إنها لا تتطابق</string>
-     <string name="catalog_they_open_371267bf" formatted="false">يفتحونها</string>
-     <string name="catalog_this_account_has_no_authenticator_app_set_3f1e6f47" formatted="false">لا يوجد تطبيق مصادقة مُعدّ لهذا الحساب، لذا سيرسل OrangChat رمزًا لمرة واحدة عبر البريد الإلكتروني للموافقة على الجهاز الجديد.</string>
-     <string name="catalog_this_code_holds_nothing_secret_it_is_373de7f3" formatted="false">لا يحتوي هذا الرمز على أي شيء سري. يمكن لأي شخص رؤيته بأمان؛ وجودك في الغرفة هو ما يجعل مسحه ذا معنى.</string>
-     <string name="catalog_this_conversation_is_not_encrypted_yet_00080602" formatted="false">هذه المحادثة غير مشفّرة بعد</string>
-     <string name="catalog_this_device_82229094" formatted="false">  ·  هذا الجهاز</string>
-     <string name="catalog_this_device_fa5a6dd9" formatted="false">هذا الجهاز</string>
-     <string name="catalog_this_device_stays_signed_in_795f19a1" formatted="false">This device stays signed in.</string>
-     <string name="catalog_this_device_will_stop_receiving_new_conversation_45e9c7a1" formatted="false">سيتوقف هذا الجهاز عن تلقي مفاتيح محادثات جديدة. ويظل في سجل الأجهزة الذي لا يقبل إلا الإضافة بصفته مُلغى التفويض، لذلك لا يمكن إخفاء التغيير.</string>
-     <string name="catalog_this_happens_the_moment_you_confirm_there_62922ade" formatted="false">يحدث ذلك لحظة التأكيد - لا توجد فترة انتظار ولا شيء لإلغائه، لأن هذا الهاتف يوقّع عليه بالمفتاح نفسه. تصبح كل رسالة مشفّرة في هذا الحساب غير قابلة للقراءة للجميع إلى الأبد.</string>
-     <string name="catalog_this_is_your_code_they_can_scan_f71a20fe" formatted="false">هذا رمزك. يمكنهم مسحه من القفل أعلى محادثتك أو من هذه الشاشة على هاتفهم.</string>
-     <string name="catalog_this_media_is_unavailable_1ed2c88e" formatted="false">هذه الوسائط غير متاحة</string>
-     <string name="catalog_this_phone_7bcf6179" formatted="false">  ·  this phone</string>
-     <string name="catalog_this_phone_cannot_revoke_itself_4f680a33" formatted="false">This phone cannot revoke itself.</string>
-     <string name="catalog_this_phone_connects_to_the_new_device_9c190e97" formatted="false">This phone connects to the new device without authorizing it yet.</string>
-     <string name="catalog_this_phone_could_not_be_set_up_ee589c92" formatted="false">This phone could not be set up again.</string>
-     <string name="catalog_this_phone_creates_a_protected_encryption_identity_c2865640" formatted="false">This phone creates a protected encryption identity in Android Keystore.</string>
-     <string name="catalog_this_phone_creates_its_own_non_copyable_e6604888" formatted="false">ينشئ هذا الهاتف هوية خاصة به لا يمكن نسخها. لا تنتقل من الكمبيوتر إلا مفاتيح سجل المحادثات المشفّر.</string>
-     <string name="catalog_this_phone_has_not_made_its_encryption_0af536c0" formatted="false">لم ينشئ هذا الهاتف مفتاح التشفير بعد.</string>
-     <string name="catalog_this_phone_is_not_authorized_yet_finish_1ca6df93" formatted="false">هذا الهاتف غير مُصرّح له بعد. أكمل «إضافة هذا الهاتف» قبل أن يتمكن من قراءة السجل المشفّر أو إلغاء تفويض جهاز تشفير آخر.</string>
-     <string name="catalog_this_phone_is_now_an_authorized_encryption_65fc8f05" formatted="false">أصبح هذا الهاتف الآن جهاز تشفير مُصرّحًا له.</string>
-     <string name="catalog_this_phone_was_removed_from_your_account_a066cfb1" formatted="false">أُزيل هذا الهاتف من حسابك من جهاز آخر. لم يعد مفتاحه يفتح أي شيء هنا، ولا يمكنه قراءة رسائل مشفّرة جديدة حتى تضيفه مرة أخرى.</string>
-     <string name="catalog_this_replaces_all_of_your_existing_recovery_1ee473c2" formatted="false">يستبدل هذا كل رموز الاسترداد الحالية لديك.</string>
-     <string name="catalog_this_version_of_orangchat_is_no_longer_91b823d1" formatted="false">لم تعد هذه النسخة من OrangChat مدعومة ولا يمكنها الاتصال.</string>
-     <string name="catalog_those_don_t_match_5820ec54" formatted="false">هذه لا تتطابق.</string>
-     <string name="catalog_throw_away_the_encryption_identity_on_this_e4c09f9c" formatted="false">تخلّص من هوية التشفير في هذا الحساب وأنشئ واحدة جديدة هنا. تُزال كل الأجهزة الأخرى ويجب إضافتها من جديد.</string>
-     <string name="catalog_tighter_spacing_between_messages_58e3bf31" formatted="false">مسافات أضيق بين الرسائل.</string>
-     <string name="catalog_time_out_71ed8fda" formatted="false">فرض مهلة</string>
-     <string name="catalog_timed_out_edcd3630" formatted="false">انتهت المهلة</string>
-     <string name="catalog_timed_out_in_64510a0d" formatted="false">تنتهي المهلة خلال</string>
-     <string name="catalog_to_lock_a_box_for_someone_your_a0458be1" formatted="false">لقفل صندوق لشخص ما، يحتاج هاتفك إلى قفل ذلك الشخص، ويطلبه من خوادمنا. لذلك فالسؤال العادل هو: ماذا لو أعطيناك قفلًا صنعناه نحن، واحتفظنا بالمفتاح، ثم مررنا رسائلك بعد ذلك؟</string>
-     <string name="catalog_too_many_attempts_wait_a_moment_and_585a4cea" formatted="false">Too many attempts. Wait a moment and try again.</string>
-     <string name="catalog_transfer_code_scanned_fdb95e51" formatted="false">تم مسح رمز النقل</string>
-     <string name="catalog_turn_camera_off_97e661ba" formatted="false">إيقاف الكاميرا</string>
-     <string name="catalog_turn_camera_on_98c78a9e" formatted="false">تشغيل الكاميرا</string>
-     <string name="catalog_turn_off_8807c2b3" formatted="false">إيقاف</string>
-     <string name="catalog_turn_off_two_factor_ec64c330" formatted="false">إيقاف المصادقة الثنائية</string>
-     <string name="catalog_turn_on_two_factor_2d7b5797" formatted="false">تشغيل المصادقة الثنائية</string>
-     <string name="catalog_turning_off_two_factor_leaves_your_password_7c7e274a" formatted="false">عند إيقاف المصادقة الثنائية، تصبح كلمة المرور وسيلة الحماية الوحيدة.</string>
-     <string name="catalog_two_answers_and_you_pick_how_much_c95f5a5c" formatted="false">إجابتان، ويمكنك اختيار مقدار ما تريده.</string>
-     <string name="catalog_two_factor_authentication_edfd617a" formatted="false">المصادقة الثنائية</string>
-     <string name="catalog_two_factor_is_on_65e04e1d" formatted="false">المصادقة الثنائية مفعّلة</string>
-     <string name="catalog_type_1_s_to_confirm_700d64a1" formatted="true">Type %1$s to confirm</string>
-     <string name="catalog_type_to_search_this_server_s_messages_43fff226" formatted="false">اكتب للبحث في رسائل هذا الخادم.</string>
-     <string name="catalog_type_to_search_your_cached_direct_messages_12182460" formatted="false">اكتب للبحث في رسائلك المباشرة المخزنة مؤقتًا.</string>
-     <string name="catalog_unknown_bc7819b3" formatted="false">Unknown</string>
-     <string name="catalog_unknown_device_7af13b29" formatted="false">Unknown device</string>
-     <string name="catalog_unknown_ip_70fef55a" formatted="false">عنوان IP غير معروف</string>
-     <string name="catalog_until_1_s_5ec80ce8" formatted="true">Until %1$s</string>
-     <string name="catalog_update_now_c4cbac00" formatted="false">حدّث الآن</string>
-     <string name="catalog_update_required_f440d880" formatted="false">التحديث مطلوب</string>
-     <string name="catalog_update_to_continue_27e65968" formatted="false"> حدّث للمتابعة.</string>
-     <string name="catalog_updates_c76d1807" formatted="false">Updates</string>
-     <string name="catalog_upload_failed_ad0d0603" formatted="false">فشل الرفع</string>
-     <string name="catalog_uploading_d921a79a" formatted="false">جارٍ الرفع…</string>
-     <string name="catalog_use_passkey_a93f1827" formatted="false">استخدم مفتاح مرور</string>
-     <string name="catalog_used_to_sign_in_there_s_no_51a10c36" formatted="false">يُستخدم لتسجيل الدخول. لا توجد رسالة تأكيد عبر البريد الإلكتروني، لذا تحقّق منه جيدًا.</string>
-     <string name="catalog_user_settings_f2b85332" formatted="false">إعدادات المستخدم</string>
-     <string name="catalog_v_1_s_2682e065" formatted="true">v%1$s</string>
-     <string name="catalog_verify_this_contact_ee09ef5c" formatted="false">تحقّق من جهة الاتصال هذه</string>
-     <string name="catalog_version_1_s_build_2_s_e3646b68" formatted="true">Version %1$s (build %2$s)</string>
-     <string name="catalog_version_1_s_d2f210e6" formatted="true">Version %1$s</string>
-     <string name="catalog_version_1_s_is_available_e41095b0" formatted="true">Version %1$s is available</string>
-     <string name="catalog_version_2da600bf" formatted="false">Version</string>
-     <string name="catalog_version_and_build_3da1c1d8" formatted="false">الإصدار والبنية</string>
-     <string name="catalog_video_call_12d8c530" formatted="false">مكالمة فيديو</string>
-     <string name="catalog_video_call_ad60f43c" formatted="false">مكالمة فيديو</string>
-     <string name="catalog_voice_call_329f832a" formatted="false">مكالمة صوتية</string>
-     <string name="catalog_voice_connected_538f3e5c" formatted="false">تم الاتصال الصوتي</string>
-     <string name="catalog_waiting_for_the_pc_to_calculate_the_a6606f84" formatted="false">بانتظار أن يحسب الكمبيوتر أرقام المقارنة…</string>
-     <string name="catalog_waiting_for_your_pc_b7329350" formatted="false">بانتظار الكمبيوتر…</string>
-     <string name="catalog_we_can_still_see_the_outside_of_c8bd071e" formatted="false">لا يزال بإمكاننا رؤية الجزء الخارجي منها: من أرسلها وإلى من ذهبت وحجمها ووقتها. لا يمكننا رؤية ما بداخلها.</string>
-     <string name="catalog_we_emailed_you_a_sign_in_code_e283ce1e" formatted="false">أرسلنا إليك رمز تسجيل دخول عبر البريد الإلكتروني. تنتهي صلاحيته خلال 10 دقائق.</string>
-     <string name="catalog_welcome_back_b807833e" formatted="false">مرحبًا بعودتك</string>
-     <string name="catalog_what_happened_optional_9a81bdcf" formatted="false">ماذا حدث؟ (اختياري)</string>
-     <string name="catalog_what_happens_next_51ecc5b2" formatted="false">ما الذي سيحدث بعد ذلك</string>
-     <string name="catalog_what_incoming_calls_sound_like_5a0f66a3" formatted="false">شكل صوت المكالمات الواردة</string>
-     <string name="catalog_what_you_share_6998553a" formatted="false">ما تشاركه</string>
-     <string name="catalog_whatever_the_other_person_does_with_the_2d44e6c7" formatted="false">• أيًا كان ما يفعله الشخص الآخر بالرسالة. يمكنه التقاط لقطة شاشة لها أو حفظها أو إظهارها لشخص ما. يوقف التشفير الغرباء، لا المستلمين.</string>
-     <string name="catalog_when_joining_a_call_9f17cb1a" formatted="false">عند الانضمام إلى مكالمة</string>
-     <string name="catalog_where_you_re_signed_in_af00ae96" formatted="false">أماكن تسجيل دخولك</string>
-     <string name="catalog_who_can_add_you_07e171de" formatted="false">من يمكنه إضافتك</string>
-     <string name="catalog_who_can_message_you_e9356e11" formatted="false">من يمكنه مراسلتك</string>
-     <string name="catalog_who_you_talk_to_when_and_how_96d03db2" formatted="false">• من تتحدث معه ومتى وكم مرة. لا بد أن تكون الصناديق المقفلة موجّهة إلى شخص ما.</string>
-     <string name="catalog_with_someone_new_your_messages_wait_on_376112de" formatted="false">مع شخص جديد، تنتظر رسائلك على هذا الهاتف - مقفلة ولا تُرسل إلى أي مكان - حتى ترى رمزه شخصيًا أو تقرآ الأرقام لبعضكما في مكالمة.</string>
-     <string name="catalog_yes_leave_them_all_8520c6e8" formatted="false">نعم، غادرها كلها</string>
-     <string name="catalog_yes_that_s_them_03f398c0" formatted="false">نعم، هذا هو</string>
-     <string name="catalog_you_can_also_scan_with_the_system_35d7d733" formatted="false">يمكنك أيضًا المسح باستخدام تطبيق الكاميرا في النظام والضغط على «فتح OrangChat».</string>
-     <string name="catalog_you_do_not_have_this_permission_d4f08a3c" formatted="false">ليست لديك هذه الصلاحية.</string>
-     <string name="catalog_you_enter_a_fresh_2fa_code_on_2c858a05" formatted="false">You enter a fresh 2FA code on this authorized phone.</string>
-     <string name="catalog_you_example_com_50e2b46e" formatted="false">you@example.com</string>
-     <string name="catalog_you_ll_need_an_authenticator_app_such_60b7dd86" formatted="false">ستحتاج إلى تطبيق مصادقة مثل Google Authenticator أو 1Password أو Aegis.</string>
-     <string name="catalog_you_re_on_the_latest_version_182b7c69" formatted="false">أنت على أحدث إصدار</string>
-     <string name="catalog_you_ve_been_invited_to_join_3a282347" formatted="false">تمت دعوتك للانضمام</string>
-     <string name="catalog_you_ve_reached_the_limit_of_1_e25f813b" formatted="true">You\'ve reached the limit of %1$s passkeys. Remove one to add another.</string>
-     <string name="catalog_your_account_is_in_good_standing_1806a501" formatted="false">حسابك في وضع جيد</string>
-     <string name="catalog_your_account_is_locked_down_d129bf10" formatted="false">حسابك مؤمّن</string>
-     <string name="catalog_your_current_password_6658f206" formatted="false">كلمة المرور الحالية</string>
-     <string name="catalog_your_direct_messages_are_locked_on_this_0bc36ae0" formatted="false">تُقفل رسائلك المباشرة على هذا الهاتف قبل إرسالها. صُنع المفتاح هنا، ويُخزّن في عتاد الهاتف الآمن، ولا يمكن نسخه منه - لا بواسطة OrangChat ولا بواسطة أي شخص يملك نسخة احتياطية من قاعدة البيانات.</string>
-     <string name="catalog_your_messages_are_locked_before_they_leave_a431b93a" formatted="false">رسائلك مقفلة قبل أن تغادر هذا الهاتف</string>
-     <string name="catalog_your_messages_stay_in_the_conversations_they_34246f3c" formatted="false">تبقى رسائلك في المحادثات التي تشارك فيها، وتُعرض على أنها من </string>
-     <string name="catalog_your_old_keys_are_gone_this_phone_be322585" formatted="false">Your old keys are gone. This phone has fresh ones.</string>
-     <string name="catalog_your_password_26d745d4" formatted="false">كلمة المرور الخاصة بك</string>
-     <string name="catalog_your_phone_and_pc_show_six_digits_07bd977d" formatted="false">Your phone and PC show six digits. Compare them and cancel if they differ.</string>
-     <string name="catalog_your_phone_and_your_computer_each_make_ade9350c" formatted="false">ينشئ هاتفك وكمبيوترك كل منهما مفتاحه الخاص على الجهاز نفسه عند استخدام التشفير هناك للمرة الأولى. يُخزَّن المفتاح في جزء من الجهاز مصمَّم لحماية المفاتيح، ويُنشأ بحيث لا يمكن استخراجه للقراءة - لا بواسطة OrangChat ولا تطبيق آخر ولا أنت. لا يوجد ما يتسرب ولا ما يُسلَّم.</string>
-     <string name="catalog_your_phone_puts_the_message_in_a_10625561" formatted="false">يضع هاتفك الرسالة في صندوق ويقفله. يحمل كل جهاز في المحادثة، وهذه الأجهزة وحدها، مفتاحًا لهذا الصندوق. تخزّن خوادمنا الصندوق المقفل وتنقله.</string>
- </resources>
-
-
+    <string name="app_name">OrangChat</string>
+    <string name="language_arabic">العربية</string>
+    <string name="language_bengali">البنغالية</string>
+    <string name="language_chinese">الصينية</string>
+    <string name="language_english">الإنجليزية</string>
+    <string name="language_french">الفرنسية</string>
+    <string name="language_hindi">الهندية</string>
+    <string name="language_hint">سيُطبَّق اختيار اللغة في كل مكان بعد إعادة تشغيل التطبيق.</string>
+    <string name="language_lithuanian">الليتوانية</string>
+    <string name="language_portuguese">البرتغالية</string>
+    <string name="language_russian">الروسية</string>
+    <string name="language_spanish">الإسبانية</string>
+    <string name="language_subtitle">اختر لغة التطبيق</string>
+    <string name="language_system">مطابقة النظام</string>
+    <string name="language_title">اللغة</string>
+    <string name="language_urdu">الأردية</string>
+    <string name="catalog_1_add_this_key_to_your_app_c5c6bb28" formatted="false">1. أضف هذا المفتاح إلى تطبيقك</string>
+    <string name="catalog_1_attachment_82c9f82a" formatted="false">مرفق واحد</string>
+    <string name="catalog_1_s_2_s_78c505fe" formatted="true">%1$s %2$s</string>
+    <string name="catalog_1_s_entries_head_2_s_f1d9bc39" formatted="true">%1$s entries · head %2$s…</string>
+    <string name="catalog_1_s_entry_head_2_s_8bef329a" formatted="true">%1$s entry · head %2$s…</string>
+    <string name="catalog_1_s_may_not_survive_a_restart_c2a049ce" formatted="true">%1$s (may not survive a restart)</string>
+    <string name="catalog_1_s_on_2_s_105d6e4b" formatted="true">%1$s on %2$s</string>
+    <string name="catalog_1_s_recovery_code_left_fb553535" formatted="true">%1$s recovery code left.</string>
+    <string name="catalog_1_s_recovery_codes_left_da20cfb2" formatted="true">%1$s recovery codes left.</string>
+    <string name="catalog_2026_oranges_lt_made_with_c3b7fea5" formatted="false">© 2026 Oranges.LT · صُنع بـ 🍊</string>
+    <string name="catalog_2_enter_the_6_digit_code_183ee7cb" formatted="false">2. أدخل الرمز المكوّن من 6 أرقام</string>
+    <string name="catalog_2fa_e8442a3a" formatted="false">2FA</string>
+    <string name="catalog_a_dark_card_with_a_glowing_purple_1407c4d4" formatted="false">A dark card with a glowing purple name and a striped banner.</string>
+    <string name="catalog_a_deleted_account_b1c40a9e" formatted="false">حساب محذوف</string>
+    <string name="catalog_a_fast_self_hosted_chat_for_servers_fa05634c" formatted="false">دردشة سريعة ومستضافة ذاتيًا للخوادم والرسائل المباشرة والمكالمات الصوتية - من عائلة Oranges.LT.</string>
+    <string name="catalog_a_green_on_black_monospace_card_for_9a798bea" formatted="false">A green-on-black monospace card for the command-line at heart.</string>
+    <string name="catalog_a_one_time_code_is_on_its_395743b6" formatted="false">رمز لمرة واحدة في طريقه إلى بريدك الإلكتروني - تنتهي صلاحيته خلال 10 دقائق.</string>
+    <string name="catalog_a_passkey_only_works_on_the_site_ca725d27" formatted="false">A passkey only works on the site that created it, so it can\'t be phished - which is why we ask for one instead of an emailed code when your account has one.</string>
+    <string name="catalog_a_warm_paper_toned_card_with_a_3ae147be" formatted="false">A warm, paper-toned card with a serif name.</string>
+    <string name="catalog_about_6b21fb79" formatted="false">عن</string>
+    <string name="catalog_about_me_e3ba4ef3" formatted="false">نبذة عني</string>
+    <string name="catalog_accent_color_e49578ed" formatted="false">اللون المميز</string>
+    <string name="catalog_accessibility_d660049b" formatted="false">إمكانية الوصول</string>
+    <string name="catalog_account_85dfa32c" formatted="false">الحساب</string>
+    <string name="catalog_account_created_check_your_email_for_a_7d4a9ecd" formatted="false">تم إنشاء الحساب. تحقّق من بريدك الإلكتروني بحثًا عن رابط التحقق - </string>
+    <string name="catalog_account_standing_2b18a30b" formatted="false">حالة الحساب</string>
+    <string name="catalog_add_a_friend_by_their_username_c1584607" formatted="false">أضف صديقًا باسم المستخدم الخاص به.</string>
+    <string name="catalog_add_a_passkey_0daca495" formatted="false">إضافة مفتاح مرور</string>
+    <string name="catalog_add_a_server_5ee1e413" formatted="false">إضافة خادم</string>
+    <string name="catalog_add_another_device_67696610" formatted="false">إضافة جهاز آخر</string>
+    <string name="catalog_add_channel_901e4868" formatted="false">إضافة قناة</string>
+    <string name="catalog_add_context_for_the_reviewer_e44f9147" formatted="false">أضف سياقًا للمراجع</string>
+    <string name="catalog_add_device_2d2367c4" formatted="false">إضافة جهاز</string>
+    <string name="catalog_add_emoji_or_gif_1d91d61d" formatted="false">إضافة رمز تعبيري أو GIF</string>
+    <string name="catalog_add_friend_e0a731d8" formatted="false">إضافة صديق</string>
+    <string name="catalog_add_friends_2dcf4e38" formatted="false">إضافة أصدقاء</string>
+    <string name="catalog_add_people_b9c735ea" formatted="false">إضافة أشخاص</string>
+    <string name="catalog_add_reaction_cf05eca8" formatted="false">إضافة تفاعل</string>
+    <string name="catalog_add_this_phone_94a65dcf" formatted="false">إضافة هذا الهاتف</string>
+    <string name="catalog_added_1_s_76044af1" formatted="true">Added %1$s</string>
+    <string name="catalog_added_by_another_authorized_device_bab74dd1" formatted="false">Added by another authorized device</string>
+    <string name="catalog_adding_a_second_device_before_you_need_1f6a418c" formatted="false">إضافة جهاز ثانٍ قبل أن تحتاج إليه هي الحل الكامل. ولهذا يجب تفعيل المصادقة الثنائية أولًا: الجهاز الاحتياطي يعني وجود مجموعة مفاتيح احتياطية، ويجب أن يتطلب إنشاؤه أكثر من كلمة مرور.</string>
+    <string name="catalog_all_your_friends_are_already_here_45cf3604" formatted="false">أصدقاؤك موجودون هنا بالفعل.</string>
+    <string name="catalog_allow_anyone_to_mention_c6fe8761" formatted="false">السماح لأي شخص باستخدام @mention</string>
+    <string name="catalog_allow_camera_1dfb1b87" formatted="false">السماح بالكاميرا</string>
+    <string name="catalog_allow_camera_access_to_scan_without_leaving_ca7cd21f" formatted="false">السماح بالوصول إلى الكاميرا للمسح الضوئي دون مغادرة OrangChat.</string>
+    <string name="catalog_allow_installs_first_a339d45d" formatted="false">السماح بالتثبيت أولًا</string>
+    <string name="catalog_already_have_an_account_log_in_b3a34236" formatted="false">لديك حساب بالفعل؟ سجّل الدخول</string>
+    <string name="catalog_already_on_this_call_abb9cae6" formatted="false">أنت في هذه المكالمة بالفعل</string>
+    <string name="catalog_android_browser_05f5cb3d" formatted="false">Android browser</string>
+    <string name="catalog_android_cannot_repoint_its_own_launcher_icon_cdbe2f10" formatted="false">لا يمكن لنظام Android تغيير أيقونة المشغّل الخاصة به، لذلك يظهر التغيير على هذا الجهاز في تطبيق الويب وتطبيق سطح المكتب.</string>
+    <string name="catalog_android_is_not_letting_orangchat_notify_you_eb9878eb" formatted="false">لا يسمح Android لـ OrangChat بإخطارك بالرسائل أو المكالمات. فعّلها من إعدادات النظام.</string>
+    <string name="catalog_android_native_a2dee752" formatted="false">Android (native)</string>
+    <string name="catalog_answer_without_camera_979e59f8" formatted="false">الرد دون كاميرا</string>
+    <string name="catalog_anyone_can_start_a_conversation_fa59af86" formatted="false">Anyone can start a conversation.</string>
+    <string name="catalog_anyone_who_knows_your_username_b7505a81" formatted="false">Anyone who knows your username.</string>
+    <string name="catalog_anything_on_a_phone_that_is_already_7e329eae" formatted="false">• أي شيء على هاتف مفتوح القفل بالفعل وفي يد شخص آخر. عندها يقرؤونه بالطريقة نفسها التي تقرؤها بها.</string>
+    <string name="catalog_api_d93d10ff" formatted="false">API</string>
+    <string name="catalog_app_icon_abde7a74" formatted="false">أيقونة التطبيق</string>
+    <string name="catalog_appearance_41def7a0" formatted="false">المظهر</string>
+    <string name="catalog_as_the_owner_you_cannot_leave_delete_030b7d7e" formatted="false">بصفتك المالك، لا يمكنك المغادرة - احذف الخادم بدلًا من ذلك.</string>
+    <string name="catalog_ask_for_a_code_from_your_phone_b6d62586" formatted="false">اطلب رمزًا من هاتفك بالإضافة إلى كلمة المرور عند تسجيل الدخول.</string>
+    <string name="catalog_ask_them_to_show_their_verification_qr_630e919c" formatted="false">اطلب منهم إظهار رمز QR للتحقق، ثم ضعه داخل الإطار.</string>
+    <string name="catalog_at_least_8_characters_1fe494b2" formatted="false">8 أحرف على الأقل</string>
+    <string name="catalog_at_least_8_characters_6089e5f3" formatted="false">8 أحرف على الأقل.</string>
+    <string name="catalog_attach_files_137135db" formatted="false">إرفاق ملفات</string>
+    <string name="catalog_audio_call_fb04a1a1" formatted="false">مكالمة صوتية</string>
+    <string name="catalog_audit_log_3cfc5f1c" formatted="false">سجل التدقيق</string>
+    <string name="catalog_authentication_code_b4f3ff1d" formatted="false">رمز المصادقة</string>
+    <string name="catalog_authenticator_code_2908b4e9" formatted="false">رمز تطبيق المصادقة</string>
+    <string name="catalog_authorized_encryption_devices_1f60a639" formatted="false">أجهزة التشفير المصرّح بها</string>
+    <string name="catalog_authorizing_the_new_device_7d6e30db" formatted="false">جارٍ التصريح بالجهاز الجديد</string>
+    <string name="catalog_back_b52b36b7" formatted="false">رجوع</string>
+    <string name="catalog_backend_e758ca64" formatted="false">Backend</string>
+    <string name="catalog_banned_from_b1b7bda2" formatted="false">محظور من</string>
+    <string name="catalog_before_a_message_leaves_this_phone_74f6bb9b" formatted="false">قبل أن تغادر الرسالة هذا الهاتف</string>
+    <string name="catalog_bot_account_a78d875e" formatted="false">حساب روبوت</string>
+    <string name="catalog_both_devices_show_six_digits_compare_them_4427b9f0" formatted="false">Both devices show six digits. Compare them and cancel if they differ.</string>
+    <string name="catalog_both_of_you_open_the_conversation_tap_bbf94671" formatted="false">افتحا المحادثة، واضغطا على القفل في الأعلى، وليمسح أحدكما رمز الآخر. ثم بدّلا الأدوار وافعلا الأمر بالعكس - عملية مسح واحدة تثبت اتجاهًا واحدًا فقط. يستغرق ذلك نحو عشر ثوانٍ أثناء وقوفكما معًا.</string>
+    <string name="catalog_both_options_encrypt_everything_the_difference_is_098d8758" formatted="false">كلا الخيارين يشفّران كل شيء. الفرق هو ما إذا كان القفل المستبدل يُوقَف قبل استخدامه أم يُكتَشَف بعد ذلك.</string>
+    <string name="catalog_both_screens_must_show_the_same_six_a112273d" formatted="false">يجب أن تعرض كلتا الشاشتين الأرقام الستة نفسها. إذا اختلفت، فألغِ العملية.</string>
+    <string name="catalog_browser_54a2cf5e" formatted="false">Browser</string>
+    <string name="catalog_build_bbd80cf7" formatted="false">Build</string>
+    <string name="catalog_by_1_s_7930f2dd" formatted="true">by %1$s</string>
+    <string name="catalog_call_connected_78e88c19" formatted="false">تم الاتصال بالمكالمة</string>
+    <string name="catalog_call_connected_dce17207" formatted="false">تم الاتصال بالمكالمة</string>
+    <string name="catalog_call_ringtone_0618e939" formatted="false">نغمة المكالمة</string>
+    <string name="catalog_call_sharing_defaults_c39b7d94" formatted="false">الإعدادات الافتراضية لمشاركة المكالمات</string>
+    <string name="catalog_calling_acd4a67d" formatted="false">جارٍ الاتصال…</string>
+    <string name="catalog_camera_access_is_needed_to_scan_the_dcfe064f" formatted="false">يلزم الوصول إلى الكاميرا لمسح الرمز الظاهر على الكمبيوتر.</string>
+    <string name="catalog_camera_microphone_abf47618" formatted="false">الكاميرا &amp; الميكروفون</string>
+    <string name="catalog_cancel_77dfd213" formatted="false">Cancel</string>
+    <string name="catalog_cancel_reply_bd62d2dd" formatted="false">إلغاء الرد</string>
+    <string name="catalog_cancel_scanning_f1f3d169" formatted="false">إلغاء المسح</string>
+    <string name="catalog_change_audio_output_ccb8eada" formatted="false">تغيير إخراج الصوت</string>
+    <string name="catalog_change_background_0c868243" formatted="false">تغيير الخلفية</string>
+    <string name="catalog_change_email_8f1514b5" formatted="false">تغيير البريد الإلكتروني</string>
+    <string name="catalog_change_group_icon_715ac3cf" formatted="false">تغيير أيقونة المجموعة</string>
+    <string name="catalog_change_password_8c684290" formatted="false">تغيير كلمة المرور</string>
+    <string name="catalog_changing_your_password_signs_out_every_other_062a10ab" formatted="false">يؤدي تغيير كلمة المرور إلى تسجيل الخروج من كل جلسة أخرى.</string>
+    <string name="catalog_channel_name_3be87bdd" formatted="false">اسم القناة</string>
+    <string name="catalog_check_for_updates_736b9062" formatted="false">التحقق من وجود تحديثات</string>
+    <string name="catalog_check_people_before_messaging_them_986118e4" formatted="false">تحقّق من الأشخاص قبل مراسلتهم</string>
+    <string name="catalog_check_them_again_feb54286" formatted="false">تحقّق منهم مرة أخرى</string>
+    <string name="catalog_check_them_first_27eeb4a8" formatted="false">تحقّق منهم أولًا</string>
+    <string name="catalog_check_them_first_a_swap_cannot_happen_82229615" formatted="false">تحقّق منهم أولًا - لا يمكن أن يحدث استبدال. أنت تتحقّق بنفسك من قفل الشخص الآخر، وجهًا لوجه أو أثناء مكالمة، قبل إرسال أي شيء إليه. إلى أن تفعل ذلك، تبقى الرسائل التي تكتبها على هذا الهاتف، مقفلة، ولا تذهب إلى أي مكان. لا يوجد شيء يمكن لقفل مستبدل فتحه.</string>
+    <string name="catalog_checking_820d6004" formatted="false">جارٍ التحقق…</string>
+    <string name="catalog_checking_someone_in_person_437f86fe" formatted="false">التحقق من شخص وجهًا لوجه</string>
+    <string name="catalog_checking_someone_s_code_is_a_one_b6951560" formatted="false">التحقق من رمز شخص ما أمر فردي، لذلك يحدث في رسالتك المباشرة معه - وكل من تحقّقت منه هناك يظهر كمتحقَّق منه هنا أيضًا. انتظار التحقق من الجميع في مجموعة سيؤخر أشخاصًا لم يطلبوا ذلك.</string>
+    <string name="catalog_checking_them_here_is_safer_than_reading_faa9c2e1" formatted="false">التحقق منهم هنا أكثر أمانًا من القراءة أثناء التمرير - فستون رقمًا أكثر مما يقارنه أي شخص فعليًا بعينه.</string>
+    <string name="catalog_choose_78b7c9f6" formatted="false">اختر</string>
+    <string name="catalog_choose_files_5910acf0" formatted="false">اختيار الملفات</string>
+    <string name="catalog_clear_css_6a933bda" formatted="false">مسح CSS</string>
+    <string name="catalog_client_1bdd79b1" formatted="false">Client</string>
+    <string name="catalog_close_dm_43823b56" formatted="false">إغلاق الرسائل المباشرة</string>
+    <string name="catalog_code_from_your_app_2e089607" formatted="false">الرمز من تطبيقك</string>
+    <string name="catalog_code_from_your_app_or_a_recovery_c6308bc3" formatted="false">الرمز من تطبيقك (أو رمز استرداد)</string>
+    <string name="catalog_communication_ade0d50c" formatted="false">التواصل</string>
+    <string name="catalog_compact_messages_8efe5e6b" formatted="false">رسائل مضغوطة</string>
+    <string name="catalog_compare_8d105cf4" formatted="false">Compare</string>
+    <string name="catalog_comparing_ad916050" formatted="false">جارٍ المقارنة…</string>
+    <string name="catalog_confirm_2fa_on_the_authorized_pc_7bc4ca9d" formatted="false">Confirm 2FA on the authorized PC.</string>
+    <string name="catalog_confirm_new_password_f85039fd" formatted="false">تأكيد كلمة المرور الجديدة</string>
+    <string name="catalog_confirm_the_digits_and_enter_the_security_cd1b28db" formatted="false">Confirm the digits and enter the security code on the authorized device. This phone is waiting for the encrypted history and its signed authorization…</string>
+    <string name="catalog_confirm_with_your_passkey_to_finish_signing_a7480f38" formatted="false">أكّد باستخدام مفتاح المرور لإكمال تسجيل الدخول.</string>
+    <string name="catalog_confirm_your_password_198b73ff" formatted="false">تأكيد كلمة المرور</string>
+    <string name="catalog_connect_b65463cb" formatted="false">Connect</string>
+    <string name="catalog_connected_c2f9b7b4" formatted="false">Connected</string>
+    <string name="catalog_connecting_fd3e7969" formatted="false">جارٍ الاتصال…</string>
+    <string name="catalog_connection_6512ee15" formatted="false">Connection</string>
+    <string name="catalog_connection_and_server_info_b1f3ef22" formatted="false">معلومات الاتصال والخادم</string>
+    <string name="catalog_continue_transfer_8ea86ccd" formatted="false">متابعة النقل</string>
+    <string name="catalog_copy_af74f7c5" formatted="false">Copy</string>
+    <string name="catalog_copy_channel_id_c32cdc5d" formatted="false">نسخ معرّف القناة</string>
+    <string name="catalog_copy_message_26902efd" formatted="false">نسخ الرسالة</string>
+    <string name="catalog_copy_user_id_6fff306b" formatted="false">نسخ معرّف المستخدم</string>
+    <string name="catalog_could_not_change_email_0f20cf3a" formatted="false">Could not change email</string>
+    <string name="catalog_could_not_change_lockdown_fec83d39" formatted="false">Could not change lockdown</string>
+    <string name="catalog_could_not_change_password_ccfd53b0" formatted="false">Could not change password</string>
+    <string name="catalog_could_not_connect_to_the_call_a713db79" formatted="false">تعذّر الاتصال بالمكالمة</string>
+    <string name="catalog_could_not_delete_account_b721f0dc" formatted="false">Could not delete account</string>
+    <string name="catalog_could_not_delete_messages_6af8eeaf" formatted="false">Could not delete messages</string>
+    <string name="catalog_could_not_join_the_call_a95443d4" formatted="false">تعذّر الانضمام إلى المكالمة</string>
+    <string name="catalog_could_not_leave_servers_eb0a0647" formatted="false">Could not leave servers</string>
+    <string name="catalog_could_not_load_devices_6cf850e0" formatted="false">Could not load devices</string>
+    <string name="catalog_could_not_load_passkeys_dd561090" formatted="false">Could not load passkeys</string>
+    <string name="catalog_could_not_load_standing_51712f13" formatted="false">Could not load standing</string>
+    <string name="catalog_could_not_open_the_installer_a59d8717" formatted="false">Could not open the installer</string>
+    <string name="catalog_could_not_open_this_image_cb0d1e2e" formatted="false">تعذّر فتح هذه الصورة</string>
+    <string name="catalog_could_not_play_that_sound_5f4f3c4c" formatted="false">تعذّر تشغيل ذلك الصوت</string>
+    <string name="catalog_could_not_play_this_video_8540287d" formatted="false">تعذّر تشغيل هذا الفيديو</string>
+    <string name="catalog_could_not_reach_the_update_server_58cd6971" formatted="false">Could not reach the update server</string>
+    <string name="catalog_could_not_remove_the_icon_fdb51d9b" formatted="false">Could not remove the icon</string>
+    <string name="catalog_could_not_remove_the_image_a332686e" formatted="false">تعذرت إزالة الصورة</string>
+    <string name="catalog_could_not_remove_the_passkey_5245ad98" formatted="false">Could not remove the passkey</string>
+    <string name="catalog_could_not_rename_deb92092" formatted="false">Could not rename</string>
+    <string name="catalog_could_not_revoke_361c2e4b" formatted="false">Could not revoke</string>
+    <string name="catalog_could_not_save_your_privacy_settings_fddd2cf0" formatted="false">Could not save your privacy settings</string>
+    <string name="catalog_could_not_save_your_profile_e13d9374" formatted="false">تعذر حفظ ملفك الشخصي</string>
+    <string name="catalog_could_not_start_setup_0c01e9d7" formatted="false">Could not start setup</string>
+    <string name="catalog_could_not_start_the_call_925e1fa3" formatted="false">تعذر بدء المكالمة</string>
+    <string name="catalog_couldn_t_decrypt_this_file_08287a15" formatted="false">تعذر فك تشفير هذا الملف</string>
+    <string name="catalog_couldn_t_load_gifs_e47c284a" formatted="false">تعذر تحميل صور GIF</string>
+    <string name="catalog_couldn_t_reach_that_message_it_may_896fe39d" formatted="false">تعذر الوصول إلى تلك الرسالة - قد تكون قديمة جدًا أو محذوفة.</string>
+    <string name="catalog_create_a_channel_3ac48642" formatted="false">إنشاء قناة</string>
+    <string name="catalog_create_a_server_3a0ab422" formatted="false">إنشاء خادم</string>
+    <string name="catalog_create_account_aaf37447" formatted="false">إنشاء حساب</string>
+    <string name="catalog_create_another_8b69f57c" formatted="false">إنشاء آخر</string>
+    <string name="catalog_create_group_5a0b1c17" formatted="false">إنشاء مجموعة</string>
+    <string name="catalog_create_invite_a8404622" formatted="false">إنشاء دعوة</string>
+    <string name="catalog_create_passkey_500022b0" formatted="false">إنشاء مفتاح مرور</string>
+    <string name="catalog_create_role_db859bad" formatted="false">إنشاء دور</string>
+    <string name="catalog_create_your_account_4046b581" formatted="false">أنشئ حسابك</string>
+    <string name="catalog_creating_this_phone_s_protected_encryption_identity_f14e4807" formatted="false">جارٍ إنشاء هوية التشفير المحمية لهذا الهاتف…</string>
+    <string name="catalog_current_password_19dff4da" formatted="false">كلمة المرور الحالية</string>
+    <string name="catalog_custom_ringtone_fd009ada" formatted="false">نغمة رنين مخصصة</string>
+    <string name="catalog_danger_zone_963a652e" formatted="false">منطقة الخطر</string>
+    <string name="catalog_dark_ae1ef014" formatted="false">داكن</string>
+    <string name="catalog_debug_bd604d99" formatted="false">Debug</string>
+    <string name="catalog_delete_account_1753c206" formatted="false">حذف الحساب</string>
+    <string name="catalog_delete_all_my_messages_3549d600" formatted="false">حذف جميع رسائلي</string>
+    <string name="catalog_delete_all_your_messages_f9463fad" formatted="false">حذف جميع رسائلك</string>
+    <string name="catalog_delete_my_account_2ae3a019" formatted="false">حذف حسابي</string>
+    <string name="catalog_delete_recording_8b58ce23" formatted="false">حذف التسجيل</string>
+    <string name="catalog_delete_role_fbf0667e" formatted="false">حذف الدور</string>
+    <string name="catalog_delete_server_fb695fc6" formatted="false">حذف الخادم</string>
+    <string name="catalog_delete_them_all_a3132ab8" formatted="false">احذفها كلها</string>
+    <string name="catalog_deleted_1_s_message_8ffc45b2" formatted="true">Deleted %1$s message.</string>
+    <string name="catalog_deleted_1_s_messages_9ec1f966" formatted="true">Deleted %1$s messages.</string>
+    <string name="catalog_deleted_user_everything_else_profile_connections_friends_6e1c6e09" formatted="false">deleted user. Everything else - profile, connections, friends, server memberships - is erased. This can\'t be undone.</string>
+    <string name="catalog_desktop_app_f7a44c6b" formatted="false">تطبيق سطح المكتب</string>
+    <string name="catalog_device_1_s_91ca155d" formatted="true">Device %1$s</string>
+    <string name="catalog_device_default_f9aac6c5" formatted="false">إعداد الجهاز الافتراضي</string>
+    <string name="catalog_device_transfer_code_10d0a8b9" formatted="false">رمز نقل الجهاز</string>
+    <string name="catalog_device_transfer_qr_code_d3864e5b" formatted="false">Device transfer QR code</string>
+    <string name="catalog_devices_df485c87" formatted="false">الأجهزة</string>
+    <string name="catalog_digits_confirmed_4ecb4c0f" formatted="false">تم تأكيد الأرقام</string>
+    <string name="catalog_direct_messages_e7596a09" formatted="false">رسائل مباشرة</string>
+    <string name="catalog_direct_messages_f1b1f5c2" formatted="false">الرسائل المباشرة</string>
+    <string name="catalog_disconnected_771e05f2" formatted="false">Disconnected</string>
+    <string name="catalog_display_574ff9b0" formatted="false">Display</string>
+    <string name="catalog_display_name_avatar_bio_accent_css_e2684739" formatted="false">اسم العرض، الصورة الرمزية، النبذة، اللون المميز، CSS</string>
+    <string name="catalog_display_name_c7874aaa" formatted="false">اسم العرض</string>
+    <string name="catalog_display_name_optional_23d1974a" formatted="false">اسم العرض (اختياري)</string>
+    <string name="catalog_display_separately_ecf9d1a7" formatted="false">اعرض بشكل منفصل</string>
+    <string name="catalog_do_not_disturb_875ba794" formatted="false">عدم الإزعاج</string>
+    <string name="catalog_done_e9b450d1" formatted="false">Done</string>
+    <string name="catalog_download_failed_01125e1b" formatted="false">Download failed</string>
+    <string name="catalog_download_install_7db0bddc" formatted="false">Download &amp; install</string>
+    <string name="catalog_downloading_1_s_66b84142" formatted="true">Downloading %1$s…</string>
+    <string name="catalog_each_entry_is_a_device_with_a_8778c193" formatted="false">كل إدخال يمثل جهازًا سجّل الدخول حاليًا. يؤدي إلغاء تفويضه إلى إيقافه </string>
+    <string name="catalog_edit_message_96116a52" formatted="false">تعديل الرسالة</string>
+    <string name="catalog_edit_role_61dd63e9" formatted="false">تعديل الدور</string>
+    <string name="catalog_edited_b6da09e0" formatted="false">(معدّلة)</string>
+    <string name="catalog_email_changed_to_1_s_2755e486" formatted="true">Email changed to %1$s.</string>
+    <string name="catalog_email_code_5cb76e8c" formatted="false">رمز البريد الإلكتروني</string>
+    <string name="catalog_email_me_a_code_cc025d42" formatted="false">أرسل إليّ رمزًا عبر البريد الإلكتروني</string>
+    <string name="catalog_email_me_a_code_instead_44cc1833" formatted="false">أرسل إليّ رمزًا عبر البريد الإلكتروني بدلًا من ذلك</string>
+    <string name="catalog_email_password_8973dcae" formatted="false">البريد الإلكتروني &amp; كلمة المرور</string>
+    <string name="catalog_encrypted_history_keys_are_sent_and_the_aa611cee" formatted="false">Encrypted history keys are sent and the new device is recorded as authorized.</string>
+    <string name="catalog_encryption_0af149c2" formatted="false">التشفير</string>
+    <string name="catalog_encryption_security_alert_7b6e7671" formatted="false">تنبيه أمان التشفير</string>
+    <string name="catalog_enter_a_fresh_two_factor_authentication_code_9784e1c2" formatted="false">أدخل رمزًا جديدًا للمصادقة الثنائية. سيُسجَّل الجهاز الجديد في سجل أجهزتك الذي لا يقبل إلا الإضافة.</string>
+    <string name="catalog_enter_the_6_digit_code_from_your_0a98bcca" formatted="false">أدخل الرمز المكوّن من 6 أرقام من تطبيقك، أو رمز استرداد.</string>
+    <string name="catalog_enter_to_save_shift_enter_for_a_74c26ca9" formatted="false">اضغط Enter للحفظ · Shift+Enter لسطر جديد</string>
+    <string name="catalog_erase_my_encryption_keys_65f08bd6" formatted="false">امسح مفاتيح التشفير الخاصة بي</string>
+    <string name="catalog_erase_them_now_9964fd63" formatted="false">امسحها الآن</string>
+    <string name="catalog_erase_your_encryption_keys_e1ad1aa2" formatted="false">مسح مفاتيح التشفير الخاصة بك؟</string>
+    <string name="catalog_erasing_fd30764f" formatted="false">جارٍ المسح…</string>
+    <string name="catalog_every_device_added_or_removed_is_written_ec8b50d8" formatted="false">يُسجَّل كل جهاز تتم إضافته أو إزالته في دفتر سجل لا يقبل إلا الإضافة؛ لا يمكن تعديله أو محوه. تقرأ أجهزتك هذا السجل عند كل تشغيل، لذلك لا يمكن أن يظهر هنا جهاز لم تضفه بصمت - ستتلقى إشعارًا، ويبقى الإدخال في السجل.</string>
+    <string name="catalog_every_direct_message_is_encrypted_always_and_bacae7ec" formatted="false">كل رسالة مباشرة مشفّرة دائمًا، ولا يمكن إيقاف ذلك. يتعلق هذا الإعداد بمدى التحقق من قفل الشخص الآخر قبل إرسال رسائلك إليه.</string>
+    <string name="catalog_every_message_already_in_your_encrypted_conversations_ae9912e3" formatted="false">تصبح كل رسالة موجودة بالفعل في محادثاتك المشفّرة غير قابلة للقراءة نهائيًا - لك ولنا ولأي شخص. لا شيء يعيدها.</string>
+    <string name="catalog_everyone_930575f5" formatted="false">@everyone</string>
+    <string name="catalog_everyone_applies_to_every_member_it_has_12e47659" formatted="false">ينطبق @everyone على كل عضو. ليس له لون ولا يمكن إسناده أو حذفه.</string>
+    <string name="catalog_everyone_c756f6af" formatted="false">Everyone</string>
+    <string name="catalog_everyone_here_02cadf2a" formatted="false">الجميع هنا</string>
+    <string name="catalog_everyone_in_this_voice_channel_hears_it_df8e9c42" formatted="false">يسمعه كل من في هذه القناة الصوتية.</string>
+    <string name="catalog_everything_sent_from_now_on_uses_a_4d8b70ec" formatted="false">كل ما يُرسل من الآن فصاعدًا يستخدم مفتاحًا جديدًا. تظل الرسائل الحالية قابلة للقراءة، ويحتفظ كل من لا يزال في المحادثة بالوصول.</string>
+    <string name="catalog_expired_large_files_are_only_kept_for_a9b2c12d" formatted="false">منتهية الصلاحية - لا تُحتفَظ بالملفات الكبيرة إلا لمدة ساعة</string>
+    <string name="catalog_expires_in_1_hour_26e2eae7" formatted="false">تنتهي خلال ساعة واحدة</string>
+    <string name="catalog_fallback_mode_scan_this_code_from_an_45193b95" formatted="false">وضع بديل: امسح هذا الرمز بهاتف مُصرَّح له بالفعل، أو الصقه في كمبيوتر مُصرَّح له.</string>
+    <string name="catalog_favourite_this_gif_a9fd24af" formatted="false">أضف صورة GIF هذه إلى المفضلة</string>
+    <string name="catalog_find_a_member_036dc8dd" formatted="false">ابحث عن عضو</string>
+    <string name="catalog_find_friends_2fd354c9" formatted="false">ابحث عن أصدقاء</string>
+    <string name="catalog_finish_b74bdee9" formatted="false">Finish</string>
+    <string name="catalog_first_device_on_this_account_452cc989" formatted="false">First device on this account</string>
+    <string name="catalog_flip_camera_ed114d76" formatted="false">بدّل الكاميرا</string>
+    <string name="catalog_follow_the_installer_to_finish_updating_2742868e" formatted="false">اتبع برنامج التثبيت لإتمام التحديث</string>
+    <string name="catalog_for_permission_the_first_time_you_join_1cbeb90e" formatted="false">for permission the first time you join one.</string>
+    <string name="catalog_freezes_the_account_if_you_think_someone_09f45852" formatted="false">يجمّد الحساب إذا كنت تعتقد أن شخصًا آخر بداخله: يسجّل خروج كل </string>
+    <string name="catalog_friends_of_friends_9abdf2fe" formatted="false">Friends of friends</string>
+    <string name="catalog_friends_only_0b2d5f25" formatted="false">Friends only</string>
+    <string name="catalog_generate_fc45f9b7" formatted="false">Generate</string>
+    <string name="catalog_get_notified_about_messages_d4bc1f2e" formatted="false">هل تريد تلقي إشعارات بالرسائل؟</string>
+    <string name="catalog_hang_up_66be99b5" formatted="false">إنهاء المكالمة</string>
+    <string name="catalog_have_them_open_their_code_in_orangchat_9428c129" formatted="false">اطلب من الطرف الآخر فتح رمزه في OrangChat ووجّه كاميرا هذا الهاتف إليه. سيتذكر هاتفك بعد ذلك القفل الذي رأيته فعلًا، لذلك لن يعود القفل المستبدل مطابقًا. يثبت مسح واحد اتجاهًا واحدًا - اعرض له رمزك أيضًا.</string>
+    <string name="catalog_hide_my_code_835d9e98" formatted="false">إخفاء رمزي</string>
+    <string name="catalog_hide_password_e40123b4" formatted="false">إخفاء كلمة المرور</string>
+    <string name="catalog_hold_steady_scanning_happens_automatically_ae832ed2" formatted="false">ثبّت الهاتف - يتم المسح تلقائيًا</string>
+    <string name="catalog_hold_the_mic_to_record_then_let_48d81b83" formatted="false">اضغط باستمرار على الميكروفون للتسجيل، ثم ارفع إصبعك للإرسال</string>
+    <string name="catalog_hold_to_record_a_voice_message_06b1b5f5" formatted="false">اضغط باستمرار لتسجيل رسالة صوتية</string>
+    <string name="catalog_how_does_this_work_1ae14530" formatted="false">كيف يعمل هذا؟</string>
+    <string name="catalog_how_your_messages_are_protected_bb07e15c" formatted="false">كيف تُحمى رسائلك</string>
+    <string name="catalog_i_understand_842a9bdd" formatted="false">أفهم</string>
+    <string name="catalog_i_ve_saved_them_d4c0b9ed" formatted="false">لقد حفظتها</string>
+    <string name="catalog_icon_716f63b9" formatted="false">أيقونة</string>
+    <string name="catalog_idle_cc1ebdd0" formatted="false">خامل</string>
+    <string name="catalog_if_a_safety_code_changes_or_a_fdad80c2" formatted="false">إذا تغيّر رمز أمان، أو ظهر في حسابك جهاز لم تضفه، يوقف OrangChat العملية ويخبرك مباشرة بدلًا من عرض إشعار قد تمرر عليه.</string>
+    <string name="catalog_in_call_07d16f43" formatted="false">في مكالمة</string>
+    <string name="catalog_in_plain_language_with_no_jargon_to_b56795a6" formatted="false">بلغة بسيطة، بلا مصطلحات معقدة تحتاج إلى تجاوزها.</string>
+    <string name="catalog_inappropriate_content_62db8957" formatted="false">محتوى غير مناسب</string>
+    <string name="catalog_incorrect_password_b68db3d0" formatted="false">Incorrect password.</string>
+    <string name="catalog_install_fd6c3ebf" formatted="false">Install</string>
+    <string name="catalog_installed_7bb4405c" formatted="false">Installed</string>
+    <string name="catalog_invite_link_601e9d6c" formatted="false">رابط الدعوة</string>
+    <string name="catalog_invite_people_e1eb97af" formatted="false">ادعُ أشخاصًا</string>
+    <string name="catalog_invite_to_get_back_into_any_of_016b015f" formatted="false">invite to get back into any of them.</string>
+    <string name="catalog_ios_browser_1da182c5" formatted="false">iOS browser</string>
+    <string name="catalog_it_is_not_always_an_attack_it_c9d44cb1" formatted="false">ليس الأمر هجومًا دائمًا - فقد يحدث أيضًا عندما يفقد شخص كل أجهزته ويضطر إلى البدء من جديد. لا توجد طريقة لتمييز الحالتين من داخل التطبيق، ولهذا يطلب منك التحقق من الشخص مباشرة قبل إرسال أي شيء آخر.</string>
+    <string name="catalog_join_a_server_d59b6aba" formatted="false">انضم إلى خادم</string>
+    <string name="catalog_join_muted_8ccaf5fe" formatted="false">انضم مع كتم الصوت</string>
+    <string name="catalog_join_with_camera_on_c39f4e79" formatted="false">انضم مع تشغيل الكاميرا</string>
+    <string name="catalog_jump_to_latest_5aa2e089" formatted="false">انتقل إلى الأحدث</string>
+    <string name="catalog_keys_device_log_verifying_people_0828f752" formatted="false">المفاتيح، سجل الأجهزة، التحقق من الأشخاص</string>
+    <string name="catalog_last_active_1_s_df09e3bb" formatted="true"> · last active %1$s</string>
+    <string name="catalog_last_used_1_s_c8f76185" formatted="true"> · last used %1$s</string>
+    <string name="catalog_leave_all_servers_65e7741b" formatted="false">مغادرة جميع الخوادم</string>
+    <string name="catalog_leave_group_92578912" formatted="false">مغادرة المجموعة</string>
+    <string name="catalog_leave_server_da6fea13" formatted="false">مغادرة الخادم</string>
+    <string name="catalog_leaves_every_server_you_re_in_except_bcbf7a17" formatted="false">يغادر كل الخوادم التي أنت فيها، باستثناء ما تملكه. ستحتاج إلى </string>
+    <string name="catalog_leaving_it_off_is_not_unprotected_every_94d76940" formatted="false">إيقافه لا يعني أنك \"غير محمي\". يظل كل قفل متحققًا منه مقابل دفتر سجل لا يقبل إلا الإضافة، تقرؤه أجهزتك عند كل تشغيل. الفرق هو هل يُمنع القفل المستبدل قبل استخدامه أم يُكتشف بعد ذلك مباشرة. تُرسل محادثات المجموعات فورًا في كلتا الحالتين.</string>
+    <string name="catalog_left_1_s_server_2619a08f" formatted="true">Left %1$s server.</string>
+    <string name="catalog_left_1_s_servers_8833549c" formatted="true">Left %1$s servers.</string>
+    <string name="catalog_let_people_see_when_you_re_typing_eb96518c" formatted="false">دع الآخرين يرون عندما تكتب.</string>
+    <string name="catalog_lift_lockdown_4131d82c" formatted="false">إلغاء قفل الحساب</string>
+    <string name="catalog_lift_timeout_560ca50c" formatted="false">إلغاء المهلة</string>
+    <string name="catalog_light_a36ef8ab" formatted="false">فاتح</string>
+    <string name="catalog_linked_image_96960966" formatted="false">صورة مرتبطة</string>
+    <string name="catalog_listening_to_aad82f87" formatted="false">يستمع إلى</string>
+    <string name="catalog_listening_to_b35b0e8e" formatted="false">يستمع إلى </string>
+    <string name="catalog_load_more_dfe60ca9" formatted="false">تحميل المزيد</string>
+    <string name="catalog_loading_33ce4174" formatted="false">جارٍ التحميل…</string>
+    <string name="catalog_lock_down_my_account_c7b52afc" formatted="false">تأمين حسابي</string>
+    <string name="catalog_lockdown_8ba04349" formatted="false">Lockdown</string>
+    <string name="catalog_lockdown_lifted_f4f1b05c" formatted="false">Lockdown lifted.</string>
+    <string name="catalog_locked_down_1dc1036e" formatted="false">Locked down.</string>
+    <string name="catalog_locked_down_signed_out_1_s_other_d382c238" formatted="true">Locked down. Signed out %1$s other session.</string>
+    <string name="catalog_locked_down_signed_out_1_s_other_ecca9d9f" formatted="true">Locked down. Signed out %1$s other sessions.</string>
+    <string name="catalog_log_in_f7c400ed" formatted="false">تسجيل الدخول</string>
+    <string name="catalog_log_out_6e78c91f" formatted="false">تسجيل الخروج</string>
+    <string name="catalog_lost_your_authenticator_af902070" formatted="false">فقدت تطبيق المصادقة؟</string>
+    <string name="catalog_lowercase_letters_digits_and_2_to_32_7bec3c28" formatted="false">أحرف صغيرة وأرقام و _ و . - من 2 إلى 32 حرفًا</string>
+    <string name="catalog_lowercase_letters_numbers_underscores_and_dots_57155ecc" formatted="false">أحرف صغيرة وأرقام وشرطات سفلية ونقاط.</string>
+    <string name="catalog_make_a_new_key_cde9afba" formatted="false">إنشاء مفتاح جديد</string>
+    <string name="catalog_mark_as_read_c1ee860b" formatted="false">وضع علامة كمقروء</string>
+    <string name="catalog_messages_friend_requests_typing_notifications_17b64746" formatted="false">رسائل، طلبات صداقة، كتابة، إشعارات</string>
+    <string name="catalog_messages_go_as_soon_as_you_send_e76569f5" formatted="false">تُرسل الرسائل فور إرسالها. إذا استبدل أي شخص قفل هذا الشخص يومًا ما، ستلاحظ أجهزتك ذلك وتخبرك.</string>
+    <string name="catalog_microphone_access_is_needed_to_record_a_9afc8aaa" formatted="false">يلزم الوصول إلى الميكروفون لتسجيل رسالة صوتية</string>
+    <string name="catalog_minimize_call_6cb0f0f8" formatted="false">تصغير المكالمة</string>
+    <string name="catalog_missed_call_0200c293" formatted="false">مكالمة فائتة</string>
+    <string name="catalog_my_contact_verification_qr_code_44a80ea4" formatted="false">My contact verification QR code</string>
+    <string name="catalog_my_orange_grove_c6cfda8f" formatted="false">بستان البرتقال الخاص بي</string>
+    <string name="catalog_name_709a2322" formatted="false">Name</string>
+    <string name="catalog_need_an_account_sign_up_77472065" formatted="false">تحتاج إلى حساب؟ أنشئ حسابًا</string>
+    <string name="catalog_neon_00706b5e" formatted="false">Neon</string>
+    <string name="catalog_never_used_8c1c3645" formatted="false"> · لم يُستخدم مطلقًا</string>
+    <string name="catalog_new_email_b07e22b0" formatted="false">بريد إلكتروني جديد</string>
+    <string name="catalog_new_group_f9850c0b" formatted="false">مجموعة جديدة</string>
+    <string name="catalog_new_key_for_this_conversation_651d7e16" formatted="false">مفتاح جديد لهذه المحادثة</string>
+    <string name="catalog_new_messages_6d867124" formatted="false">رسائل جديدة</string>
+    <string name="catalog_new_password_d850ee18" formatted="false">كلمة مرور جديدة</string>
+    <string name="catalog_new_recovery_codes_90b8afc8" formatted="false">رموز استرداد جديدة</string>
+    <string name="catalog_new_roles_start_just_above_everyone_so_700d0555" formatted="false">تبدأ الأدوار الجديدة فوق @everyone مباشرةً، لذلك لا تتفوق أبدًا على من أنشأها.</string>
+    <string name="catalog_new_update_available_b0be29b0" formatted="false">يتوفر تحديث جديد</string>
+    <string name="catalog_no_answer_a9c16dd0" formatted="false">لا رد</string>
+    <string name="catalog_no_devices_are_enrolled_on_this_account_025829c1" formatted="false">لا توجد أجهزة مسجّلة في هذا الحساب.</string>
+    <string name="catalog_no_friends_yet_add_someone_first_a7ccf9a9" formatted="false">لا أصدقاء بعد. أضف شخصًا أولًا.</string>
+    <string name="catalog_no_friends_yet_add_someone_from_the_7d7f43ab" formatted="false">لا أصدقاء بعد. أضف شخصًا من علامة التبويب \"إضافة\".</string>
+    <string name="catalog_no_gifs_found_0d358df4" formatted="false">لم يتم العثور على صور GIF</string>
+    <string name="catalog_no_matches_0be6a257" formatted="false">لا نتائج.</string>
+    <string name="catalog_no_matching_friends_or_channels_fd0c1248" formatted="false">لا أصدقاء أو قنوات مطابقة</string>
+    <string name="catalog_no_one_41c06c15" formatted="false">No one</string>
+    <string name="catalog_no_passkeys_yet_6dc4fe0f" formatted="false">لا مفاتيح مرور بعد.</string>
+    <string name="catalog_no_pending_requests_aeedf949" formatted="false">لا طلبات معلّقة.</string>
+    <string name="catalog_no_profile_themes_match_1_s_a67c627c" formatted="true">No profile themes match “%1$s”.</string>
+    <string name="catalog_no_saved_gifs_yet_tap_the_bookmark_75705898" formatted="false">لا توجد صور GIF محفوظة بعد - اضغط على أيقونة العلامة المرجعية في أي صورة GIF للاحتفاظ بها هنا.</string>
+    <string name="catalog_no_server_is_currently_restricting_you_061000ea" formatted="false">لا يوجد خادم يقيّدك حاليًا.</string>
+    <string name="catalog_no_sounds_yet_someone_with_manage_expressions_011117e4" formatted="false">لا أصوات بعد. يمكن لشخص لديه صلاحية إدارة التعبيرات إضافتها من إعدادات الخادم.</string>
+    <string name="catalog_nobody_can_send_you_requests_5279aaea" formatted="false">Nobody can send you requests.</string>
+    <string name="catalog_nobody_new_can_message_you_d72cdf15" formatted="false">Nobody new can message you.</string>
+    <string name="catalog_none_set_4bf72e7e" formatted="false">لم يتم ضبط أي شيء</string>
+    <string name="catalog_not_in_call_32010878" formatted="false">لست في مكالمة</string>
+    <string name="catalog_not_in_the_same_room_you_will_d53e345b" formatted="false">لستما في الغرفة نفسها؟ سيرى كل منكما الصف القصير نفسه من الأرقام، المسمّى رمز الأمان. اطلب من الطرف الآخر قراءته بصوت عالٍ في مكالمة هاتفية، أو إرساله عبر تطبيق آخر تثق به بالفعل، ثم اكتبه في المربع أسفل الرمز - يقارن التطبيق الأرقام الستين كلها، وهذا أكثر مما يستطيع أي شخص مقارنته بالعين. إذا تطابقت الأرقام، فلا أحد يتوسطكما. الشيء الوحيد الذي لا يُعتدّ به هو مكالمة OrangChat الصوتية - إذ يمر صوتها عبر الخوادم نفسها التي وُجد هذا التحقق لاختبارها.</string>
+    <string name="catalog_not_me_1ad9a1eb" formatted="false">لست أنا</string>
+    <string name="catalog_not_now_e4571490" formatted="false">ليس الآن</string>
+    <string name="catalog_not_sent_587c501e" formatted="false">لم تُرسل</string>
+    <string name="catalog_nothing_can_sign_in_and_no_new_e0c687ac" formatted="false">لن يتمكن أحد من تسجيل الدخول، ولا تصلك أي رسائل مباشرة أو طلبات صداقة جديدة. </string>
+    <string name="catalog_nothing_has_been_logged_yet_e4080778" formatted="false">لم يُسجَّل أي شيء بعد.</string>
+    <string name="catalog_nothing_is_sent_until_you_have_checked_6db8aee8" formatted="false">لا يُرسل أي شيء حتى تتحقق من رمزه شخصيًا أو عبر مكالمة. حتى ذلك الحين، تنتظر رسائلك هنا مقفلة ولا تذهب إلى أي مكان.</string>
+    <string name="catalog_notifications_753a22b2" formatted="false">Notifications</string>
+    <string name="catalog_notifications_are_turned_off_e638becc" formatted="false">الإشعارات متوقفة</string>
+    <string name="catalog_now_playing_586fa7a8" formatted="false">قيد التشغيل الآن</string>
+    <string name="catalog_oc_pf_name_color_ff6a1a_9442cf4e" formatted="false">.oc-pf-name { color: #ff6a1a; }</string>
+    <string name="catalog_off_the_shade_and_lock_screen_show_29ea09db" formatted="false">عند إيقافه، يعرض شريط الإشعارات وشاشة القفل من كتب الرسالة ولا شيء غير ذلك. ولا تُفك رسائل التشفير عندئذٍ لإنشاء إشعار أصلًا. هذا الهاتف فقط.</string>
+    <string name="catalog_offline_e01fa717" formatted="false">غير متصل</string>
+    <string name="catalog_on_call_fdd219b2" formatted="false">في مكالمة</string>
+    <string name="catalog_on_e0049a66" formatted="false">مفعّل</string>
+    <string name="catalog_on_your_pc_open_settings_encryption_add_5a070e42" formatted="false">على الكمبيوتر، افتح الإعدادات → التشفير → إضافة جهاز آخر. سيعرض الكمبيوتر رمز QR يُستخدم مرة واحدة.</string>
+    <string name="catalog_ongoing_call_5ae739b8" formatted="false">مكالمة جارية</string>
+    <string name="catalog_online_c3e839df" formatted="false">متصل</string>
+    <string name="catalog_only_continue_if_you_started_this_transfer_d563e585" formatted="false">تابع فقط إذا كنت قد بدأت هذا النقل ويمكنك رؤية الجهازين.</string>
+    <string name="catalog_only_people_on_your_friends_list_a0690c48" formatted="false">Only people on your friends list.</string>
+    <string name="catalog_only_people_you_share_a_friend_with_dd960ba7" formatted="false">Only people you share a friend with.</string>
+    <string name="catalog_only_the_owner_can_rename_this_server_3db192cb" formatted="false">المالك وحده يمكنه إعادة تسمية هذا الخادم</string>
+    <string name="catalog_only_the_people_in_the_conversation_can_ae492280" formatted="false">لا يستطيع فتحها إلا الأشخاص في المحادثة. لا يستطيع OrangChat فتحها، ولا من يسرق قاعدة بياناتنا، ولا من يأتي بأمر قضائي - فنحن لا نحتفظ بمفتاح يمكننا تسليمه. التشفير مفعّل لكل رسالة مباشرة، ولا يمكن إيقافه.</string>
+    <string name="catalog_open_app_permissions_893246fb" formatted="false">فتح أذونات التطبيق</string>
+    <string name="catalog_open_call_1c47457b" formatted="false">فتح المكالمة</string>
+    <string name="catalog_orangchat_can_let_you_know_when_someone_13d0aac2" formatted="false">يمكن لـ OrangChat إعلامك عندما يراسلك شخص أو يتصل بك </string>
+    <string name="catalog_orangchat_desktop_app_ffb92600" formatted="false">OrangChat desktop app</string>
+    <string name="catalog_orangchat_device_transfer_9d5395e9" formatted="false">orangchat://device-transfer?…</string>
+    <string name="catalog_orangchat_for_android_3f20ca31" formatted="false">OrangChat for Android</string>
+    <string name="catalog_orangchat_only_opens_your_camera_and_microphone_16da857f" formatted="false">لا يفتح OrangChat الكاميرا والميكروفون إلا أثناء مكالمة. يطلب Android </string>
+    <string name="catalog_other_device_blocks_new_sign_ins_and_6199dab7" formatted="false">other device, blocks new sign-ins, and closes new DMs and friend requests until you lift it.</string>
+    <string name="catalog_otherwise_only_members_with_mention_everyone_can_a0476dcf" formatted="false">وإلا فلا يمكن إلا للأعضاء ذوي صلاحية الإشارة إلى الجميع.</string>
+    <string name="catalog_package_7431e3df" formatted="false">Package</string>
+    <string name="catalog_parchment_4761c103" formatted="false">Parchment</string>
+    <string name="catalog_passkey_e35828da" formatted="false">Passkey</string>
+    <string name="catalog_passkey_settings_too_or_it_will_keep_26130742" formatted="false">passkey settings too, or it will keep showing up there.</string>
+    <string name="catalog_passkeys_caab7827" formatted="false">Passkeys</string>
+    <string name="catalog_password_changed_1_s_other_session_was_10fc8ee3" formatted="true">Password changed. %1$s other session was signed out.</string>
+    <string name="catalog_password_changed_1_s_other_sessions_were_64e22cd3" formatted="true">Password changed. %1$s other sessions were signed out.</string>
+    <string name="catalog_password_changed_47fa5289" formatted="false">Password changed.</string>
+    <string name="catalog_permanently_delete_2eea1fa8" formatted="false">حذف نهائيًا</string>
+    <string name="catalog_personal_phone_a154b2eb" formatted="false">هاتف شخصي</string>
+    <string name="catalog_phone_connected_ac1141af" formatted="false">الهاتف متصل</string>
+    <string name="catalog_pick_at_least_one_more_friend_for_1cd89bd0" formatted="false">اختر صديقًا آخر على الأقل للمجموعة.</string>
+    <string name="catalog_point_this_phone_at_the_qr_code_cea07275" formatted="false">وجّه هذا الهاتف إلى رمز QR الظاهر في OrangChat على الكمبيوتر.</string>
+    <string name="catalog_point_this_phone_at_the_transfer_code_d6baae81" formatted="false">وجّه هذا الهاتف إلى رمز النقل الظاهر على الجهاز الجديد.</string>
+    <string name="catalog_preview_f1fbb2b4" formatted="false">معاينة</string>
+    <string name="catalog_privacy_cf01481f" formatted="false">الخصوصية</string>
+    <string name="catalog_privacy_security_9bb6e9c0" formatted="false">الخصوصية &amp; الأمان</string>
+    <string name="catalog_profile_ff4fc027" formatted="false">الملف الشخصي</string>
+    <string name="catalog_profile_themes_3d7fccd2" formatted="false">سمات الملف الشخصي</string>
+    <string name="catalog_profile_themes_style_your_public_profile_card_7965d778" formatted="false">تُنسّق سمات الملف الشخصي بطاقتك العامة. يراجع كل إدخال عبر طلب سحب، ويُضمّن مع التطبيق، ويُنقّى قبل عرضه.</string>
+    <string name="catalog_qr_code_abba02fc" formatted="false">QR code</string>
+    <string name="catalog_ready_made_styles_for_your_profile_card_83af5cba" formatted="false">أنماط جاهزة لبطاقة ملفك الشخصي</string>
+    <string name="catalog_realtime_5973df61" formatted="false">Realtime</string>
+    <string name="catalog_reason_1_s_bce5b2c7" formatted="true">Reason: %1$s</string>
+    <string name="catalog_recording_locked_32fe3a05" formatted="false">التسجيل مقفل</string>
+    <string name="catalog_recovery_codes_b3f5f8ca" formatted="false">رموز الاسترداد</string>
+    <string name="catalog_reduce_motion_25a5aef5" formatted="false">تقليل الحركة</string>
+    <string name="catalog_release_d41f56ce" formatted="false">Release</string>
+    <string name="catalog_release_to_cancel_29bd6c29" formatted="false">حرّر للإلغاء</string>
+    <string name="catalog_remove_background_for_everyone_275dc99e" formatted="false">إزالة الخلفية للجميع</string>
+    <string name="catalog_remove_e963907d" formatted="false">Remove</string>
+    <string name="catalog_remove_friend_b16fc7ff" formatted="false">إزالة صديق</string>
+    <string name="catalog_remove_from_favourites_624f82c1" formatted="false">إزالة من المفضلة</string>
+    <string name="catalog_remove_group_icon_5869f3b2" formatted="false">إزالة أيقونة المجموعة</string>
+    <string name="catalog_remove_passkey_988b1b7e" formatted="false">إزالة مفتاح المرور</string>
+    <string name="catalog_removes_every_message_you_ve_sent_in_f63902f1" formatted="false">يزيل كل رسالة أرسلتها في كل خادم ومجموعة - بما في ذلك </string>
+    <string name="catalog_removing_this_only_affects_orangchat_delete_it_28979691" formatted="false">لا تؤثر إزالة هذا إلا في OrangChat. احذفه من إعدادات الجهاز نفسها </string>
+    <string name="catalog_rename_d3f4cb89" formatted="false">Rename</string>
+    <string name="catalog_rename_passkey_cb9298c9" formatted="false">إعادة تسمية مفتاح المرور</string>
+    <string name="catalog_renewing_it_loses_access_within_a_few_1d7c7abe" formatted="false">renewing; it loses access within a few minutes.</string>
+    <string name="catalog_replaces_the_key_used_from_now_on_c57ccaed" formatted="false">يستبدل المفتاح المستخدم من الآن فصاعدًا، حتى لا يتمكن جهاز أُزيل منذ ذلك الحين من قراءة أي شيء جديد. تظل الرسائل الموجودة هنا قابلة للقراءة، ولا يُمنع أحد من الوصول.</string>
+    <string name="catalog_replaces_the_orangchat_mark_for_you_everywhere_109fab70" formatted="false">يستبدل شعار OrangChat لك في كل مكان سجّلت الدخول فيه. </string>
+    <string name="catalog_report_message_babfeaf5" formatted="false">الإبلاغ عن رسالة</string>
+    <string name="catalog_report_received_2568a541" formatted="false">تم استلام البلاغ</string>
+    <string name="catalog_reporting_reveals_this_one_decrypted_message_and_1e7d77a7" formatted="false">يكشف الإبلاغ هذه الرسالة المفكوكة ومفتاح رسالة واحدة. ولا يكشف مفتاح المحادثة أو أي رسالة أخرى.</string>
+    <string name="catalog_request_sent_168996e3" formatted="false">تم إرسال الطلب</string>
+    <string name="catalog_resend_email_code_9a8ba727" formatted="false">إعادة إرسال رمز البريد الإلكتروني</string>
+    <string name="catalog_reset_44c57abd" formatted="false">إعادة تعيين</string>
+    <string name="catalog_reset_to_defaults_ddefe47d" formatted="false">إعادة الضبط إلى الإعدادات الافتراضية</string>
+    <string name="catalog_resolving_invite_62cce3b8" formatted="false">جارٍ التحقق من الدعوة…</string>
+    <string name="catalog_revoke_0be72075" formatted="false">Revoke</string>
+    <string name="catalog_revoke_1_s_357dcc1d" formatted="true">Revoke %1$s?</string>
+    <string name="catalog_revoke_device_66468c17" formatted="false">إلغاء تفويض الجهاز</string>
+    <string name="catalog_revoked_d8230020" formatted="false">  ·  revoked</string>
+    <string name="catalog_revoking_2c8a0ed4" formatted="false">جارٍ إلغاء التفويض…</string>
+    <string name="catalog_ringing_417814b1" formatted="false">جارٍ الرنين…</string>
+    <string name="catalog_role_name_4204d818" formatted="false">اسم الدور</string>
+    <string name="catalog_roles_grant_permissions_and_a_colour_members_51c7e585" formatted="false">تمنح الأدوار أذونات ولونًا. يأخذ الأعضاء لون أعلى دور لديهم.</string>
+    <string name="catalog_save_changes_179359b3" formatted="false">حفظ التغييرات</string>
+    <string name="catalog_save_nickname_51ddb3ea" formatted="false">حفظ الاسم المستعار</string>
+    <string name="catalog_save_profile_f597c0e8" formatted="false">حفظ الملف الشخصي</string>
+    <string name="catalog_save_these_now_each_works_once_if_2a1aad82" formatted="false">احفظها الآن - يعمل كل منها مرة واحدة إذا فقدت هاتفك، ولا تظهر إلا هذه المرة.</string>
+    <string name="catalog_scan_28cba55d" formatted="false">Scan</string>
+    <string name="catalog_scan_code_from_pc_6c59b0aa" formatted="false">مسح الرمز من الكمبيوتر</string>
+    <string name="catalog_scan_device_code_45e4e1cb" formatted="false">مسح رمز الجهاز</string>
+    <string name="catalog_scan_the_code_shown_by_the_new_953d3dac" formatted="false">امسح الرمز الظاهر على الجهاز الجديد، أو الصق رمز orangchat://device-transfer الكامل هنا.</string>
+    <string name="catalog_scan_their_code_b273ef3b" formatted="false">امسح رمزه</string>
+    <string name="catalog_scan_verification_code_9569a83c" formatted="false">مسح رمز التحقق</string>
+    <string name="catalog_search_bce06414" formatted="false">Search</string>
+    <string name="catalog_search_by_name_or_username_9c923df6" formatted="false">ابحث بالاسم أو اسم المستخدم</string>
+    <string name="catalog_search_friends_and_channels_57990af1" formatted="false">ابحث عن الأصدقاء والقنوات</string>
+    <string name="catalog_search_klipy_9e867d1a" formatted="false">ابحث في KLIPY</string>
+    <string name="catalog_search_messages_abea65ae" formatted="false">البحث في الرسائل</string>
+    <string name="catalog_search_profile_themes_99f3d314" formatted="false">ابحث في سمات الملف الشخصي</string>
+    <string name="catalog_searched_on_this_device_messages_not_opened_4abe22a1" formatted="false">تم البحث على هذا الجهاز. قد تكون الرسائل التي لم تُفتح هنا مفقودة.</string>
+    <string name="catalog_security_f25ce1b8" formatted="false">الأمان</string>
+    <string name="catalog_send_a_new_code_91904a28" formatted="false">إرسال رمز جديد</string>
+    <string name="catalog_send_anyway_911263fe" formatted="false">إرسال على أي حال</string>
+    <string name="catalog_send_friend_request_c3ed810d" formatted="false">إرسال طلب صداقة</string>
+    <string name="catalog_send_report_a5b32af9" formatted="false">إرسال البلاغ</string>
+    <string name="catalog_send_straight_away_19f3932b" formatted="false">أرسل فورًا</string>
+    <string name="catalog_send_straight_away_a_swap_gets_caught_2e19b55a" formatted="false">أرسل فورًا - يُكتشف الاستبدال. يُكتب كل قفل ينشره أي شخص في دفتر سجل لا يقبل إلا الإضافة، ولا يمكن تعديله أو محوه. تقرأ أجهزتك صفحة حسابك عند كل تشغيل. إذا نُشر يومًا قفل باسمك لم تنشئه أجهزتك، فستخبرك بذلك، ويبقى الإدخال في السجل حيث يمكن لأي شخص الإشارة إليه. يمكن محاولة الاستبدال، لكن لا يمكن محاولته في الخفاء.</string>
+    <string name="catalog_send_typing_indicators_6ca26372" formatted="false">إرسال مؤشرات الكتابة</string>
+    <string name="catalog_sending_cf765512" formatted="false">جارٍ الإرسال…</string>
+    <string name="catalog_sending_encrypted_history_and_signing_the_new_6bfd242c" formatted="false">Sending encrypted history and signing the new device into your device log…</string>
+    <string name="catalog_sending_straight_away_is_what_every_conversation_68012f61" formatted="false">الإرسال فورًا هو ما تحصل عليه كل محادثة. التحقق أولًا هو الخطوة الإضافية، ولا يستحق تفعيله إلا للأشخاص الذين يمكنك مقابلتهم أو الاتصال بهم واقعيًا.</string>
+    <string name="catalog_sending_voice_message_a48b5648" formatted="false">جارٍ إرسال رسالة صوتية…</string>
+    <string name="catalog_server_cb0cb170" formatted="false">Server</string>
+    <string name="catalog_server_channels_those_have_shared_history_moderation_c68bcd1b" formatted="false">• قنوات الخادم. لها سجل مشترك وإشراف وبحث، وكل ذلك يتطلب أن يقرأها الخادم. لا تُشفّر بهذه الطريقة إلا الرسائل المباشرة ورسائل المجموعات المباشرة.</string>
+    <string name="catalog_server_icon_8bf2f95a" formatted="false">أيقونة الخادم</string>
+    <string name="catalog_server_name_738825fc" formatted="false">اسم الخادم</string>
+    <string name="catalog_server_settings_28af3cc7" formatted="false">إعدادات الخادم</string>
+    <string name="catalog_set_a_password_f5c8f412" formatted="false">عيّن كلمة مرور</string>
+    <string name="catalog_set_chat_background_d07e7165" formatted="false">تعيين خلفية الدردشة</string>
+    <string name="catalog_set_group_icon_48042fd7" formatted="false">تعيين أيقونة المجموعة</string>
+    <string name="catalog_set_password_94408e41" formatted="false">تعيين كلمة المرور</string>
+    <string name="catalog_set_up_this_phone_again_6f53f3fd" formatted="false">أعِد إعداد هذا الهاتف</string>
+    <string name="catalog_set_up_two_factor_a6722c51" formatted="false">إعداد المصادقة الثنائية</string>
+    <string name="catalog_setting_up_cef9b69d" formatted="false">جارٍ الإعداد…</string>
+    <string name="catalog_settings_c7f73bb5" formatted="false">الإعدادات</string>
+    <string name="catalog_share_to_orangchat_8cb49ef7" formatted="false">المشاركة عبر OrangChat</string>
+    <string name="catalog_shared_text_4517f1e8" formatted="false">نص مشترك</string>
+    <string name="catalog_sharing_ad005909" formatted="false">جارٍ المشاركة…</string>
+    <string name="catalog_show_fallback_code_on_this_phone_90acc27c" formatted="false">إظهار الرمز الاحتياطي على هذا الهاتف</string>
+    <string name="catalog_show_members_with_this_role_in_their_f0fb058c" formatted="false">عرض الأعضاء الذين لديهم هذا الدور في مجموعتهم الخاصة.</string>
+    <string name="catalog_show_message_text_66bf26b1" formatted="false">إظهار نص الرسالة</string>
+    <string name="catalog_show_my_code_342b7a4e" formatted="false">إظهار رمزي</string>
+    <string name="catalog_show_password_044b852f" formatted="false">إظهار كلمة المرور</string>
+    <string name="catalog_shown_on_the_invite_page_28e6606d" formatted="false">يظهر في صفحة الدعوة.</string>
+    <string name="catalog_sign_in_ada2e9e9" formatted="false">تسجيل الدخول</string>
+    <string name="catalog_sign_in_before_adding_this_device_8327420f" formatted="false">Sign in before adding this device.</string>
+    <string name="catalog_sign_in_on_the_web_94061c18" formatted="false">تسجيل الدخول على الويب؟</string>
+    <string name="catalog_sign_in_with_a_passkey_cf1c7263" formatted="false">سجّل الدخول باستخدام مفتاح مرور</string>
+    <string name="catalog_sign_in_with_your_fingerprint_face_or_ec24e91a" formatted="false">سجّل الدخول ببصمتك أو وجهك أو رمز PIN للجهاز بدلًا من كلمة المرور. </string>
+    <string name="catalog_sign_out_1_s_other_device_24648e43" formatted="true">Sign out %1$s other device</string>
+    <string name="catalog_sign_out_1_s_other_devices_5bd5b0ba" formatted="true">Sign out %1$s other devices</string>
+    <string name="catalog_sign_out_dc1649a1" formatted="false">تسجيل الخروج</string>
+    <string name="catalog_signed_in_1_s_3b0f6db2" formatted="true">Signed in %1$s</string>
+    <string name="catalog_signed_in_as_1_s_21660e7d" formatted="true">Signed in as %1$s.</string>
+    <string name="catalog_skip_the_scroll_and_swipe_animations_3bb4a091" formatted="false">تخطي رسوم التمرير والسحب المتحركة.</string>
+    <string name="catalog_slide_to_cancel_8f64a698" formatted="false">مرّر للإلغاء →</string>
+    <string name="catalog_slide_to_cancel_9c411f6d" formatted="false">‹ مرّر للإلغاء</string>
+    <string name="catalog_slide_up_to_lock_recording_52127830" formatted="false">مرّر لأعلى لقفل التسجيل</string>
+    <string name="catalog_so_you_can_tell_it_apart_from_5878d69c" formatted="false">حتى تتمكن من تمييزه عن أجهزتك الأخرى لاحقًا.</string>
+    <string name="catalog_someone_here_f47623b5" formatted="false">شخص هنا</string>
+    <string name="catalog_someone_scanned_this_account_s_code_to_cd6f3892" formatted="false">مسح شخص ما رمز هذا الحساب لتسجيل الدخول إلى OrangChat في متصفح. وافق فقط إذا كنت أنت.</string>
+    <string name="catalog_standing_together_scan_each_other_s_codes_faf20092" formatted="false">تقفان معًا؟ امسحا رمزَي بعضكما - يثبت مسح واحد اتجاهًا واحدًا، لذا افعلا الأمرين.</string>
+    <string name="catalog_start_a_call_d7f39160" formatted="false">بدء مكالمة</string>
+    <string name="catalog_start_a_fresh_key_here_11c5421d" formatted="false">ابدأ مفتاحًا جديدًا هنا</string>
+    <string name="catalog_start_calls_with_video_already_publishing_04f2d03f" formatted="false">ابدأ المكالمات مع تفعيل بث الفيديو مسبقًا.</string>
+    <string name="catalog_start_every_call_with_your_microphone_off_087b5564" formatted="false">ابدأ كل مكالمة مع كتم صوت الميكروفون.</string>
+    <string name="catalog_start_over_with_new_keys_328f6a4a" formatted="false">ابدأ من جديد بمفاتيح جديدة</string>
+    <string name="catalog_start_video_call_dac036c6" formatted="false">بدء مكالمة فيديو</string>
+    <string name="catalog_start_voice_call_f5e80dd9" formatted="false">بدء مكالمة صوتية</string>
+    <string name="catalog_status_bae7d5be" formatted="false">الحالة</string>
+    <string name="catalog_still_yours_1_s_42da6dc4" formatted="true"> Still yours: %1$s.</string>
+    <string name="catalog_stop_9e253470" formatted="false">إيقاف</string>
+    <string name="catalog_stored_on_this_device_only_never_uploaded_1373e7ad" formatted="false">محفوظ على هذا الجهاز فقط - لا يُرفع أبدًا.</string>
+    <string name="catalog_style_your_card_for_everyone_who_views_08c9bf5c" formatted="false">نسّق بطاقتك لكل من يراها. لكل جزء موضع ربط: </string>
+    <string name="catalog_synced_to_your_device_s_keychain_4f237bce" formatted="false">متزامن مع سلسلة مفاتيح جهازك.</string>
+    <string name="catalog_system_bc0792d8" formatted="false">النظام</string>
+    <string name="catalog_take_a_picture_6d76bc64" formatted="false">التقط صورة</string>
+    <string name="catalog_tap_the_key_to_copy_it_1965f6e7" formatted="false">اضغط على المفتاح لنسخه.</string>
+    <string name="catalog_terminal_a1f52cdc" formatted="false">Terminal</string>
+    <string name="catalog_text_size_3cc6e124" formatted="false">حجم النص</string>
+    <string name="catalog_text_size_motion_density_a9cc0369" formatted="false">حجم النص، الحركة، الكثافة</string>
+    <string name="catalog_that_code_isn_t_right_e78cef5d" formatted="false">That code isn\'t right</string>
+    <string name="catalog_that_didn_t_work_try_again_9ae914fa" formatted="false">That didn\'t work. Try again.</string>
+    <string name="catalog_that_invite_is_expired_revoked_or_never_752c9ac3" formatted="false">انتهت صلاحية تلك الدعوة أو أُلغيت أو لم تكن موجودة قط.</string>
+    <string name="catalog_that_is_also_why_adding_a_second_4bac217f" formatted="false">ولهذا أيضًا فإن إضافة جهاز ثانٍ طقس صغير بدلًا من النسخ واللصق. يجب أن يرى جهازك القديم الجديد - رمز على الشاشة وكاميرا موجهة إليه - قبل أن ينتقل أي شيء.</string>
+    <string name="catalog_that_was_cancelled_b8e83864" formatted="false">That was cancelled.</string>
+    <string name="catalog_the_camera_could_not_start_you_can_a181859b" formatted="false">تعذر بدء الكاميرا. يمكنك إعادة المحاولة أو استخدام تطبيق الكاميرا في النظام.</string>
+    <string name="catalog_the_device_could_not_be_revoked_8f71eb6b" formatted="false">The device could not be revoked.</string>
+    <string name="catalog_the_device_transfer_failed_7a70c4fe" formatted="false">The device transfer failed.</string>
+    <string name="catalog_the_digits_match_809c13bc" formatted="false">الأرقام متطابقة</string>
+    <string name="catalog_the_email_code_could_not_be_sent_7bee875a" formatted="false">The email code could not be sent.</string>
+    <string name="catalog_the_encryption_device_was_revoked_5d4569c7" formatted="false">The encryption device was revoked.</string>
+    <string name="catalog_the_keys_could_not_be_erased_fc80d5dd" formatted="false">The keys could not be erased.</string>
+    <string name="catalog_the_logbook_0b3e99f4" formatted="false">دفتر السجل</string>
+    <string name="catalog_the_messages_only_that_device_could_open_dd92a9bc" formatted="false">تظل الرسائل التي لا يستطيع فتحها إلا ذلك الجهاز مقفلة إلى الأبد. لا يمكننا استعادتها لك - ولو استطعنا لما كان أي مما سبق صحيحًا.</string>
+    <string name="catalog_the_new_device_s_code_was_recognized_7c702591" formatted="false">The new device’s code was recognized. It is not authorized yet.</string>
+    <string name="catalog_the_new_device_was_authorized_8ec267ba" formatted="false">تمت المصادقة على الجهاز الجديد.</string>
+    <string name="catalog_the_one_time_code_from_your_pc_15a1fb2d" formatted="false">The one-time code from your PC was recognized. Nothing has been transferred yet.</string>
+    <string name="catalog_the_ones_you_ve_left_attachments_you_87419c2e" formatted="false">the ones you\'ve left. Attachments you uploaded aren\'t removed from storage. This can\'t be undone.</string>
+    <string name="catalog_the_pc_sends_encrypted_history_keys_and_e368a88b" formatted="false">The PC sends encrypted history keys and records this phone as authorized.</string>
+    <string name="catalog_the_quick_brown_fox_jumps_over_the_408d9438" formatted="false">الثعلب البني السريع يقفز فوق الكلب الكسول.</string>
+    <string name="catalog_the_right_person_3860646e" formatted="false">الشخص الصحيح</string>
+    <string name="catalog_theme_a797e309" formatted="false">السمة</string>
+    <string name="catalog_there_is_no_code_to_compare_yet_5ce7929c" formatted="false">لا يوجد رمز للمقارنة بعد.</string>
+    <string name="catalog_these_choices_are_stored_on_this_device_ac326393" formatted="false">تُخزّن هذه الخيارات على هذا الجهاز فقط.</string>
+    <string name="catalog_these_do_not_match_most_often_that_0139df50" formatted="false">هذه لا تتطابق. غالبًا ما يكون السبب رقمًا سُمع أو كُتب خطأ، لذا تحقّق مرة أخرى. إن ظلت مختلفة، فهناك شخص يتوسطكما - لا ترسل شيئًا هنا حتى تعرف من هو.</string>
+    <string name="catalog_these_numbers_appear_once_both_accounts_have_288c556c" formatted="false">تظهر هذه الأرقام بعد إعداد التشفير على جهاز لكل حساب.</string>
+    <string name="catalog_they_all_open_8a0f4e5d" formatted="false">تفتحها جميعًا</string>
+    <string name="catalog_they_cannot_send_messages_react_or_speak_7fcf8d0c" formatted="false">لا يمكنهم إرسال رسائل أو التفاعل أو التحدث حتى تنتهي المدة.</string>
+    <string name="catalog_they_do_not_match_a5d86ddf" formatted="false">إنها لا تتطابق</string>
+    <string name="catalog_they_open_371267bf" formatted="false">يفتحونها</string>
+    <string name="catalog_this_account_has_no_authenticator_app_set_3f1e6f47" formatted="false">لا يوجد تطبيق مصادقة مُعدّ لهذا الحساب، لذا سيرسل OrangChat رمزًا لمرة واحدة عبر البريد الإلكتروني للموافقة على الجهاز الجديد.</string>
+    <string name="catalog_this_code_holds_nothing_secret_it_is_373de7f3" formatted="false">لا يحتوي هذا الرمز على أي شيء سري. يمكن لأي شخص رؤيته بأمان؛ وجودك في الغرفة هو ما يجعل مسحه ذا معنى.</string>
+    <string name="catalog_this_conversation_is_not_encrypted_yet_00080602" formatted="false">هذه المحادثة غير مشفّرة بعد</string>
+    <string name="catalog_this_device_82229094" formatted="false">  ·  هذا الجهاز</string>
+    <string name="catalog_this_device_fa5a6dd9" formatted="false">هذا الجهاز</string>
+    <string name="catalog_this_device_stays_signed_in_795f19a1" formatted="false">This device stays signed in.</string>
+    <string name="catalog_this_device_will_stop_receiving_new_conversation_45e9c7a1" formatted="false">سيتوقف هذا الجهاز عن تلقي مفاتيح محادثات جديدة. ويظل في سجل الأجهزة الذي لا يقبل إلا الإضافة بصفته مُلغى التفويض، لذلك لا يمكن إخفاء التغيير.</string>
+    <string name="catalog_this_happens_the_moment_you_confirm_there_62922ade" formatted="false">يحدث ذلك لحظة التأكيد - لا توجد فترة انتظار ولا شيء لإلغائه، لأن هذا الهاتف يوقّع عليه بالمفتاح نفسه. تصبح كل رسالة مشفّرة في هذا الحساب غير قابلة للقراءة للجميع إلى الأبد.</string>
+    <string name="catalog_this_is_your_code_they_can_scan_f71a20fe" formatted="false">هذا رمزك. يمكنهم مسحه من القفل أعلى محادثتك أو من هذه الشاشة على هاتفهم.</string>
+    <string name="catalog_this_media_is_unavailable_1ed2c88e" formatted="false">هذه الوسائط غير متاحة</string>
+    <string name="catalog_this_phone_7bcf6179" formatted="false">  ·  this phone</string>
+    <string name="catalog_this_phone_cannot_revoke_itself_4f680a33" formatted="false">This phone cannot revoke itself.</string>
+    <string name="catalog_this_phone_connects_to_the_new_device_9c190e97" formatted="false">This phone connects to the new device without authorizing it yet.</string>
+    <string name="catalog_this_phone_could_not_be_set_up_ee589c92" formatted="false">This phone could not be set up again.</string>
+    <string name="catalog_this_phone_creates_a_protected_encryption_identity_c2865640" formatted="false">This phone creates a protected encryption identity in Android Keystore.</string>
+    <string name="catalog_this_phone_creates_its_own_non_copyable_e6604888" formatted="false">ينشئ هذا الهاتف هوية خاصة به لا يمكن نسخها. لا تنتقل من الكمبيوتر إلا مفاتيح سجل المحادثات المشفّر.</string>
+    <string name="catalog_this_phone_has_not_made_its_encryption_0af536c0" formatted="false">لم ينشئ هذا الهاتف مفتاح التشفير بعد.</string>
+    <string name="catalog_this_phone_is_not_authorized_yet_finish_1ca6df93" formatted="false">هذا الهاتف غير مُصرّح له بعد. أكمل «إضافة هذا الهاتف» قبل أن يتمكن من قراءة السجل المشفّر أو إلغاء تفويض جهاز تشفير آخر.</string>
+    <string name="catalog_this_phone_is_now_an_authorized_encryption_65fc8f05" formatted="false">أصبح هذا الهاتف الآن جهاز تشفير مُصرّحًا له.</string>
+    <string name="catalog_this_phone_was_removed_from_your_account_a066cfb1" formatted="false">أُزيل هذا الهاتف من حسابك من جهاز آخر. لم يعد مفتاحه يفتح أي شيء هنا، ولا يمكنه قراءة رسائل مشفّرة جديدة حتى تضيفه مرة أخرى.</string>
+    <string name="catalog_this_replaces_all_of_your_existing_recovery_1ee473c2" formatted="false">يستبدل هذا كل رموز الاسترداد الحالية لديك.</string>
+    <string name="catalog_this_version_of_orangchat_is_no_longer_91b823d1" formatted="false">لم تعد هذه النسخة من OrangChat مدعومة ولا يمكنها الاتصال.</string>
+    <string name="catalog_those_don_t_match_5820ec54" formatted="false">هذه لا تتطابق.</string>
+    <string name="catalog_throw_away_the_encryption_identity_on_this_e4c09f9c" formatted="false">تخلّص من هوية التشفير في هذا الحساب وأنشئ واحدة جديدة هنا. تُزال كل الأجهزة الأخرى ويجب إضافتها من جديد.</string>
+    <string name="catalog_tighter_spacing_between_messages_58e3bf31" formatted="false">مسافات أضيق بين الرسائل.</string>
+    <string name="catalog_time_out_71ed8fda" formatted="false">فرض مهلة</string>
+    <string name="catalog_timed_out_edcd3630" formatted="false">انتهت المهلة</string>
+    <string name="catalog_timed_out_in_64510a0d" formatted="false">تنتهي المهلة خلال</string>
+    <string name="catalog_to_lock_a_box_for_someone_your_a0458be1" formatted="false">لقفل صندوق لشخص ما، يحتاج هاتفك إلى قفل ذلك الشخص، ويطلبه من خوادمنا. لذلك فالسؤال العادل هو: ماذا لو أعطيناك قفلًا صنعناه نحن، واحتفظنا بالمفتاح، ثم مررنا رسائلك بعد ذلك؟</string>
+    <string name="catalog_too_many_attempts_wait_a_moment_and_585a4cea" formatted="false">Too many attempts. Wait a moment and try again.</string>
+    <string name="catalog_transfer_code_scanned_fdb95e51" formatted="false">تم مسح رمز النقل</string>
+    <string name="catalog_turn_camera_off_97e661ba" formatted="false">إيقاف الكاميرا</string>
+    <string name="catalog_turn_camera_on_98c78a9e" formatted="false">تشغيل الكاميرا</string>
+    <string name="catalog_turn_off_8807c2b3" formatted="false">إيقاف</string>
+    <string name="catalog_turn_off_two_factor_ec64c330" formatted="false">إيقاف المصادقة الثنائية</string>
+    <string name="catalog_turn_on_two_factor_2d7b5797" formatted="false">تشغيل المصادقة الثنائية</string>
+    <string name="catalog_turning_off_two_factor_leaves_your_password_7c7e274a" formatted="false">عند إيقاف المصادقة الثنائية، تصبح كلمة المرور وسيلة الحماية الوحيدة.</string>
+    <string name="catalog_two_answers_and_you_pick_how_much_c95f5a5c" formatted="false">إجابتان، ويمكنك اختيار مقدار ما تريده.</string>
+    <string name="catalog_two_factor_authentication_edfd617a" formatted="false">المصادقة الثنائية</string>
+    <string name="catalog_two_factor_is_on_65e04e1d" formatted="false">المصادقة الثنائية مفعّلة</string>
+    <string name="catalog_type_1_s_to_confirm_700d64a1" formatted="true">Type %1$s to confirm</string>
+    <string name="catalog_type_to_search_this_server_s_messages_43fff226" formatted="false">اكتب للبحث في رسائل هذا الخادم.</string>
+    <string name="catalog_type_to_search_your_cached_direct_messages_12182460" formatted="false">اكتب للبحث في رسائلك المباشرة المخزنة مؤقتًا.</string>
+    <string name="catalog_unknown_bc7819b3" formatted="false">Unknown</string>
+    <string name="catalog_unknown_device_7af13b29" formatted="false">Unknown device</string>
+    <string name="catalog_unknown_ip_70fef55a" formatted="false">عنوان IP غير معروف</string>
+    <string name="catalog_until_1_s_5ec80ce8" formatted="true">Until %1$s</string>
+    <string name="catalog_update_now_c4cbac00" formatted="false">حدّث الآن</string>
+    <string name="catalog_update_required_f440d880" formatted="false">التحديث مطلوب</string>
+    <string name="catalog_update_to_continue_27e65968" formatted="false"> حدّث للمتابعة.</string>
+    <string name="catalog_updates_c76d1807" formatted="false">Updates</string>
+    <string name="catalog_upload_failed_ad0d0603" formatted="false">فشل الرفع</string>
+    <string name="catalog_uploading_d921a79a" formatted="false">جارٍ الرفع…</string>
+    <string name="catalog_use_passkey_a93f1827" formatted="false">استخدم مفتاح مرور</string>
+    <string name="catalog_used_to_sign_in_there_s_no_51a10c36" formatted="false">يُستخدم لتسجيل الدخول. لا توجد رسالة تأكيد عبر البريد الإلكتروني، لذا تحقّق منه جيدًا.</string>
+    <string name="catalog_user_settings_f2b85332" formatted="false">إعدادات المستخدم</string>
+    <string name="catalog_v_1_s_2682e065" formatted="true">v%1$s</string>
+    <string name="catalog_verify_this_contact_ee09ef5c" formatted="false">تحقّق من جهة الاتصال هذه</string>
+    <string name="catalog_version_1_s_build_2_s_e3646b68" formatted="true">Version %1$s (build %2$s)</string>
+    <string name="catalog_version_1_s_d2f210e6" formatted="true">Version %1$s</string>
+    <string name="catalog_version_1_s_is_available_e41095b0" formatted="true">Version %1$s is available</string>
+    <string name="catalog_version_2da600bf" formatted="false">Version</string>
+    <string name="catalog_version_and_build_3da1c1d8" formatted="false">الإصدار والبنية</string>
+    <string name="catalog_video_call_12d8c530" formatted="false">مكالمة فيديو</string>
+    <string name="catalog_video_call_ad60f43c" formatted="false">مكالمة فيديو</string>
+    <string name="catalog_voice_call_329f832a" formatted="false">مكالمة صوتية</string>
+    <string name="catalog_voice_connected_538f3e5c" formatted="false">تم الاتصال الصوتي</string>
+    <string name="catalog_waiting_for_the_pc_to_calculate_the_a6606f84" formatted="false">بانتظار أن يحسب الكمبيوتر أرقام المقارنة…</string>
+    <string name="catalog_waiting_for_your_pc_b7329350" formatted="false">بانتظار الكمبيوتر…</string>
+    <string name="catalog_we_can_still_see_the_outside_of_c8bd071e" formatted="false">لا يزال بإمكاننا رؤية الجزء الخارجي منها: من أرسلها وإلى من ذهبت وحجمها ووقتها. لا يمكننا رؤية ما بداخلها.</string>
+    <string name="catalog_we_emailed_you_a_sign_in_code_e283ce1e" formatted="false">أرسلنا إليك رمز تسجيل دخول عبر البريد الإلكتروني. تنتهي صلاحيته خلال 10 دقائق.</string>
+    <string name="catalog_welcome_back_b807833e" formatted="false">مرحبًا بعودتك</string>
+    <string name="catalog_what_happened_optional_9a81bdcf" formatted="false">ماذا حدث؟ (اختياري)</string>
+    <string name="catalog_what_happens_next_51ecc5b2" formatted="false">ما الذي سيحدث بعد ذلك</string>
+    <string name="catalog_what_incoming_calls_sound_like_5a0f66a3" formatted="false">شكل صوت المكالمات الواردة</string>
+    <string name="catalog_what_you_share_6998553a" formatted="false">ما تشاركه</string>
+    <string name="catalog_whatever_the_other_person_does_with_the_2d44e6c7" formatted="false">• أيًا كان ما يفعله الشخص الآخر بالرسالة. يمكنه التقاط لقطة شاشة لها أو حفظها أو إظهارها لشخص ما. يوقف التشفير الغرباء، لا المستلمين.</string>
+    <string name="catalog_when_joining_a_call_9f17cb1a" formatted="false">عند الانضمام إلى مكالمة</string>
+    <string name="catalog_where_you_re_signed_in_af00ae96" formatted="false">أماكن تسجيل دخولك</string>
+    <string name="catalog_who_can_add_you_07e171de" formatted="false">من يمكنه إضافتك</string>
+    <string name="catalog_who_can_message_you_e9356e11" formatted="false">من يمكنه مراسلتك</string>
+    <string name="catalog_who_you_talk_to_when_and_how_96d03db2" formatted="false">• من تتحدث معه ومتى وكم مرة. لا بد أن تكون الصناديق المقفلة موجّهة إلى شخص ما.</string>
+    <string name="catalog_with_someone_new_your_messages_wait_on_376112de" formatted="false">مع شخص جديد، تنتظر رسائلك على هذا الهاتف - مقفلة ولا تُرسل إلى أي مكان - حتى ترى رمزه شخصيًا أو تقرآ الأرقام لبعضكما في مكالمة.</string>
+    <string name="catalog_yes_leave_them_all_8520c6e8" formatted="false">نعم، غادرها كلها</string>
+    <string name="catalog_yes_that_s_them_03f398c0" formatted="false">نعم، هذا هو</string>
+    <string name="catalog_you_can_also_scan_with_the_system_35d7d733" formatted="false">يمكنك أيضًا المسح باستخدام تطبيق الكاميرا في النظام والضغط على «فتح OrangChat».</string>
+    <string name="catalog_you_do_not_have_this_permission_d4f08a3c" formatted="false">ليست لديك هذه الصلاحية.</string>
+    <string name="catalog_you_enter_a_fresh_2fa_code_on_2c858a05" formatted="false">You enter a fresh 2FA code on this authorized phone.</string>
+    <string name="catalog_you_example_com_50e2b46e" formatted="false">you@example.com</string>
+    <string name="catalog_you_ll_need_an_authenticator_app_such_60b7dd86" formatted="false">ستحتاج إلى تطبيق مصادقة مثل Google Authenticator أو 1Password أو Aegis.</string>
+    <string name="catalog_you_re_on_the_latest_version_182b7c69" formatted="false">أنت على أحدث إصدار</string>
+    <string name="catalog_you_ve_been_invited_to_join_3a282347" formatted="false">تمت دعوتك للانضمام</string>
+    <string name="catalog_you_ve_reached_the_limit_of_1_e25f813b" formatted="true">You\'ve reached the limit of %1$s passkeys. Remove one to add another.</string>
+    <string name="catalog_your_account_is_in_good_standing_1806a501" formatted="false">حسابك في وضع جيد</string>
+    <string name="catalog_your_account_is_locked_down_d129bf10" formatted="false">حسابك مؤمّن</string>
+    <string name="catalog_your_current_password_6658f206" formatted="false">كلمة المرور الحالية</string>
+    <string name="catalog_your_direct_messages_are_locked_on_this_0bc36ae0" formatted="false">تُقفل رسائلك المباشرة على هذا الهاتف قبل إرسالها. صُنع المفتاح هنا، ويُخزّن في عتاد الهاتف الآمن، ولا يمكن نسخه منه - لا بواسطة OrangChat ولا بواسطة أي شخص يملك نسخة احتياطية من قاعدة البيانات.</string>
+    <string name="catalog_your_messages_are_locked_before_they_leave_a431b93a" formatted="false">رسائلك مقفلة قبل أن تغادر هذا الهاتف</string>
+    <string name="catalog_your_messages_stay_in_the_conversations_they_34246f3c" formatted="false">تبقى رسائلك في المحادثات التي تشارك فيها، وتُعرض على أنها من </string>
+    <string name="catalog_your_old_keys_are_gone_this_phone_be322585" formatted="false">Your old keys are gone. This phone has fresh ones.</string>
+    <string name="catalog_your_password_26d745d4" formatted="false">كلمة المرور الخاصة بك</string>
+    <string name="catalog_your_phone_and_pc_show_six_digits_07bd977d" formatted="false">Your phone and PC show six digits. Compare them and cancel if they differ.</string>
+    <string name="catalog_your_phone_and_your_computer_each_make_ade9350c" formatted="false">ينشئ هاتفك وكمبيوترك كل منهما مفتاحه الخاص على الجهاز نفسه عند استخدام التشفير هناك للمرة الأولى. يُخزَّن المفتاح في جزء من الجهاز مصمَّم لحماية المفاتيح، ويُنشأ بحيث لا يمكن استخراجه للقراءة - لا بواسطة OrangChat ولا تطبيق آخر ولا أنت. لا يوجد ما يتسرب ولا ما يُسلَّم.</string>
+    <string name="catalog_your_phone_puts_the_message_in_a_10625561" formatted="false">يضع هاتفك الرسالة في صندوق ويقفله. يحمل كل جهاز في المحادثة، وهذه الأجهزة وحدها، مفتاحًا لهذا الصندوق. تخزّن خوادمنا الصندوق المقفل وتنقله.</string>
+    <string name="catalog_add_61cc55aa" formatted="false">يضيف</string>
+    <string name="catalog_friends_c11d5e1d" formatted="false">أصدقاء</string>
+    <string name="catalog_member_since_f425b08f" formatted="false">عضو منذ</string>
+    <string name="catalog_muted_b9e78ced" formatted="false">كتم الصوت</string>
+    <string name="catalog_pending_96f608c1" formatted="false">قيد الانتظار</string>
+</resources>
