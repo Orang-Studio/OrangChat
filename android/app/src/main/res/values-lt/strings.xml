@@ -264,7 +264,6 @@
     <string name="catalog_first_device_on_this_account_452cc989" formatted="false">Pirmas įrenginys ant šios paskyros</string>
     <string name="catalog_flip_camera_ed114d76" formatted="false">Apversti kamerą</string>
     <string name="catalog_follow_the_installer_to_finish_updating_2742868e" formatted="false">Vadovaukitės diegimo programa, kad užbaigtumėte atnaujinimą</string>
-    <string name="catalog_for_permission_the_first_time_you_join_1cbeb90e" formatted="false"></string>
     <string name="catalog_freezes_the_account_if_you_think_someone_09f45852" formatted="false">Jei manote, kad paskyroje yra kitas žmogus, ji sustabdoma: atsijungiama nuo kiekvieno </string>
     <string name="catalog_friends_of_friends_9abdf2fe" formatted="false">Draugų draugai</string>
     <string name="catalog_friends_only_0b2d5f25" formatted="false">Tik draugai</string>
@@ -292,7 +291,6 @@
     <string name="catalog_installed_7bb4405c" formatted="false">Įdiegta</string>
     <string name="catalog_invite_link_601e9d6c" formatted="false">Kvietimo nuoroda</string>
     <string name="catalog_invite_people_e1eb97af" formatted="false">Pakvieskite žmones</string>
-    <string name="catalog_invite_to_get_back_into_any_of_016b015f" formatted="false"></string>
     <string name="catalog_ios_browser_1da182c5" formatted="false">iOS browser</string>
     <string name="catalog_it_is_not_always_an_attack_it_c9d44cb1" formatted="false">Tai ne visada reiškia ataką – taip nutinka ir tada, kai žmogus praranda visus įrenginius ir turi pradėti iš naujo. Iš programos vidaus šių atvejų atskirti neįmanoma, todėl prieš siųsdama ką nors daugiau ji prašo jūsų tiesiogiai pasitikrinti su tuo žmogumi.</string>
     <string name="catalog_join_a_server_d59b6aba" formatted="false">Prisijungti prie serverio</string>
@@ -336,7 +334,6 @@
     <string name="catalog_microphone_access_is_needed_to_record_a_9afc8aaa" formatted="false">Norint įrašyti balso žinutę, reikia prieigos prie mikrofono</string>
     <string name="catalog_minimize_call_6cb0f0f8" formatted="false">Sumažinti skambučio langą</string>
     <string name="catalog_missed_call_0200c293" formatted="false">Praleistas skambutis</string>
-    <string name="catalog_my_contact_verification_qr_code_44a80ea4" formatted="false"></string>
     <string name="catalog_my_orange_grove_c6cfda8f" formatted="false">Mano apelsinų giraitė</string>
     <string name="catalog_name_709a2322" formatted="false">Name</string>
     <string name="catalog_need_an_account_sign_up_77472065" formatted="false">Reikia paskyros? Užsiregistruokite</string>
@@ -360,7 +357,6 @@
     <string name="catalog_no_one_41c06c15" formatted="false">No one</string>
     <string name="catalog_no_passkeys_yet_6dc4fe0f" formatted="false">Kol kas nėra prieigos raktų.</string>
     <string name="catalog_no_pending_requests_aeedf949" formatted="false">Nėra laukiančių užklausų.</string>
-    <string name="catalog_no_profile_themes_match_1_s_a67c627c" formatted="true"></string>
     <string name="catalog_no_saved_gifs_yet_tap_the_bookmark_75705898" formatted="false">Išsaugotų GIF dar nėra – palieskite bet kurio GIF žymelę, kad jis liktų čia.</string>
     <string name="catalog_no_server_is_currently_restricting_you_061000ea" formatted="false">Šiuo metu jūsų neriboja joks serveris.</string>
     <string name="catalog_no_sounds_yet_someone_with_manage_expressions_011117e4" formatted="false">Garsų dar nėra. Juos serverio nustatymuose gali pridėti asmuo, turintis teisę „Tvarkyti išraiškas“.</string>
