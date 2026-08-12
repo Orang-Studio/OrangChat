@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">OrangChat</string>
     <string name="language_arabic">আরবি</string>
@@ -679,6 +680,9 @@
     <string name="catalog_your_phone_and_pc_show_six_digits_07bd977d" formatted="false">Your phone and PC show six digits. Compare them and cancel if they differ.</string>
     <string name="catalog_your_phone_and_your_computer_each_make_ade9350c" formatted="false">আপনার ফোন ও কম্পিউটার দুটিই সেখানে প্রথমবার এনক্রিপশন ব্যবহার করার সময় ডিভাইসেই নিজস্ব কী তৈরি করে। সেটি ডিভাইসের কী রক্ষার জন্য বানানো অংশে যায়, এবং এমনভাবে তৈরি যে আবার পড়ে বের করা যায় না - OrangChat নয়, অন্য কোনো অ্যাপ নয়, আপনিও নন। ফাঁস করার বা দিয়ে দেওয়ার মতো কিছুই নেই।</string>
     <string name="catalog_your_phone_puts_the_message_in_a_10625561" formatted="false">আপনার ফোন বার্তাটি একটি বাক্সে রেখে তালাবদ্ধ করে। কথোপকথনের প্রতিটি ডিভাইস, এবং শুধু সেগুলোই, সেই বাক্সের একটি কী রাখে। আমাদের সার্ভার তালাবদ্ধ বাক্সটি সংরক্ষণ ও পাঠিয়ে দেয়।</string>
+    <string name="catalog_add_61cc55aa" formatted="false">যোগ করুন</string>
+    <string name="catalog_friends_c11d5e1d" formatted="false">বন্ধুরা</string>
+    <string name="catalog_member_since_f425b08f" formatted="false">থেকে সদস্য</string>
+    <string name="catalog_muted_b9e78ced" formatted="false">নিঃশব্দ</string>
+    <string name="catalog_pending_96f608c1" formatted="false">মুলতুবি</string>
 </resources>
-
-
