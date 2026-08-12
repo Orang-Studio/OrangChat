@@ -676,4 +676,9 @@
     <string name="catalog_your_phone_and_pc_show_six_digits_07bd977d" formatted="false">Your phone and PC show six digits. Compare them and cancel if they differ.</string>
     <string name="catalog_your_phone_and_your_computer_each_make_ade9350c" formatted="false">Jūsų telefonas ir kompiuteris, pirmą kartą juose naudojant šifravimą, kiekvienas pačiame įrenginyje sukuria savo raktą. Jis patenka į įrenginio dalį, skirtą raktams saugoti, ir yra sukurtas taip, kad jo nebūtų galima išgauti – nei OrangChat, nei kitai programai, nei jums. Nėra ko nutekinti ir nėra ką perduoti.</string>
     <string name="catalog_your_phone_puts_the_message_in_a_10625561" formatted="false">Jūsų telefonas įdeda žinutę į dėžutę ir ją užrakina. Visi pokalbio įrenginiai ir tik jie turi šios dėžutės raktą. Mūsų serveriai saugo užrakintą dėžutę ir ją perduoda.</string>
+    <string name="catalog_add_61cc55aa" formatted="false">Pridėti</string>
+    <string name="catalog_friends_c11d5e1d" formatted="false">Draugai</string>
+    <string name="catalog_member_since_f425b08f" formatted="false">Narys nuo</string>
+    <string name="catalog_muted_b9e78ced" formatted="false">Nutildyta</string>
+    <string name="catalog_pending_96f608c1" formatted="false">Laukiama</string>
 </resources>
