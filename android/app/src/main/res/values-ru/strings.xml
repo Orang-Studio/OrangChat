@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">OrangChat</string>
     <string name="language_arabic">Арабский</string>
@@ -679,6 +680,9 @@
     <string name="catalog_your_phone_and_pc_show_six_digits_07bd977d" formatted="false">Your phone and PC show six digits. Compare them and cancel if they differ.</string>
     <string name="catalog_your_phone_and_your_computer_each_make_ade9350c" formatted="false">Ваш телефон и компьютер при первом использовании шифрования создают каждый свой ключ прямо на устройстве. Он попадает в часть устройства, предназначенную для защиты ключей, и сделан так, что его нельзя извлечь обратно - ни OrangChat, ни другим приложением, ни вами. Нечему утечь и нечего передавать.</string>
     <string name="catalog_your_phone_puts_the_message_in_a_10625561" formatted="false">Ваш телефон кладёт сообщение в коробку и запирает её. Каждое устройство в беседе, и только они, имеет ключ от этой коробки. Наши серверы хранят и пересылают запертую коробку.</string>
+    <string name="catalog_add_61cc55aa" formatted="false">Добавлять</string>
+    <string name="catalog_friends_c11d5e1d" formatted="false">Друзья</string>
+    <string name="catalog_member_since_f425b08f" formatted="false">Участник с</string>
+    <string name="catalog_muted_b9e78ced" formatted="false">Без звука</string>
+    <string name="catalog_pending_96f608c1" formatted="false">В ожидании</string>
 </resources>
-
-
