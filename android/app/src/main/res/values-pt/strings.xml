@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">OrangChat</string>
     <string name="language_arabic">Árabe</string>
@@ -679,6 +680,9 @@
     <string name="catalog_your_phone_and_pc_show_six_digits_07bd977d" formatted="false">Your phone and PC show six digits. Compare them and cancel if they differ.</string>
     <string name="catalog_your_phone_and_your_computer_each_make_ade9350c" formatted="false">Seu telefone e computador criam cada um sua própria chave, no próprio dispositivo, na primeira vez que você usa criptografia nele. Ela vai para a parte do dispositivo criada para guardar chaves e é feita de modo que não possa ser lida de volta - nem pelo OrangChat, nem por outro app, nem por você. Não há nada para vazar nem entregar.</string>
     <string name="catalog_your_phone_puts_the_message_in_a_10625561" formatted="false">Seu telefone coloca a mensagem em uma caixa e a tranca. Todo dispositivo na conversa, e só eles, tem uma chave para essa caixa. Nossos servidores armazenam e encaminham a caixa trancada.</string>
+    <string name="catalog_friends_c11d5e1d" formatted="false">Amigos</string>
+    <string name="catalog_add_61cc55aa" formatted="false">Adicionar</string>
+    <string name="catalog_member_since_f425b08f" formatted="false">Membro desde</string>
+    <string name="catalog_muted_b9e78ced" formatted="false">Silenciado</string>
+    <string name="catalog_pending_96f608c1" formatted="false">Pendente</string>
 </resources>
-
-
