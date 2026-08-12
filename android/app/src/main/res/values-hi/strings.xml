@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">OrangChat</string>
     <string name="language_arabic">अरबी</string>
@@ -679,6 +680,9 @@
     <string name="catalog_your_phone_and_pc_show_six_digits_07bd977d" formatted="false">Your phone and PC show six digits. Compare them and cancel if they differ.</string>
     <string name="catalog_your_phone_and_your_computer_each_make_ade9350c" formatted="false">आपका फ़ोन और कंप्यूटर, वहाँ पहली बार एन्क्रिप्शन इस्तेमाल करने पर, डिवाइस पर ही अपनी कुंजी बनाते हैं। वह डिवाइस के उस हिस्से में जाती है जो कुंजियों की सुरक्षा के लिए बना है और उसे इस तरह बनाया जाता है कि वापस पढ़ा नहीं जा सकता - न OrangChat, न कोई दूसरा ऐप, न आप। लीक करने या सौंपने के लिए कुछ नहीं है।</string>
     <string name="catalog_your_phone_puts_the_message_in_a_10625561" formatted="false">आपका फ़ोन संदेश को एक डिब्बे में रखकर बंद कर देता है। बातचीत के हर डिवाइस के पास, और केवल उनके पास, उस डिब्बे की कुंजी होती है। हमारे सर्वर उस बंद डिब्बे को संग्रहित और आगे भेजते हैं।</string>
+    <string name="catalog_add_61cc55aa" formatted="false">जोड़ना</string>
+    <string name="catalog_friends_c11d5e1d" formatted="false">दोस्त</string>
+    <string name="catalog_member_since_f425b08f" formatted="false">से सदस्य</string>
+    <string name="catalog_muted_b9e78ced" formatted="false">म्यूट किए गए</string>
+    <string name="catalog_pending_96f608c1" formatted="false">लंबित</string>
 </resources>
-
-
