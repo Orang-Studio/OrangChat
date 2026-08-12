@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">OrangChat</string>
     <string name="language_arabic">عربی</string>
@@ -679,6 +680,9 @@
     <string name="catalog_your_phone_and_pc_show_six_digits_07bd977d" formatted="false">Your phone and PC show six digits. Compare them and cancel if they differ.</string>
     <string name="catalog_your_phone_and_your_computer_each_make_ade9350c" formatted="false">آپ کا فون اور آپ کا کمپیوٹر، جب آپ پہلی بار ان پر انکرپشن استعمال کرتے ہیں، ہر ایک اپنی کلید ڈیوائس پر ہی بناتا ہے۔ یہ ڈیوائس کے اس حصے میں جاتی ہے جو کلیدوں کی حفاظت کے لیے بنایا گیا ہے، اور اسے اس طرح بنایا جاتا ہے کہ واپس نکالا نہیں جا سکتا - نہ OrangChat، نہ کوئی دوسری ایپ، نہ آپ۔ رسنے یا کسی کو دینے کے لیے کچھ نہیں ہے۔</string>
     <string name="catalog_your_phone_puts_the_message_in_a_10625561" formatted="false">آپ کا فون پیغام کو ایک ڈبے میں رکھ کر مقفل کر دیتا ہے۔ گفتگو کا ہر ڈیوائس، اور صرف وہی، اس ڈبے کی کلید رکھتا ہے۔ ہمارے سرورز مقفل ڈبے کو ذخیرہ اور آگے پہنچاتے ہیں۔</string>
+    <string name="catalog_member_since_f425b08f" formatted="false">کے بعد سے ممبر</string>
+    <string name="catalog_add_61cc55aa" formatted="false">شامل کریں۔</string>
+    <string name="catalog_friends_c11d5e1d" formatted="false">دوستو</string>
+    <string name="catalog_muted_b9e78ced" formatted="false">خاموش</string>
+    <string name="catalog_pending_96f608c1" formatted="false">زیر التواء</string>
 </resources>
-
-
