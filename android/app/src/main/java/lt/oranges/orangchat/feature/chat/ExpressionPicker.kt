@@ -310,7 +310,7 @@ fun ExpressionPickerDialog(
                         emojis = customEmojis,
                         modifier = Modifier.fillMaxSize(),
                     ) { emoji ->
-                        onEmoji("<${if (emoji.animated) "a" else ""}:${emoji.name}:${emoji.id}>")
+                        onEmoji(":${emoji.name}:")
                         onDismiss()
                     }
                 }

@@ -65,15 +65,28 @@ export function resolveShortcodes(
   content: string,
   resolve: (name: string) => EmojiToken | undefined,
 ): string {
+  return replaceShortcodes(content, (name) => {
+    const emoji = resolve(name);
+    return emoji ? emojiToken(emoji) : undefined;
+  });
+}
+
+/**
+ * Swap every hand-typed `:name:` for whatever `resolve` returns - a token, a
+ * unicode emoji - leaving existing tokens and unknown names as they are.
+ */
+export function replaceShortcodes(
+  content: string,
+  resolve: (name: string) => string | undefined,
+): string {
   const shortcode = new RegExp(EMOJI_SHORTCODE_SOURCE, "gi");
   return tokenizeEmoji(content)
     .map((segment) =>
       segment.kind === "emoji"
         ? segment.raw
-        : segment.text.replace(shortcode, (whole, name: string) => {
-            const emoji = resolve(name.toLowerCase());
-            return emoji ? emojiToken(emoji) : whole;
-          }),
+        : segment.text.replace(shortcode, (whole, name: string) =>
+            resolve(name.toLowerCase()) ?? whole,
+          ),
     )
     .join("");
 }

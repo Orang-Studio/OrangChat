@@ -3,7 +3,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { Smile, X } from "lucide-react";
 import type { Emoji } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
-import { emojiToken, useUsableEmojis } from "../emojis/queries";
+import { useUsableEmojis } from "../emojis/queries";
 import { useServers } from "../servers/queries";
 import { EMOJI_CATEGORIES } from "./emoji-data";
 import { useFavoriteGifs } from "./favoriteGifs";
@@ -132,7 +132,7 @@ function CustomEmojiSections({ onPick }: { onPick: (token: string) => void }) {
                 key={emoji.id}
                 type="button"
                 title={`:${emoji.name}:`}
-                onClick={() => onPick(emojiToken(emoji))}
+                onClick={() => onPick(`:${emoji.name}:`)}
                 className="grid aspect-square place-items-center rounded-lg hover:bg-surface-2"
               >
                 <img

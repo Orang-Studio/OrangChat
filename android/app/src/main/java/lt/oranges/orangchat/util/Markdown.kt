@@ -31,9 +31,11 @@ data class EmojiRef(
 
 fun normalizeCustomEmojiNames(content: String, emojis: Map<String, EmojiRef>): String {
     val byName = emojis.values.associateBy { it.name.lowercase() }
-    return EmojiTokens.resolveShortcodes(content) { name ->
+    // Custom emoji win the name; whatever is left can still be a standard one.
+    val withCustom = EmojiTokens.resolveShortcodes(content) { name ->
         byName[name]?.let { EmojiTokens.Ref(it.animated, it.name, it.id) }
     }
+    return EmojiTokens.replaceShortcodes(withCustom, EmojiSearch::emojiFor)
 }
 
 data class MentionContext(
