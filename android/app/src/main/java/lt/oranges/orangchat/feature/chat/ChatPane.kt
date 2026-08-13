@@ -175,6 +175,7 @@ import lt.oranges.orangchat.feature.chat.voicemessage.orangVoiceRecorderColors
 import lt.oranges.orangchat.feature.chat.voicemessage.rememberVoiceRecorderState
 import lt.oranges.orangchat.data.model.UserActivity
 import lt.oranges.orangchat.ui.components.ActivityStatus
+import lt.oranges.orangchat.feature.unread.UnreadCountBadge
 import lt.oranges.orangchat.ui.components.Avatar
 import lt.oranges.orangchat.ui.components.GroupIcon
 import lt.oranges.orangchat.ui.components.BotTag
@@ -312,6 +313,7 @@ fun ChatPane(
     typingUserIds: Set<String>,
     onBack: () -> Unit,
     connected: Boolean = true,
+    missedCount: Int = 0,
     onSend: (
         content: String,
         replyToId: String?,
@@ -537,12 +539,19 @@ fun ChatPane(
                 .padding(horizontal = 8.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = c.inkSecondary,
-                modifier = Modifier.clickable(onClick = onBack).padding(4.dp),
-            )
+            Box(modifier = Modifier.clickable(onClick = onBack).padding(4.dp)) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = c.inkSecondary,
+                )
+                UnreadCountBadge(
+                    count = missedCount,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset(x = 6.dp, y = 6.dp),
+                )
+            }
             if (onSetIcon != null) {
                 GroupIcon(
                     iconUrl = iconUrl,

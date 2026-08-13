@@ -43,6 +43,7 @@ import lt.oranges.orangchat.feature.dms.NewGroupScreen
 import lt.oranges.orangchat.feature.friends.FriendsScreen
 import lt.oranges.orangchat.feature.invite.AddServerDialog
 import lt.oranges.orangchat.feature.members.MembersScreen
+import lt.oranges.orangchat.feature.unread.unreadCountExcluding
 import lt.oranges.orangchat.feature.voice.SoundboardSheet
 import lt.oranges.orangchat.feature.roles.RolesScreen
 import lt.oranges.orangchat.feature.profile.ProfileDialog
@@ -703,6 +704,7 @@ fun HomeScreen(
                                     typingUserIds = (typing[channelId].orEmpty() - self.id),
                                     onBack = { openChat = false; appViewModel.clearActiveChannel() },
                                     connected = connected,
+                                    missedCount = unreads.unreadCountExcluding(channelId),
                                     onSend = { content, replyTo, attachmentIds, sealedAttachments ->
                                         appViewModel.sendMessage(
                                             channelId,
