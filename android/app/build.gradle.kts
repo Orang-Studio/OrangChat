@@ -33,8 +33,8 @@ android {
         applicationId = "lt.oranges.orangchat"
         minSdk = 31
         targetSdk = 35
-        versionCode = 73
-        versionName = "1.0.2"
+        versionCode = 74
+        versionName = "1.0.3"
         buildConfigField("String", "KLIPY_API_KEY", "\"$klipyApiKey\"")
         vectorDrawables { useSupportLibrary = true }
     }
