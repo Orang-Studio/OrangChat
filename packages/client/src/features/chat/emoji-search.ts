@@ -44,6 +44,16 @@ export function shortcodeForEmoji(char: string): string | undefined {
   return (byChar!.get(char) ?? byChar!.get(char.replace("️", "")))?.name;
 }
 
+/** The `:xx` fragment being typed at the caret, if any. */
+export function activeShortcode(
+  value: string,
+  caret: number,
+): { start: number; query: string } | null {
+  const m = /(^|\s):([a-z0-9_+-]{2,32})$/i.exec(value.slice(0, caret));
+  if (!m) return null;
+  return { start: caret - m[2]!.length - 1, query: m[2]!.toLowerCase() };
+}
+
 /**
  * Shortcode search for the composer's `:xx` panel. Whole-name matches first,
  * then names starting with the query, then anything mentioning it.

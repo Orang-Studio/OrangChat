@@ -220,6 +220,7 @@
     <string name="catalog_email_me_a_code_cc025d42" formatted="false">Email me a code</string>
     <string name="catalog_email_me_a_code_instead_44cc1833" formatted="false">Email me a code instead</string>
     <string name="catalog_email_password_8973dcae" formatted="false">Email &amp; password</string>
+    <string name="catalog_emoji_matching_1_s_2d947ad2" formatted="true">Emoji matching %1$s</string>
     <string name="catalog_encrypted_history_keys_are_sent_and_the_aa611cee" formatted="false">Encrypted history keys are sent and the new device is recorded as authorized.</string>
     <string name="catalog_encryption_0af149c2" formatted="false">Encryption</string>
     <string name="catalog_encryption_security_alert_7b6e7671" formatted="false">Encryption security alert</string>
