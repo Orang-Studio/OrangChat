@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { ChevronDown, Hash, MicOff, Plus, Settings, UserPlus, Volume2 } from "lucide-react";
 import {
   Permissions,
@@ -39,6 +39,7 @@ interface ChannelSidebarProps {
   channels: Channel[];
   members: ServerMember[];
   roles: Role[];
+  activeChannelId: string | undefined;
 }
 
 function TextChannelLink({ channel, active }: { channel: Channel; active: boolean }) {
@@ -189,8 +190,13 @@ function VoiceChannelRow({
 }
 
 /** Middle column: server header menu, channel list, voice panel, user footer. */
-export function ChannelSidebar({ server, channels, members, roles }: ChannelSidebarProps) {
-  const { channelId } = useParams();
+export function ChannelSidebar({
+  server,
+  channels,
+  members,
+  roles,
+  activeChannelId: channelId,
+}: ChannelSidebarProps) {
   const { data: perms } = useMyPermissions(server.id);
   const collapsedIds = useCollapsedCategories((s) => s.byServer[server.id] ?? EMPTY_COLLAPSED);
   const toggleCategory = (id: string) => toggleCategoryCollapsed(server.id, id);
