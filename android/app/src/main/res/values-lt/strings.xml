@@ -681,4 +681,16 @@
     <string name="catalog_member_since_f425b08f" formatted="false">Narys nuo</string>
     <string name="catalog_muted_b9e78ced" formatted="false">Nutildyta</string>
     <string name="catalog_pending_96f608c1" formatted="false">Laukiama</string>
+    <string name="catalog_for_15_minutes_0c40b888" formatted="false">15 minučių</string>
+    <string name="catalog_for_1_hour_32c996ba" formatted="false">1 valandai</string>
+    <string name="catalog_for_8_hours_3e610b98" formatted="false">8 valandoms</string>
+    <string name="catalog_for_24_hours_0a7aea9d" formatted="false">24 valandoms</string>
+    <string name="catalog_invite_to_get_back_into_any_of_016b015f" formatted="false">pakviesk kad grįžtum į bet kurį iš jų.</string>
+    <string name="catalog_mobile_b1d70245" formatted="false">Telefonas</string>
+    <string name="catalog_mute_conversation_d261547e" formatted="false">Užpildyti pokalbį</string>
+    <string name="catalog_mute_server_b02c984e" formatted="false">Užtildyti serverį</string>
+    <string name="catalog_my_contact_verification_qr_code_44a80ea4" formatted="false">Mano kontakto patvirtinimo kodas</string>
+    <string name="catalog_no_profile_themes_match_1_s_a67c627c" formatted="true">Nėra atitinkančių profilio temų „%1$s“.</string>
+    <string name="catalog_until_i_turn_it_back_on_d3444633" formatted="false">Iki kol aš jį vėl įjungsiu</string>
+    <string name="catalog_for_permission_the_first_time_you_join_1cbeb90e" formatted="false">gauti leidimą pirmą kartą prisijungiant.</string>
 </resources>
