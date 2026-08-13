@@ -47,6 +47,42 @@ export function DialogFullScreenContent({
 }
 
 
+/**
+ * Like DialogContent, but the child *is* the whole card - no title bar, no
+ * padding wrapper. For content (ProfileCard) that already looks like a
+ * complete card on its own; a `title` is still required for a11y but is
+ * rendered off-screen.
+ */
+export function DialogCardContent({
+  title,
+  children,
+  className,
+}: Omit<DialogContentProps, "description">) {
+  return (
+    <RadixDialog.Portal>
+      <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/60 data-[state=open]:animate-in" />
+      <RadixDialog.Content
+        className={cn(
+          "fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2",
+          "max-h-[85dvh] overflow-y-auto rounded-lg shadow-2xl focus:outline-none",
+          className,
+        )}
+      >
+        <RadixDialog.Title className="sr-only">{title}</RadixDialog.Title>
+        <RadixDialog.Description className="sr-only">{title}</RadixDialog.Description>
+        {children}
+        <RadixDialog.Close
+          aria-label={t("common.close")}
+          className="absolute right-2 top-2 rounded-full bg-black/30 p-2 text-white backdrop-blur-sm transition-colors hover:bg-black/50"
+        >
+          <X aria-hidden className="size-4" />
+        </RadixDialog.Close>
+      </RadixDialog.Content>
+    </RadixDialog.Portal>
+  );
+}
+
+
 export function DialogContent({
   title,
   description,
