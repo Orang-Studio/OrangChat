@@ -80,6 +80,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
@@ -310,6 +311,7 @@ fun ChatPane(
     presence: Map<String, PresenceStatus>,
     typingUserIds: Set<String>,
     onBack: () -> Unit,
+    connected: Boolean = true,
     onSend: (
         content: String,
         replyToId: String?,
@@ -687,6 +689,35 @@ fun ChatPane(
             }
         }
         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(c.border))
+
+        if (!connected) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(c.primarySoft)
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Icon(
+                    Icons.Default.WifiOff,
+                    contentDescription = null,
+                    tint = c.warning,
+                    modifier = Modifier.size(14.dp),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = AppStrings.get(
+                        context,
+                        R.string.catalog_offline_messages_are_saved_and_will_be_96baffa1,
+                    ),
+                    color = c.warning,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
 
         if (jumpMissing) {
             Text(
@@ -1340,7 +1371,7 @@ private fun MessageRow(
             .padding(
                 start = if (plated) 12.dp else 16.dp,
                 end = if (plated) 12.dp else 16.dp,
-                top = if (grouped) 0.dp else if (compact) 2.dp else 4.dp,
+                top = if (grouped) 0.dp else if (compact) 4.dp else 8.dp,
                 bottom = if (!groupEnd) 0.dp else if (compact) 1.dp else 2.dp,
             ),
     ) {

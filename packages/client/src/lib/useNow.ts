@@ -28,3 +28,32 @@ const snapshot = () => now;
 export function useNow(): number {
   return useSyncExternalStore(subscribe, snapshot, snapshot);
 }
+
+const minuteListeners = new Set<() => void>();
+let minuteNow = Date.now();
+let minuteTimer: ReturnType<typeof setInterval> | undefined;
+
+function subscribeMinute(listener: () => void): () => void {
+  minuteListeners.add(listener);
+  if (!minuteTimer) {
+    minuteNow = Date.now();
+    minuteTimer = setInterval(() => {
+      minuteNow = Date.now();
+      minuteListeners.forEach((notify) => notify());
+    }, 60_000);
+  }
+  return () => {
+    minuteListeners.delete(listener);
+    if (minuteListeners.size === 0) {
+      clearInterval(minuteTimer);
+      minuteTimer = undefined;
+    }
+  };
+}
+
+const minuteSnapshot = () => minuteNow;
+
+/** Same as `useNow`, but ticks once a minute instead of once a second. */
+export function useMinuteTick(): number {
+  return useSyncExternalStore(subscribeMinute, minuteSnapshot, minuteSnapshot);
+}

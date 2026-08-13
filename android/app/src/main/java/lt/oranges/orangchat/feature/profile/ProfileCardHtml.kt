@@ -220,20 +220,20 @@ body {
   position: relative;
   display: inline-block;
   padding: 6px;
-  border-radius: 4px;
+  border-radius: 50%;
   background: ${c.surface2.css()};
   line-height: 0;
 }
-.oc-pf-avatar-img { width: 56px; height: 56px; border-radius: 4px; object-fit: cover; display: block; }
+.oc-pf-avatar-img { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; display: block; }
 .oc-pf-avatar-fallback {
-  width: 56px; height: 56px; border-radius: 4px;
+  width: 56px; height: 56px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   background: ${c.primarySoft.css()};
   color: ${c.primary.css()};
   font-size: 24px; font-weight: 600; line-height: 1;
 }
 .oc-pf-status {
-  position: absolute; right: -1px; bottom: -1px;
+  position: absolute; right: 4px; bottom: 4px;
   width: 20px; height: 20px; border-radius: 50%;
   background: ${c.surface2.css()};
   display: flex; align-items: center; justify-content: center;
@@ -328,7 +328,7 @@ private fun statusHtmlLabel(status: PresenceStatus): String = when (status) {
 private fun statusIconSvg(status: PresenceStatus, color: Color): String {
     val cut = when (status) {
         PresenceStatus.ONLINE -> ""
-        PresenceStatus.IDLE -> """<circle cx="4.6" cy="4.6" r="4.8" fill="black"/>"""
+        PresenceStatus.IDLE -> """<circle cx="4.6" cy="4.6" r="4.4" fill="black"/>"""
         PresenceStatus.DND -> """<rect x="1.4" y="4.9" width="9.2" height="2.2" rx="1.1" fill="black"/>"""
         PresenceStatus.OFFLINE -> """<circle cx="6" cy="6" r="2.8" fill="black"/>"""
     }

@@ -278,7 +278,10 @@ class AppViewModel @Inject constructor(
             if (enrolled.isSuccess) return@launch
         }
         runCatching { e2eeRepository.selfMonitor(userId) }
-            .onFailure { _e2eeError.value = it.message }
+            .onFailure { error ->
+                // Network failures aren't a security event - only surface real ones.
+                if (error !is java.io.IOException) _e2eeError.value = error.message
+            }
     }
 
     fun clearE2eeError() {
@@ -1320,6 +1323,7 @@ class AppViewModel @Inject constructor(
     }
 
     private fun reconcileAfterReconnect() {
+        if (_e2eeError.value == null) syncEncryptionIdentity()
         refreshUnreads()
         refreshFriends()
         refreshDms()

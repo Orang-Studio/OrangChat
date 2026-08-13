@@ -47,7 +47,7 @@ export function StatusIcon({
         ) : (
           <>
             <circle cx="6" cy="6" r="6" fill="white" />
-            {status === "idle" && <circle cx="4.6" cy="4.6" r="4.8" fill="black" />}
+            {status === "idle" && <circle cx="4.6" cy="4.6" r="4.4" fill="black" />}
             {status === "dnd" && (
               <rect x="1.4" y="4.9" width="9.2" height="2.2" rx="1.1" fill="black" />
             )}

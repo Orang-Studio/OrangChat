@@ -70,7 +70,7 @@ fun StatusIcon(
             PresenceStatus.ONLINE -> Unit
             PresenceStatus.IDLE -> drawCircle(
                 color = Color.Black,
-                radius = 4.8f * u,
+                radius = 4.4f * u,
                 center = Offset(4.6f * u, 4.6f * u),
                 blendMode = BlendMode.Clear,
             )

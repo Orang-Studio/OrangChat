@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
@@ -68,7 +69,7 @@ private fun ProfileCardNative(
     val c = OrangTheme.colors
     val context = LocalContext.current
     val outerShape = RoundedCornerShape(OrangRadius.xl)
-    val avatarShape = RoundedCornerShape(OrangRadius.md)
+    val avatarShape = CircleShape
     val accent = user.accentColor?.let { Color(it).copy(alpha = 1f) } ?: c.surface4
 
     Box(

@@ -376,6 +376,7 @@
     <string name="catalog_oc_pf_name_color_ff6a1a_9442cf4e" formatted="false">.oc-pf-name { color: #ff6a1a; }</string>
     <string name="catalog_off_the_shade_and_lock_screen_show_29ea09db" formatted="false">Off, the shade and lock screen show who wrote and nothing more. Encrypted messages are then never unlocked to make a notification at all. This phone only.</string>
     <string name="catalog_offline_e01fa717" formatted="false">Offline</string>
+    <string name="catalog_offline_messages_are_saved_and_will_be_96baffa1" formatted="false">Offline - messages are saved and will be sent when you reconnect</string>
     <string name="catalog_on_call_fdd219b2" formatted="false">On call</string>
     <string name="catalog_on_e0049a66" formatted="false">On</string>
     <string name="catalog_on_your_pc_open_settings_encryption_add_5a070e42" formatted="false">On your PC, open Settings → Encryption → Add another device. Your PC will show a one-time QR code.</string>
