@@ -685,4 +685,5 @@
     <string name="catalog_member_since_f425b08f" formatted="false">会员自</string>
     <string name="catalog_muted_b9e78ced" formatted="false">静音</string>
     <string name="catalog_pending_96f608c1" formatted="false">待办的</string>
+    <string name="catalog_emoji_5090a9e7" formatted="false">表情符号</string>
 </resources>
