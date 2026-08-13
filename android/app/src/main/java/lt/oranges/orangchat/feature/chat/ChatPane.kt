@@ -191,6 +191,7 @@ import lt.oranges.orangchat.ui.theme.LocalOrangColors
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.EmojiRef
+import lt.oranges.orangchat.util.EmojiSearch
 import lt.oranges.orangchat.util.MentionUser
 import lt.oranges.orangchat.util.Mentions
 import lt.oranges.orangchat.util.dayKey
@@ -1935,6 +1936,29 @@ private fun Composer(
         }
     }
 
+    val shortcode = EmojiSearch.activeShortcode(textState.text.toString(), textState.selection.end)
+    val emojiMatches = remember(shortcode?.query, customEmojis) {
+        val q = shortcode?.query ?: return@remember emptyList()
+        val custom = customEmojis
+            .filter { it.name.lowercase().contains(q) }
+            .map { EmojiSuggestion(":${it.name}:", ":${it.name}:", url = it.url) }
+        val unicode = EmojiSearch.search(q, EMOJI_SUGGESTION_LIMIT)
+            .map { EmojiSuggestion(":${it.name}:", it.char, char = it.char) }
+        (custom + unicode).take(EMOJI_SUGGESTION_LIMIT)
+    }
+
+    val pickEmoji: (EmojiSuggestion) -> Unit = { suggestion ->
+        val q = shortcode
+        if (q != null) {
+            val caret = textState.selection.end
+            textState.edit {
+                replace(q.start, caret, "${suggestion.insert} ")
+                selection = TextRange(q.start + suggestion.insert.length + 1)
+            }
+            onTyping()
+        }
+    }
+
     val uploads by drafts.uploads.collectAsState()
     val draftError by drafts.error.collectAsState()
     val visibleUploads = uploads.filter { it.key != autoSendVoiceKey }
@@ -2036,6 +2060,13 @@ private fun Composer(
     Column {
         if (matches.isNotEmpty()) {
             MentionSuggestions(matches = matches, onPick = pickMention)
+        }
+        if (shortcode != null && emojiMatches.isNotEmpty()) {
+            EmojiSuggestions(
+                query = shortcode.query,
+                matches = emojiMatches,
+                onPick = pickEmoji,
+            )
         }
         if (channelId != null) {
             ComposerAttachments(uploads = visibleUploads, onRemove = drafts::remove)
@@ -2311,6 +2342,70 @@ private fun Composer(
 }
 
 private const val MENTION_LIMIT = 8
+
+private const val EMOJI_SUGGESTION_LIMIT = 8
+
+/** A row of the `:xx` panel. [insert] is what lands in the composer. */
+data class EmojiSuggestion(
+    val label: String,
+    val insert: String,
+    val url: String? = null,
+    val char: String? = null,
+)
+
+@Composable
+private fun EmojiSuggestions(
+    query: String,
+    matches: List<EmojiSuggestion>,
+    onPick: (EmojiSuggestion) -> Unit,
+) {
+    val c = OrangTheme.colors
+    val context = LocalContext.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .background(c.surface3, RoundedCornerShape(OrangRadius.lg))
+            .border(1.dp, c.border, RoundedCornerShape(OrangRadius.lg))
+            .padding(4.dp),
+    ) {
+        Text(
+            AppStrings.get(context, R.string.catalog_emoji_matching_1_s_2d947ad2, ":$query"),
+            color = c.inkMuted,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        )
+        matches.forEach { suggestion ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(OrangRadius.md))
+                    .clickable { onPick(suggestion) }
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+            ) {
+                if (suggestion.url != null) {
+                    AsyncImage(
+                        model = suggestion.url,
+                        contentDescription = suggestion.label,
+                        modifier = Modifier.size(22.dp),
+                    )
+                } else {
+                    Text(suggestion.char.orEmpty(), fontSize = 18.sp)
+                }
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    suggestion.label,
+                    color = c.ink,
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
 
 private enum class PastedTokenKind { LOGIN, BOT }
 

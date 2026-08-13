@@ -8,6 +8,8 @@ data class UnicodeEmoji(
     val keywords: List<String>,
 )
 
+data class ShortcodeQuery(val start: Int, val query: String)
+
 object EmojiSearch {
 
     val entries: List<UnicodeEmoji> by lazy {
@@ -39,6 +41,15 @@ object EmojiSearch {
     /** `🌻` -> `sunflower`, for writing the short form back into a composer. */
     fun shortcodeFor(char: String): String? =
         (byChar[char] ?: byChar[char.replace("️", "")])?.name
+
+    private val ACTIVE = Regex("(^|\\s):([a-z0-9_+-]{2,32})$", RegexOption.IGNORE_CASE)
+
+    /** The `:xx` fragment being typed at the caret, if any. */
+    fun activeShortcode(value: String, caret: Int): ShortcodeQuery? {
+        val head = value.take(caret.coerceIn(0, value.length))
+        val name = ACTIVE.find(head)?.groupValues?.get(2) ?: return null
+        return ShortcodeQuery(head.length - name.length - 1, name.lowercase())
+    }
 
     /**
      * Shortcode search for the composer's `:xx` panel. Whole-name matches

@@ -16,7 +16,7 @@ import {
 import { isEncrypted } from '../e2ee/store';
 import { ComposerAttachments, isSettled, type PendingUpload } from './ComposerAttachments';
 import { ExpressionPicker } from './ExpressionPicker';
-import { emojiForShortcode } from './emoji-search';
+import { activeShortcode, emojiForShortcode, searchEmoji } from './emoji-search';
 import { highlightEmoji } from './EmojiHighlight';
 import { normalizeCustomEmojiNames, useEmojiMap } from '../emojis/queries';
 import { clearDraft, loadDraft, saveDraft, saveDraftNow } from './drafts';
@@ -28,6 +28,16 @@ const MAX_LENGTH = 4_000;
 
 const LENGTH_WARNING_THRESHOLD = MAX_LENGTH - 400;
 const MENTION_LIMIT = 8;
+const EMOJI_SUGGESTION_LIMIT = 8;
+
+interface EmojiSuggestion {
+  key: string;
+  label: string;
+  /** What lands in the box: the character itself, or a custom emoji's name. */
+  insert: string;
+  url?: string;
+  char?: string;
+}
 
 
 const VOICE_SWIPE_PX = 72;
@@ -98,6 +108,7 @@ export function Composer({
   const [uploads, setUploads] = useState<PendingUpload[]>([]);
   const [dragging, setDragging] = useState(false);
   const [mention, setMention] = useState<{ start: number; query: string } | null>(null);
+  const [shortcode, setShortcode] = useState<{ start: number; query: string } | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [tokenWarning, setTokenWarning] = useState<{
     kind: PastedTokenKind;
@@ -201,11 +212,31 @@ export function Composer({
       .slice(0, MENTION_LIMIT);
   }, [mention, members]);
 
+  const emojiMatches = useMemo<EmojiSuggestion[]>(() => {
+    if (!shortcode) return [];
+    const q = shortcode.query;
+    // A server's own emoji are the ones its members mean; they lead.
+    const custom = Object.values(emojiMap)
+      .filter((e) => e.name.toLowerCase().includes(q))
+      .slice(0, EMOJI_SUGGESTION_LIMIT)
+      .map((e) => ({ key: e.id, label: `:${e.name}:`, insert: `:${e.name}:`, url: e.url }));
+    return [
+      ...custom,
+      ...searchEmoji(q, EMOJI_SUGGESTION_LIMIT - custom.length).map((e) => ({
+        key: e.char,
+        label: `:${e.name}:`,
+        insert: e.char,
+        char: e.char,
+      })),
+    ];
+  }, [shortcode, emojiMap]);
+
   const syncMention = () => {
     const el = textarea.current;
-    if (!el || members.length === 0) return setMention(null);
-    const found = activeMention(el.value, el.selectionStart ?? el.value.length);
-    setMention(found);
+    if (!el) return;
+    const caret = el.selectionStart ?? el.value.length;
+    setMention(members.length === 0 ? null : activeMention(el.value, caret));
+    setShortcode(activeShortcode(el.value, caret));
     setActiveIndex(0);
   };
 
@@ -232,6 +263,20 @@ export function Composer({
     setMention(null);
     requestAnimationFrame(() => {
       const pos = mention.start + handle.length + 2;
+      el?.focus();
+      el?.setSelectionRange(pos, pos);
+    });
+  };
+
+  const pickEmoji = (suggestion: EmojiSuggestion) => {
+    if (!shortcode) return;
+    const el = textarea.current;
+    const caret = el?.selectionStart ?? draft.length;
+    const next = `${draft.slice(0, shortcode.start)}${suggestion.insert} ${draft.slice(caret)}`;
+    setDraft(next);
+    setShortcode(null);
+    requestAnimationFrame(() => {
+      const pos = shortcode.start + suggestion.insert.length + 1;
       el?.focus();
       el?.setSelectionRange(pos, pos);
     });
@@ -518,28 +563,32 @@ export function Composer({
   };
 
   const menuOpen = mention !== null && matches.length > 0;
+  const emojiMenuOpen = shortcode !== null && emojiMatches.length > 0;
   const sendOnEnter = usePrefs((p) => p.sendOnEnter);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (menuOpen) {
+    if (menuOpen || emojiMenuOpen) {
+      const count = menuOpen ? matches.length : emojiMatches.length;
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setActiveIndex((i) => (i + 1) % matches.length);
+        setActiveIndex((i) => (i + 1) % count);
         return;
       }
       if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setActiveIndex((i) => (i - 1 + matches.length) % matches.length);
+        setActiveIndex((i) => (i - 1 + count) % count);
         return;
       }
       if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault();
-        pick(matches[activeIndex]!);
+        if (menuOpen) pick(matches[activeIndex]!);
+        else pickEmoji(emojiMatches[activeIndex]!);
         return;
       }
       if (e.key === 'Escape') {
         e.preventDefault();
         setMention(null);
+        setShortcode(null);
         return;
       }
     }
@@ -668,6 +717,43 @@ export function Composer({
               </li>
             ))}
           </ul>
+        )}
+
+        {emojiMenuOpen && (
+          <div className="absolute bottom-full z-20 mb-2 w-full rounded-xl border border-border bg-surface-4 p-1 shadow-2xl">
+            <p className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+              {t('composer.emojiMatching', { query: `:${shortcode!.query}` })}
+            </p>
+            <ul
+              role="listbox"
+              aria-label={t('composer.emojiSuggestions')}
+              className="max-h-64 overflow-y-auto"
+            >
+              {emojiMatches.map((suggestion, i) => (
+                <li key={suggestion.key} role="option" aria-selected={i === activeIndex}>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      pickEmoji(suggestion);
+                    }}
+                    onMouseEnter={() => setActiveIndex(i)}
+                    className={cn(
+                      'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm',
+                      i === activeIndex ? 'bg-primary-soft text-ink' : 'text-ink-secondary',
+                    )}
+                  >
+                    {suggestion.url ? (
+                      <img src={suggestion.url} alt="" className="size-5 object-contain" />
+                    ) : (
+                      <span className="text-lg leading-none">{suggestion.char}</span>
+                    )}
+                    <span className="truncate font-medium">{suggestion.label}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         <ComposerAttachments uploads={uploads} onRemove={drop} onToggleSpoiler={toggleSpoiler} />

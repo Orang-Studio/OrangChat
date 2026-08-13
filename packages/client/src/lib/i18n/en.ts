@@ -211,6 +211,8 @@ export const en = {
   "composer.cancelReply": "Cancel reply",
   "composer.deleteRecording": "Delete recording",
   "composer.dontPaste": "Don't paste",
+  "composer.emojiMatching": "Emoji matching {query}",
+  "composer.emojiSuggestions": "Emoji suggestions",
   "composer.holdToRecordAVoiceMessage": "Hold to record a voice message",
   "composer.lockedSendWhenYoureDone": "Locked - send when you're done",
   "composer.mentionSuggestions": "Mention suggestions",
