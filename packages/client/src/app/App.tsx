@@ -6,12 +6,11 @@ import { AndroidAppBanner } from "../components/AndroidAppBanner";
 import { Toaster } from "../components/ui/Toaster";
 import { SplashScreen } from "../components/SplashScreen";
 import { AppShell } from "./AppShell";
-import { HomeLayout } from "./HomeLayout";
+import { MainLayout, ServerChannelContent } from "./MainLayout";
 import { HomePane } from "../features/chat/HomePane";
 import { FriendsPage } from "../features/friends/FriendsPage";
 import { DevelopersPage } from "../features/developers/DevelopersPage";
 import { DmView } from "../features/dms/DmView";
-import { ServerView } from "../features/servers/ServerView";
 
 const LoginPage = lazy(() =>
   import("../features/auth/LoginPage").then(({ LoginPage }) => ({ default: LoginPage })),
@@ -62,17 +61,19 @@ export function App() {
           <Route path="/legal-notice" element={<LegalPage document="notice" />} />
           <Route element={<RequireAuth />}>
             <Route element={<AppShell />}>
-              <Route element={<HomeLayout />}>
+              {/* Home and server routes share one MainLayout/PanelShell instance -
+                  see MainLayout.tsx for why that matters. */}
+              <Route element={<MainLayout />}>
                 <Route path="/app" element={<HomePane />} />
                 <Route path="/friends" element={<FriendsPage />} />
                 <Route path="/developers" element={<DevelopersPage />} />
                 <Route path="/dms/:channelId" element={<DmView />} />
+                <Route path="/servers/:serverId" element={<ServerChannelContent />} />
+                <Route
+                  path="/servers/:serverId/channels/:channelId"
+                  element={<ServerChannelContent />}
+                />
               </Route>
-              <Route path="/servers/:serverId" element={<ServerView />} />
-              <Route
-                path="/servers/:serverId/channels/:channelId"
-                element={<ServerView />}
-              />
             </Route>
           </Route>
           {/* Never leave a stray URL rendering an empty page. */}
