@@ -685,4 +685,5 @@
     <string name="catalog_member_since_f425b08f" formatted="false">Участник с</string>
     <string name="catalog_muted_b9e78ced" formatted="false">Без звука</string>
     <string name="catalog_pending_96f608c1" formatted="false">В ожидании</string>
+    <string name="catalog_emoji_5090a9e7" formatted="false">Эмодзи</string>
 </resources>
