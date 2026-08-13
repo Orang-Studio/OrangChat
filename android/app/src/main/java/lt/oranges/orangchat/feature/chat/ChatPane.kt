@@ -7,6 +7,7 @@ import android.app.KeyguardManager
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.view.inputmethod.InputMethodManager
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -35,6 +36,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -70,6 +74,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Flag
@@ -100,6 +105,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -113,6 +119,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
@@ -162,6 +169,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import lt.oranges.orangchat.data.model.Message
 import lt.oranges.orangchat.data.model.PresenceStatus
+import java.text.BreakIterator
+import lt.oranges.orangchat.data.model.Server
 import lt.oranges.orangchat.data.model.ServerMember
 import lt.oranges.orangchat.data.model.User
 import lt.oranges.orangchat.crypto.SealedAttachmentRef
@@ -347,6 +356,7 @@ fun ChatPane(
     headerActivities: List<UserActivity> = emptyList(),
     onOpenProfile: (User) -> Unit = {},
     emojis: Map<String, EmojiRef> = emptyMap(),
+    emojiServers: List<Server> = emptyList(),
     encryptionInfo: AppViewModel.ConversationEncryptionInfo? = null,
     onResetEncryption: (() -> Unit)? = null,
     onSetStrict: ((Boolean) -> Unit)? = null,
@@ -362,6 +372,19 @@ fun ChatPane(
     onRemoveIcon: (() -> Unit)? = null,
 ) {
     val customEmojis = remember(emojis) { emojis.values.sortedBy { it.name.lowercase() } }
+    val paneContext = LocalContext.current
+    val emojiGroups = remember(customEmojis, emojiServers) {
+        val fallback = AppStrings.get(paneContext, R.string.catalog_custom_081ae3fd)
+        customEmojis.groupBy { it.serverId }.map { (serverId, list) ->
+            val server = emojiServers.firstOrNull { it.id == serverId }
+            CustomEmojiGroup(
+                serverId = serverId,
+                name = server?.name.orEmpty().ifBlank { fallback },
+                iconUrl = server?.iconUrl,
+                emojis = list,
+            )
+        }.sortedBy { it.name.lowercase() }
+    }
     val c = OrangTheme.colors
     val rowColors = remember(c, backgroundUrl != null) {
         if (backgroundUrl == null) c else c.copy(surface1 = c.surface3, surface2 = c.surface4)
@@ -964,6 +987,7 @@ fun ChatPane(
             onTyping = onTyping,
             channelId = channelId,
             customEmojis = customEmojis,
+            emojiGroups = emojiGroups,
             members = members,
         )
     }
@@ -1279,7 +1303,7 @@ private fun MessageRow(
     val c = OrangTheme.colors
     val renderEmojis = remember(emojis, message.emojis) {
         emojis + message.emojis.associate {
-            it.id to EmojiRef(it.id, it.name, it.url, it.animated)
+            it.id to EmojiRef(it.id, it.name, it.url, it.animated, it.serverId)
         }
     }
     var menuOpen by remember { mutableStateOf(false) }
@@ -1780,6 +1804,7 @@ private fun Composer(
     channelId: String? = null,
     allowEmpty: Boolean = false,
     customEmojis: List<EmojiRef> = emptyList(),
+    emojiGroups: List<CustomEmojiGroup> = emptyList(),
     members: List<ServerMember> = emptyList(),
     drafts: AttachmentDraftViewModel = hiltViewModel(),
     textDrafts: MessageDraftViewModel = hiltViewModel(),
@@ -1788,7 +1813,24 @@ private fun Composer(
     val textState = rememberTextFieldState(initial)
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
-    var emojiOpen by remember { mutableStateOf(false) }
+    var pickerOpen by remember { mutableStateOf(false) }
+    val density = LocalDensity.current
+    val imeBottom = WindowInsets.ime.getBottom(density)
+    val navBottom = WindowInsets.navigationBars.getBottom(density)
+    // The picker stands in for the keyboard, so it takes the height the keyboard had.
+    var keyboardHeight by rememberSaveable { mutableStateOf(0) }
+    LaunchedEffect(imeBottom, navBottom) {
+        val measured = imeBottom - navBottom
+        if (measured > keyboardHeight) keyboardHeight = measured
+    }
+    // Typing in the message box means the keyboard is wanted back; the picker's
+    // own search field also raises it, so only the composer's focus counts.
+    var composerFocused by remember { mutableStateOf(false) }
+    LaunchedEffect(imeBottom > 0) { if (imeBottom > 0 && composerFocused) pickerOpen = false }
+    BackHandler(pickerOpen) { pickerOpen = false }
+    val pickerHeight = with(density) {
+        if (keyboardHeight > 0) keyboardHeight.toDp() else DEFAULT_PICKER_HEIGHT
+    }
     val context = LocalContext.current
     val voiceRecorder = remember(context) { VoiceMessageRecorder(context) }
     var recordingHint by remember(channelId) { mutableStateOf<String?>(null) }
@@ -2169,28 +2211,24 @@ private fun Composer(
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box {
-            Icon(
-                Icons.Default.EmojiEmotions,
-                contentDescription = AppStrings.get(context, R.string.catalog_add_emoji_or_gif_1d91d61d),
-                tint = c.inkMuted,
-                modifier = Modifier
-                    .size(38.dp)
-                    .clickable { emojiOpen = true }
-                    .padding(7.dp),
-            )
-            ExpressionPickerDialog(
-                expanded = emojiOpen,
-                onDismiss = { emojiOpen = false },
-                gifsEnabled = channelId != null,
-                customEmojis = customEmojis,
-                onEmoji = { emoji ->
-                    textState.edit { append(emoji) }
-                    onTyping()
-                },
-                onGif = { url -> onSend(url, emptyList(), emptyList()) },
-            )
-        }
+        Icon(
+            if (pickerOpen) Icons.Default.Keyboard else Icons.Default.EmojiEmotions,
+            contentDescription = AppStrings.get(context, R.string.catalog_add_emoji_or_gif_1d91d61d),
+            tint = c.inkMuted,
+            modifier = Modifier
+                .size(38.dp)
+                .clickable {
+                    if (pickerOpen) {
+                        pickerOpen = false
+                        focusRequester.requestFocus()
+                        keyboard?.show()
+                    } else {
+                        pickerOpen = true
+                        keyboard?.hide()
+                    }
+                }
+                .padding(7.dp),
+        )
         if (channelId != null) {
             Box {
                 Icon(
@@ -2247,6 +2285,7 @@ private fun Composer(
                     ),
                     modifier = Modifier
                         .focusRequester(focusRequester)
+                        .onFocusChanged { composerFocused = it.isFocused }
                         .fillMaxWidth()
                         .then(
                             if (channelId != null) Modifier.contentReceiver(contentListener)
@@ -2338,7 +2377,46 @@ private fun Composer(
             }
         }
     }
+
+    if (pickerOpen) {
+        ExpressionPickerSheet(
+            height = pickerHeight,
+            onDismiss = { pickerOpen = false },
+            gifsEnabled = channelId != null,
+            customGroups = emojiGroups,
+            onEmoji = { emoji ->
+                textState.edit { append(emoji) }
+                onTyping()
+            },
+            onGif = { url -> onSend(url, emptyList(), emptyList()) },
+            onBackspace = {
+                val caret = textState.selection.end
+                val start = deleteStart(textState.text.toString(), caret)
+                if (start < caret) {
+                    textState.edit {
+                        replace(start, caret, "")
+                        selection = TextRange(start)
+                    }
+                }
+            },
+        )
     }
+    }
+}
+
+private val DEFAULT_PICKER_HEIGHT = 280.dp
+
+private val TRAILING_EMOJI = Regex("(<a?:[a-zA-Z0-9_]+:[^>\\s]+>|:[a-z0-9_+-]+:)$", RegexOption.IGNORE_CASE)
+
+/** Where a backspace should cut to: a whole emoji token, or one grapheme. */
+private fun deleteStart(text: String, caret: Int): Int {
+    if (caret <= 0 || caret > text.length) return caret
+    val head = text.substring(0, caret)
+    TRAILING_EMOJI.find(head)?.let { return it.range.first }
+    val breaks = BreakIterator.getCharacterInstance()
+    breaks.setText(head)
+    val previous = breaks.preceding(caret)
+    return if (previous == BreakIterator.DONE) 0 else previous
 }
 
 private const val MENTION_LIMIT = 8

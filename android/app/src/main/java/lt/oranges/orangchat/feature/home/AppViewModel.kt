@@ -469,7 +469,7 @@ class AppViewModel @Inject constructor(
     private fun applyEmojis(list: List<Emoji>) {
         emojiCatalog = list
         _emojis.value = list.associate {
-            it.id to EmojiRef(it.id, it.name, it.url, it.animated)
+            it.id to EmojiRef(it.id, it.name, it.url, it.animated, it.serverId)
         }
     }
 
