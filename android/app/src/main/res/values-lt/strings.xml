@@ -693,4 +693,5 @@
     <string name="catalog_no_profile_themes_match_1_s_a67c627c" formatted="true">Nėra atitinkančių profilio temų „%1$s“.</string>
     <string name="catalog_until_i_turn_it_back_on_d3444633" formatted="false">Iki kol aš jį vėl įjungsiu</string>
     <string name="catalog_for_permission_the_first_time_you_join_1cbeb90e" formatted="false">gauti leidimą pirmą kartą prisijungiant.</string>
+    <string name="catalog_emoji_5090a9e7" formatted="false">Jaustukai</string>
 </resources>
