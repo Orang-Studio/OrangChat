@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { MessageSquare, UserMinus, UserPlus } from "lucide-react";
 import type { User } from "@orangchat/shared";
 import { Button } from "../../components/ui/Button";
-import { Dialog, DialogContent } from "../../components/ui/Dialog";
+import { Dialog, DialogCardContent } from "../../components/ui/Dialog";
 import { useAuthStore } from "../../stores/auth";
 import { usePresenceStore } from "../../stores/presence";
 import { toast } from "../../stores/toasts";
@@ -96,7 +96,7 @@ export function ProfileDialog({ user, open, onOpenChange }: ProfileDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title={`${user.displayName}'s profile`}>
+      <DialogCardContent title={`${user.displayName}'s profile`}>
         <ProfileCard
           data={{
             displayName: user.displayName,
@@ -114,52 +114,51 @@ export function ProfileDialog({ user, open, onOpenChange }: ProfileDialogProps) 
             profileCss: user.profileCss,
             connections,
           }}
+          actions={
+            !isSelf && (
+              <>
+                <Button
+                  variant="secondary"
+                  className="flex-1"
+                  loading={messageMutation.isPending}
+                  onClick={() => messageMutation.mutate()}
+                >
+                  <MessageSquare aria-hidden className="size-4" />
+                  {t("profileDialog.message")}
+                </Button>
+                {isFriend ? (
+                  <Button
+                    variant="ghost"
+                    className="text-danger hover:text-danger"
+                    loading={removeMutation.isPending}
+                    onClick={() => removeMutation.mutate()}
+                  >
+                    <UserMinus aria-hidden className="size-4" />
+                    {t("common.remove")}
+                  </Button>
+                ) : incoming ? (
+                  <Button
+                    loading={acceptMutation.isPending}
+                    onClick={() => acceptMutation.mutate()}
+                  >
+                    <UserPlus aria-hidden className="size-4" />
+                    {t("profileDialog.accept")}
+                  </Button>
+                ) : (
+                  <Button
+                    disabled={outgoing}
+                    loading={addMutation.isPending}
+                    onClick={() => addMutation.mutate()}
+                  >
+                    <UserPlus aria-hidden className="size-4" />
+                    {outgoing ? "Request sent" : "Add friend"}
+                  </Button>
+                )}
+              </>
+            )
+          }
         />
-
-        <div>
-          {!isSelf && (
-            <div className="mt-4 flex gap-2">
-              <Button
-                variant="secondary"
-                className="flex-1"
-                loading={messageMutation.isPending}
-                onClick={() => messageMutation.mutate()}
-              >
-                <MessageSquare aria-hidden className="size-4" />
-                {t("profileDialog.message")}
-              </Button>
-              {isFriend ? (
-                <Button
-                  variant="ghost"
-                  className="text-danger hover:text-danger"
-                  loading={removeMutation.isPending}
-                  onClick={() => removeMutation.mutate()}
-                >
-                  <UserMinus aria-hidden className="size-4" />
-                  {t("common.remove")}
-                </Button>
-              ) : incoming ? (
-                <Button
-                  loading={acceptMutation.isPending}
-                  onClick={() => acceptMutation.mutate()}
-                >
-                  <UserPlus aria-hidden className="size-4" />
-                  {t("profileDialog.accept")}
-                </Button>
-              ) : (
-                <Button
-                  disabled={outgoing}
-                  loading={addMutation.isPending}
-                  onClick={() => addMutation.mutate()}
-                >
-                  <UserPlus aria-hidden className="size-4" />
-                  {outgoing ? "Request sent" : "Add friend"}
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-      </DialogContent>
+      </DialogCardContent>
     </Dialog>
   );
 }

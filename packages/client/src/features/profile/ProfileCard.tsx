@@ -1,4 +1,4 @@
-import { useId, useMemo, type CSSProperties } from "react";
+import { useId, useMemo, type CSSProperties, type ReactNode } from "react";
 import type { Connection, PresenceDevice, PresenceStatus, UserActivity } from "@orangchat/shared";
 import { Avatar } from "../../components/Avatar";
 import { DeviceIndicators } from "../../components/DeviceIndicators";
@@ -37,7 +37,13 @@ const hex = (color: number) => `#${color.toString(16).padStart(6, "0")}`;
  * the live preview in settings. Elements carry stable `oc-pf-*` hook classes so
  * users can target them from their (sandboxed) profile CSS.
  */
-export function ProfileCard({ data }: { data: ProfileCardData }) {
+export function ProfileCard({
+  data,
+  actions,
+}: {
+  data: ProfileCardData;
+  actions?: ReactNode;
+}) {
   const accent = data.accentColor != null ? hex(data.accentColor) : undefined;
 
   // Unique scope per card instance → one card's theme never leaks onto another.
@@ -140,6 +146,8 @@ export function ProfileCard({ data }: { data: ProfileCardData }) {
               <p className="oc-pf-member-text text-sm">{formatFullTime(data.createdAt)}</p>
             </div>
           )}
+
+          {actions && <div className="oc-pf-actions mt-2.5 flex gap-2">{actions}</div>}
         </div>
       </div>
     </div>
