@@ -685,4 +685,5 @@
     <string name="catalog_member_since_f425b08f" formatted="false">عضو منذ</string>
     <string name="catalog_muted_b9e78ced" formatted="false">كتم الصوت</string>
     <string name="catalog_pending_96f608c1" formatted="false">قيد الانتظار</string>
+    <string name="catalog_emoji_5090a9e7" formatted="false">الرموز التعبيرية</string>
 </resources>
