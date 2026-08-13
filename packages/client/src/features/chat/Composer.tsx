@@ -16,6 +16,8 @@ import {
 import { isEncrypted } from '../e2ee/store';
 import { ComposerAttachments, isSettled, type PendingUpload } from './ComposerAttachments';
 import { ExpressionPicker } from './ExpressionPicker';
+import { emojiForShortcode } from './emoji-search';
+import { highlightEmoji } from './EmojiHighlight';
 import { normalizeCustomEmojiNames, useEmojiMap } from '../emojis/queries';
 import { clearDraft, loadDraft, saveDraft, saveDraftNow } from './drafts';
 import { t } from "../../lib/i18n";
@@ -103,6 +105,7 @@ export function Composer({
   } | null>(null);
   const lastTypingSent = useRef(0);
   const textarea = useRef<HTMLTextAreaElement>(null);
+  const mirror = useRef<HTMLDivElement>(null);
   // A paste that was cut to fit MAX_LENGTH deserves a word, not silence.
   const [truncatedNotice, setTruncatedNotice] = useState(false);
   const truncateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -424,6 +427,15 @@ export function Composer({
     finishRecording(false);
   };
 
+  const knownEmojiName = useMemo(() => {
+    const custom = new Set(Object.values(emojiMap).map((e) => e.name.toLowerCase()));
+    return (name: string) => custom.has(name) || emojiForShortcode(name) !== undefined;
+  }, [emojiMap]);
+  const highlighted = useMemo(
+    () => highlightEmoji(draft, knownEmojiName),
+    [draft, knownEmojiName],
+  );
+
   const uploading = uploads.some((u) => !isSettled(u));
   const failed = uploads.filter((u) => u.error !== undefined);
   const ready = uploads.filter((u) => u.attachment !== undefined);
@@ -739,29 +751,43 @@ export function Composer({
               )}
             </div>
           ) : (
-            <textarea
-              ref={textarea}
-              value={draft}
-              maxLength={MAX_LENGTH}
-              role="combobox"
-              aria-expanded={menuOpen}
-              aria-controls={menuOpen ? 'oc-mention-listbox' : undefined}
-              aria-autocomplete="list"
-              aria-activedescendant={
-                menuOpen ? `oc-mention-option-${activeIndex}` : undefined
-              }
-              onChange={(e) => onChange(e.target.value)}
-              onKeyDown={onKeyDown}
-              onPaste={onPaste}
-              onClick={syncMention}
-              onKeyUp={(e) => {
-                if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) syncMention();
-              }}
-              placeholder={dragging ? 'Drop files to attach' : `Message #${channelName}`}
-              aria-label={`Message #${channelName}`}
-              rows={Math.min(8, draft.split('\n').length)}
-              className="max-h-48 flex-1 resize-none bg-transparent py-1 text-base leading-relaxed placeholder:text-ink-muted focus:outline-none md:text-sm"
-            />
+            <div className="relative min-w-0 flex-1">
+              {/* The box paints its own text so shortcodes can stand out; the
+                  textarea above it keeps only the caret and the selection. */}
+              <div
+                ref={mirror}
+                aria-hidden
+                className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words py-1 text-base leading-relaxed text-ink md:text-sm"
+              >
+                {highlighted}
+              </div>
+              <textarea
+                ref={textarea}
+                value={draft}
+                maxLength={MAX_LENGTH}
+                role="combobox"
+                aria-expanded={menuOpen}
+                aria-controls={menuOpen ? 'oc-mention-listbox' : undefined}
+                aria-autocomplete="list"
+                aria-activedescendant={
+                  menuOpen ? `oc-mention-option-${activeIndex}` : undefined
+                }
+                onChange={(e) => onChange(e.target.value)}
+                onKeyDown={onKeyDown}
+                onPaste={onPaste}
+                onClick={syncMention}
+                onKeyUp={(e) => {
+                  if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) syncMention();
+                }}
+                placeholder={dragging ? 'Drop files to attach' : `Message #${channelName}`}
+                aria-label={`Message #${channelName}`}
+                rows={Math.min(8, draft.split('\n').length)}
+                onScroll={(e) => {
+                  if (mirror.current) mirror.current.scrollTop = e.currentTarget.scrollTop;
+                }}
+                className="relative block max-h-48 w-full resize-none bg-transparent py-1 text-base leading-relaxed text-transparent caret-ink selection:bg-primary/35 placeholder:text-ink-muted focus:outline-none md:text-sm"
+              />
+            </div>
           )}
           {recording && recordingLocked ? (
             <>

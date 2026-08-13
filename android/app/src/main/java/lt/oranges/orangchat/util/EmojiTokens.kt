@@ -43,6 +43,19 @@ object EmojiTokens {
         return out
     }
 
+    private val HIGHLIGHT = Regex("$TOKEN_SOURCE|$SHORTCODE_SOURCE", RegexOption.IGNORE_CASE)
+
+    /**
+     * Where a composer should paint emoji rather than plain text: every complete
+     * token, plus the hand-typed shortcodes [known] recognises.
+     */
+    fun spans(content: String, known: (String) -> Boolean): List<IntRange> =
+        HIGHLIGHT.findAll(content).mapNotNull { match ->
+            val shortcode = match.groupValues[4]
+            if (shortcode.isNotEmpty() && !known(shortcode.lowercase())) null
+            else match.range.first until match.range.last + 1
+        }.toList()
+
     fun resolveShortcodes(content: String, resolve: (String) -> Ref?): String =
         replaceShortcodes(content) { name -> resolve(name)?.let(::token) }
 

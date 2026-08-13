@@ -91,6 +91,29 @@ export function replaceShortcodes(
     .join("");
 }
 
+export interface EmojiSpan {
+  readonly start: number;
+  readonly end: number;
+}
+
+/**
+ * Where a composer should paint emoji rather than plain text: every complete
+ * token, plus the hand-typed shortcodes `known` recognises.
+ */
+export function emojiSpans(
+  content: string,
+  known: (name: string) => boolean,
+): EmojiSpan[] {
+  const re = new RegExp(`${EMOJI_TOKEN_SOURCE}|${EMOJI_SHORTCODE_SOURCE}`, "gi");
+  const spans: EmojiSpan[] = [];
+  for (let m = re.exec(content); m !== null; m = re.exec(content)) {
+    const shortcode = m[4];
+    if (shortcode !== undefined && !known(shortcode.toLowerCase())) continue;
+    spans.push({ start: m.index, end: m.index + m[0].length });
+  }
+  return spans;
+}
+
 /** Distinct emoji ids referenced by well-formed tokens in `content`, in order. */
 export function customEmojiIds(content: string): string[] {
   const ids: string[] = [];

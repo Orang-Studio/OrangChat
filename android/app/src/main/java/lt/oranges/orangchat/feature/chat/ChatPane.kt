@@ -49,6 +49,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.InputTransformation
@@ -2194,9 +2195,18 @@ private fun Composer(
                 if (textState.text.isEmpty()) {
                     Text("Message", color = c.inkMuted, fontSize = 15.sp)
                 }
+                val composerStyle = TextStyle(color = c.ink, fontSize = 15.sp)
+                val draftText = textState.text.toString()
+                BasicText(
+                    text = remember(draftText, customEmojis) {
+                        highlightEmoji(draftText, c.info, customEmojis)
+                    },
+                    style = composerStyle,
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 BasicTextField(
                     state = textState,
-                    textStyle = TextStyle(color = c.ink, fontSize = 15.sp),
+                    textStyle = composerStyle.copy(color = Color.Transparent),
                     cursorBrush = SolidColor(c.primary),
                     lineLimits = TextFieldLineLimits.MultiLine(),
                     inputTransformation = InputTransformation.maxLength(MESSAGE_MAX_LENGTH),
