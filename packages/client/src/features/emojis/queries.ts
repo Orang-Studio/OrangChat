@@ -1,6 +1,12 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { emojiToken, resolveShortcodes, type Emoji } from "@orangchat/shared";
+import {
+  emojiToken,
+  replaceShortcodes,
+  resolveShortcodes,
+  type Emoji,
+} from "@orangchat/shared";
+import { emojiForShortcode } from "../chat/emoji-search";
 import { listServerEmojis, listUsableEmojis } from "./api";
 
 export { emojiToken };
@@ -52,5 +58,7 @@ export function normalizeCustomEmojiNames(
   const byName = new Map(
     Object.values(emojis).map((emoji) => [emoji.name.toLowerCase(), emoji]),
   );
-  return resolveShortcodes(content, (name) => byName.get(name));
+  // Custom emoji win the name; whatever is left can still be a standard one.
+  const withCustom = resolveShortcodes(content, (name) => byName.get(name));
+  return replaceShortcodes(withCustom, emojiForShortcode);
 }

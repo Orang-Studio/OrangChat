@@ -44,11 +44,18 @@ object EmojiTokens {
     }
 
     fun resolveShortcodes(content: String, resolve: (String) -> Ref?): String =
+        replaceShortcodes(content) { name -> resolve(name)?.let(::token) }
+
+    /**
+     * Swap every hand-typed `:name:` for whatever [resolve] returns - a token, a
+     * unicode emoji - leaving existing tokens and unknown names as they are.
+     */
+    fun replaceShortcodes(content: String, resolve: (String) -> String?): String =
         tokenize(content).joinToString("") { segment ->
             when (segment) {
                 is Segment.Emoji -> segment.raw
                 is Segment.Text -> SHORTCODE.replace(segment.text) { match ->
-                    resolve(match.groupValues[1].lowercase())?.let(::token) ?: match.value
+                    resolve(match.groupValues[1].lowercase()) ?: match.value
                 }
             }
         }
