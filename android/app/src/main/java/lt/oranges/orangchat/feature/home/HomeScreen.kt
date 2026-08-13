@@ -752,6 +752,7 @@ fun HomeScreen(
                                         .orEmpty(),
                                     onOpenProfile = { profileUser = it },
                                     emojis = emojis,
+                                    emojiServers = servers,
                                     encryptionInfo = conversationEncryption[channelId],
                                     onResetEncryption = {
                                         appViewModel.resetConversationEncryption(channelId)

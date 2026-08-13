@@ -27,6 +27,7 @@ data class EmojiRef(
     val name: String,
     val url: String,
     val animated: Boolean = false,
+    val serverId: String = "",
 )
 
 fun normalizeCustomEmojiNames(content: String, emojis: Map<String, EmojiRef>): String {

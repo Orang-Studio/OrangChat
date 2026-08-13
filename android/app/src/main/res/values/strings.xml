@@ -75,6 +75,7 @@
     <string name="catalog_authorizing_the_new_device_7d6e30db" formatted="false">Authorizing the new device</string>
     <string name="catalog_back_b52b36b7" formatted="false">Back</string>
     <string name="catalog_backend_e758ca64" formatted="false">Backend</string>
+    <string name="catalog_backspace_88d130a6" formatted="false">Backspace</string>
     <string name="catalog_banned_from_b1b7bda2" formatted="false">Banned from</string>
     <string name="catalog_before_a_message_leaves_this_phone_74f6bb9b" formatted="false">Before a message leaves this phone</string>
     <string name="catalog_bot_account_a78d875e" formatted="false">Bot account</string>
@@ -176,6 +177,7 @@
     <string name="catalog_create_your_account_4046b581" formatted="false">Create your account</string>
     <string name="catalog_creating_this_phone_s_protected_encryption_identity_f14e4807" formatted="false">Creating this phone’s protected encryption identity…</string>
     <string name="catalog_current_password_19dff4da" formatted="false">Current password</string>
+    <string name="catalog_custom_081ae3fd" formatted="false">Custom</string>
     <string name="catalog_custom_ringtone_fd009ada" formatted="false">Custom ringtone</string>
     <string name="catalog_danger_zone_963a652e" formatted="false">Danger zone</string>
     <string name="catalog_dark_ae1ef014" formatted="false">Dark</string>
@@ -220,6 +222,7 @@
     <string name="catalog_email_me_a_code_cc025d42" formatted="false">Email me a code</string>
     <string name="catalog_email_me_a_code_instead_44cc1833" formatted="false">Email me a code instead</string>
     <string name="catalog_email_password_8973dcae" formatted="false">Email &amp; password</string>
+    <string name="catalog_emoji_5090a9e7" formatted="false">Emoji</string>
     <string name="catalog_emoji_matching_1_s_2d947ad2" formatted="true">Emoji matching %1$s</string>
     <string name="catalog_encrypted_history_keys_are_sent_and_the_aa611cee" formatted="false">Encrypted history keys are sent and the new device is recorded as authorized.</string>
     <string name="catalog_encryption_0af149c2" formatted="false">Encryption</string>
@@ -243,9 +246,11 @@
     <string name="catalog_expired_large_files_are_only_kept_for_a9b2c12d" formatted="false">Expired - large files are only kept for an hour</string>
     <string name="catalog_expires_in_1_hour_26e2eae7" formatted="false">Expires in 1 hour</string>
     <string name="catalog_fallback_mode_scan_this_code_from_an_45193b95" formatted="false">Fallback mode: scan this code from an already-authorized phone, or paste it into an authorized computer.</string>
+    <string name="catalog_favorite_gifs_109d1438" formatted="false">Favorite GIFs</string>
     <string name="catalog_favourite_this_gif_a9fd24af" formatted="false">Favourite this GIF</string>
     <string name="catalog_find_a_member_036dc8dd" formatted="false">Find a member</string>
     <string name="catalog_find_friends_2fd354c9" formatted="false">Find friends</string>
+    <string name="catalog_find_the_perfect_emoji_81f282bc" formatted="false">Find the perfect emoji</string>
     <string name="catalog_finish_b74bdee9" formatted="false">Finish</string>
     <string name="catalog_first_device_on_this_account_452cc989" formatted="false">First device on this account</string>
     <string name="catalog_flip_camera_ed114d76" formatted="false">Flip camera</string>
@@ -261,6 +266,7 @@
     <string name="catalog_friends_only_0b2d5f25" formatted="false">Friends only</string>
     <string name="catalog_generate_fc45f9b7" formatted="false">Generate</string>
     <string name="catalog_get_notified_about_messages_d4bc1f2e" formatted="false">Get notified about messages?</string>
+    <string name="catalog_gifs_e98d00db" formatted="false">GIFs</string>
     <string name="catalog_hang_up_66be99b5" formatted="false">Hang up</string>
     <string name="catalog_have_them_open_their_code_in_orangchat_9428c129" formatted="false">Have them open their code in OrangChat and point this phone\'s camera at it. Your phone then remembers the lock you actually saw, so a swapped one no longer matches. One scan proves one direction - show them yours too.</string>
     <string name="catalog_hide_my_code_835d9e98" formatted="false">Hide my code</string>
@@ -472,6 +478,7 @@
     <string name="catalog_search_klipy_9e867d1a" formatted="false">Search KLIPY</string>
     <string name="catalog_search_messages_abea65ae" formatted="false">Search messages</string>
     <string name="catalog_search_profile_themes_99f3d314" formatted="false">Search profile themes</string>
+    <string name="catalog_search_results_0144dae8" formatted="false">Search results</string>
     <string name="catalog_searched_on_this_device_messages_not_opened_4abe22a1" formatted="false">Searched on this device. Messages not opened here may be missing.</string>
     <string name="catalog_security_f25ce1b8" formatted="false">Security</string>
     <string name="catalog_send_a_new_code_91904a28" formatted="false">Send a new code</string>

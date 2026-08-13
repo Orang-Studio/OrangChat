@@ -19,17 +19,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import lt.oranges.orangchat.ui.components.Text
@@ -41,6 +44,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,16 +53,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import coil.compose.AsyncImage
 import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.EmojiRef
+import lt.oranges.orangchat.util.EmojiSearch
 import lt.oranges.orangchat.util.absoluteUrl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -237,18 +241,30 @@ fun EmojiGrid(columns: Int, modifier: Modifier = Modifier, onPick: (String) -> U
     }
 }
 
+/** A server's own emoji, kept together so the picker can label them by server. */
+data class CustomEmojiGroup(
+    val serverId: String,
+    val name: String,
+    val iconUrl: String?,
+    val emojis: List<EmojiRef>,
+)
+
+/**
+ * The picker as a keyboard replacement: it sits where the IME was, so it is laid
+ * out inline at [height] rather than floating over the conversation.
+ */
 @Composable
-fun ExpressionPickerDialog(
-    expanded: Boolean,
+fun ExpressionPickerSheet(
+    height: Dp,
     onDismiss: () -> Unit,
     gifsEnabled: Boolean,
     onEmoji: (String) -> Unit,
     onGif: (String) -> Unit,
-    customEmojis: List<EmojiRef> = emptyList(),
+    onBackspace: () -> Unit,
+    customGroups: List<CustomEmojiGroup> = emptyList(),
     viewModel: KlipyGifViewModel = hiltViewModel(),
 ) {
-        val context = LocalContext.current
-    if (!expanded) return
+    val context = LocalContext.current
     val c = OrangTheme.colors
     var tab by remember { mutableStateOf(PickerTabId.EMOJI) }
     var query by remember { mutableStateOf("") }
@@ -265,165 +281,327 @@ fun ExpressionPickerDialog(
         onDismiss()
     }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height)
+            .background(c.surface2)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
-                .widthIn(max = 380.dp)
-                .height(470.dp)
-                .background(c.surface3, RoundedCornerShape(OrangRadius.xl))
-                .border(1.dp, c.border, RoundedCornerShape(OrangRadius.xl))
-                .padding(10.dp),
+                .background(c.surface1, RoundedCornerShape(OrangRadius.lg))
+                .padding(3.dp),
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(c.surface1, RoundedCornerShape(OrangRadius.lg))
-                    .padding(3.dp),
+            PickerTab(
+                AppStrings.get(context, R.string.catalog_emoji_5090a9e7),
+                tab == PickerTabId.EMOJI,
+                Modifier.weight(1f),
             ) {
-                PickerTab("Emoji", tab == PickerTabId.EMOJI, Modifier.weight(1f)) {
-                    tab = PickerTabId.EMOJI
-                }
-                if (customEmojis.isNotEmpty()) {
-                    PickerTab("Custom", tab == PickerTabId.CUSTOM, Modifier.weight(1f)) {
-                        tab = PickerTabId.CUSTOM
-                    }
-                }
-                if (gifsEnabled) {
-                    PickerTab("GIFs", tab == PickerTabId.GIFS, Modifier.weight(1f)) {
-                        tab = PickerTabId.GIFS
-                    }
-                    PickerTab("Favorite GIFs", tab == PickerTabId.FAVORITES, Modifier.weight(1f)) {
-                        tab = PickerTabId.FAVORITES
-                    }
-                }
+                tab = PickerTabId.EMOJI
             }
-            Spacer(Modifier.height(8.dp))
-
-            when {
-                tab == PickerTabId.CUSTOM -> {
-                    CustomEmojiGrid(
-                        emojis = customEmojis,
-                        modifier = Modifier.fillMaxSize(),
-                    ) { emoji ->
-                        onEmoji(":${emoji.name}:")
-                        onDismiss()
-                    }
+            if (gifsEnabled) {
+                PickerTab(
+                    AppStrings.get(context, R.string.catalog_gifs_e98d00db),
+                    tab == PickerTabId.GIFS,
+                    Modifier.weight(1f),
+                ) {
+                    tab = PickerTabId.GIFS
                 }
-
-                tab == PickerTabId.EMOJI || !gifsEnabled -> {
-                    EmojiGrid(columns = 8, modifier = Modifier.fillMaxSize()) { emoji ->
-                        onEmoji(emoji)
-                        onDismiss()
-                    }
-                }
-
-                tab == PickerTabId.FAVORITES -> {
-                    Box(Modifier.weight(1f).fillMaxWidth()) {
-                        if (favorites.isEmpty()) {
-                            Text(
-                                AppStrings.get(context, R.string.catalog_no_saved_gifs_yet_tap_the_bookmark_75705898),
-                                color = c.inkMuted,
-                                fontSize = 12.sp,
-                                modifier = Modifier.align(Alignment.Center).padding(24.dp),
-                            )
-                        } else {
-                            GifGrid(
-                                gifs = favorites,
-                                favoriteSlugs = favorites.map { it.slug }.toSet(),
-                                onPick = sendGif,
-                                onToggleFavorite = viewModel::toggleFavorite,
-                            )
-                        }
-                    }
-                    KlipyCredit()
-                }
-
-                else -> {
-                    TextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        placeholder = { Text(AppStrings.get(context, R.string.catalog_search_klipy_9e867d1a), fontSize = 13.sp) },
-                        singleLine = true,
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = c.surface1,
-                            unfocusedContainerColor = c.surface1,
-                            focusedTextColor = c.ink,
-                            unfocusedTextColor = c.ink,
-                            focusedIndicatorColor = c.primary,
-                            unfocusedIndicatorColor = c.border,
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Box(Modifier.weight(1f).fillMaxWidth()) {
-                        when {
-                            gifState.loading && gifState.gifs.isEmpty() -> CircularProgressIndicator(
-                                color = c.primary,
-                                modifier = Modifier.size(28.dp).align(Alignment.Center),
-                            )
-                            gifState.error != null -> Text(
-                                gifState.error.orEmpty(),
-                                color = c.danger,
-                                fontSize = 12.sp,
-                                modifier = Modifier.align(Alignment.Center),
-                            )
-                            gifState.gifs.isEmpty() -> Text(
-                                AppStrings.get(context, R.string.catalog_no_gifs_found_0d358df4),
-                                color = c.inkMuted,
-                                fontSize = 12.sp,
-                                modifier = Modifier.align(Alignment.Center),
-                            )
-                            else -> GifGrid(
-                                gifs = gifState.gifs,
-                                favoriteSlugs = favorites.map { it.slug }.toSet(),
-                                onPick = sendGif,
-                                onToggleFavorite = viewModel::toggleFavorite,
-                            )
-                        }
-                    }
-                    KlipyCredit()
+                PickerTab(
+                    AppStrings.get(context, R.string.catalog_favorite_gifs_109d1438),
+                    tab == PickerTabId.FAVORITES,
+                    Modifier.weight(1f),
+                ) {
+                    tab = PickerTabId.FAVORITES
                 }
             }
         }
-    }
-}
+        Spacer(Modifier.height(6.dp))
 
-private enum class PickerTabId { EMOJI, CUSTOM, GIFS, FAVORITES }
-
-@Composable
-private fun CustomEmojiGrid(
-    emojis: List<EmojiRef>,
-    modifier: Modifier = Modifier,
-    onPick: (EmojiRef) -> Unit,
-) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(6),
-        modifier = modifier,
-        contentPadding = PaddingValues(4.dp),
-    ) {
-        items(emojis, key = { it.id }) { emoji ->
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp)
-                    .clickable { onPick(emoji) }
-                    .padding(4.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                AsyncImage(
-                    model = absoluteUrl(emoji.url),
-                    contentDescription = ":${emoji.name}:",
-                    modifier = Modifier.size(32.dp),
+        when {
+            tab == PickerTabId.EMOJI || !gifsEnabled -> {
+                EmojiPanel(
+                    groups = customGroups,
+                    onPick = onEmoji,
+                    onBackspace = onBackspace,
                 )
             }
+
+            tab == PickerTabId.FAVORITES -> {
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    if (favorites.isEmpty()) {
+                        Text(
+                            AppStrings.get(context, R.string.catalog_no_saved_gifs_yet_tap_the_bookmark_75705898),
+                            color = c.inkMuted,
+                            fontSize = 12.sp,
+                            modifier = Modifier.align(Alignment.Center).padding(24.dp),
+                        )
+                    } else {
+                        GifGrid(
+                            gifs = favorites,
+                            favoriteSlugs = favorites.map { it.slug }.toSet(),
+                            onPick = sendGif,
+                            onToggleFavorite = viewModel::toggleFavorite,
+                        )
+                    }
+                }
+                KlipyCredit()
+            }
+
+            else -> {
+                TextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    placeholder = { Text(AppStrings.get(context, R.string.catalog_search_klipy_9e867d1a), fontSize = 13.sp) },
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = c.surface1,
+                        unfocusedContainerColor = c.surface1,
+                        focusedTextColor = c.ink,
+                        unfocusedTextColor = c.ink,
+                        focusedIndicatorColor = c.primary,
+                        unfocusedIndicatorColor = c.border,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    when {
+                        gifState.loading && gifState.gifs.isEmpty() -> CircularProgressIndicator(
+                            color = c.primary,
+                            modifier = Modifier.size(28.dp).align(Alignment.Center),
+                        )
+                        gifState.error != null -> Text(
+                            gifState.error.orEmpty(),
+                            color = c.danger,
+                            fontSize = 12.sp,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+                        gifState.gifs.isEmpty() -> Text(
+                            AppStrings.get(context, R.string.catalog_no_gifs_found_0d358df4),
+                            color = c.inkMuted,
+                            fontSize = 12.sp,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+                        else -> GifGrid(
+                            gifs = gifState.gifs,
+                            favoriteSlugs = favorites.map { it.slug }.toSet(),
+                            onPick = sendGif,
+                            onToggleFavorite = viewModel::toggleFavorite,
+                        )
+                    }
+                }
+                KlipyCredit()
+            }
         }
     }
 }
+
+private enum class PickerTabId { EMOJI, GIFS, FAVORITES }
+
+private sealed interface EmojiSection {
+    val title: String
+    val count: Int
+
+    data class Custom(
+        override val title: String,
+        val iconUrl: String?,
+        val emojis: List<EmojiRef>,
+    ) : EmojiSection {
+        override val count get() = emojis.size
+    }
+
+    data class Standard(
+        override val title: String,
+        val emojis: List<String>,
+    ) : EmojiSection {
+        override val count get() = emojis.size
+    }
+}
+
+private fun emojiSections(groups: List<CustomEmojiGroup>, query: String): List<EmojiSection> {
+    val q = query.trim().lowercase()
+    if (q.isEmpty()) {
+        return groups.map { EmojiSection.Custom(it.name, it.iconUrl, it.emojis) } +
+            EMOJI_CATEGORIES.map { EmojiSection.Standard(it.name, it.emojis) }
+    }
+    val custom = groups.mapNotNull { group ->
+        val hits = group.emojis.filter { it.name.lowercase().contains(q) }
+        if (hits.isEmpty()) null else EmojiSection.Custom(group.name, group.iconUrl, hits)
+    }
+    val hits = EmojiSearch.search(q, EMOJI_SEARCH_LIMIT).map { it.char }
+    return custom + listOfNotNull(
+        if (hits.isEmpty()) null else EmojiSection.Standard(SEARCH_SECTION, hits),
+    )
+}
+
+private const val EMOJI_SEARCH_LIMIT = 64
+private const val SEARCH_SECTION = "search"
+
+@Composable
+private fun ColumnScope.EmojiPanel(
+    groups: List<CustomEmojiGroup>,
+    onPick: (String) -> Unit,
+    onBackspace: () -> Unit,
+) {
+    val c = OrangTheme.colors
+    val context = LocalContext.current
+    var query by remember { mutableStateOf("") }
+    val sections = remember(groups, query) { emojiSections(groups, query) }
+    val grid = rememberLazyGridState()
+    val scope = rememberCoroutineScope()
+    // Each section is one header item plus its emoji, so a shortcut can jump to it.
+    val starts = remember(sections) {
+        var index = 0
+        sections.map { section -> index.also { index += section.count + 1 } }
+    }
+
+    TextField(
+        value = query,
+        onValueChange = { query = it },
+        placeholder = {
+            Text(
+                AppStrings.get(context, R.string.catalog_find_the_perfect_emoji_81f282bc),
+                fontSize = 13.sp,
+            )
+        },
+        singleLine = true,
+        leadingIcon = {
+            Icon(
+                Icons.Default.Search,
+                contentDescription = null,
+                tint = c.inkMuted,
+                modifier = Modifier.size(18.dp),
+            )
+        },
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = c.surface1,
+            unfocusedContainerColor = c.surface1,
+            focusedTextColor = c.ink,
+            unfocusedTextColor = c.ink,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+        ),
+        shape = RoundedCornerShape(OrangRadius.lg),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+    )
+    Spacer(Modifier.height(4.dp))
+
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(8),
+        state = grid,
+        modifier = Modifier.weight(1f).fillMaxWidth(),
+    ) {
+        sections.forEachIndexed { index, section ->
+            item(key = "header-$index", span = { GridItemSpan(maxLineSpan) }) {
+                Text(
+                    sectionTitle(context, section).uppercase(),
+                    color = c.inkMuted,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(c.surface2)
+                        .padding(horizontal = 4.dp, vertical = 6.dp),
+                )
+            }
+            when (section) {
+                is EmojiSection.Custom -> items(
+                    section.emojis,
+                    key = { "custom-$index-${it.id}" },
+                ) { emoji ->
+                    Box(
+                        modifier = Modifier
+                            .aspectRatio(1f)
+                            .clickable { onPick(":${emoji.name}:") },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        AsyncImage(
+                            model = absoluteUrl(emoji.url),
+                            contentDescription = ":${emoji.name}:",
+                            modifier = Modifier.size(26.dp),
+                        )
+                    }
+                }
+
+                is EmojiSection.Standard -> items(
+                    section.emojis,
+                    key = { "standard-$index-$it" },
+                ) { emoji ->
+                    Box(
+                        modifier = Modifier
+                            .aspectRatio(1f)
+                            .clickable { onPick(emoji) },
+                        contentAlignment = Alignment.Center,
+                    ) { Text(emoji, fontSize = 22.sp) }
+                }
+            }
+        }
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(c.surface1, RoundedCornerShape(OrangRadius.lg))
+            .padding(horizontal = 4.dp),
+    ) {
+        LazyRow(modifier = Modifier.weight(1f)) {
+            itemsIndexed(sections, key = { index, _ -> "tab-$index" }) { index, section ->
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(OrangRadius.md))
+                        .clickable { scope.launch { grid.scrollToItem(starts[index]) } },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    when (section) {
+                        is EmojiSection.Custom -> if (section.iconUrl != null) {
+                            AsyncImage(
+                                model = absoluteUrl(section.iconUrl),
+                                contentDescription = section.title,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.size(22.dp).clip(CircleShape),
+                            )
+                        } else {
+                            Text(
+                                section.title.take(1).uppercase(),
+                                color = c.inkSecondary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+
+                        is EmojiSection.Standard -> Text(
+                            section.emojis.firstOrNull().orEmpty(),
+                            fontSize = 18.sp,
+                        )
+                    }
+                }
+            }
+        }
+        Icon(
+            Icons.AutoMirrored.Filled.Backspace,
+            contentDescription = AppStrings.get(context, R.string.catalog_backspace_88d130a6),
+            tint = c.inkMuted,
+            modifier = Modifier
+                .size(38.dp)
+                .clip(RoundedCornerShape(OrangRadius.md))
+                .clickable(onClick = onBackspace)
+                .padding(9.dp),
+        )
+    }
+}
+
+@Composable
+private fun sectionTitle(context: Context, section: EmojiSection): String =
+    if (section.title == SEARCH_SECTION) {
+        AppStrings.get(context, R.string.catalog_search_results_0144dae8)
+    } else {
+        section.title
+    }
 
 @Composable
 private fun GifGrid(
