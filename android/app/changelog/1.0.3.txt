@@ -1,4 +1,4 @@
-OrangChat 1.0.2
+OrangChat 1.0.3
 
 New
 - Mute a conversation or a server from its long-press menu, for 15 minutes,
@@ -7,6 +7,14 @@ New
 - Tap your own status dot in the sidebar to switch between online, idle and
   do not disturb without opening settings.
 - Profile cards now show the person's current status on their avatar.
+- The emoji and GIF picker is now a panel that replaces the keyboard while
+  typing, with searchable categories and shortcuts to jump between them.
+  Custom emoji are grouped under their server's icon. It can be closed with
+  the back button or the keyboard button next to the composer.
+- Typing an emoji shortcode like :flower: shows a suggestion panel, and the
+  shortcode itself is highlighted in the message box while typing.
+- Date separators appear in a conversation whenever the calendar day changes.
+- Unread messages are counted on the back arrow of a chat you left.
 
 Changed
 - Jumping to a message from search or from a reply now lands it near the top
@@ -15,3 +23,5 @@ Changed
 - Message avatars in a conversation no longer carry a status dot; it stays on
   the header, sidebars and member list.
 - The idle moon icon is a little fuller and easier to read at small sizes.
+- Inline images keep their own proportions instead of being squeezed into a
+  fixed box, and the profile card fills the whole dialog.
