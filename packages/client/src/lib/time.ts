@@ -33,6 +33,32 @@ export function formatFullTime(iso: string): string {
 }
 
 
+const dayFmt = new Intl.DateTimeFormat(undefined, {
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+  year: "numeric",
+});
+
+/** Local calendar day, stable to compare two timestamps by. */
+export function dayKey(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+/** 0 for today, 1 for yesterday, otherwise the whole-day distance. */
+export function daysAgo(iso: string, now = new Date()): number {
+  const d = new Date(iso);
+  const a = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+  const b = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((b - a) / 86_400_000);
+}
+
+export function formatDayLabel(iso: string): string {
+  return dayFmt.format(new Date(iso));
+}
+
+
 export function withinGroupWindow(aIso: string, bIso: string, ms = 5 * 60_000): boolean {
   return Math.abs(new Date(aIso).getTime() - new Date(bIso).getTime()) <= ms;
 }

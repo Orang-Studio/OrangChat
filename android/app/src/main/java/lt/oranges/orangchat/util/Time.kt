@@ -34,6 +34,28 @@ fun formatFullTime(iso: String?): String {
     return fullDateTimeFmt.format(inst.atZone(ZoneId.systemDefault()))
 }
 
+private val dayFmt = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy", Locale.getDefault())
+
+/** Local calendar day, stable to compare two timestamps by. */
+fun dayKey(iso: String?): String? {
+    val inst = parseInstant(iso) ?: return null
+    return inst.atZone(ZoneId.systemDefault()).toLocalDate().toString()
+}
+
+/** 0 for today, 1 for yesterday, otherwise the whole-day distance. */
+fun daysAgo(iso: String?, nowMs: Long = System.currentTimeMillis()): Long? {
+    val inst = parseInstant(iso) ?: return null
+    val zone = ZoneId.systemDefault()
+    val then = inst.atZone(zone).toLocalDate()
+    val now = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
+    return now.toEpochDay() - then.toEpochDay()
+}
+
+fun formatDayLabel(iso: String?): String {
+    val inst = parseInstant(iso) ?: return ""
+    return dayFmt.format(inst.atZone(ZoneId.systemDefault()))
+}
+
 private const val MINUTE_MS = 60_000L
 private const val HOUR_MS = 60 * MINUTE_MS
 private const val DAY_MS = 24 * HOUR_MS

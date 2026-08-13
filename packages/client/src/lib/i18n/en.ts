@@ -859,7 +859,9 @@ export const en = {
   "messageList.newMessages": "New messages",
   "messageList.newMessagesStartHere": "New messages start here",
   "messageList.thisIsTheStartOfThe": "This is the start of the channel. Say something!",
+  "messageList.today": "Today",
   "messageList.welcomeToChannel": "Welcome to #{channel}",
+  "messageList.yesterday": "Yesterday",
 
   "newDmDialog.findFriends": "Find friends",
   "newDmDialog.searchByNameOrUsername": "Search by name or username",

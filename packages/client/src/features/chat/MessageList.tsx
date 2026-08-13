@@ -8,7 +8,7 @@ import {
   type Message,
   type User,
 } from '@orangchat/shared';
-import { withinGroupWindow } from '../../lib/time';
+import { dayKey, daysAgo, formatDayLabel, withinGroupWindow } from '../../lib/time';
 import { CallCard } from '../voice/CallCard';
 import { MessageItem } from './MessageItem';
 import { t } from "../../lib/i18n";
@@ -98,6 +98,26 @@ function SystemNotice({
         {text}
         <span aria-hidden> -</span>
       </p>
+    </div>
+  );
+}
+
+
+function DaySeparator({ iso }: { iso: string }) {
+  const days = daysAgo(iso);
+  const label =
+    days === 0
+      ? t("messageList.today")
+      : days === 1
+        ? t("messageList.yesterday")
+        : formatDayLabel(iso);
+  return (
+    <div role="separator" aria-label={label} className="flex items-center gap-3 px-4 py-2">
+      <span aria-hidden className="h-px flex-1 bg-border" />
+      <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+        {label}
+      </span>
+      <span aria-hidden className="h-px flex-1 bg-border" />
     </div>
   );
 }
@@ -303,14 +323,16 @@ export function MessageList({
       rendered.map((message, i) => {
         const prev = rendered[i - 1];
         const notice = isSystemNotice(message);
+        const newDay = !prev || dayKey(prev.createdAt) !== dayKey(message.createdAt);
         const compact =
           !!prev &&
+          !newDay &&
           !isSystemNotice(prev) &&
           !notice &&
           prev.author.id === message.author.id &&
           !message.replyToId &&
           withinGroupWindow(prev.createdAt, message.createdAt);
-        return { message, compact, notice };
+        return { message, compact, notice, newDay };
       }),
     [rendered],
   );
@@ -434,6 +456,7 @@ export function MessageList({
         )}
         {bands.map((band) => (
           <Fragment key={band.key}>
+            {band.rows[0]!.newDay && <DaySeparator iso={band.rows[0]!.message.createdAt} />}
             {/* The divider belongs between the last read row and the first new
                 one, which is always a band edge - `dividerIndex` forces one. */}
             {band.start === dividerIndex && (
