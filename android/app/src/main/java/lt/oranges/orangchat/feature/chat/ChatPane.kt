@@ -192,6 +192,9 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.EmojiRef
 import lt.oranges.orangchat.util.MentionUser
 import lt.oranges.orangchat.util.Mentions
+import lt.oranges.orangchat.util.dayKey
+import lt.oranges.orangchat.util.daysAgo
+import lt.oranges.orangchat.util.formatDayLabel
 import lt.oranges.orangchat.util.formatTime
 import lt.oranges.orangchat.util.parseInstant
 import kotlinx.coroutines.delay
@@ -281,6 +284,7 @@ private data class MessageRowData(
     val isNotice: Boolean = false,
     val notice: SystemNotice? = null,
     val groupEnd: Boolean = true,
+    val newDay: Boolean = false,
 )
 
 private fun messageRowKey(message: Message): String =
@@ -386,7 +390,11 @@ fun ChatPane(
         val deduped = messages
             .distinctBy { it.id }
             .distinctBy(::messageRowKey)
-        val grouped = deduped.mapIndexed { i, m -> isGrouped(deduped.getOrNull(i - 1), m) }
+        val days = deduped.map { dayKey(it.createdAt) }
+        val newDay = deduped.indices.map { i -> i == 0 || days[i] != days[i - 1] }
+        val grouped = deduped.mapIndexed { i, m ->
+            !newDay[i] && isGrouped(deduped.getOrNull(i - 1), m)
+        }
         deduped
             .mapIndexed { i, m ->
                 MessageRowData(
@@ -395,6 +403,7 @@ fun ChatPane(
                     m.isSystemNotice(),
                     SystemNotice.of(m),
                     groupEnd = grouped.getOrNull(i + 1) != true,
+                    newDay = newDay[i],
                 )
             }
             .asReversed()
@@ -758,6 +767,8 @@ fun ChatPane(
             ) {
                 items(rows, key = { messageRowKey(it.message) }) { row ->
                     val message = row.message
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                    if (row.newDay) DateSeparatorRow(message.createdAt)
                     if (row.isNotice) {
                         val call = message.callNotice()
                         if (call != null) {
@@ -772,7 +783,7 @@ fun ChatPane(
                         } else {
                             SystemNoticeRow(row.notice, message, selfId)
                         }
-                        return@items
+                        return@Column
                     }
                     CompositionLocalProvider(LocalOrangColors provides rowColors) {
                         MessageRow(
@@ -802,6 +813,7 @@ fun ChatPane(
                             onOpenProfile = onOpenProfile,
                             emojis = emojis,
                         )
+                    }
                     }
                 }
                 if (loadingOlder) {
@@ -1201,6 +1213,34 @@ private fun SystemNoticeRow(notice: SystemNotice?, message: Message, selfId: Str
             fontSize = 12.sp,
             textAlign = TextAlign.Center,
         )
+    }
+}
+
+@Composable
+private fun DateSeparatorRow(createdAt: String) {
+    val c = OrangTheme.colors
+    val context = LocalContext.current
+    val label = when (daysAgo(createdAt)) {
+        0L -> AppStrings.get(context, R.string.catalog_today_24345a14)
+        1L -> AppStrings.get(context, R.string.catalog_yesterday_da24830f)
+        else -> formatDayLabel(createdAt)
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.weight(1f).height(1.dp).background(c.border))
+        Text(
+            text = label,
+            color = c.inkMuted,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 10.dp),
+        )
+        Box(Modifier.weight(1f).height(1.dp).background(c.border))
     }
 }
 

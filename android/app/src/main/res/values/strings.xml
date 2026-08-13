@@ -601,6 +601,7 @@
     <string name="catalog_time_out_71ed8fda" formatted="false">Time out</string>
     <string name="catalog_timed_out_edcd3630" formatted="false">Timed out</string>
     <string name="catalog_timed_out_in_64510a0d" formatted="false">Timed out in</string>
+    <string name="catalog_today_24345a14" formatted="false">Today</string>
     <string name="catalog_to_lock_a_box_for_someone_your_a0458be1" formatted="false">To lock a box for someone, your phone needs their lock, and it asks our servers for it. So the fair question is: what if we handed you a lock we had made ourselves, kept the key, and passed your messages along afterwards?</string>
     <string name="catalog_too_many_attempts_wait_a_moment_and_585a4cea" formatted="false">Too many attempts. Wait a moment and try again.</string>
     <string name="catalog_transfer_code_scanned_fdb95e51" formatted="false">Transfer code scanned</string>
@@ -660,6 +661,7 @@
     <string name="catalog_who_you_talk_to_when_and_how_96d03db2" formatted="false">• Who you talk to, when, and how often. Locked boxes still have to be addressed to somebody.</string>
     <string name="catalog_with_someone_new_your_messages_wait_on_376112de" formatted="false">With someone new, your messages wait on this phone - locked, sent nowhere - until you have seen their code in person or read the numbers to each other on a call.</string>
     <string name="catalog_yes_leave_them_all_8520c6e8" formatted="false">Yes, leave them all</string>
+    <string name="catalog_yesterday_da24830f" formatted="false">Yesterday</string>
     <string name="catalog_yes_that_s_them_03f398c0" formatted="false">Yes, that\'s them</string>
     <string name="catalog_you_can_also_scan_with_the_system_35d7d733" formatted="false">You can also scan with the system Camera app and tap “Open OrangChat”.</string>
     <string name="catalog_you_do_not_have_this_permission_d4f08a3c" formatted="false">You do not have this permission.</string>
