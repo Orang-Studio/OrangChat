@@ -73,3 +73,6 @@ fun Map<String, UnreadState>.hasUnreadInServer(serverId: String): Boolean =
 
 fun Map<String, UnreadState>.unreadDmCount(): Int =
     minOf(values.filter { it.serverId == null }.sumOf { it.unreadCount }, UNREAD_COUNT_CAP)
+
+fun Map<String, UnreadState>.unreadCountExcluding(channelId: String?): Int =
+    minOf(values.filter { it.channelId != channelId }.sumOf { it.unreadCount }, UNREAD_COUNT_CAP)
