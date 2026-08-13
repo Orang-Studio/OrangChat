@@ -309,6 +309,7 @@ fun HomeScreen(
                 presence = presence,
                 presenceActivities = presenceActivities,
                 friendIds = friendIds,
+                activeConversationId = currentChannelId,
                 unreads = unreads,
                 typing = typing,
                 mutes = mutes,
@@ -701,6 +702,7 @@ fun HomeScreen(
                                     presence = presence,
                                     typingUserIds = (typing[channelId].orEmpty() - self.id),
                                     onBack = { openChat = false; appViewModel.clearActiveChannel() },
+                                    connected = connected,
                                     onSend = { content, replyTo, attachmentIds, sealedAttachments ->
                                         appViewModel.sendMessage(
                                             channelId,

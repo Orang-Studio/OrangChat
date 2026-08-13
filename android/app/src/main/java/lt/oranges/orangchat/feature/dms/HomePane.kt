@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -73,6 +74,29 @@ import lt.oranges.orangchat.ui.components.muteDurationItems
 import lt.oranges.orangchat.ui.components.UserFooter
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
+import lt.oranges.orangchat.util.formatShortRelativeTime
+import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
+
+/** Ticks once a minute for the relative-time labels. */
+private val minuteClock = flow {
+    while (currentCoroutineContext().isActive) {
+        emit(System.currentTimeMillis())
+        delay(60_000)
+    }
+}.stateIn(
+    CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    SharingStarted.WhileSubscribed(5_000),
+    System.currentTimeMillis(),
+)
 
 @Composable
 fun HomePane(
@@ -81,6 +105,7 @@ fun HomePane(
     presence: Map<String, PresenceStatus>,
     presenceActivities: Map<String, List<UserActivity>>,
     friendIds: Set<String>,
+    activeConversationId: String? = null,
     onOpenFriends: () -> Unit,
     onOpenConversation: (Conversation) -> Unit,
     onOpenSettings: () -> Unit,
@@ -150,6 +175,7 @@ fun HomePane(
                 ConversationRow(
                     convo = convo,
                     selfId = self.id,
+                    active = convo.id == activeConversationId,
                     presence = presence,
                     presenceActivities = presenceActivities,
                     unread = unreads[convo.id]?.unread == true,
@@ -210,6 +236,7 @@ private fun typingPreview(
 private fun ConversationRow(
     convo: Conversation,
     selfId: String,
+    active: Boolean,
     presence: Map<String, PresenceStatus>,
     presenceActivities: Map<String, List<UserActivity>>,
     unread: Boolean,
@@ -238,12 +265,15 @@ private fun ConversationRow(
     val clipboard = LocalClipboardManager.current
     var menuOpen by remember { mutableStateOf(false) }
     var muteMenuOpen by remember { mutableStateOf(false) }
+    val now by minuteClock.collectAsState()
+    val lastActivity = formatShortRelativeTime(convo.latestMessage?.createdAt, now)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 1.dp)
             .clip(RoundedCornerShape(OrangRadius.md))
+            .then(if (active) Modifier.background(c.surface3) else Modifier)
             .combinedClickable(
                 onClick = { onClick(convo) },
                 onLongClick = {
@@ -267,21 +297,36 @@ private fun ConversationRow(
                 ),
         )
         Spacer(Modifier.width(6.dp))
-        if (others.size > 1 || lead == null) {
-            GroupIcon(iconUrl = convo.iconUrl, size = 38.dp)
-        } else {
-            Avatar(
-                lead,
-                size = 38.dp,
-                status = presence[lead.id] ?: PresenceStatus.OFFLINE,
-            )
+        Box {
+            if (others.size > 1 || lead == null) {
+                GroupIcon(iconUrl = convo.iconUrl, size = 38.dp)
+            } else {
+                Avatar(
+                    lead,
+                    size = 38.dp,
+                    status = presence[lead.id] ?: PresenceStatus.OFFLINE,
+                )
+            }
+            if (lastActivity != null) {
+                Text(
+                    text = lastActivity,
+                    color = c.inkMuted,
+                    fontSize = 9.sp,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .offset(x = (-4).dp, y = (-4).dp)
+                        .clip(RoundedCornerShape(OrangRadius.sm))
+                        .background(c.surface1)
+                        .padding(horizontal = 2.dp),
+                )
+            }
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = title,
-                    color = if (unread) c.ink else c.inkSecondary,
+                    color = if (unread || active) c.ink else c.inkSecondary,
                     fontWeight = if (unread) FontWeight.Bold else FontWeight.Medium,
                     fontSize = 15.sp,
                     maxLines = 1,

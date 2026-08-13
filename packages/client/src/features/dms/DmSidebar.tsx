@@ -57,6 +57,8 @@ import { NewDmDialog } from './NewDmDialog';
 import { leaveDm } from './api';
 import { ActivityStatus } from '../../components/ActivityStatus';
 import { t } from "../../lib/i18n";
+import { formatShortRelativeTime } from '../../lib/time';
+import { useMinuteTick } from '../../lib/useNow';
 
 const copyText = (text: string) => void navigator.clipboard?.writeText(text);
 
@@ -116,6 +118,10 @@ function ConversationRow({
   // be noise racing the read receipt.
   const unread = !active && unreadCount > 0;
   const muted = useDmMuted(conversation.id);
+  const now = useMinuteTick();
+  const lastActivity = conversation.latestMessage
+    ? formatShortRelativeTime(conversation.latestMessage.createdAt, now)
+    : null;
   const [profileOpen, setProfileOpen] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
@@ -171,15 +177,25 @@ function ConversationRow({
                 className="absolute -left-1 top-1/2 h-2 w-1 -translate-y-1/2 rounded-r-full bg-ink"
               />
             )}
-            {isGroup ? (
-              <GroupIcon iconUrl={conversation.iconUrl} name={name} className="mt-0.5" />
-            ) : (
-              <Avatar
-                user={other ?? { displayName: name, avatarUrl: null }}
-                status={other?.status}
-                className="mt-0.5 size-8"
-              />
-            )}
+            <span className="relative mt-0.5 shrink-0">
+              {isGroup ? (
+                <GroupIcon iconUrl={conversation.iconUrl} name={name} />
+              ) : (
+                <Avatar
+                  user={other ?? { displayName: name, avatarUrl: null }}
+                  status={other?.status}
+                  className="size-8"
+                />
+              )}
+              {lastActivity && (
+                <span
+                  aria-hidden
+                  className="absolute -left-1 -top-1 rounded-full bg-surface-1 px-1 text-[9px] font-medium leading-[14px] text-ink-muted"
+                >
+                  {lastActivity}
+                </span>
+              )}
+            </span>
             <span className="min-w-0 flex-1">
               <span className="flex min-w-0 items-center gap-1.5">
                 <span

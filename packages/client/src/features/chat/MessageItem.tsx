@@ -196,7 +196,7 @@ export function MessageItem({
               "oc-message group relative px-4 hover:bg-surface-3/40",
               compact ? "pt-0" : "pt-0.5",
               groupEnd ? "pb-0.5" : "pb-0",
-              !compact && !plated && "oc-message-lead mt-3",
+              !compact && !plated && "oc-message-lead mt-5",
               touchActions && "bg-surface-3/40",
               pending && "pointer-events-none opacity-50",
               failed && "bg-danger/5",

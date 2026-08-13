@@ -36,3 +36,20 @@ export function formatFullTime(iso: string): string {
 export function withinGroupWindow(aIso: string, bIso: string, ms = 5 * 60_000): boolean {
   return Math.abs(new Date(aIso).getTime() - new Date(bIso).getTime()) <= ms;
 }
+
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+const MONTH = 30 * DAY;
+const YEAR = 365 * DAY;
+
+/** Compact single-unit relative time for list rows: "12h", "4d", "9mo", "2y". */
+export function formatShortRelativeTime(iso: string, now = Date.now()): string {
+  const diff = Math.max(0, now - new Date(iso).getTime());
+  if (diff < MINUTE) return "now";
+  if (diff < HOUR) return `${Math.floor(diff / MINUTE)}m`;
+  if (diff < DAY) return `${Math.floor(diff / HOUR)}h`;
+  if (diff < MONTH) return `${Math.floor(diff / DAY)}d`;
+  if (diff < YEAR) return `${Math.floor(diff / MONTH)}mo`;
+  return `${Math.floor(diff / YEAR)}y`;
+}

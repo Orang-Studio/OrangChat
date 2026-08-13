@@ -74,7 +74,7 @@ export function ProfileCard({ data }: { data: ProfileCardData }) {
       </div>
       <div className="oc-pf-inner px-4 pb-4">
         <div className="oc-pf-avatar -mt-9 mb-2">
-          <span className="oc-pf-avatar-frame inline-block rounded-md bg-surface-2 p-1.5">
+          <span className="oc-pf-avatar-frame inline-block rounded-full bg-surface-2 p-1.5">
             <Avatar
               user={{
                 displayName: data.displayName,
@@ -83,8 +83,8 @@ export function ProfileCard({ data }: { data: ProfileCardData }) {
               }}
               status={data.status}
               className="size-14"
-              imgClassName="oc-pf-avatar-img rounded-md"
-              fallbackClassName="oc-pf-avatar-fallback rounded-md"
+              imgClassName="oc-pf-avatar-img rounded-full"
+              fallbackClassName="oc-pf-avatar-fallback rounded-full"
             />
           </span>
         </div>
