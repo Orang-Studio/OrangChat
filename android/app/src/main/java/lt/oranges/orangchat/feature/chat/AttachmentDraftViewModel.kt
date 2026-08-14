@@ -54,6 +54,10 @@ class AttachmentDraftViewModel @Inject constructor(
 
     fun dismissError() { _error.value = null }
 
+    /** One failed upload fails the whole detached message - thrown so the
+     * caller can mark it as not sent, same as any other send failure. */
+    class AttachmentUploadFailedException(message: String) : Exception(message)
+
     fun detach(keys: List<String>): suspend () -> Pair<List<String>, List<SealedAttachmentRef>> {
         val batch = keys.toSet()
         _uploads.update { list -> list.map { if (it.key in batch) it.copy(detached = true) else it } }
@@ -62,7 +66,8 @@ class AttachmentDraftViewModel @Inject constructor(
             val done = _uploads.value.filter { it.key in batch }
             _uploads.update { list -> list.filterNot { it.key in batch } }
             done.forEach(::cleanup)
-            done.firstNotNullOfOrNull { it.error }?.let { _error.value = it }
+            val failure = done.firstNotNullOfOrNull { it.error }
+            if (failure != null) throw AttachmentUploadFailedException(failure)
             val ids = done.flatMap { listOfNotNull(it.attachment?.id, it.sealed?.thumb?.attachmentId) }
             ids to done.mapNotNull { it.sealed }
         }

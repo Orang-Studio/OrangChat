@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -668,20 +669,28 @@ class AppViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
-            val (ids, sealed) = awaitUploads()
-            if (ids.isEmpty() && sealed.isEmpty() && normalizedContent.isBlank()) {
-                _pendingMessageIds.update { it - localId }
-                _messages.update { current ->
-                    current + (channelId to current[channelId].orEmpty().filterNot { it.id == localId })
+            runCatching { awaitUploads() }
+                .onSuccess { (ids, sealed) ->
+                    if (ids.isEmpty() && sealed.isEmpty() && normalizedContent.isBlank()) {
+                        _pendingMessageIds.update { it - localId }
+                        _messages.update { current ->
+                            current + (channelId to current[channelId].orEmpty().filterNot { it.id == localId })
+                        }
+                        return@onSuccess
+                    }
+                    queueOutgoing(
+                        pending.copy(
+                            attachmentIds = attachmentIds + ids,
+                            sealedAttachments = sealedAttachments + sealed,
+                        ),
+                    )
                 }
-                return@launch
-            }
-            queueOutgoing(
-                pending.copy(
-                    attachmentIds = attachmentIds + ids,
-                    sealedAttachments = sealedAttachments + sealed,
-                ),
-            )
+                .onFailure { cause ->
+                    if (cause is CancellationException) return@onFailure
+                    rejectPendingMessage(localId)
+                    failedOutbox += pending
+                    _error.value = cause.message?.takeIf { it.isNotBlank() } ?: FAILED_TO_SEND
+                }
         }
     }
 

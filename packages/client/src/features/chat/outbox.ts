@@ -329,8 +329,21 @@ export function queueMessage(
   }
   void awaitAttachments()
     .then((patch) => releaseHold(localId, patch))
-    .catch(() => removeEntry(localId));
+    .catch((err: unknown) => failHold(localId, err instanceof Error ? err.message : "Attachment failed to upload"));
   return message;
+}
+
+/** An attachment the send was waiting on never landed - the row stays put,
+ * flagged red like any other failed send, instead of vanishing silently. */
+function failHold(localId: string, failure: string): void {
+  useMessageOutbox.setState((state) => ({
+    entries: state.entries.map((candidate) =>
+      candidate.localId === localId
+        ? { ...candidate, holding: false, failed: true, failure }
+        : candidate,
+    ),
+  }));
+  toast.error(`Message not sent: ${failure}`);
 }
 
 function releaseHold(localId: string, patch: AttachmentPatch): void {

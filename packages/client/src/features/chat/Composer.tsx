@@ -26,7 +26,6 @@ import { highlightEmoji } from './EmojiHighlight';
 import { normalizeCustomEmojiNames, useEmojiMap } from '../emojis/queries';
 import { clearDraft, loadDraft, saveDraft, saveDraftNow } from './drafts';
 import type { AttachmentPatch } from './outbox';
-import { toast } from '../../stores/toasts';
 import { t } from "../../lib/i18n";
 
 
@@ -550,8 +549,10 @@ export function Composer({
                 return result ? { result, spoiler: u.spoiler } : null;
               }),
             );
-            const kept = landed.filter((l) => l !== null);
-            if (kept.length < batch.length) toast.error(t('composer.attachmentsDropped'));
+            // One failed upload fails the whole message: it lands red, like any
+            // other send failure, so the user can retry or discard it.
+            const kept = landed.filter((l): l is LandedUpload => l !== null);
+            if (kept.length < landed.length) throw new Error(t('composer.attachmentsDropped'));
             return attachmentPatch(kept);
           }
         : undefined;
