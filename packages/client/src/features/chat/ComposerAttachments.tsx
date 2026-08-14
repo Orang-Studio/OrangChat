@@ -24,6 +24,14 @@ export interface PendingUpload {
 
   preview?: string;
   abort: () => void;
+
+  done: Promise<UploadResult | null>;
+}
+
+export interface UploadResult {
+  attachment: Attachment;
+  supportingAttachments?: Attachment[];
+  sealed?: SealedAttachmentRef;
 }
 
 export const isSettled = (u: PendingUpload) => u.attachment !== undefined || u.error !== undefined;

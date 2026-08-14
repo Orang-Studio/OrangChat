@@ -39,7 +39,14 @@ interface PendingOutgoing {
 
   failed?: boolean;
   failure?: string;
+
+  holding?: boolean;
 }
+
+export type AttachmentPatch = Pick<
+  OutgoingMessagePayload,
+  "attachmentIds" | "spoilerAttachmentIds" | "optimisticAttachments" | "sealedAttachments"
+>;
 
 interface OutboxState {
   entries: PendingOutgoing[];
@@ -213,7 +220,12 @@ async function flushOutbox(): Promise<void> {
     while (socket.connected) {
       const entry = useMessageOutbox
         .getState()
-        .entries.find((candidate) => !blocked.has(candidate.payload.channelId) && !candidate.failed);
+        .entries.find(
+          (candidate) =>
+            !blocked.has(candidate.payload.channelId) &&
+            !candidate.failed &&
+            !candidate.holding,
+        );
       if (!entry) break;
 
       if (entry.authorId !== useAuthStore.getState().user?.id) {
@@ -252,7 +264,9 @@ async function flushOutbox(): Promise<void> {
     // a microtask loop, which never yields and so hangs the tab.
     if (
       socket.connected &&
-      useMessageOutbox.getState().entries.some((e) => !e.awaitingVerification && !e.failed)
+      useMessageOutbox
+        .getState()
+        .entries.some((e) => !e.awaitingVerification && !e.failed && !e.holding)
     ) {
       queueMicrotask(() => void flushOutbox());
     }
@@ -278,8 +292,15 @@ export function retryBlockedMessages(): void {
   void flushOutbox();
 }
 
-/** Insert a local row immediately; delivery happens now or after reconnect. */
-export function queueMessage(payload: OutgoingMessagePayload): Message {
+/** Insert a local row immediately; delivery happens now or after reconnect.
+ *
+ * `awaitAttachments` lets a message be sent while its files are still going up:
+ * the row appears as sending straight away and is held back from the socket
+ * until the uploads resolve into ids. */
+export function queueMessage(
+  payload: OutgoingMessagePayload,
+  awaitAttachments?: () => Promise<AttachmentPatch>,
+): Message {
   const author = useAuthStore.getState().user;
   if (!author) throw new Error("Not signed in");
   const localId = `pending:${crypto.randomUUID()}`;
@@ -297,12 +318,42 @@ export function queueMessage(payload: OutgoingMessagePayload): Message {
     pinned: false,
     pinnedAt: null,
   };
+  const holding = awaitAttachments !== undefined;
   useMessageOutbox.setState((state) => ({
-    entries: [...state.entries, { localId, authorId: author.id, payload, message }],
+    entries: [...state.entries, { localId, authorId: author.id, payload, message, holding }],
     error: null,
   }));
-  void flushOutbox();
+  if (!awaitAttachments) {
+    void flushOutbox();
+    return message;
+  }
+  void awaitAttachments()
+    .then((patch) => releaseHold(localId, patch))
+    .catch(() => removeEntry(localId));
   return message;
+}
+
+function releaseHold(localId: string, patch: AttachmentPatch): void {
+  const entry = useMessageOutbox.getState().entries.find((e) => e.localId === localId);
+  if (!entry) return;
+  const payload = { ...entry.payload, ...patch };
+  if (payload.content.length === 0 && (payload.attachmentIds ?? []).length === 0) {
+    removeEntry(localId);
+    return;
+  }
+  useMessageOutbox.setState((state) => ({
+    entries: state.entries.map((candidate) =>
+      candidate.localId === localId
+        ? {
+            ...candidate,
+            holding: false,
+            payload,
+            message: { ...candidate.message, attachments: payload.optimisticAttachments ?? [] },
+          }
+        : candidate,
+    ),
+  }));
+  void flushOutbox();
 }
 
 /** The server broadcasts before acknowledging. Find the local row this echo
@@ -316,6 +367,7 @@ export function matchPendingLocalId(message: Message): string | undefined {
   return useMessageOutbox.getState().entries.find(
     (candidate) =>
       !candidate.failed &&
+      !candidate.holding &&
       candidate.authorId === message.author.id &&
       candidate.payload.channelId === message.channelId &&
       (message.ciphertext

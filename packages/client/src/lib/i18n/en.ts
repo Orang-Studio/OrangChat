@@ -208,6 +208,7 @@ export const en = {
   "composer.aLoginTokenLetsAnyoneWho":
     "A login token lets anyone who has it sign into an OrangChat account. Pasting it here would hand that account to everyone who can read this conversation.",
   "composer.attachFiles": "Attach files",
+  "composer.attachmentsDropped": "Some attachments failed to upload and were left out",
   "composer.cancelReply": "Cancel reply",
   "composer.deleteRecording": "Delete recording",
   "composer.dontPaste": "Don't paste",

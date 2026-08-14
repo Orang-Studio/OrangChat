@@ -14,12 +14,19 @@ import {
   uploadSealedAttachment,
 } from './attachments';
 import { isEncrypted } from '../e2ee/store';
-import { ComposerAttachments, isSettled, type PendingUpload } from './ComposerAttachments';
+import {
+  ComposerAttachments,
+  isSettled,
+  type PendingUpload,
+  type UploadResult,
+} from './ComposerAttachments';
 import { ExpressionPicker } from './ExpressionPicker';
 import { activeShortcode, emojiForShortcode, searchEmoji } from './emoji-search';
 import { highlightEmoji } from './EmojiHighlight';
 import { normalizeCustomEmojiNames, useEmojiMap } from '../emojis/queries';
 import { clearDraft, loadDraft, saveDraft, saveDraftNow } from './drafts';
+import type { AttachmentPatch } from './outbox';
+import { toast } from '../../stores/toasts';
 import { t } from "../../lib/i18n";
 
 
@@ -75,6 +82,36 @@ function formatRecordingTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
 }
+
+interface LandedUpload {
+  result: UploadResult;
+  spoiler: boolean;
+}
+
+const landedOf = (uploads: PendingUpload[]): LandedUpload[] =>
+  uploads.map((u) => ({
+    result: {
+      attachment: u.attachment!,
+      supportingAttachments: u.supportingAttachments,
+      sealed: u.sealed,
+    },
+    spoiler: u.spoiler,
+  }));
+
+const attachmentPatch = (landed: LandedUpload[]): AttachmentPatch => ({
+  attachmentIds: landed.flatMap(({ result }) => [
+    result.attachment.id,
+    ...(result.supportingAttachments ?? []).map((attachment) => attachment.id),
+  ]),
+  spoilerAttachmentIds: landed.filter((l) => l.spoiler).map((l) => l.result.attachment.id),
+  optimisticAttachments: landed.flatMap(({ result }) => [
+    result.attachment,
+    ...(result.supportingAttachments ?? []),
+  ]),
+  sealedAttachments: landed
+    .filter((l) => l.result.sealed)
+    .map((l) => ({ ...l.result.sealed!, ...(l.spoiler ? { spoiler: true } : {}) })),
+});
 
 interface ComposerProps {
   channelId: string;
@@ -318,6 +355,34 @@ export function Composer({
     for (const file of files) {
       const key = crypto.randomUUID();
       const controller = new AbortController();
+      const handle = {
+        signal: controller.signal,
+        onProgress: (fraction: number) => patch(key, { progress: fraction }),
+      };
+      // In an encrypted conversation the bytes, the name and the type are sealed
+      // before anything leaves the machine, so the upload the server sees is an
+      // opaque blob and a length (§7).
+      const upload: Promise<UploadResult> = isEncrypted(channelId)
+        ? uploadSealedAttachment(file, handle).then(({ attachment, supportingAttachments, ref }) => ({
+            attachment,
+            supportingAttachments,
+            sealed: ref,
+          }))
+        : uploadAttachment(file, handle).then((attachment) => ({ attachment }));
+
+      const done = upload
+        .then((result) => {
+          patch(key, { ...result, progress: 1 });
+          return result;
+        })
+        .catch((err: unknown) => {
+          // Cancelling is the user's own doing - drop(key) already removed the
+          // entry, so there's nothing to report.
+          if (err instanceof DOMException && err.name === 'AbortError') return null;
+          patch(key, { error: err instanceof Error ? err.message : 'Upload failed' });
+          return null;
+        });
+
       const entry: PendingUpload = {
         key,
         name: file.name,
@@ -327,30 +392,9 @@ export function Composer({
         spoiler: false,
         preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
         abort: () => controller.abort(),
+        done,
       };
       setUploads((prev) => [...prev, entry]);
-
-      const handle = {
-        signal: controller.signal,
-        onProgress: (fraction: number) => patch(key, { progress: fraction }),
-      };
-      // In an encrypted conversation the bytes, the name and the type are sealed
-      // before anything leaves the machine, so the upload the server sees is an
-      // opaque blob and a length (§7).
-      const upload = isEncrypted(channelId)
-        ? uploadSealedAttachment(file, handle).then(({ attachment, supportingAttachments, ref }) =>
-            patch(key, { attachment, supportingAttachments, sealed: ref, progress: 1 }),
-          )
-        : uploadAttachment(file, handle).then((attachment) =>
-            patch(key, { attachment, progress: 1 }),
-          );
-
-      void upload.catch((err: unknown) => {
-        // Cancelling is the user's own doing - drop(key) already removed the
-        // entry, so there's nothing to report.
-        if (err instanceof DOMException && err.name === 'AbortError') return;
-        patch(key, { error: err instanceof Error ? err.message : 'Upload failed' });
-      });
     }
   };
 
@@ -481,12 +525,11 @@ export function Composer({
     [draft, knownEmojiName],
   );
 
-  const uploading = uploads.some((u) => !isSettled(u));
   const failed = uploads.filter((u) => u.error !== undefined);
   const ready = uploads.filter((u) => u.attachment !== undefined);
   // Attachments can carry a message on their own, so an empty draft is fine as
   // long as something is going with it.
-  const canSend = (draft.trim().length > 0 || ready.length > 0) && !sending && !uploading;
+  const canSend = (draft.trim().length > 0 || uploads.length > 0) && !sending;
 
   const send = async () => {
     if (!canSend) return;
@@ -495,32 +538,39 @@ export function Composer({
       return;
     }
     const content = normalizeCustomEmojiNames(draft.trim(), emojiMap);
+    const batch = uploads;
+    const inFlight = batch.some((u) => !isSettled(u));
     setSending(true);
     try {
-      await sendMessage({
-        channelId,
-        content,
-        replyToId: replyTo?.id,
-        attachmentIds: ready.flatMap((u) => [
-          u.attachment!.id,
-          ...(u.supportingAttachments ?? []).map((attachment) => attachment.id),
-        ]),
-        spoilerAttachmentIds: ready.filter((u) => u.spoiler).map((u) => u.attachment!.id),
-        optimisticAttachments: ready.flatMap((u) => [
-          u.attachment!,
-          ...(u.supportingAttachments ?? []),
-        ]),
-        sealedAttachments: ready
-          .filter((u) => u.sealed)
-          .map((u) => ({ ...u.sealed!, ...(u.spoiler ? { spoiler: true } : {}) })),
-      });
+      const awaitAttachments = inFlight
+        ? async () => {
+            const landed = await Promise.all(
+              batch.map(async (u) => {
+                const result = await u.done;
+                return result ? { result, spoiler: u.spoiler } : null;
+              }),
+            );
+            const kept = landed.filter((l) => l !== null);
+            if (kept.length < batch.length) toast.error(t('composer.attachmentsDropped'));
+            return attachmentPatch(kept);
+          }
+        : undefined;
+      await sendMessage(
+        {
+          channelId,
+          content,
+          replyToId: replyTo?.id,
+          ...(inFlight ? {} : attachmentPatch(landedOf(ready))),
+        },
+        awaitAttachments,
+      );
       setDraft('');
       clearDraft(channelId);
       // The sent message clears the indicator on every receiver, so the next
       // keystroke has to be treated as a fresh start rather than falling inside
       // the window this send happened to land in.
       lastTypingSent.current = 0;
-      for (const u of ready) if (u.preview) URL.revokeObjectURL(u.preview);
+      for (const u of batch) if (u.preview) URL.revokeObjectURL(u.preview);
       setUploads([]);
       onClearReply();
     } catch (err) {

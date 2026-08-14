@@ -705,13 +705,14 @@ fun HomeScreen(
                                     onBack = { openChat = false; appViewModel.clearActiveChannel() },
                                     connected = connected,
                                     missedCount = unreads.unreadCountExcluding(channelId),
-                                    onSend = { content, replyTo, attachmentIds, sealedAttachments ->
+                                    onSend = { content, replyTo, attachmentIds, sealedAttachments, awaitUploads ->
                                         appViewModel.sendMessage(
                                             channelId,
                                             content,
                                             replyTo,
                                             attachmentIds,
                                             sealedAttachments,
+                                            awaitUploads,
                                         )
                                     },
                                      onEdit = { id, content, done ->

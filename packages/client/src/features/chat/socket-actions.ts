@@ -7,13 +7,16 @@ import { useAuthStore } from "../../stores/auth";
 import { messageKeys } from "../messages/queries";
 import { unreadActions } from "../../stores/unread";
 import { clearConversationNotifications } from "../../lib/notifications";
-import { queueMessage, type OutgoingMessagePayload } from "./outbox";
+import { queueMessage, type AttachmentPatch, type OutgoingMessagePayload } from "./outbox";
 import { seal } from "../e2ee/conversation";
 import { sealedAttachmentsOf } from "../e2ee/decrypt";
 import { isEncrypted } from "../e2ee/store";
 
-export const sendMessage = async (payload: OutgoingMessagePayload) => {
-  const message = queueMessage(payload);
+export const sendMessage = async (
+  payload: OutgoingMessagePayload,
+  awaitAttachments?: () => Promise<AttachmentPatch>,
+) => {
+  const message = queueMessage(payload, awaitAttachments);
   unreadActions.clear(payload.channelId);
   void clearConversationNotifications(payload.channelId).catch(() => {});
   return message;

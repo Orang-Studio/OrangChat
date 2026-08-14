@@ -362,6 +362,7 @@ fun ChatPane(
         replyToId: String?,
         attachmentIds: List<String>,
         sealedAttachments: List<SealedAttachmentRef>,
+        awaitUploads: (suspend () -> Pair<List<String>, List<SealedAttachmentRef>>)?,
     ) -> Unit,
     onEdit: (String, String, (String?) -> Unit) -> Unit,
     onDelete: (String) -> Unit,
@@ -1003,8 +1004,8 @@ fun ChatPane(
             }
         }
         Composer(
-            onSend = { content, attachmentIds, sealedAttachments ->
-                onSend(content, replyTo?.id, attachmentIds, sealedAttachments)
+            onSend = { content, attachmentIds, sealedAttachments, awaitUploads ->
+                onSend(content, replyTo?.id, attachmentIds, sealedAttachments, awaitUploads)
                 replyTo = null
             },
             onTyping = onTyping,
@@ -1820,6 +1821,7 @@ private fun Composer(
         content: String,
         attachmentIds: List<String>,
         sealedAttachments: List<SealedAttachmentRef>,
+        awaitUploads: (suspend () -> Pair<List<String>, List<SealedAttachmentRef>>)?,
     ) -> Unit,
     onTyping: () -> Unit,
     initial: String = "",
@@ -2043,7 +2045,7 @@ private fun Composer(
 
     val uploads by drafts.uploads.collectAsState()
     val draftError by drafts.error.collectAsState()
-    val visibleUploads = uploads.filter { it.key != autoSendVoiceKey }
+    val visibleUploads = uploads.filter { it.key != autoSendVoiceKey && !it.detached }
 
     LaunchedEffect(autoSendVoiceKey, uploads) {
         val key = autoSendVoiceKey ?: return@LaunchedEffect
@@ -2061,6 +2063,7 @@ private fun Composer(
                 "",
                 listOfNotNull(upload.attachment?.id, upload.sealed?.thumb?.attachmentId),
                 listOfNotNull(upload.sealed),
+                null,
             )
         }
     }
@@ -2209,8 +2212,7 @@ private fun Composer(
     val ready = visibleUploads.flatMap { upload ->
         listOfNotNull(upload.attachment?.id, upload.sealed?.thumb?.attachmentId)
     }
-    val enabled = (textState.text.isNotBlank() || ready.isNotEmpty() || allowEmpty) &&
-        visibleUploads.none { !it.settled } &&
+    val enabled = (textState.text.isNotBlank() || visibleUploads.isNotEmpty() || allowEmpty) &&
         visibleUploads.none { it.error != null }
     val sendDraft: () -> Unit = {
         val content = textState.text.toString().trim()
@@ -2218,14 +2220,14 @@ private fun Composer(
         if (kind != null && content != acknowledgedTokenContent) {
             tokenWarning = kind
         } else {
-            onSend(
-                content,
-                ready,
-                visibleUploads.mapNotNull { it.sealed },
-            )
+            if (visibleUploads.any { !it.settled }) {
+                onSend(content, emptyList(), emptyList(), drafts.detach(visibleUploads.map { it.key }))
+            } else {
+                onSend(content, ready, visibleUploads.mapNotNull { it.sealed }, null)
+                visibleUploads.forEach { drafts.remove(it.key) }
+            }
             textState.setTextAndPlaceCursorAtEnd("")
             drafts.dismissError()
-            visibleUploads.forEach { drafts.remove(it.key) }
             channelId?.let { textDrafts.clear(it) }
             resetKeyboard()
         }
@@ -2428,7 +2430,7 @@ private fun Composer(
                 textState.edit { append(emoji) }
                 onTyping()
             },
-            onGif = { url -> onSend(url, emptyList(), emptyList()) },
+            onGif = { url -> onSend(url, emptyList(), emptyList(), null) },
             onBackspace = {
                 val caret = textState.selection.end
                 val start = deleteStart(textState.text.toString(), caret)

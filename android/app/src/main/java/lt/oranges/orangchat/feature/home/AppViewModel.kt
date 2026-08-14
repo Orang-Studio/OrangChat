@@ -636,20 +636,12 @@ class AppViewModel @Inject constructor(
         replyToId: String? = null,
         attachmentIds: List<String> = emptyList(),
         sealedAttachments: List<lt.oranges.orangchat.crypto.SealedAttachmentRef> = emptyList(),
+        awaitUploads: (suspend () -> Pair<List<String>, List<lt.oranges.orangchat.crypto.SealedAttachmentRef>>)? = null,
     ) {
         val author = authRepository.currentUser?.asUser() ?: return
         val normalizedContent = normalizeCustomEmojiNames(content, _emojis.value)
         val localId = "pending:${UUID.randomUUID()}"
         val pending = PendingOutgoing(
-            localId,
-            channelId,
-            normalizedContent,
-            replyToId,
-            attachmentIds,
-            sealedAttachments,
-        )
-        pendingOutbox += pending
-        e2eeRepository.saveQueuedMessage(
             localId,
             channelId,
             normalizedContent,
@@ -671,6 +663,38 @@ class AppViewModel @Inject constructor(
             current + (channelId to (current[channelId].orEmpty() + optimistic))
         }
         updateConversationLatest(optimistic)
+        if (awaitUploads == null) {
+            queueOutgoing(pending)
+            return
+        }
+        viewModelScope.launch {
+            val (ids, sealed) = awaitUploads()
+            if (ids.isEmpty() && sealed.isEmpty() && normalizedContent.isBlank()) {
+                _pendingMessageIds.update { it - localId }
+                _messages.update { current ->
+                    current + (channelId to current[channelId].orEmpty().filterNot { it.id == localId })
+                }
+                return@launch
+            }
+            queueOutgoing(
+                pending.copy(
+                    attachmentIds = attachmentIds + ids,
+                    sealedAttachments = sealedAttachments + sealed,
+                ),
+            )
+        }
+    }
+
+    private fun queueOutgoing(pending: PendingOutgoing) {
+        pendingOutbox += pending
+        e2eeRepository.saveQueuedMessage(
+            pending.localId,
+            pending.channelId,
+            pending.content,
+            pending.replyToId,
+            pending.attachmentIds,
+            pending.sealedAttachments,
+        )
         flushPendingMessages()
     }
 

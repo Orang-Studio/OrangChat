@@ -39,6 +39,7 @@ class AttachmentDraftViewModel @Inject constructor(
         val previewUri: Uri? = null,
         val sourceUri: Uri? = null,
         val deleteSourceOnCleanup: Boolean = false,
+        val detached: Boolean = false,
     ) {
         val settled: Boolean get() = attachment != null || error != null
     }
@@ -51,15 +52,21 @@ class AttachmentDraftViewModel @Inject constructor(
 
     private val jobs = mutableMapOf<String, Job>()
 
-    val uploading: Boolean get() = _uploads.value.any { !it.settled }
-    val readyIds: List<String>
-        get() = _uploads.value.flatMap { upload ->
-            listOfNotNull(upload.attachment?.id, upload.sealed?.thumb?.attachmentId)
-        }
-    val readySealed: List<SealedAttachmentRef> get() = _uploads.value.mapNotNull { it.sealed }
-    val hasFailures: Boolean get() = _uploads.value.any { it.error != null }
-
     fun dismissError() { _error.value = null }
+
+    fun detach(keys: List<String>): suspend () -> Pair<List<String>, List<SealedAttachmentRef>> {
+        val batch = keys.toSet()
+        _uploads.update { list -> list.map { if (it.key in batch) it.copy(detached = true) else it } }
+        return {
+            batch.mapNotNull { jobs.remove(it) }.forEach { it.join() }
+            val done = _uploads.value.filter { it.key in batch }
+            _uploads.update { list -> list.filterNot { it.key in batch } }
+            done.forEach(::cleanup)
+            done.firstNotNullOfOrNull { it.error }?.let { _error.value = it }
+            val ids = done.flatMap { listOfNotNull(it.attachment?.id, it.sealed?.thumb?.attachmentId) }
+            ids to done.mapNotNull { it.sealed }
+        }
+    }
 
     fun add(
         uris: List<Uri>,
@@ -69,7 +76,7 @@ class AttachmentDraftViewModel @Inject constructor(
         if (uris.isEmpty()) return emptyList()
         _error.value = null
 
-        val room = AttachmentUploader.MAX_PER_MESSAGE - _uploads.value.size
+        val room = AttachmentUploader.MAX_PER_MESSAGE - _uploads.value.count { !it.detached }
         if (room <= 0) {
             _error.value = "A message can carry at most ${AttachmentUploader.MAX_PER_MESSAGE} attachments"
             return emptyList()
@@ -148,15 +155,18 @@ class AttachmentDraftViewModel @Inject constructor(
     }
 
     fun clear() {
-        jobs.values.forEach { it.cancel() }
-        jobs.clear()
-        _uploads.value.forEach(::cleanup)
-        _uploads.value = emptyList()
+        val dropped = _uploads.value.filterNot { it.detached }
+        dropped.forEach { jobs.remove(it.key)?.cancel() }
+        dropped.forEach(::cleanup)
+        _uploads.update { list -> list.filter { it.detached } }
         _error.value = null
     }
 
     override fun onCleared() {
-        clear()
+        jobs.values.forEach { it.cancel() }
+        jobs.clear()
+        _uploads.value.forEach(::cleanup)
+        _uploads.value = emptyList()
         super.onCleared()
     }
 
