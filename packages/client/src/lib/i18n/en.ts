@@ -383,6 +383,7 @@ export const en = {
   "expressionPicker.loadingGifs": "Loading GIFs…",
   "expressionPicker.noGifsFound": "No GIFs found",
   "expressionPicker.poweredByKlipy": "Powered by KLIPY",
+  "expressionPicker.recentlyUsed": "Recently used",
   "expressionPicker.searchKlipy": "Search KLIPY",
   "expressionPicker.searchKlipyGifs": "Search KLIPY GIFs",
 

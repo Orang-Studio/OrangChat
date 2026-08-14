@@ -32,6 +32,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -110,13 +111,17 @@ class KlipyGifViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     @Named("klipy") private val client: OkHttpClient,
     private val favoritesStore: GifFavoritesStore,
+    private val recentEmojiStore: RecentEmojiStore,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(KlipyGifState())
     val state = mutableState.asStateFlow()
     val favorites = favoritesStore.favorites
+    val recentEmojis = recentEmojiStore.recent
     private var requestJob: Job? = null
 
     fun toggleFavorite(gif: KlipyGif) = favoritesStore.toggle(gif)
+
+    fun recordEmoji(insert: String) = recentEmojiStore.record(insert)
     private val customerId: String by lazy {
         val preferences = context.getSharedPreferences("klipy", Context.MODE_PRIVATE)
         preferences.getString("customer_id", null) ?: UUID.randomUUID().toString().also {
@@ -271,6 +276,7 @@ fun ExpressionPickerSheet(
     var query by remember { mutableStateOf("") }
     val gifState by viewModel.state.collectAsState()
     val favorites by viewModel.favorites.collectAsState()
+    val recentEmojis by viewModel.recentEmojis.collectAsState()
 
     LaunchedEffect(tab, query, gifsEnabled) {
         if (tab == PickerTabId.GIFS && gifsEnabled) viewModel.search(query)
@@ -326,7 +332,11 @@ fun ExpressionPickerSheet(
             tab == PickerTabId.EMOJI || !gifsEnabled -> {
                 EmojiPanel(
                     groups = customGroups,
-                    onPick = onEmoji,
+                    recent = recentEmojis,
+                    onPick = { insert ->
+                        viewModel.recordEmoji(insert)
+                        onEmoji(insert)
+                    },
                     onBackspace = onBackspace,
                 )
             }
@@ -421,12 +431,49 @@ private sealed interface EmojiSection {
     ) : EmojiSection {
         override val count get() = emojis.size
     }
+
+    data class Recent(
+        override val title: String,
+        val entries: List<RecentEntry>,
+    ) : EmojiSection {
+        override val count get() = entries.size
+    }
 }
 
-private fun emojiSections(groups: List<CustomEmojiGroup>, query: String): List<EmojiSection> {
+/** A remembered pick: `url` is set when it resolves to a custom emoji. */
+private data class RecentEntry(val insert: String, val url: String?)
+
+private val SHORTCODE = Regex("^:([^:\\s]+):$")
+
+/**
+ * Recent picks paired back up with the emoji they name. A shortcode whose
+ * custom emoji is gone - deleted, or on a server this user has left - has
+ * nothing left to draw, so it drops out.
+ */
+private fun recentEntries(
+    recent: List<String>,
+    groups: List<CustomEmojiGroup>,
+): List<RecentEntry> = recent.mapNotNull { insert ->
+    val name = SHORTCODE.find(insert)?.groupValues?.get(1)
+        ?: return@mapNotNull RecentEntry(insert, null)
+    groups.asSequence()
+        .flatMap { it.emojis }
+        .firstOrNull { it.name.equals(name, ignoreCase = true) }
+        ?.let { RecentEntry(insert, it.url) }
+}
+
+private fun emojiSections(
+    groups: List<CustomEmojiGroup>,
+    recent: List<String>,
+    query: String,
+): List<EmojiSection> {
     val q = query.trim().lowercase()
     if (q.isEmpty()) {
-        return groups.map { EmojiSection.Custom(it.name, it.iconUrl, it.emojis) } +
+        val entries = recentEntries(recent, groups)
+        return listOfNotNull(
+            if (entries.isEmpty()) null else EmojiSection.Recent(RECENT_SECTION, entries),
+        ) +
+            groups.map { EmojiSection.Custom(it.name, it.iconUrl, it.emojis) } +
             EMOJI_CATEGORIES.map { EmojiSection.Standard(it.name, it.emojis) }
     }
     val custom = groups.mapNotNull { group ->
@@ -441,17 +488,24 @@ private fun emojiSections(groups: List<CustomEmojiGroup>, query: String): List<E
 
 private const val EMOJI_SEARCH_LIMIT = 64
 private const val SEARCH_SECTION = "search"
+private const val RECENT_SECTION = "recent"
 
 @Composable
 private fun ColumnScope.EmojiPanel(
     groups: List<CustomEmojiGroup>,
+    recent: List<String>,
     onPick: (String) -> Unit,
     onBackspace: () -> Unit,
 ) {
     val c = OrangTheme.colors
     val context = LocalContext.current
     var query by remember { mutableStateOf("") }
-    val sections = remember(groups, query) { emojiSections(groups, query) }
+    // Recents are read once per opening: reshuffling the grid under the finger
+    // that just picked something is worse than showing it on the next visit.
+    val openingRecent = remember(groups) { recent }
+    val sections = remember(groups, openingRecent, query) {
+        emojiSections(groups, openingRecent, query)
+    }
     val grid = rememberLazyGridState()
     val scope = rememberCoroutineScope()
     // Each section is one header item plus its emoji, so a shortcut can jump to it.
@@ -539,6 +593,28 @@ private fun ColumnScope.EmojiPanel(
                         contentAlignment = Alignment.Center,
                     ) { Text(emoji, fontSize = 22.sp) }
                 }
+
+                is EmojiSection.Recent -> items(
+                    section.entries,
+                    key = { "recent-$index-${it.insert}" },
+                ) { entry ->
+                    Box(
+                        modifier = Modifier
+                            .aspectRatio(1f)
+                            .clickable { onPick(entry.insert) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (entry.url != null) {
+                            AsyncImage(
+                                model = absoluteUrl(entry.url),
+                                contentDescription = entry.insert,
+                                modifier = Modifier.size(26.dp),
+                            )
+                        } else {
+                            Text(entry.insert, fontSize = 22.sp)
+                        }
+                    }
+                }
             }
         }
     }
@@ -580,6 +656,13 @@ private fun ColumnScope.EmojiPanel(
                             section.emojis.firstOrNull().orEmpty(),
                             fontSize = 18.sp,
                         )
+
+                        is EmojiSection.Recent -> Icon(
+                            Icons.Default.History,
+                            contentDescription = sectionTitle(context, section),
+                            tint = c.inkSecondary,
+                            modifier = Modifier.size(20.dp),
+                        )
                     }
                 }
             }
@@ -598,12 +681,11 @@ private fun ColumnScope.EmojiPanel(
 }
 
 @Composable
-private fun sectionTitle(context: Context, section: EmojiSection): String =
-    if (section.title == SEARCH_SECTION) {
-        AppStrings.get(context, R.string.catalog_search_results_0144dae8)
-    } else {
-        section.title
-    }
+private fun sectionTitle(context: Context, section: EmojiSection): String = when (section.title) {
+    SEARCH_SECTION -> AppStrings.get(context, R.string.catalog_search_results_0144dae8)
+    RECENT_SECTION -> AppStrings.get(context, R.string.catalog_recently_used_2f8a19c4)
+    else -> section.title
+}
 
 @Composable
 private fun GifGrid(
