@@ -1,0 +1,21 @@
+OrangChat 1.0.4
+
+New
+- The emoji picker now leads with a "Recently used" row of your last picks,
+  so a favourite emoji or custom server emoji is always one tap away.
+- Sending a message no longer waits on its attachment: it goes out right
+  away, shows as sending, and completes once the file finishes uploading.
+  If the upload fails, the message is marked as not sent so it can be
+  retried or discarded.
+
+Fixed
+- Custom emoji in the `:` shortcode suggester popup rendered blank; they now
+  show their thumbnail like everywhere else in the picker.
+- Typed emoji shortcodes were highlighted bold, which nudged the caret out
+  of line with the real text; the highlight is colour-only now.
+- Opening or closing the emoji/GIF picker no longer bounces the conversation
+  above the composer.
+- Jumping to a message from search or a reply now lands it precisely at the
+  top of the screen instead of a rough estimate.
+- The direct message list's last-activity time no longer overlaps the
+  avatar; it sits at the end of the title line.
