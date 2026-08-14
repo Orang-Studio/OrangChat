@@ -187,14 +187,6 @@ function ConversationRow({
                   className="size-8"
                 />
               )}
-              {lastActivity && (
-                <span
-                  aria-hidden
-                  className="absolute -left-1 -top-1 rounded-full bg-surface-1 px-1 text-[9px] font-medium leading-[14px] text-ink-muted"
-                >
-                  {lastActivity}
-                </span>
-              )}
             </span>
             <span className="min-w-0 flex-1">
               <span className="flex min-w-0 items-center gap-1.5">
@@ -212,6 +204,14 @@ function ConversationRow({
                     aria-label={t("dmSidebar.muted")}
                     className="size-3.5 shrink-0 text-ink-muted"
                   />
+                )}
+                {lastActivity && (
+                  <span
+                    aria-hidden
+                    className="ml-auto shrink-0 text-[11px] font-medium leading-tight text-ink-muted"
+                  >
+                    {lastActivity}
+                  </span>
                 )}
               </span>
               {typingLine ? (

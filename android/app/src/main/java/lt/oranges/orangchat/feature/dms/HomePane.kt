@@ -297,49 +297,48 @@ private fun ConversationRow(
                 ),
         )
         Spacer(Modifier.width(6.dp))
-        Box {
-            if (others.size > 1 || lead == null) {
-                GroupIcon(iconUrl = convo.iconUrl, size = 38.dp)
-            } else {
-                Avatar(
-                    lead,
-                    size = 38.dp,
-                    status = presence[lead.id] ?: PresenceStatus.OFFLINE,
-                )
-            }
-            if (lastActivity != null) {
-                Text(
-                    text = lastActivity,
-                    color = c.inkMuted,
-                    fontSize = 9.sp,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .offset(x = (-4).dp, y = (-4).dp)
-                        .clip(RoundedCornerShape(OrangRadius.sm))
-                        .background(c.surface1)
-                        .padding(horizontal = 2.dp),
-                )
-            }
+        if (others.size > 1 || lead == null) {
+            GroupIcon(iconUrl = convo.iconUrl, size = 38.dp)
+        } else {
+            Avatar(
+                lead,
+                size = 38.dp,
+                status = presence[lead.id] ?: PresenceStatus.OFFLINE,
+            )
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = title,
-                    color = if (unread || active) c.ink else c.inkSecondary,
-                    fontWeight = if (unread) FontWeight.Bold else FontWeight.Medium,
-                    fontSize = 15.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                if (muted) {
-                    Spacer(Modifier.width(6.dp))
-                    Icon(
-                        Icons.Default.NotificationsOff,
-                        contentDescription = AppStrings.get(context, R.string.catalog_muted_b9e78ced),
-                        tint = c.inkMuted,
-                        modifier = Modifier.size(14.dp),
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = title,
+                        color = if (unread || active) c.ink else c.inkSecondary,
+                        fontWeight = if (unread) FontWeight.Bold else FontWeight.Medium,
+                        fontSize = 15.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (muted) {
+                        Spacer(Modifier.width(6.dp))
+                        Icon(
+                            Icons.Default.NotificationsOff,
+                            contentDescription = AppStrings.get(context, R.string.catalog_muted_b9e78ced),
+                            tint = c.inkMuted,
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
+                }
+                if (lastActivity != null) {
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = lastActivity,
+                        color = c.inkMuted,
+                        fontSize = 11.sp,
+                        maxLines = 1,
                     )
                 }
             }

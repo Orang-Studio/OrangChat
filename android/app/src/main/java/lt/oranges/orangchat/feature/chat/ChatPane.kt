@@ -115,6 +115,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -288,6 +289,33 @@ private const val JUMP_VIEWPORT_FRACTION = 0.72f
 
 private fun LazyListState.jumpOffset(): Int =
     (layoutInfo.viewportSize.height * JUMP_VIEWPORT_FRACTION).toInt()
+
+/**
+ * Offset that parks `index` against the far edge of the viewport - the top, in
+ * this reversed list. The row has to be measured first, so the caller scrolls it
+ * into view before asking; without a measurement this falls back to the rough
+ * fraction, which lands close to the top but never on it.
+ */
+private fun LazyListState.topOffsetFor(index: Int): Int {
+    val viewport = layoutInfo.viewportSize.height
+    if (viewport <= 0) return 0
+    val row = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
+        ?: return jumpOffset()
+    return (viewport - row.size).coerceAtLeast(0)
+}
+
+/** Bring `index` into view, then settle it at the top of the viewport. */
+private suspend fun LazyListState.scrollRowToTop(index: Int, animate: Boolean) {
+    val visible = layoutInfo.visibleItemsInfo.any { it.index == index }
+    if (animate && visible) {
+        animateScrollToItem(index, topOffsetFor(index))
+        return
+    }
+    scrollToItem(index)
+    snapshotFlow { layoutInfo.visibleItemsInfo.any { it.index == index } }
+        .first { it }
+    scrollToItem(index, topOffsetFor(index))
+}
 
 private data class MessageRowData(
     val message: Message,
@@ -488,7 +516,7 @@ fun ChatPane(
         while (pagesAsked <= JUMP_MAX_PAGES) {
             val index = liveRows.indexOfFirst { it.message.id == target }
             if (index >= 0) {
-                listState.scrollToItem(index, listState.jumpOffset())
+                listState.scrollRowToTop(index, animate = false)
                 highlightedId = target
                 landed = true
                 break
@@ -544,12 +572,7 @@ fun ChatPane(
         val index = rows.indexOfFirst { it.message.id == id }
         if (index >= 0) {
             jumpScope.launch {
-                val offset = listState.jumpOffset()
-                if (reducedMotion) {
-                    listState.scrollToItem(index, offset)
-                } else {
-                    listState.animateScrollToItem(index, offset)
-                }
+                listState.scrollRowToTop(index, animate = !reducedMotion)
                 highlightedId = id
             }
         }
@@ -1814,23 +1837,40 @@ private fun Composer(
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     var pickerOpen by remember { mutableStateOf(false) }
+    // Stays true while the keyboard animates back in over the picker's slot, so
+    // the sheet is still mounted to shrink out of the way frame by frame.
+    var pickerYielding by remember { mutableStateOf(false) }
     val density = LocalDensity.current
     val imeBottom = WindowInsets.ime.getBottom(density)
     val navBottom = WindowInsets.navigationBars.getBottom(density)
     // The picker stands in for the keyboard, so it takes the height the keyboard had.
     var keyboardHeight by rememberSaveable { mutableStateOf(0) }
-    LaunchedEffect(imeBottom, navBottom) {
-        val measured = imeBottom - navBottom
-        if (measured > keyboardHeight) keyboardHeight = measured
+    val imeOverlap = (imeBottom - navBottom).coerceAtLeast(0)
+    LaunchedEffect(imeOverlap) {
+        if (imeOverlap > keyboardHeight) keyboardHeight = imeOverlap
     }
     // Typing in the message box means the keyboard is wanted back; the picker's
     // own search field also raises it, so only the composer's focus counts.
     var composerFocused by remember { mutableStateOf(false) }
-    LaunchedEffect(imeBottom > 0) { if (imeBottom > 0 && composerFocused) pickerOpen = false }
+    val yieldPickerToKeyboard: () -> Unit = {
+        if (pickerOpen) {
+            pickerOpen = false
+            pickerYielding = true
+        }
+    }
+    LaunchedEffect(imeBottom > 0) { if (imeBottom > 0 && composerFocused) yieldPickerToKeyboard() }
     BackHandler(pickerOpen) { pickerOpen = false }
     val pickerHeight = with(density) {
         if (keyboardHeight > 0) keyboardHeight.toDp() else DEFAULT_PICKER_HEIGHT
     }
+    // The IME inset already pushes the pane up by `imeOverlap`; the sheet only
+    // takes what is left of the slot. Opening the picker hides the keyboard and
+    // closing it shows the keyboard again, so during either animation the two
+    // add up to the same total and nothing above the composer moves.
+    val sheetHeight = with(density) {
+        (pickerHeight - imeOverlap.toDp()).coerceAtLeast(0.dp)
+    }
+    LaunchedEffect(sheetHeight) { if (sheetHeight <= 0.dp) pickerYielding = false }
     val context = LocalContext.current
     val voiceRecorder = remember(context) { VoiceMessageRecorder(context) }
     var recordingHint by remember(channelId) { mutableStateOf<String?>(null) }
@@ -2219,7 +2259,7 @@ private fun Composer(
                 .size(38.dp)
                 .clickable {
                     if (pickerOpen) {
-                        pickerOpen = false
+                        yieldPickerToKeyboard()
                         focusRequester.requestFocus()
                         keyboard?.show()
                     } else {
@@ -2268,7 +2308,7 @@ private fun Composer(
                 val draftText = textState.text.toString()
                 BasicText(
                     text = remember(draftText, customEmojis) {
-                        highlightEmoji(draftText, c.info, customEmojis)
+                        highlightEmoji(draftText, c.primary, customEmojis)
                     },
                     style = composerStyle,
                     modifier = Modifier.fillMaxWidth(),
@@ -2378,9 +2418,9 @@ private fun Composer(
         }
     }
 
-    if (pickerOpen) {
+    if (pickerOpen || pickerYielding) {
         ExpressionPickerSheet(
-            height = pickerHeight,
+            height = sheetHeight,
             onDismiss = { pickerOpen = false },
             gifsEnabled = channelId != null,
             customGroups = emojiGroups,
@@ -2465,7 +2505,7 @@ private fun EmojiSuggestions(
             ) {
                 if (suggestion.url != null) {
                     AsyncImage(
-                        model = suggestion.url,
+                        model = absoluteUrl(suggestion.url),
                         contentDescription = suggestion.label,
                         modifier = Modifier.size(22.dp),
                     )
