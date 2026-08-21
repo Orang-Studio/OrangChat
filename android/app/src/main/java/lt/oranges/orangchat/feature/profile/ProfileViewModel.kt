@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import lt.oranges.orangchat.data.model.ProfileWidget
 import lt.oranges.orangchat.data.repository.AuthRepository
 import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.buildImagePart
@@ -42,6 +43,7 @@ class ProfileViewModel @Inject constructor(
         pronouns: String? = null,
         accentColor: Int? = null,
         profileCss: String? = null,
+        profileWidgets: List<ProfileWidget>? = null,
     ) {
         viewModelScope.launch {
             _state.value = _state.value.copy(saving = true, error = null)
@@ -53,6 +55,7 @@ class ProfileViewModel @Inject constructor(
                     pronouns = pronouns,
                     accentColor = accentColor,
                     profileCss = profileCss,
+                    profileWidgets = profileWidgets,
                 )
             }.onFailure {
                 _state.value = _state.value.copy(error = it.message ?: AppStrings.get(context, R.string.catalog_could_not_save_your_profile_e13d9374))

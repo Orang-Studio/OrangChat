@@ -3,6 +3,10 @@ package lt.oranges.orangchat.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -53,6 +57,47 @@ fun OrangTabs(
                     .clickable(interactionSource = interaction, indication = null) { onSelect(index) }
                     .padding(horizontal = 12.dp, vertical = 6.dp),
             )
+        }
+    }
+}
+
+@Composable
+fun OrangUnderlineTabs(
+    tabs: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val c = OrangTheme.colors
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .drawBehind {
+                val y = size.height
+                drawLine(c.border, Offset(0f, y), Offset(size.width, y), 1f)
+            },
+    ) {
+        tabs.forEachIndexed { index, label ->
+            val active = index == selectedIndex
+            val interaction = remember { MutableInteractionSource() }
+            Box(
+                modifier = Modifier
+                    .clickable(interactionSource = interaction, indication = null) { onSelect(index) }
+                    .drawBehind {
+                        if (!active) return@drawBehind
+                        val y = size.height - 1.dp.toPx()
+                        drawLine(c.primary, Offset(0f, y), Offset(size.width, y), 2.dp.toPx())
+                    },
+            ) {
+                Text(
+                    text = label,
+                    color = if (active) c.primary else c.inkSecondary,
+                    fontSize = 15.sp,
+                    fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                )
+            }
         }
     }
 }

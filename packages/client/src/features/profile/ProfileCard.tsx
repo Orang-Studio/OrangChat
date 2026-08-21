@@ -1,14 +1,19 @@
 import { useId, useMemo, type CSSProperties, type ReactNode } from "react";
-import type { Connection, PresenceDevice, PresenceStatus, UserActivity } from "@orangchat/shared";
+import { Camera, Loader2, Pencil } from "lucide-react";
+import type {
+  Connection,
+  PresenceDevice,
+  PresenceStatus,
+  ProfileWidget,
+  ProfileWidgetDefinition,
+  UserActivity,
+} from "@orangchat/shared";
 import { Avatar } from "../../components/Avatar";
 import { DeviceIndicators } from "../../components/DeviceIndicators";
-import { ActivityStatus } from "../../components/ActivityStatus";
 import { cn } from "../../lib/cn";
-import { formatFullTime } from "../../lib/time";
 import { sanitizeProfileCss } from "../../lib/profileCss";
-import { ConnectionCards } from "../connections/ConnectionCards";
-import { ProfileBadges } from "./ProfileBadges";
 import { t } from "../../lib/i18n";
+import { ProfileWidgets } from "./ProfileWidgetRenderer";
 
 export interface ProfileCardData {
   displayName: string;
@@ -25,12 +30,73 @@ export interface ProfileCardData {
 
   badges?: readonly string[];
 
+  profileWidgets?: ProfileWidget[] | null;
+
+  profileFields?: Record<string, string> | null;
+
+  widgetCatalog?: Record<string, ProfileWidgetDefinition> | null;
+
   profileCss?: string | null;
 
   connections?: Connection[];
 }
 
+/**
+ * Turns the preview into the editor: the banner and the avatar become the
+ * upload buttons, so there is nothing to change about your picture that isn't
+ * on the picture itself.
+ */
+export interface ProfileCardEdit {
+  onPickAvatar: () => void;
+  onPickBanner: () => void;
+  busy?: "avatar" | "banner" | null;
+}
+
 const hex = (color: number) => `#${color.toString(16).padStart(6, "0")}`;
+
+function EditOverlay({
+  label,
+  rounded,
+  busy,
+  onClick,
+}: {
+  label: string;
+  rounded: "full" | "md";
+  busy?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={cn(
+        "absolute inset-0 z-10 flex items-center justify-center bg-black/45 text-white opacity-0 transition-opacity",
+        "hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none",
+        busy && "opacity-100",
+        rounded === "full" ? "rounded-full" : "",
+      )}
+    >
+      {busy ? (
+        <Loader2 aria-hidden className="size-5 animate-spin" />
+      ) : (
+        <Camera aria-hidden className="size-5" />
+      )}
+    </button>
+  );
+}
+
+function EditBadge() {
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute right-1 top-1 z-20 flex size-5 items-center justify-center rounded-full bg-surface-2 text-ink shadow ring-1 ring-border"
+    >
+      <Pencil aria-hidden className="size-3" />
+    </span>
+  );
+}
 
 /**
  * Presentational Discord-style profile card. Shared by the profile popup and
@@ -40,9 +106,11 @@ const hex = (color: number) => `#${color.toString(16).padStart(6, "0")}`;
 export function ProfileCard({
   data,
   actions,
+  edit,
 }: {
   data: ProfileCardData;
   actions?: ReactNode;
+  edit?: ProfileCardEdit;
 }) {
   const accent = data.accentColor != null ? hex(data.accentColor) : undefined;
 
@@ -69,7 +137,12 @@ export function ProfileCard({
       style={{ "--oc-pf-accent": accent ?? "var(--oc-surface-4)" } as CSSProperties}
     >
       {themeCss && <style dangerouslySetInnerHTML={{ __html: themeCss }} />}
-      <div className="oc-pf-banner h-20 w-full bg-[var(--oc-pf-accent)]">
+      <div
+        className={cn(
+          "oc-pf-banner h-20 w-full bg-[var(--oc-pf-accent)]",
+          edit && "relative cursor-pointer",
+        )}
+      >
         {data.bannerUrl && (
           <img
             src={data.bannerUrl}
@@ -77,10 +150,26 @@ export function ProfileCard({
             className="oc-pf-banner-img size-full object-cover"
           />
         )}
+        {edit && (
+          <>
+            <EditOverlay
+              label={t("profileCard.changeBanner")}
+              rounded="md"
+              busy={edit.busy === "banner"}
+              onClick={edit.onPickBanner}
+            />
+            <EditBadge />
+          </>
+        )}
       </div>
       <div className="oc-pf-inner px-4 pb-4">
         <div className="oc-pf-avatar -mt-9 mb-2">
-          <span className="oc-pf-avatar-frame inline-block rounded-full bg-surface-2 p-1.5">
+          <span
+            className={cn(
+              "oc-pf-avatar-frame inline-block rounded-full bg-surface-2 p-1.5",
+              edit && "relative cursor-pointer",
+            )}
+          >
             <Avatar
               user={{
                 displayName: data.displayName,
@@ -92,6 +181,17 @@ export function ProfileCard({
               imgClassName="oc-pf-avatar-img rounded-full"
               fallbackClassName="oc-pf-avatar-fallback rounded-full"
             />
+            {edit && (
+              <>
+                <EditOverlay
+                  label={t("profileCard.changeAvatar")}
+                  rounded="full"
+                  busy={edit.busy === "avatar"}
+                  onClick={edit.onPickAvatar}
+                />
+                <EditBadge />
+              </>
+            )}
           </span>
         </div>
 
@@ -100,9 +200,6 @@ export function ProfileCard({
             <h2 className="oc-pf-name truncate text-base font-bold">
               {data.displayName || "-"}
             </h2>
-            {data.pronouns && (
-              <span className="oc-pf-pronouns text-xs text-ink-muted">{data.pronouns}</span>
-            )}
           </div>
           <div className="oc-pf-identity flex min-w-0 items-center gap-1.5">
             <p className="oc-pf-username truncate text-sm text-ink-secondary">
@@ -117,35 +214,9 @@ export function ProfileCard({
               />
             )}
           </div>
-          <ActivityStatus
-            activities={data.activities ?? []}
-            className="oc-pf-activity mt-2"
-            compact={false}
-          />
-
-          <ProfileBadges badges={data.badges ?? []} className="mt-2" />
-
-          {data.bio && (
-            <div className="oc-pf-bio oc-pf-section mt-2.5 border-t border-border pt-2.5">
-              <h3 className="oc-pf-heading mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                {t("profileCard.aboutMe")}
-              </h3>
-              <p className="oc-pf-bio-text whitespace-pre-wrap break-words text-sm">
-                {data.bio}
-              </p>
-            </div>
-          )}
-
-          <ConnectionCards connections={data.connections ?? []} />
-
-          {data.createdAt && (
-            <div className="oc-pf-member oc-pf-section mt-2.5 border-t border-border pt-2.5">
-              <h3 className="oc-pf-heading mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                {t("profileCard.memberSince")}
-              </h3>
-              <p className="oc-pf-member-text text-sm">{formatFullTime(data.createdAt)}</p>
-            </div>
-          )}
+          <div className="mt-2">
+            <ProfileWidgets data={data} />
+          </div>
 
           {actions && <div className="oc-pf-actions mt-2.5 flex gap-2">{actions}</div>}
         </div>

@@ -80,14 +80,7 @@ fun UserFooter(
         Spacer(Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(self.displayName, color = c.ink, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("@${self.username}", color = c.inkMuted, fontSize = 12.sp)
-                Spacer(Modifier.width(5.dp))
-                DeviceIndicators(
-                    status = self.status,
-                    devices = setOf(lt.oranges.orangchat.data.model.PresenceDevice.MOBILE),
-                )
-            }
+            Text("@${self.username}", color = c.inkMuted, fontSize = 12.sp)
             ActivityStatus(self.activities)
         }
         Icon(

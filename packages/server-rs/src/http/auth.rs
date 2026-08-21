@@ -18,7 +18,9 @@ use crate::http::{bad_request, valid_email, valid_username, AuthUser, ClientIp};
 use crate::ids::cuid;
 use crate::models::UserRow;
 use crate::oauth;
-use crate::services::{account, badge, passkey, presence, qr, rate_limit, totp, user};
+use crate::services::{
+    account, badge, passkey, presence, profile_widget, qr, rate_limit, totp, user,
+};
 use crate::state::AppState;
 
 const OAUTH_STATE_COOKIE: &str = "oc_oauth_state";
@@ -850,6 +852,9 @@ async fn patch_me(
             Value::String(s) if s.len() <= 100_000 => Some(s.clone()),
             _ => return Err(bad_request("Invalid input")),
         });
+    }
+    if let Some(v) = obj.get("profileWidgets") {
+        patch.profile_widgets = Some(profile_widget::validate_widgets(&state.widgets, v)?);
     }
     if let Some(v) = obj.get("dmPrivacy") {
         let s = v.as_str().ok_or_else(|| bad_request("Invalid input"))?;

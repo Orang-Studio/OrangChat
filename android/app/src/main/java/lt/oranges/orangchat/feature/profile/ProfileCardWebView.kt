@@ -1,6 +1,7 @@
 package lt.oranges.orangchat.feature.profile
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.graphics.Color as AndroidColor
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -20,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import lt.oranges.orangchat.R
 import lt.oranges.orangchat.data.model.PresenceStatus
+import lt.oranges.orangchat.data.model.ProfileWidgetDefinition
 import lt.oranges.orangchat.data.model.User
 import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.AppStrings
@@ -35,13 +37,14 @@ fun ProfileCardWebView(
     user: User,
     modifier: Modifier = Modifier,
     presence: PresenceStatus? = null,
+    definitions: Map<String, ProfileWidgetDefinition> = emptyMap(),
 ) {
     val context = LocalContext.current
     val colors = OrangTheme.colors
     val aboutMeLabel = AppStrings.get(context, R.string.catalog_about_me_e3ba4ef3)
     val memberSinceLabel = AppStrings.get(context, R.string.catalog_member_since_f425b08f)
-    val card = remember(user, presence, colors, aboutMeLabel, memberSinceLabel) {
-        buildProfileCardHtml(user, colors, aboutMeLabel, memberSinceLabel, presence)
+    val card = remember(user, presence, colors, aboutMeLabel, memberSinceLabel, definitions) {
+        buildProfileCardHtml(user, colors, aboutMeLabel, memberSinceLabel, presence, definitions)
     }
     var heightDp by remember(user.id) { mutableIntStateOf(0) }
 
@@ -87,7 +90,17 @@ private class ProfileCardWebViewClient(
     private val onHeight: (Int) -> Unit,
 ) : WebViewClient() {
 
-    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = true
+    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+        val url = request.url
+        if (url.scheme == "http" || url.scheme == "https") {
+            runCatching {
+                view.context.startActivity(
+                    Intent(Intent.ACTION_VIEW, url).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            }
+        }
+        return true
+    }
 
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
         val url = request.url.toString()

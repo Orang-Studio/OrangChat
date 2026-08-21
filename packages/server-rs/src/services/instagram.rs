@@ -9,6 +9,7 @@ use crate::http::link_previews::fetch_html;
 use crate::state::AppState;
 
 const CACHE_TTL_SECONDS: u64 = 15 * 60;
+const RESOLVED_CACHE_TTL_SECONDS: u64 = 7 * 24 * 60 * 60;
 
 const MAX_CAPTION_CHARS: usize = 400;
 
@@ -84,10 +85,13 @@ async fn write_cache(state: &AppState, shortcode: &str, post: &Post) {
     let Ok(encoded) = serde_json::to_string(post) else {
         return;
     };
+    let ttl = if post.has_media() {
+        RESOLVED_CACHE_TTL_SECONDS
+    } else {
+        CACHE_TTL_SECONDS
+    };
     let mut con = state.rd();
-    let _: Result<(), _> = con
-        .set_ex(cache_key(shortcode), encoded, CACHE_TTL_SECONDS)
-        .await;
+    let _: Result<(), _> = con.set_ex(cache_key(shortcode), encoded, ttl).await;
 }
 
 fn parse(html: &str) -> Post {

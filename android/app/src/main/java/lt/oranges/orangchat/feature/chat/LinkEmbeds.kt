@@ -49,7 +49,7 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
 import java.time.Instant
 
 private const val MAX_EMBEDS = 5
-private val URL = Regex("https?://[^\\s<]+", RegexOption.IGNORE_CASE)
+internal val URL = Regex("https?://[^\\s<]+", RegexOption.IGNORE_CASE)
 private val FENCED_CODE = Regex("```[\\s\\S]*?```")
 private val INLINE_CODE = Regex("`[^`\\n]*`")
 private val IMAGE_PATH = Regex("\\.(?:avif|gif|jpe?g|png|webp)$", RegexOption.IGNORE_CASE)
@@ -150,11 +150,41 @@ fun LinkEmbeds(
     }
 }
 
+private const val YOUTUBE_EMBED_ORIGIN = "https://www.youtube-nocookie.com"
+
+/**
+ * Wraps the embed in an actual `<iframe>` inside a minimal HTML page, rather than
+ * navigating the WebView straight to the embed URL. YouTube's player script expects a
+ * real parent frame to postMessage-handshake with; loaded as the top-level document it
+ * never completes that handshake and the player never draws, leaving just the WebView's
+ * black background - i.e. the whole box renders as blank black.
+ */
+private fun youtubeEmbedHtml(embedUrl: String): String = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+        <style>
+            html, body { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; }
+            iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+        </style>
+    </head>
+    <body>
+        <iframe
+            src="$embedUrl"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+        ></iframe>
+    </body>
+    </html>
+""".trimIndent()
+
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun YoutubeEmbed(video: YoutubeVideo) {
     val c = OrangTheme.colors
-    val embedUrl = "https://www.youtube-nocookie.com/embed/${video.id}" +
+    val embedUrl = "$YOUTUBE_EMBED_ORIGIN/embed/${video.id}" +
         (video.start?.let { "?start=$it" } ?: "")
     var webView by remember(video.id, video.start) { mutableStateOf<WebView?>(null) }
     Spacer(Modifier.height(6.dp))
@@ -171,15 +201,17 @@ private fun YoutubeEmbed(video: YoutubeVideo) {
                 settings.allowContentAccess = false
                 settings.mediaPlaybackRequiresUserGesture = true
                 settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                settings.useWideViewPort = true
+                settings.loadWithOverviewMode = true
                 tag = embedUrl
-                loadUrl(embedUrl)
+                loadDataWithBaseURL(YOUTUBE_EMBED_ORIGIN, youtubeEmbedHtml(embedUrl), "text/html", "utf-8", null)
                 webView = this
             }
         },
         update = { view ->
             if (view.tag != embedUrl) {
                 view.tag = embedUrl
-                view.loadUrl(embedUrl)
+                view.loadDataWithBaseURL(YOUTUBE_EMBED_ORIGIN, youtubeEmbedHtml(embedUrl), "text/html", "utf-8", null)
             }
         },
         modifier = Modifier

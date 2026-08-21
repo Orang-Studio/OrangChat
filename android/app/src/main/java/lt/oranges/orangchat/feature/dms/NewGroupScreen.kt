@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import lt.oranges.orangchat.data.model.Friend
+import lt.oranges.orangchat.data.model.PresenceDevice
 import lt.oranges.orangchat.data.model.PresenceStatus
 import lt.oranges.orangchat.ui.components.Avatar
 import lt.oranges.orangchat.ui.components.ButtonSize
@@ -53,6 +54,7 @@ private const val MAX_RECIPIENTS = 14
 fun NewGroupScreen(
     friends: List<Friend>,
     presence: Map<String, PresenceStatus>,
+    presenceDevices: Map<String, Set<PresenceDevice>> = emptyMap(),
     onBack: () -> Unit,
     onConfirm: (List<String>) -> Unit,
     modifier: Modifier = Modifier,
@@ -166,7 +168,9 @@ fun NewGroupScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Avatar(
-                        friend.user,
+                        friend.user.copy(
+                            devices = presenceDevices[friend.user.id]?.toList() ?: friend.user.devices,
+                        ),
                         size = 38.dp,
                         status = presence[friend.user.id] ?: friend.user.status,
                     )

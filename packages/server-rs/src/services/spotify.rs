@@ -16,6 +16,8 @@ use crate::state::AppState;
 
 const POLL_INTERVAL: StdDuration = StdDuration::from_secs(15);
 
+pub const ACTIVITY_KIND: &str = "listening";
+
 #[derive(Debug, FromRow)]
 struct SpotifyConnection {
     id: String,
@@ -60,7 +62,7 @@ async fn refresh_access_token(state: &AppState, row: &SpotifyConnection) -> AppR
     let refresh = row
         .refresh_token
         .as_deref()
-        .ok_or_else(|| AppError::BadRequest("Spotify needs to be linked again".into()))?;
+        .ok_or_else(|| AppError::BadRequest("This account needs to be linked again".into()))?;
     let refresh = decrypt(state, row, refresh)?;
     let client_id = state
         .config
@@ -183,7 +185,7 @@ fn activity_from_playback(body: &Value) -> Option<ActivityDto> {
         })
         .map(|value| value.to_rfc3339());
     Some(ActivityDto {
-        kind: "spotify".into(),
+        kind: ACTIVITY_KIND.into(),
         name,
         details,
         url,
@@ -252,7 +254,7 @@ async fn poll_connection(state: &AppState, row: &SpotifyConnection) -> AppResult
         }
         other => other?,
     };
-    if presence::set_activity(state, &row.user_id, "spotify", activity).await? {
+    if presence::set_activity(state, &row.user_id, ACTIVITY_KIND, activity).await? {
         let status = presence::get_status(state, &row.user_id).await?;
         crate::socket::broadcast_presence(state.io(), state, &row.user_id, &status).await;
     }
@@ -292,7 +294,7 @@ pub async fn run_poll_loop(state: AppState) {
 
 #[cfg(test)]
 mod tests {
-    use super::activity_from_playback;
+    use super::{activity_from_playback, ACTIVITY_KIND};
     use serde_json::json;
 
     #[test]
@@ -311,7 +313,7 @@ mod tests {
             }
         }))
         .unwrap();
-        assert_eq!(activity.kind, "spotify");
+        assert_eq!(activity.kind, ACTIVITY_KIND);
         assert_eq!(activity.name, "Orange Sky");
         assert_eq!(activity.details.as_deref(), Some("The Citrus"));
         assert!(activity.started_at.is_some());

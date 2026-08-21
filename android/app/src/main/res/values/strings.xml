@@ -706,4 +706,74 @@
     <string name="language_system" formatted="false">Match system</string>
     <string name="language_title" formatted="false">Language</string>
     <string name="language_urdu" formatted="false">اردو</string>
+    <string name="field_tokens_copied" formatted="false">Token copied</string>
+    <string name="field_tokens_copy_failed" formatted="false">Could not copy the token</string>
+    <string name="field_tokens_copy_it_now" formatted="false">Copy this now - it is the only time it is shown. Only its hash is stored.</string>
+    <string name="field_tokens_create" formatted="false">Create token</string>
+    <string name="field_tokens_dismiss" formatted="false">Dismiss</string>
+    <string name="field_tokens_current_values" formatted="false">Values right now</string>
+    <string name="field_tokens_how_to_push" formatted="false">How to push a value</string>
+    <string name="field_tokens_intro" formatted="false">A token lets a service you run write values onto your profile without your password. Anything it pushes becomes available to your widgets as {field.name}.</string>
+    <string name="field_tokens_last_used" formatted="true">last used %1$s</string>
+    <string name="field_tokens_never_used" formatted="false">never used</string>
+    <string name="field_tokens_revoke" formatted="false">Revoke token</string>
+    <string name="field_tokens_revoke_description" formatted="true">“%1$s” will stop working immediately.</string>
+    <string name="field_tokens_then_use" formatted="false">Then put {field.status} in any text widget.</string>
+    <string name="field_tokens_title" formatted="false">Push your own values</string>
+    <string name="field_tokens_token_name" formatted="false">Token name</string>
+    <string name="field_tokens_token_name_placeholder" formatted="false">My status service</string>
+    <string name="field_tokens_untitled" formatted="false">Token</string>
+    <string name="profile_pane_identity" formatted="false">Identity</string>
+    <string name="profile_pane_theme" formatted="false">Theme</string>
+    <string name="profile_pane_widgets" formatted="false">Widgets</string>
+    <string name="profile_preview_hint" formatted="false">Tap the banner or the avatar to change it.</string>
+    <string name="profile_remove_avatar" formatted="false">Remove avatar</string>
+    <string name="profile_remove_banner" formatted="false">Remove banner</string>
+    <string name="profile_reset" formatted="false">Reset</string>
+    <string name="profile_unsaved_changes" formatted="false">You have unsaved changes.</string>
+    <string name="profile_username" formatted="false">Username</string>
+    <string name="profile_widgets_intro" formatted="false">Drag to reorder, hide what you do not want, and add more. An empty list falls back to the default layout.</string>
+    <string name="widget_badges" formatted="false">Badges</string>
+    <string name="widget_bio" formatted="false">About me</string>
+    <string name="widget_bio_desc" formatted="false">Your bio, with markdown and links.</string>
+    <string name="widget_connections" formatted="false">Connections</string>
+    <string name="widget_divider" formatted="false">Divider</string>
+    <string name="widget_field_alt" formatted="false">Description</string>
+    <string name="widget_field_body" formatted="false">Text</string>
+    <string name="widget_field_label" formatted="false">Label</string>
+    <string name="widget_field_links" formatted="false">Links</string>
+    <string name="widget_field_rows" formatted="false">Rows</string>
+    <string name="widget_field_size" formatted="false">Size</string>
+    <string name="widget_field_text" formatted="false">Heading</string>
+    <string name="widget_field_title" formatted="false">Heading</string>
+    <string name="widget_field_url" formatted="false">Link</string>
+    <string name="widget_field_value" formatted="false">Value</string>
+    <string name="widget_fields" formatted="false">Details</string>
+    <string name="widget_fields_desc" formatted="false">A list of label and value rows. Values can use {} placeholders.</string>
+    <string name="widget_heading" formatted="false">Heading</string>
+    <string name="widget_image" formatted="false">Image</string>
+    <string name="widget_links" formatted="false">Links</string>
+    <string name="widget_member_since" formatted="false">Member since</string>
+    <string name="widget_now_playing" formatted="false">Now playing</string>
+    <string name="widget_now_playing_desc" formatted="false">What you are listening to or playing, while you are.</string>
+    <string name="widget_pronouns" formatted="false">Pronouns</string>
+    <string name="widget_size_lg" formatted="false">Large</string>
+    <string name="widget_size_md" formatted="false">Medium</string>
+    <string name="widget_size_sm" formatted="false">Small</string>
+    <string name="widget_spacer" formatted="false">Space</string>
+    <string name="widget_text" formatted="false">Free text</string>
+    <string name="widget_text_desc" formatted="false">Anything you like, with markdown and {} placeholders.</string>
+    <string name="widget_editor_add_row" formatted="false">Add row</string>
+    <string name="widget_editor_add_widget" formatted="false">Add widget</string>
+    <string name="widget_editor_configure" formatted="false">Configure</string>
+    <string name="widget_editor_count" formatted="true">%1$d of %2$d</string>
+    <string name="widget_editor_default_option" formatted="false">Default</string>
+    <string name="widget_editor_empty" formatted="false">No widgets - your profile falls back to the default layout.</string>
+    <string name="widget_editor_hide" formatted="false">Hide</string>
+    <string name="widget_editor_move_down" formatted="false">Move down</string>
+    <string name="widget_editor_move_up" formatted="false">Move up</string>
+    <string name="widget_editor_remove" formatted="false">Remove</string>
+    <string name="widget_editor_reorder" formatted="false">Drag to reorder</string>
+    <string name="widget_editor_reset" formatted="false">Reset to default</string>
+    <string name="widget_editor_show" formatted="false">Show</string>
 </resources>

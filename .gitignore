@@ -15,6 +15,7 @@ target/
 local.properties
 .cxx/
 captures/
+sentry.properties
 
 # Env & secrets
 .env

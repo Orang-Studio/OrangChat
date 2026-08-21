@@ -2,21 +2,20 @@ import {
   siGithub,
   siGitlab,
   siReddit,
-  siSpotify,
   siSteam,
   siTwitch,
   siX,
   siYoutube,
 } from "simple-icons";
-import { Globe } from "lucide-react";
+import { Globe, Music } from "lucide-react";
 import type { ConnectionProvider } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
+import { t } from "../../lib/i18n";
 
 
 const BRAND: Partial<Record<ConnectionProvider, { title: string; path: string }>> = {
   github: siGithub,
   gitlab: siGitlab,
-  spotify: siSpotify,
   twitch: siTwitch,
   youtube: siYoutube,
   reddit: siReddit,
@@ -24,17 +23,20 @@ const BRAND: Partial<Record<ConnectionProvider, { title: string; path: string }>
   steam: siSteam,
 };
 
-export const PROVIDER_LABEL: Record<ConnectionProvider, string> = {
+const BRAND_LABEL: Partial<Record<ConnectionProvider, string>> = {
   github: "GitHub",
   gitlab: "GitLab",
-  spotify: "Spotify",
   twitch: "Twitch",
   youtube: "YouTube",
   reddit: "Reddit",
   x: "X",
   steam: "Steam",
-  custom: "Website",
 };
+
+export function providerLabel(provider: ConnectionProvider): string {
+  if (provider === "spotify") return t("connectionCards.music");
+  return BRAND_LABEL[provider] ?? t("connectionCards.website");
+}
 
 
 export function ProviderIcon({
@@ -45,7 +47,10 @@ export function ProviderIcon({
   className?: string;
 }) {
   const brand = BRAND[provider];
-  if (!brand) return <Globe aria-hidden className={cn("size-4", className)} />;
+  if (!brand) {
+    const Fallback = provider === "spotify" ? Music : Globe;
+    return <Fallback aria-hidden className={cn("size-4", className)} />;
+  }
   return (
     <svg
       role="img"

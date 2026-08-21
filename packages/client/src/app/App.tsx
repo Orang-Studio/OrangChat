@@ -5,12 +5,6 @@ import { GuestOnly, RequireAuth } from "./guards";
 import { AndroidAppBanner } from "../components/AndroidAppBanner";
 import { Toaster } from "../components/ui/Toaster";
 import { SplashScreen } from "../components/SplashScreen";
-import { AppShell } from "./AppShell";
-import { MainLayout, ServerChannelContent } from "./MainLayout";
-import { HomePane } from "../features/chat/HomePane";
-import { FriendsPage } from "../features/friends/FriendsPage";
-import { DevelopersPage } from "../features/developers/DevelopersPage";
-import { DmView } from "../features/dms/DmView";
 
 const LoginPage = lazy(() =>
   import("../features/auth/LoginPage").then(({ LoginPage }) => ({ default: LoginPage })),
@@ -28,6 +22,30 @@ const InvitePage = lazy(() =>
 );
 const LegalPage = lazy(() =>
   import("../features/legal/LegalPage").then(({ LegalPage }) => ({ default: LegalPage })),
+);
+
+const AppShell = lazy(() =>
+  import("./AppShell").then(({ AppShell }) => ({ default: AppShell })),
+);
+const MainLayout = lazy(() =>
+  import("./MainLayout").then(({ MainLayout }) => ({ default: MainLayout })),
+);
+const ServerChannelContent = lazy(() =>
+  import("./MainLayout").then(({ ServerChannelContent }) => ({ default: ServerChannelContent })),
+);
+const HomePane = lazy(() =>
+  import("../features/chat/HomePane").then(({ HomePane }) => ({ default: HomePane })),
+);
+const FriendsPage = lazy(() =>
+  import("../features/friends/FriendsPage").then(({ FriendsPage }) => ({ default: FriendsPage })),
+);
+const DevelopersPage = lazy(() =>
+  import("../features/developers/DevelopersPage").then(({ DevelopersPage }) => ({
+    default: DevelopersPage,
+  })),
+);
+const DmView = lazy(() =>
+  import("../features/dms/DmView").then(({ DmView }) => ({ default: DmView })),
 );
 
 export function App() {

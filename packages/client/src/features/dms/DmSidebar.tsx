@@ -233,7 +233,7 @@ function ConversationRow({
             <UnreadBadge
               count={active ? 0 : unreadCount}
               label={t("dmSidebar.unreadMessages")}
-              className="mt-0.5"
+              className="self-center"
             />
           </Link>
         </ContextMenuTrigger>

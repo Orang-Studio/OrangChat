@@ -33,8 +33,8 @@ android {
         applicationId = "lt.oranges.orangchat"
         minSdk = 31
         targetSdk = 35
-        versionCode = 75
-        versionName = "1.0.4"
+        versionCode = 77
+        versionName = "1.0.5.1"
         buildConfigField("String", "KLIPY_API_KEY", "\"$klipyApiKey\"")
         vectorDrawables { useSupportLibrary = true }
     }
@@ -59,7 +59,11 @@ android {
             buildConfigField("String", "UPDATE_MANIFEST_URL", "\"$updateBaseUrl/update.json\"")
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            ndk {
+                abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            }
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             buildConfigField("String", "API_BASE_URL", "\"https://chat.oranges.lt/api/\"")
             buildConfigField("String", "SOCKET_URL", "\"https://chat.oranges.lt\"")

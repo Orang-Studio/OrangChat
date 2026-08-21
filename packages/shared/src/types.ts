@@ -4,7 +4,7 @@ import type { DeviceLogKind, E2eePlatform } from './e2ee.js';
 export type ChannelType = 'text' | 'voice' | 'category' | 'dm' | 'group_dm';
 export type PresenceStatus = 'online' | 'idle' | 'dnd' | 'offline';
 export type PresenceDevice = 'mobile' | 'browser' | 'desktop';
-export type ActivityKind = 'game' | 'spotify';
+export type ActivityKind = 'game' | 'listening' | 'spotify';
 export interface UserActivity {
   kind: ActivityKind;
   name: string;
@@ -15,6 +15,55 @@ export interface UserActivity {
   endsAt: string | null;
 }
 export type OAuthProvider = 'google' | 'discord';
+
+export interface ProfileWidget {
+  id: string;
+  type: string;
+  hidden?: boolean;
+  config?: Record<string, unknown>;
+}
+
+export type ProfileWidgetBlock =
+  | { block: 'native'; component: string }
+  | { block: 'section'; heading?: string; body: ProfileWidgetBlock }
+  | { block: 'text'; value: string; markdown?: boolean }
+  | { block: 'rows'; from: string }
+  | { block: 'links'; from: string }
+  | { block: 'spacer'; size?: string }
+  | { block: 'divider' }
+  | { block: 'image'; src: string; alt?: string };
+
+export type ProfileWidgetConfigField =
+  | { key: string; kind: 'string'; label: string; max?: number; multiline?: boolean; placeholder?: string }
+  | { key: string; kind: 'url'; label: string }
+  | { key: string; kind: 'boolean'; label: string }
+  | { key: string; kind: 'select'; label: string; options: { value: string; label: string }[] }
+  | { key: string; kind: 'list'; label: string; max?: number; of: ProfileWidgetConfigField[] };
+
+export interface ProfileWidgetDefinition {
+  type: string;
+  label: string;
+  description?: string;
+  icon?: string;
+  singleton?: boolean;
+  default?: boolean;
+  config?: ProfileWidgetConfigField[];
+  render: ProfileWidgetBlock;
+}
+
+export interface ProfileWidgetCatalog {
+  rev: string;
+  widgets: ProfileWidgetDefinition[];
+  defaultLayout: ProfileWidget[];
+}
+
+export interface ProfileFieldTokenInfo {
+  id: string;
+  label: string;
+  hint: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
 
 
 export type DmPrivacy = 'everyone' | 'friends' | 'none';
@@ -41,6 +90,10 @@ export interface User {
   pronouns: string | null;
 
   profileCss: string | null;
+
+  profileWidgets: ProfileWidget[];
+
+  profileFields: Record<string, string>;
 
   badges: BadgeId[];
 

@@ -1,0 +1,31 @@
+OrangChat 1.0.5
+
+New
+- Profile widgets: your profile card is now an ordered list of sections you
+  control. Drag to reorder, hide what you do not want, and add more from a
+  catalog of widget types - badges, custom text, and more. An empty list
+  falls back to the default layout.
+- Field tokens: create a revocable token that lets a service you run push
+  values onto your profile without your password. Anything it pushes becomes
+  available to your widgets as {field.name}, so a status line can show data
+  from your own server.
+- Channel settings: with the manage-channels permission you can now rename a
+  channel, set its topic, user limit, slow mode and age restriction straight
+  from the app.
+- Channel details: tapping a channel opens its member list, grouped by
+  presence.
+- Holding a message now opens a bottom sheet with a quick-reaction row on top
+  - your recent picks one tap away, a + to open the full searchable emoji
+  picker - and the message's other actions below.
+- An offline banner appears when the connection drops, so it is clear why
+  nothing is arriving.
+
+Improved
+- Release builds are now minified and stripped to arm-only, roughly 40% off
+  the APK size with no behaviour change.
+- Media previews, link embeds and activity status all got small polish
+  passes.
+
+Fixed
+- Invite links pasted as full https://chat.oranges.lt/invite/... URLs are
+  recognised as well as bare codes.

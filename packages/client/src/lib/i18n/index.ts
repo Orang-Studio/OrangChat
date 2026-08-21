@@ -1,18 +1,6 @@
 import { Fragment, createElement, type ReactNode } from "react";
 import { create } from "zustand";
 import { en, type Catalog, type MessageKey } from "./en";
-import { lt } from "./lt";
-import { zh } from "./zh";
-import { hi } from "./hi";
-import { es } from "./es";
-import { ar } from "./ar";
-import { fr } from "./fr";
-import { bn } from "./bn";
-import { pt } from "./pt";
-import { ru } from "./ru";
-import { ur } from "./ur";
-import { pirate } from "./pirate";
-import { lolcat } from "./lolcat";
 
 
 export type LanguagePref = "system" | Language;
@@ -20,7 +8,48 @@ export type LanguagePref = "system" | Language;
 
 export type Language = "en" | "lt" | "zh" | "hi" | "es" | "ar" | "fr" | "bn" | "pt" | "ru" | "ur" | "pirate" | "lolcat";
 
-const CATALOGS: Record<Language, Catalog> = { en, lt, zh, hi, es, ar, fr, bn, pt, ru, ur, pirate, lolcat };
+/**
+ * Every other catalogue is its own chunk - `en` is the only one bundled
+ * eagerly (it's the fallback `lookup()` always needs). The rest are fetched
+ * on demand, so a visitor only ever downloads the languages they actually use.
+ */
+const loaders: Record<Exclude<Language, "en">, () => Promise<Partial<Catalog>>> = {
+  lt: () => import("./lt").then((m) => m.lt),
+  zh: () => import("./zh").then((m) => m.zh),
+  hi: () => import("./hi").then((m) => m.hi),
+  es: () => import("./es").then((m) => m.es),
+  ar: () => import("./ar").then((m) => m.ar),
+  fr: () => import("./fr").then((m) => m.fr),
+  bn: () => import("./bn").then((m) => m.bn),
+  pt: () => import("./pt").then((m) => m.pt),
+  ru: () => import("./ru").then((m) => m.ru),
+  ur: () => import("./ur").then((m) => m.ur),
+  pirate: () => import("./pirate").then((m) => m.pirate),
+  lolcat: () => import("./lolcat").then((m) => m.lolcat),
+};
+
+const loaded = new Map<Language, Partial<Catalog>>([["en", en]]);
+const inFlight = new Map<Language, Promise<void>>();
+
+function loadCatalog(language: Language): Promise<void> {
+  if (language === "en" || loaded.has(language)) return Promise.resolve();
+  const existing = inFlight.get(language);
+  if (existing) return existing;
+
+  const promise = loaders[language]().then((catalog: Partial<Catalog>) => {
+    loaded.set(language, catalog);
+    inFlight.delete(language);
+    if (useLanguage.getState().language === language) {
+      useLanguage.setState((s) => ({ loadedLanguages: new Set(s.loadedLanguages).add(language) }));
+    }
+  });
+  inFlight.set(language, promise);
+  return promise;
+}
+
+export function useCatalogReady(language: Language): boolean {
+  return useLanguage((s) => language === "en" || s.loadedLanguages.has(language));
+}
 
 
 export const LANGUAGES: { code: Language; endonym: string; nameKey: MessageKey }[] = [
@@ -47,7 +76,7 @@ export function endonymOf(code: Language): string {
 const STORAGE_KEY = "oc-language";
 
 function isLanguage(value: string): value is Language {
-  return value in CATALOGS;
+  return value === "en" || value in loaders;
 }
 
 
@@ -73,13 +102,17 @@ interface LanguageState {
   pref: LanguagePref;
 
   language: Language;
+
+  loadedLanguages: ReadonlySet<Language>;
 }
 
 const initialPref = read();
+const initialLanguage = initialPref === "system" ? systemLanguage() : initialPref;
 
 export const useLanguage = create<LanguageState>(() => ({
   pref: initialPref,
-  language: initialPref === "system" ? systemLanguage() : initialPref,
+  language: initialLanguage,
+  loadedLanguages: new Set(["en"]),
 }));
 
 export function setLanguage(pref: LanguagePref): void {
@@ -90,11 +123,13 @@ export function setLanguage(pref: LanguagePref): void {
   } catch {
   }
   document.documentElement.lang = language;
+  void loadCatalog(language);
 }
 
 
 export function initLanguage(): void {
   document.documentElement.lang = useLanguage.getState().language;
+  void loadCatalog(useLanguage.getState().language);
 }
 
 
@@ -107,15 +142,25 @@ function interpolate(text: string, vars?: Record<string, string | number>): stri
 
 function lookup(key: string): string | undefined {
   const { language } = useLanguage.getState();
-  return (
-    (CATALOGS[language] as Record<string, string | undefined>)[key] ??
-    (en as Record<string, string | undefined>)[key]
-  );
+  const catalog = loaded.get(language) as Record<string, string | undefined> | undefined;
+  return catalog?.[key] ?? (en as Record<string, string | undefined>)[key];
 }
 
 
 export function t(key: MessageKey, vars?: Record<string, string | number>): string {
   return interpolate(lookup(key) ?? key, vars);
+}
+
+
+/**
+ * Lookup for a key the client didn't write - the profile widget catalogue is
+ * served by the server, so its labels are keys this build may not have yet.
+ * An unknown key falls through to the server's own text rather than rendering
+ * a raw slug. Deliberately no `{}` interpolation: these strings sit next to
+ * user data that uses the same brace shape.
+ */
+export function tDynamic(key: string, fallback?: string): string {
+  return lookup(key) ?? fallback ?? key;
 }
 
 
@@ -166,6 +211,6 @@ export function tCount(
  * what is, in practice, a once-ever choice costs a frame and buys the rest of
  * the codebase the freedom to just call `t()`.
  */
-export function useLanguageKey(): string {
+export function useLanguageKey(): Language {
   return useLanguage((s) => s.language);
 }

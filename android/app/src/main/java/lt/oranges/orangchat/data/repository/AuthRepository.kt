@@ -6,6 +6,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import lt.oranges.orangchat.data.local.TokenStore
 import lt.oranges.orangchat.data.local.OfflineCache
 import lt.oranges.orangchat.data.model.AuthResult
+import lt.oranges.orangchat.data.model.MintedFieldToken
+import lt.oranges.orangchat.data.model.ProfileFieldTokenInfo
+import lt.oranges.orangchat.data.model.ProfileWidget
 import lt.oranges.orangchat.data.model.SelfUser
 import lt.oranges.orangchat.data.remote.ApiService
 import lt.oranges.orangchat.data.remote.AccountStanding
@@ -19,6 +22,7 @@ import lt.oranges.orangchat.data.remote.DeleteAccountResult
 import lt.oranges.orangchat.data.remote.DeleteAllMessagesRequest
 import lt.oranges.orangchat.data.remote.DeleteAllMessagesResult
 import lt.oranges.orangchat.data.remote.EmailTwoFactorRequest
+import lt.oranges.orangchat.data.remote.FieldTokenRequest
 import lt.oranges.orangchat.data.remote.ResendEmailTwoFactorRequest
 import lt.oranges.orangchat.data.remote.LockdownRequest
 import lt.oranges.orangchat.data.remote.LockdownResult
@@ -74,7 +78,9 @@ class AuthRepository @Inject constructor(
         get() = (_session.value as? SessionState.Authenticated)?.user
 
     suspend fun restoreSession() {
-        _session.value = SessionState.Loading
+        val cached = cachedUser()
+        if (cached != null) onAuthenticated(cached) else _session.value = SessionState.Loading
+
         try {
             if (tokenStore.accessToken == null) {
                 val refreshed = api.refresh()
@@ -94,10 +100,8 @@ class AuthRepository @Inject constructor(
                 cachedUser()?.id?.let { offlineCache.clear(it) }
                 tokenStore.clear()
                 _session.value = SessionState.Unauthenticated
-            } else {
-                val cached = cachedUser()
-                if (cached != null) onAuthenticated(cached)
-                else _session.value = SessionState.Unauthenticated
+            } else if (cached == null) {
+                _session.value = SessionState.Unauthenticated
             }
         }
     }
@@ -198,6 +202,7 @@ class AuthRepository @Inject constructor(
         accentColor: Int? = null,
         pronouns: String? = null,
         profileCss: String? = null,
+        profileWidgets: List<ProfileWidget>? = null,
     ): SelfUser = updateMe(
         UpdateMeRequest(
             username = username,
@@ -208,8 +213,18 @@ class AuthRepository @Inject constructor(
             accentColor = accentColor,
             pronouns = pronouns,
             profileCss = profileCss,
+            profileWidgets = profileWidgets,
         ),
     )
+
+    suspend fun fieldTokens(): List<ProfileFieldTokenInfo> = api.getFieldTokens()
+
+    suspend fun mintFieldToken(label: String): MintedFieldToken =
+        api.mintFieldToken(FieldTokenRequest(label))
+
+    suspend fun revokeFieldToken(id: String) {
+        api.revokeFieldToken(id)
+    }
 
     suspend fun updatePrivacy(
         dmPrivacy: String? = null,

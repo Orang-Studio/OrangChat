@@ -8,7 +8,7 @@ CSS overrides as they exist today on both platforms.
 
 The card appears in the profile card of any user with an active activity
 (friends list, member list, DMs, search results). It is built from the first
-Spotify activity, falling back to the first activity of any other kind.
+listening activity, falling back to the first activity of any other kind.
 
 ## Structure
 
@@ -17,7 +17,16 @@ activity has a URL). It carries the `data-kind` attribute, so a theme can react
 to the activity type:
 
 ```css
-.oc-pf-activity[data-kind="spotify"] .oc-pf-activity-label { ... }
+.oc-pf-activity[data-kind="listening"] .oc-pf-activity-label { ... }
+```
+
+`listening` is the current wire value. Clients released before the rename still
+send `spotify` for the same thing, so a theme that wants to cover both should
+select on either:
+
+```css
+.oc-pf-activity[data-kind="listening"],
+.oc-pf-activity[data-kind="spotify"] { ... }
 ```
 
 Inside it: `.oc-pf-activity-artwork` (image, or the fallback glyph), then
@@ -147,6 +156,41 @@ Hidden entirely when the activity has no details:
 Rendered as "for h:mm:ss" (or "for m:ss" under an hour). The elapsed value is
 kept live: on Android a script inside the card HTML rewrites the text content
 of `[data-started-at]` every second; on web a `useNow` tick does the same.
+
+## Widgets
+
+Everything below the name on a profile card is a widget, placed by the profile
+owner. The widget list is wrapped in `.oc-pf-widgets`, and each entry is an
+`.oc-pf-widget` carrying `data-widget="<type>"`:
+
+```css
+.oc-pf-widgets { display: flex; flex-direction: column; gap: 10px; }
+.oc-pf-widget[data-widget="bio"] { ... }
+.oc-pf-widget[data-widget="now-playing"] { ... }
+```
+
+A widget renders a small tree of blocks, each with its own hook:
+
+| Block | Hooks |
+| --- | --- |
+| `section` | `.oc-pf-section` wrapping `.oc-pf-heading` and the body block |
+| `text` | `.oc-pf-text` (markdown is rendered inside it) |
+| `rows` | `.oc-pf-rows` > `.oc-pf-row` > `.oc-pf-row-label` + `.oc-pf-row-value` |
+| `links` | `.oc-pf-links` > `.oc-pf-link-item` > `.oc-pf-link` |
+| `image` | `.oc-pf-image` |
+| `divider` | `.oc-pf-divider` |
+| `spacer` | no element of its own - it only reserves height |
+
+The built-in widgets reuse the hooks they always had: `bio` renders
+`.oc-pf-bio-text` inside a section, `member-since` renders `.oc-pf-member-text`,
+`pronouns` renders `.oc-pf-pronouns`, `badges` renders `.oc-pf-badges`, and
+`now-playing` renders the `.oc-pf-activity*` card documented above. A widget
+with nothing to show is dropped entirely, so a theme never has to style an
+empty heading.
+
+New widget types can appear without a client update - they arrive in the
+server's widget catalogue - so prefer styling `.oc-pf-widget` and the block
+hooks over enumerating `data-widget` values.
 
 ## Notes
 

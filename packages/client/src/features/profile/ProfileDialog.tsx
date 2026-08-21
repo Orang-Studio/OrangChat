@@ -24,6 +24,7 @@ import {
   useFriends,
 } from "../friends/queries";
 import { ProfileCard } from "./ProfileCard";
+import { useWidgetCatalogMap } from "./widgetCatalog";
 import { t } from "../../lib/i18n";
 
 interface ProfileDialogProps {
@@ -51,6 +52,8 @@ export function ProfileDialog({ user, open, onOpenChange }: ProfileDialogProps) 
     enabled: open,
     staleTime: 5 * 60_000,
   });
+
+  const widgetCatalog = useWidgetCatalogMap();
 
   const messageMutation = useMutation({
     mutationFn: () => createDm([user.id]),
@@ -112,6 +115,9 @@ export function ProfileDialog({ user, open, onOpenChange }: ProfileDialogProps) 
             createdAt: user.createdAt,
             badges: user.badges,
             profileCss: user.profileCss,
+            profileWidgets: user.profileWidgets,
+            profileFields: user.profileFields,
+            widgetCatalog,
             connections,
           }}
           actions={

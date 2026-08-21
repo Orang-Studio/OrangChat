@@ -56,6 +56,7 @@ pub struct Config {
     pub orangmove_api_url: String,
     pub badges_file: String,
     pub i18n_dir: String,
+    pub widgets_file: String,
     pub update_policy: UpdatePolicy,
 }
 
@@ -147,6 +148,10 @@ impl Config {
                 .ok()
                 .filter(|v| !v.is_empty())
                 .unwrap_or_else(|| "i18n".into()),
+            widgets_file: env::var("WIDGETS_FILE")
+                .ok()
+                .filter(|v| !v.is_empty())
+                .unwrap_or_else(|| "widgets.json".into()),
             update_policy: UpdatePolicy {
                 android: platform_policy("ANDROID"),
                 desktop: platform_policy("DESKTOP"),

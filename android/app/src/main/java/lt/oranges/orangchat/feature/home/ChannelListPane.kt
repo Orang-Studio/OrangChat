@@ -23,8 +23,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tag
@@ -43,6 +47,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,9 +60,13 @@ import lt.oranges.orangchat.data.model.PresenceStatus
 import lt.oranges.orangchat.data.model.UnreadState
 import lt.oranges.orangchat.data.model.VoiceState
 import lt.oranges.orangchat.feature.unread.MentionBadge
+import lt.oranges.orangchat.notifications.MuteDuration
+import lt.oranges.orangchat.notifications.isActiveMute
 import lt.oranges.orangchat.ui.components.MenuItem
 import lt.oranges.orangchat.ui.components.OrangDropdownMenu
+import lt.oranges.orangchat.ui.components.OfflineBanner
 import lt.oranges.orangchat.ui.components.UserFooter
+import lt.oranges.orangchat.ui.components.muteDurationItems
 import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
@@ -64,6 +74,7 @@ import lt.oranges.orangchat.ui.theme.OrangTheme
 fun ChannelListPane(
     detail: ServerDetail,
     self: SelfUser,
+    online: Boolean = true,
     currentChannelId: String?,
     onSelectChannel: (Channel) -> Unit,
     onAddChannel: () -> Unit,
@@ -76,6 +87,10 @@ fun ChannelListPane(
     voiceParticipants: Map<String, Map<String, VoiceState>> = emptyMap(),
     memberNames: Map<String, String> = emptyMap(),
     onMarkRead: (Channel) -> Unit = {},
+    mutes: Map<String, Long> = emptyMap(),
+    onMute: (String, MuteDuration) -> Unit = { _, _ -> },
+    onUnmute: (String) -> Unit = {},
+    onEditChannel: ((Channel) -> Unit)? = null,
 ) {
         val context = LocalContext.current
     val c = OrangTheme.colors
@@ -137,6 +152,10 @@ fun ChannelListPane(
                         memberNames = memberNames,
                         onClick = onSelectChannel,
                         onMarkRead = onMarkRead,
+                        muted = mutes[ch.id].isActiveMute(),
+                        onMute = onMute,
+                        onUnmute = onUnmute,
+                        onEditChannel = onEditChannel,
                     )
                 }
             }
@@ -163,6 +182,10 @@ fun ChannelListPane(
                         memberNames = memberNames,
                         onClick = onSelectChannel,
                         onMarkRead = onMarkRead,
+                        muted = mutes[ch.id].isActiveMute(),
+                        onMute = onMute,
+                        onUnmute = onUnmute,
+                        onEditChannel = onEditChannel,
                     )
                 }
             }
@@ -172,6 +195,9 @@ fun ChannelListPane(
             onOpenSettings = onOpenUserSettings,
             onStatusChange = onStatusChange,
         )
+        if (!online) {
+            OfflineBanner()
+        }
     }
 }
 
@@ -186,12 +212,18 @@ private fun ChannelRow(
     memberNames: Map<String, String>,
     onClick: (Channel) -> Unit,
     onMarkRead: (Channel) -> Unit,
+    muted: Boolean = false,
+    onMute: (String, MuteDuration) -> Unit = { _, _ -> },
+    onUnmute: (String) -> Unit = {},
+    onEditChannel: ((Channel) -> Unit)? = null,
 ) {
         val context = LocalContext.current
     val c = OrangTheme.colors
     val icon = if (channel.type == ChannelType.VOICE) Icons.Default.VolumeUp else Icons.Default.Tag
     val haptics = LocalHapticFeedback.current
     var menuOpen by remember { mutableStateOf(false) }
+    var muteMenuOpen by remember { mutableStateOf(false) }
+    val clipboard = LocalClipboardManager.current
     Column {
     Row(
         modifier = Modifier
@@ -220,18 +252,58 @@ private fun ChannelRow(
             },
             fontWeight = if (selected || unread) FontWeight.SemiBold else FontWeight.Medium,
             fontSize = 14.sp,
-            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
         )
+        if (muted) {
+            Spacer(Modifier.width(6.dp))
+            Icon(
+                Icons.Default.NotificationsOff,
+                contentDescription = AppStrings.get(context, R.string.catalog_muted_b9e78ced),
+                tint = c.inkMuted,
+                modifier = Modifier.size(14.dp),
+            )
+        }
+        Spacer(Modifier.weight(1f))
         MentionBadge(mentionCount)
         Box {
             OrangDropdownMenu(
                 expanded = menuOpen,
                 onDismiss = { menuOpen = false },
-                items = listOf(
-                    MenuItem(AppStrings.get(context, R.string.catalog_mark_as_read_c1ee860b), Icons.Default.Check, enabled = unread) {
-                        onMarkRead(channel)
-                    },
-                ),
+                items = buildList {
+                    add(
+                        MenuItem(AppStrings.get(context, R.string.catalog_mark_as_read_c1ee860b), Icons.Default.Check, enabled = unread) {
+                            onMarkRead(channel)
+                        },
+                    )
+                    onEditChannel?.let { edit ->
+                        add(MenuItem("Edit channel", Icons.Default.Edit) { edit(channel) })
+                    }
+                    if (muted) {
+                        add(
+                            MenuItem("Unmute channel", Icons.Default.NotificationsActive) {
+                                onUnmute(channel.id)
+                            },
+                        )
+                    } else {
+                        add(
+                            MenuItem("Mute channel", Icons.Default.NotificationsOff) {
+                                muteMenuOpen = true
+                            },
+                        )
+                    }
+                    add(
+                        MenuItem(AppStrings.get(context, R.string.catalog_copy_channel_id_c32cdc5d), Icons.Default.ContentCopy) {
+                            clipboard.setText(AnnotatedString(channel.id))
+                        },
+                    )
+                },
+            )
+            OrangDropdownMenu(
+                expanded = muteMenuOpen,
+                onDismiss = { muteMenuOpen = false },
+                items = muteDurationItems(context) { onMute(channel.id, it) },
             )
         }
     }

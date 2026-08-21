@@ -9,15 +9,21 @@ import android.net.Uri
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.StartOffset
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.content.MediaType
@@ -31,6 +37,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +50,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -63,6 +72,7 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AddReaction
@@ -75,19 +85,13 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Keyboard
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.WifiOff
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
@@ -169,6 +173,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import lt.oranges.orangchat.data.model.Message
+import lt.oranges.orangchat.data.model.PresenceDevice
 import lt.oranges.orangchat.data.model.PresenceStatus
 import java.text.BreakIterator
 import lt.oranges.orangchat.data.model.Server
@@ -304,7 +309,6 @@ private fun LazyListState.topOffsetFor(index: Int): Int {
     return (viewport - row.size).coerceAtLeast(0)
 }
 
-/** Bring `index` into view, then settle it at the top of the viewport. */
 private suspend fun LazyListState.scrollRowToTop(index: Int, animate: Boolean) {
     val visible = layoutInfo.visibleItemsInfo.any { it.index == index }
     if (animate && visible) {
@@ -353,9 +357,9 @@ fun ChatPane(
     selfId: String,
     members: List<ServerMember>,
     presence: Map<String, PresenceStatus>,
+    presenceDevices: Map<String, Set<PresenceDevice>> = emptyMap(),
     typingUserIds: Set<String>,
     onBack: () -> Unit,
-    connected: Boolean = true,
     missedCount: Int = 0,
     onSend: (
         content: String,
@@ -370,6 +374,8 @@ fun ChatPane(
     onReact: (Message, String) -> Unit,
     onTyping: () -> Unit,
     onSearch: (() -> Unit)? = null,
+    onOpenDetails: (() -> Unit)? = null,
+    onlineCount: Int? = null,
     modifier: Modifier = Modifier,
     onLoadOlder: () -> Unit = {},
     loadingOlder: Boolean = false,
@@ -379,7 +385,6 @@ fun ChatPane(
     compact: Boolean = false,
     reducedMotion: Boolean = false,
     onStartCall: ((video: Boolean) -> Unit)? = null,
-    onAddPeople: (() -> Unit)? = null,
     onCall: Boolean = false,
     headerUser: User? = null,
     headerActivities: List<UserActivity> = emptyList(),
@@ -394,13 +399,12 @@ fun ChatPane(
         (String, (AppViewModel.SafetyNumberVerdict) -> Unit) -> Unit
     )? = null,
     backgroundUrl: String? = null,
-    onSetBackground: ((Uri) -> Unit)? = null,
-    onRemoveBackground: (() -> Unit)? = null,
     iconUrl: String? = null,
-    onSetIcon: ((Uri) -> Unit)? = null,
-    onRemoveIcon: (() -> Unit)? = null,
+    isGroup: Boolean = false,
+    recentEmoji: RecentEmojiViewModel = hiltViewModel(),
 ) {
     val customEmojis = remember(emojis) { emojis.values.sortedBy { it.name.lowercase() } }
+    val recentEmojis by recentEmoji.recent.collectAsState()
     val paneContext = LocalContext.current
     val emojiGroups = remember(customEmojis, emojiServers) {
         val fallback = AppStrings.get(paneContext, R.string.catalog_custom_081ae3fd)
@@ -429,16 +433,10 @@ fun ChatPane(
     var contactVerifyBusy by remember { mutableStateOf(false) }
     var contactVerifyError by remember { mutableStateOf<String?>(null) }
     var contactVerified by remember { mutableStateOf(false) }
-    var headerMenuOpen by remember { mutableStateOf(false) }
-    val backgroundPicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia(),
-    ) { uri -> if (uri != null) onSetBackground?.invoke(uri) }
-    val iconPicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia(),
-    ) { uri -> if (uri != null) onSetIcon?.invoke(uri) }
-
     DisposableEffect(Unit) { onDispose { MediaPreviewHost.unbind() } }
-    LaunchedEffect(messages, onReact) { MediaPreviewHost.bind(messages, onReact) }
+    LaunchedEffect(messages, emojis, emojiGroups, onReact) {
+        MediaPreviewHost.bind(messages, emojis, emojiGroups, onReact)
+    }
 
     val rows = remember(messages) {
         val deduped = messages
@@ -610,28 +608,71 @@ fun ChatPane(
                         .offset(x = 6.dp, y = 6.dp),
                 )
             }
-            if (onSetIcon != null) {
-                GroupIcon(
-                    iconUrl = iconUrl,
-                    size = 28.dp,
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                )
-            } else if (headerUser != null) {
-                Avatar(
-                    user = headerUser,
-                    size = 28.dp,
-                    status = presence[headerUser.id] ?: PresenceStatus.OFFLINE,
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                )
-            } else {
-                Icon(Icons.Default.Tag, contentDescription = null, tint = c.inkMuted, modifier = Modifier.padding(horizontal = 6.dp).size(18.dp))
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, color = c.ink, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                if (headerUser != null) {
-                    ActivityStatus(headerActivities)
-                } else if (!topic.isNullOrBlank()) {
-                    Text(topic, color = c.inkMuted, fontSize = 12.sp, maxLines = 1)
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .then(
+                        if (onOpenDetails != null) {
+                            Modifier.clickable(onClick = onOpenDetails)
+                        } else {
+                            Modifier
+                        },
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (isGroup) {
+                    GroupIcon(
+                        iconUrl = iconUrl,
+                        size = 28.dp,
+                        modifier = Modifier.padding(horizontal = 4.dp),
+                    )
+                } else if (headerUser != null) {
+                    Avatar(
+                        user = headerUser.copy(
+                            devices = presenceDevices[headerUser.id]?.toList() ?: headerUser.devices,
+                        ),
+                        size = 28.dp,
+                        status = presence[headerUser.id] ?: PresenceStatus.OFFLINE,
+                        modifier = Modifier.padding(horizontal = 4.dp),
+                    )
+                } else {
+                    Icon(Icons.Default.Tag, contentDescription = null, tint = c.inkMuted, modifier = Modifier.padding(horizontal = 6.dp).size(18.dp))
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            title,
+                            color = c.ink,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 16.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        if (onOpenDetails != null) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = c.inkMuted,
+                                modifier = Modifier.padding(start = 2.dp).size(18.dp),
+                            )
+                        }
+                    }
+                    if (headerUser != null) {
+                        ActivityStatus(headerActivities)
+                    } else if (onlineCount != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(c.success, CircleShape),
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text("$onlineCount Online", color = c.inkMuted, fontSize = 12.sp)
+                        }
+                    } else if (!topic.isNullOrBlank()) {
+                        Text(topic, color = c.inkMuted, fontSize = 12.sp, maxLines = 1)
+                    }
                 }
             }
             if (encryptionInfo != null) {
@@ -669,122 +710,19 @@ fun ChatPane(
                         .size(20.dp),
                 )
             }
-            val overflow = buildList {
-                if (onSearch != null) {
-                    add(MenuItem(AppStrings.get(context, R.string.catalog_search_messages_abea65ae), Icons.Default.Search, onClick = onSearch))
-                }
-                if (onAddPeople != null) {
-                    add(MenuItem(AppStrings.get(context, R.string.catalog_add_people_b9c735ea), Icons.Default.GroupAdd, onClick = onAddPeople))
-                }
-                if (onSetBackground != null) {
-                    add(
-                        MenuItem(
-                            if (backgroundUrl != null) AppStrings.get(context, R.string.catalog_change_background_0c868243) else AppStrings.get(context, R.string.catalog_set_chat_background_d07e7165),
-                            Icons.Default.Photo,
-                        ) {
-                            backgroundPicker.launch(
-                                PickVisualMediaRequest(
-                                    ActivityResultContracts.PickVisualMedia.ImageOnly,
-                                ),
-                            )
-                        },
-                    )
-                    if (backgroundUrl != null && onRemoveBackground != null) {
-                        add(
-                            MenuItem(
-                                AppStrings.get(context, R.string.catalog_remove_background_for_everyone_275dc99e),
-                                Icons.Default.Delete,
-                                destructive = true,
-                                onClick = onRemoveBackground,
-                            ),
-                        )
-                    }
-                }
-                if (onSetIcon != null) {
-                    add(
-                        MenuItem(
-                            if (iconUrl != null) AppStrings.get(context, R.string.catalog_change_group_icon_715ac3cf) else AppStrings.get(context, R.string.catalog_set_group_icon_48042fd7),
-                            Icons.Default.Group,
-                        ) {
-                            iconPicker.launch(
-                                PickVisualMediaRequest(
-                                    ActivityResultContracts.PickVisualMedia.ImageOnly,
-                                ),
-                            )
-                        },
-                    )
-                    if (iconUrl != null && onRemoveIcon != null) {
-                        add(
-                            MenuItem(
-                                AppStrings.get(context, R.string.catalog_remove_group_icon_5869f3b2),
-                                Icons.Default.Delete,
-                                destructive = true,
-                                onClick = onRemoveIcon,
-                            ),
-                        )
-                    }
-                }
-            }
-            if (overflow.size == 1) {
-                val only = overflow.first()
+            if (onSearch != null) {
                 Icon(
-                    only.icon ?: Icons.Default.MoreVert,
-                    contentDescription = only.label,
+                    Icons.Default.Search,
+                    contentDescription = AppStrings.get(context, R.string.catalog_search_messages_abea65ae),
                     tint = c.inkSecondary,
                     modifier = Modifier
-                        .clickable(onClick = only.onClick)
+                        .clickable(onClick = onSearch)
                         .padding(6.dp)
                         .size(20.dp),
                 )
-            } else if (overflow.isNotEmpty()) {
-                Box {
-                    Icon(
-                        Icons.Default.MoreVert,
-                        contentDescription = "More",
-                        tint = c.inkSecondary,
-                        modifier = Modifier
-                            .clickable { headerMenuOpen = true }
-                            .padding(6.dp)
-                            .size(20.dp),
-                    )
-                    OrangDropdownMenu(
-                        expanded = headerMenuOpen,
-                        onDismiss = { headerMenuOpen = false },
-                        items = overflow,
-                    )
-                }
             }
         }
         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(c.border))
-
-        if (!connected) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(c.primarySoft)
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                Icon(
-                    Icons.Default.WifiOff,
-                    contentDescription = null,
-                    tint = c.warning,
-                    modifier = Modifier.size(14.dp),
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = AppStrings.get(
-                        context,
-                        R.string.catalog_offline_messages_are_saved_and_will_be_96baffa1,
-                    ),
-                    color = c.warning,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
 
         if (jumpMissing) {
             Text(
@@ -797,6 +735,8 @@ fun ChatPane(
                     .padding(horizontal = 12.dp, vertical = 8.dp),
             )
         }
+
+        val typers = typingUserIds.mapNotNull { nameOf(it) }
 
         Box(modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
             if (backgroundUrl != null) {
@@ -861,6 +801,9 @@ fun ChatPane(
                             onReact = onReact,
                             onOpenProfile = onOpenProfile,
                             emojis = emojis,
+                            emojiGroups = emojiGroups,
+                            recentEmojis = recentEmojis,
+                            onRecordEmoji = recentEmoji::record,
                         )
                     }
                     }
@@ -912,6 +855,30 @@ fun ChatPane(
                     )
                 }
             }
+
+            androidx.compose.animation.AnimatedVisibility(
+                visible = typers.isNotEmpty(),
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 12.dp, bottom = 8.dp),
+                enter = if (reducedMotion) {
+                    EnterTransition.None
+                } else {
+                    slideInVertically(tween(220)) { it / 2 } + fadeIn(tween(220))
+                },
+                exit = if (reducedMotion) {
+                    ExitTransition.None
+                } else {
+                    slideOutVertically(tween(160)) { it / 2 } + fadeOut(tween(160))
+                },
+            ) {
+                TypingBubble(
+                    label = when (typers.size) {
+                        1 -> "${typers[0]} is typing…"
+                        else -> "${typers.size} people are typing…"
+                    },
+                )
+            }
         }
 
         encryptionInfo?.waitingOn?.takeIf { it.isNotEmpty() }?.let { waiting ->
@@ -954,19 +921,6 @@ fun ChatPane(
                     )
                 }
             }
-        }
-
-        val typers = typingUserIds.mapNotNull { nameOf(it) }
-        if (typers.isNotEmpty()) {
-            Text(
-                text = when (typers.size) {
-                    1 -> "${typers[0]} is typing…"
-                    else -> "${typers.size} people are typing…"
-                },
-                color = c.inkMuted,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
-            )
         }
 
         replyTo?.let { target ->
@@ -1247,6 +1201,57 @@ fun ChatPane(
 }
 
 @Composable
+private fun TypingBubble(label: String, modifier: Modifier = Modifier) {
+    val c = OrangTheme.colors
+    val shape = RoundedCornerShape(OrangRadius.md)
+    Row(
+        modifier = modifier
+            .clip(shape)
+            .background(c.surface2)
+            .border(1.dp, c.border, shape)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TypingDots()
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = label,
+            color = c.inkMuted,
+            fontSize = 12.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun TypingDots() {
+    val c = OrangTheme.colors
+    val transition = rememberInfiniteTransition(label = "typing-dots")
+    Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
+        repeat(3) { index ->
+            val bounce by transition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 600),
+                    repeatMode = RepeatMode.Reverse,
+                    initialStartOffset = StartOffset(index * 150),
+                ),
+                label = "dot-$index",
+            )
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .offset(y = (-4).dp * bounce)
+                    .clip(CircleShape)
+                    .background(c.inkMuted),
+            )
+        }
+    }
+}
+
+@Composable
 private fun SystemNoticeRow(notice: SystemNotice?, message: Message, selfId: String) {
     val c = OrangTheme.colors
     val name = if (message.author.id == selfId) "You" else message.author.displayName
@@ -1322,6 +1327,9 @@ private fun MessageRow(
     onReact: (Message, String) -> Unit,
     onOpenProfile: (User) -> Unit,
     emojis: Map<String, EmojiRef>,
+    emojiGroups: List<CustomEmojiGroup>,
+    recentEmojis: List<String>,
+    onRecordEmoji: (String) -> Unit,
 ) {
         val context = LocalContext.current
     val c = OrangTheme.colors
@@ -1606,7 +1614,7 @@ private fun MessageRow(
                                 .padding(horizontal = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(r.emoji, fontSize = 13.sp)
+                            ReactionEmoji(r.emoji, renderEmojis)
                             Spacer(Modifier.width(4.dp))
                             Text("${r.count}", color = if (r.me) c.primary else c.inkSecondary, fontSize = 12.sp)
                         }
@@ -1648,13 +1656,24 @@ private fun MessageRow(
                 }
             }
         }
-        Box {
-            OrangDropdownMenu(
-                expanded = menuOpen,
-                onDismiss = { menuOpen = false },
-                items = buildList {
+        if (menuOpen || emojiOpen) {
+            MessageActionsSheet(
+                groups = emojiGroups,
+                recent = recentEmojis,
+                reacted = remember(message.reactions) {
+                    message.reactions.filter { it.me }.map { it.emoji }.toSet()
+                },
+                startInPicker = emojiOpen,
+                onPick = { chosen ->
+                    onRecordEmoji(chosen.insert)
+                    onReact(message, reactionValue(chosen))
+                },
+                onDismiss = {
+                    menuOpen = false
+                    emojiOpen = false
+                },
+                actions = buildList {
                     add(MenuItem("Reply", Icons.AutoMirrored.Filled.Reply) { onReply(message) })
-                    add(MenuItem("React", Icons.Default.AddReaction) { emojiOpen = true })
                     if (message.content.isNotBlank()) {
                         add(
                             MenuItem(AppStrings.get(context, R.string.catalog_copy_message_26902efd), Icons.Default.ContentCopy) {
@@ -1678,7 +1697,6 @@ private fun MessageRow(
                     }
                 },
             )
-            EmojiPicker(emojiOpen, { emojiOpen = false }) { onReact(message, it) }
         }
     }
     }
@@ -1781,28 +1799,6 @@ private fun MessageEditForm(
     }
 }
 
-@Composable
-private fun EmojiPicker(expanded: Boolean, onDismiss: () -> Unit, onPick: (String) -> Unit) {
-    val c = OrangTheme.colors
-    DropdownMenu(
-        expanded = expanded,
-        onDismissRequest = onDismiss,
-        modifier = Modifier
-            .background(c.surface3, RoundedCornerShape(OrangRadius.xl))
-            .border(1.dp, c.border, RoundedCornerShape(OrangRadius.xl))
-            .padding(6.dp),
-    ) {
-        EmojiGrid(
-            columns = 6,
-            modifier = Modifier.width(248.dp).height(280.dp),
-        ) { emoji ->
-            onDismiss()
-            onPick(emoji)
-        }
-    }
-
-}
-
 private data class MentionQuery(val start: Int, val query: String)
 
 private val MENTION_QUERY = Regex("(^|\\s)@([^\\s@]{0,32})$")
@@ -1839,8 +1835,6 @@ private fun Composer(
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     var pickerOpen by remember { mutableStateOf(false) }
-    // Stays true while the keyboard animates back in over the picker's slot, so
-    // the sheet is still mounted to shrink out of the way frame by frame.
     var pickerYielding by remember { mutableStateOf(false) }
     val density = LocalDensity.current
     val imeBottom = WindowInsets.ime.getBottom(density)
@@ -1865,10 +1859,6 @@ private fun Composer(
     val pickerHeight = with(density) {
         if (keyboardHeight > 0) keyboardHeight.toDp() else DEFAULT_PICKER_HEIGHT
     }
-    // The IME inset already pushes the pane up by `imeOverlap`; the sheet only
-    // takes what is left of the slot. Opening the picker hides the keyboard and
-    // closing it shows the keyboard again, so during either animation the two
-    // add up to the same total and nothing above the composer moves.
     val sheetHeight = with(density) {
         (pickerHeight - imeOverlap.toDp()).coerceAtLeast(0.dp)
     }
@@ -2298,6 +2288,8 @@ private fun Composer(
                 .weight(1f)
                 .background(c.surface3, RoundedCornerShape(OrangRadius.xl))
                 .border(1.dp, c.border, RoundedCornerShape(OrangRadius.xl))
+                .heightIn(max = 132.dp)
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 14.dp, vertical = 12.dp),
         ) {
             if (voiceState.phase.isRecording) {

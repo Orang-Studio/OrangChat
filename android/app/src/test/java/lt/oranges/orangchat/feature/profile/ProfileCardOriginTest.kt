@@ -1,5 +1,8 @@
 package lt.oranges.orangchat.feature.profile
 
+import lt.oranges.orangchat.data.model.ProfileWidget
+import lt.oranges.orangchat.data.model.ProfileWidgetBlock
+import lt.oranges.orangchat.data.model.ProfileWidgetDefinition
 import lt.oranges.orangchat.data.model.User
 import lt.oranges.orangchat.data.model.UserActivity
 import lt.oranges.orangchat.ui.theme.DarkOrangColors
@@ -111,5 +114,61 @@ class ProfileCardOriginTest {
         assertTrue(card.html.contains("oc-pf-activity-label\">LISTENING TO"))
         assertTrue(card.html.contains("oc-pf-activity-artwork-fallback"))
         assertFalse(card.html.contains("""<span class="oc-pf-activity-details">"""))
+    }
+
+    @Test
+    fun `the widget order decides the order of the card`() {
+        val user = User(
+            id = "user-4",
+            username = "widgets",
+            displayName = "Widgets",
+            pronouns = "they/them",
+            bio = "hello",
+            createdAt = "2024-03-09T10:11:12Z",
+            profileWidgets = listOf(
+                ProfileWidget(id = "a", type = "member-since"),
+                ProfileWidget(id = "b", type = "bio"),
+                ProfileWidget(id = "c", type = "pronouns", hidden = true),
+            ),
+        )
+        val card = buildProfileCardHtml(
+            user = user,
+            colors = DarkOrangColors,
+            aboutMeLabel = "About me",
+            memberSinceLabel = "Member since",
+        )
+
+        val member = card.html.indexOf("""data-widget="member-since"""")
+        val bio = card.html.indexOf("""data-widget="bio"""")
+        assertTrue(member in 1..<bio)
+        assertFalse(card.html.contains("""data-widget="pronouns""""))
+        assertFalse(card.html.contains("they/them"))
+    }
+
+    @Test
+    fun `free text widgets substitute placeholders and skip unknown ones`() {
+        val definition = ProfileWidgetDefinition(
+            type = "text",
+            label = "widget.text",
+            render = ProfileWidgetBlock(
+                block = "text",
+                value = "{displayName} is {field.status}, {field.missing}",
+            ),
+        )
+        val card = buildProfileCardHtml(
+            user = User(
+                id = "user-5",
+                username = "texty",
+                displayName = "Texty",
+                profileFields = mapOf("status" to "shipping"),
+                profileWidgets = listOf(ProfileWidget(id = "a", type = "text")),
+            ),
+            colors = DarkOrangColors,
+            aboutMeLabel = "About me",
+            memberSinceLabel = "Member since",
+            definitions = mapOf("text" to definition),
+        )
+
+        assertTrue(card.html.contains("Texty is shipping, {field.missing}"))
     }
 }

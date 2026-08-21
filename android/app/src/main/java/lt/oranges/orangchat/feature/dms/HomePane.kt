@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.sp
 import lt.oranges.orangchat.data.model.ChannelType
 import lt.oranges.orangchat.data.model.Conversation
 import lt.oranges.orangchat.data.model.Message
+import lt.oranges.orangchat.data.model.PresenceDevice
 import lt.oranges.orangchat.data.model.PresenceStatus
 import lt.oranges.orangchat.data.model.SelfUser
 import lt.oranges.orangchat.data.model.UnreadState
@@ -69,6 +70,7 @@ import lt.oranges.orangchat.ui.components.GroupIcon
 import lt.oranges.orangchat.notifications.MuteDuration
 import lt.oranges.orangchat.notifications.isActiveMute
 import lt.oranges.orangchat.ui.components.MenuItem
+import lt.oranges.orangchat.ui.components.OfflineBanner
 import lt.oranges.orangchat.ui.components.OrangDropdownMenu
 import lt.oranges.orangchat.ui.components.muteDurationItems
 import lt.oranges.orangchat.ui.components.UserFooter
@@ -101,8 +103,10 @@ private val minuteClock = flow {
 @Composable
 fun HomePane(
     self: SelfUser,
+    online: Boolean = true,
     conversations: List<Conversation>,
     presence: Map<String, PresenceStatus>,
+    presenceDevices: Map<String, Set<PresenceDevice>> = emptyMap(),
     presenceActivities: Map<String, List<UserActivity>>,
     friendIds: Set<String>,
     activeConversationId: String? = null,
@@ -177,6 +181,7 @@ fun HomePane(
                     selfId = self.id,
                     active = convo.id == activeConversationId,
                     presence = presence,
+                    presenceDevices = presenceDevices,
                     presenceActivities = presenceActivities,
                     unread = unreads[convo.id]?.unread == true,
                     unreadCount = unreads[convo.id]?.unreadCount ?: 0,
@@ -200,6 +205,9 @@ fun HomePane(
             onOpenSettings = onOpenSettings,
             onStatusChange = onStatusChange,
         )
+        if (!online) {
+            OfflineBanner()
+        }
     }
 }
 
@@ -238,6 +246,7 @@ private fun ConversationRow(
     selfId: String,
     active: Boolean,
     presence: Map<String, PresenceStatus>,
+    presenceDevices: Map<String, Set<PresenceDevice>>,
     presenceActivities: Map<String, List<UserActivity>>,
     unread: Boolean,
     unreadCount: Int,
@@ -301,7 +310,7 @@ private fun ConversationRow(
             GroupIcon(iconUrl = convo.iconUrl, size = 38.dp)
         } else {
             Avatar(
-                lead,
+                lead.copy(devices = presenceDevices[lead.id]?.toList() ?: lead.devices),
                 size = 38.dp,
                 status = presence[lead.id] ?: PresenceStatus.OFFLINE,
             )
@@ -365,7 +374,7 @@ private fun ConversationRow(
                 )
             }
         }
-        UnreadCountBadge(unreadCount, modifier = Modifier.padding(top = 2.dp))
+        UnreadCountBadge(unreadCount, modifier = Modifier.align(Alignment.CenterVertically))
         Box {
             OrangDropdownMenu(
                 expanded = menuOpen,

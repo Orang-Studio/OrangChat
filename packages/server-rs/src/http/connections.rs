@@ -151,7 +151,13 @@ async fn remove(
 ) -> AppResult<Json<Value>> {
     let provider = connection::remove(&state, &user.user_id, &id).await?;
     if provider == "spotify"
-        && crate::services::presence::set_activity(&state, &user.user_id, "spotify", None).await?
+        && crate::services::presence::set_activity(
+            &state,
+            &user.user_id,
+            crate::services::spotify::ACTIVITY_KIND,
+            None,
+        )
+        .await?
     {
         let status = crate::services::presence::get_status(&state, &user.user_id).await?;
         crate::socket::broadcast_presence(state.io(), &state, &user.user_id, &status).await;

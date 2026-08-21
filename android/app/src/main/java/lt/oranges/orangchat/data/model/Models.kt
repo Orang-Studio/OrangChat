@@ -41,6 +41,85 @@ data class UserActivity(
 )
 
 @Serializable
+data class ProfileWidget(
+    val id: String? = null,
+    val type: String,
+    val hidden: Boolean = false,
+    val config: Map<String, JsonElement> = emptyMap(),
+)
+
+/**
+ * One node of a widget's render tree. Which fields matter depends on
+ * [block]: `section` uses heading/body, `native` uses component, `text` uses
+ * value/markdown, `rows` and `links` use from, `image` uses src/alt,
+ * `spacer` uses size, `divider` uses nothing.
+ */
+@Serializable
+data class ProfileWidgetBlock(
+    val block: String,
+    val component: String? = null,
+    val heading: String? = null,
+    val body: ProfileWidgetBlock? = null,
+    val value: String? = null,
+    val markdown: Boolean = false,
+    val from: String? = null,
+    val src: String? = null,
+    val alt: String? = null,
+    val size: String? = null,
+)
+
+@Serializable
+data class ProfileWidgetConfigOption(val value: String, val label: String)
+
+@Serializable
+data class ProfileWidgetConfigField(
+    val key: String,
+    val kind: String,
+    val label: String,
+    val placeholder: String? = null,
+    val multiline: Boolean = false,
+    val max: Int? = null,
+    val options: List<ProfileWidgetConfigOption> = emptyList(),
+    val of: List<ProfileWidgetConfigField> = emptyList(),
+)
+
+/**
+ * A widget type the server knows about. `label`, `description` and every
+ * `placeholder` are catalogue keys, not display text - run them through
+ * [lt.oranges.orangchat.util.widgetString].
+ */
+@Serializable
+data class ProfileWidgetDefinition(
+    val type: String,
+    val label: String,
+    val description: String? = null,
+    val icon: String? = null,
+    val singleton: Boolean = false,
+    val default: Boolean = false,
+    val config: List<ProfileWidgetConfigField> = emptyList(),
+    val render: ProfileWidgetBlock? = null,
+)
+
+@Serializable
+data class ProfileWidgetCatalog(
+    val rev: String = "",
+    val widgets: List<ProfileWidgetDefinition> = emptyList(),
+    val defaultLayout: List<ProfileWidget> = emptyList(),
+)
+
+@Serializable
+data class ProfileFieldTokenInfo(
+    val id: String,
+    val label: String,
+    val hint: String,
+    val createdAt: String = "",
+    val lastUsedAt: String? = null,
+)
+
+@Serializable
+data class MintedFieldToken(val id: String, val token: String, val hint: String)
+
+@Serializable
 enum class DmPrivacy {
     @SerialName("everyone") EVERYONE,
     @SerialName("friends") FRIENDS,
@@ -68,6 +147,8 @@ data class User(
     val accentColor: Int? = null,
     val pronouns: String? = null,
     val profileCss: String? = null,
+    val profileWidgets: List<ProfileWidget> = emptyList(),
+    val profileFields: Map<String, String> = emptyMap(),
     val badges: List<String> = emptyList(),
     val bot: Boolean = false,
     val createdAt: String = "",
@@ -87,6 +168,8 @@ data class SelfUser(
     val accentColor: Int? = null,
     val pronouns: String? = null,
     val profileCss: String? = null,
+    val profileWidgets: List<ProfileWidget> = emptyList(),
+    val profileFields: Map<String, String> = emptyMap(),
     val badges: List<String> = emptyList(),
     val createdAt: String = "",
     val email: String = "",
@@ -103,7 +186,24 @@ data class SelfUser(
     val hasPassword: Boolean = true,
     val lockdown: Boolean = false,
 ) {
-    fun asUser() = User(id, username, displayName, avatarUrl, status, devices, activities, bio, bannerUrl, accentColor, pronouns, profileCss, badges, createdAt = createdAt)
+    fun asUser() = User(
+        id = id,
+        username = username,
+        displayName = displayName,
+        avatarUrl = avatarUrl,
+        status = status,
+        devices = devices,
+        activities = activities,
+        bio = bio,
+        bannerUrl = bannerUrl,
+        accentColor = accentColor,
+        pronouns = pronouns,
+        profileCss = profileCss,
+        profileWidgets = profileWidgets,
+        profileFields = profileFields,
+        badges = badges,
+        createdAt = createdAt,
+    )
 }
 
 @Serializable

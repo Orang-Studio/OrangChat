@@ -125,10 +125,19 @@ pub fn asset_url(kind: &str, id: &str) -> String {
     format!("/api/media/asset/{kind}/{id}")
 }
 
+fn asset_version(url: &str) -> String {
+    let digest = Sha256::digest(url.as_bytes());
+    let mut v = String::with_capacity(8);
+    for byte in &digest[..4] {
+        v.push_str(&format!("{byte:02x}"));
+    }
+    v
+}
+
 pub fn same_origin_asset(url: Option<&str>, kind: &str, id: &str) -> Option<String> {
     let url = url?;
     if url.starts_with("http://") || url.starts_with("https://") {
-        Some(asset_url(kind, id))
+        Some(format!("{}?v={}", asset_url(kind, id), asset_version(url)))
     } else {
         Some(url.to_string())
     }
@@ -441,9 +450,18 @@ mod tests {
 
     #[test]
     fn remote_asset_urls_become_same_origin() {
+        let same = same_origin_asset(Some("https://res.cloudinary.com/x/a.gif"), "avatar", "u1")
+            .unwrap();
+        assert!(same.starts_with("/api/media/asset/avatar/u1?v="));
         assert_eq!(
-            same_origin_asset(Some("https://res.cloudinary.com/x/a.gif"), "avatar", "u1"),
-            Some("/api/media/asset/avatar/u1".into())
+            same,
+            same_origin_asset(Some("https://res.cloudinary.com/x/a.gif"), "avatar", "u1")
+                .unwrap()
+        );
+        assert_ne!(
+            same,
+            same_origin_asset(Some("https://res.cloudinary.com/x/b.gif"), "avatar", "u1")
+                .unwrap()
         );
         assert_eq!(
             same_origin_asset(Some("/uploads/a.png"), "avatar", "u1"),

@@ -1,0 +1,173 @@
+{
+  "widgets": [
+    {
+      "type": "pronouns",
+      "label": "widget.pronouns",
+      "icon": "user",
+      "singleton": true,
+      "default": true,
+      "render": { "block": "native", "component": "pronouns" }
+    },
+    {
+      "type": "now-playing",
+      "label": "widget.nowPlaying",
+      "description": "widget.nowPlaying.desc",
+      "icon": "activity",
+      "singleton": true,
+      "default": true,
+      "render": { "block": "native", "component": "activity" }
+    },
+    {
+      "type": "badges",
+      "label": "widget.badges",
+      "icon": "award",
+      "singleton": true,
+      "default": true,
+      "render": { "block": "native", "component": "badges" }
+    },
+    {
+      "type": "bio",
+      "label": "widget.bio",
+      "description": "widget.bio.desc",
+      "icon": "text",
+      "singleton": true,
+      "default": true,
+      "config": [
+        { "key": "title", "kind": "string", "label": "widget.field.title", "max": 60, "placeholder": "profileCard.aboutMe" }
+      ],
+      "render": {
+        "block": "section",
+        "heading": "{config.title}",
+        "body": { "block": "native", "component": "bio" }
+      }
+    },
+    {
+      "type": "connections",
+      "label": "widget.connections",
+      "icon": "link",
+      "singleton": true,
+      "default": true,
+      "render": { "block": "native", "component": "connections" }
+    },
+    {
+      "type": "member-since",
+      "label": "widget.memberSince",
+      "icon": "calendar",
+      "singleton": true,
+      "default": true,
+      "config": [
+        { "key": "title", "kind": "string", "label": "widget.field.title", "max": 60, "placeholder": "profileCard.memberSince" }
+      ],
+      "render": {
+        "block": "section",
+        "heading": "{config.title}",
+        "body": { "block": "native", "component": "member-since" }
+      }
+    },
+    {
+      "type": "text",
+      "label": "widget.text",
+      "description": "widget.text.desc",
+      "icon": "type",
+      "config": [
+        { "key": "title", "kind": "string", "label": "widget.field.title", "max": 60 },
+        { "key": "body", "kind": "string", "label": "widget.field.body", "max": 1000, "multiline": true }
+      ],
+      "render": {
+        "block": "section",
+        "heading": "{config.title}",
+        "body": { "block": "text", "value": "{config.body}", "markdown": true }
+      }
+    },
+    {
+      "type": "heading",
+      "label": "widget.heading",
+      "icon": "heading",
+      "config": [
+        { "key": "text", "kind": "string", "label": "widget.field.text", "max": 60 }
+      ],
+      "render": { "block": "section", "heading": "{config.text}", "body": { "block": "spacer", "size": "none" } }
+    },
+    {
+      "type": "fields",
+      "label": "widget.fields",
+      "description": "widget.fields.desc",
+      "icon": "list",
+      "config": [
+        { "key": "title", "kind": "string", "label": "widget.field.title", "max": 60 },
+        {
+          "key": "items",
+          "kind": "list",
+          "label": "widget.field.rows",
+          "max": 12,
+          "of": [
+            { "key": "label", "kind": "string", "label": "widget.field.label", "max": 40 },
+            { "key": "value", "kind": "string", "label": "widget.field.value", "max": 200 }
+          ]
+        }
+      ],
+      "render": {
+        "block": "section",
+        "heading": "{config.title}",
+        "body": { "block": "rows", "from": "config.items" }
+      }
+    },
+    {
+      "type": "links",
+      "label": "widget.links",
+      "icon": "link",
+      "config": [
+        { "key": "title", "kind": "string", "label": "widget.field.title", "max": 60 },
+        {
+          "key": "items",
+          "kind": "list",
+          "label": "widget.field.links",
+          "max": 8,
+          "of": [
+            { "key": "label", "kind": "string", "label": "widget.field.label", "max": 40 },
+            { "key": "url", "kind": "url", "label": "widget.field.url" }
+          ]
+        }
+      ],
+      "render": {
+        "block": "section",
+        "heading": "{config.title}",
+        "body": { "block": "links", "from": "config.items" }
+      }
+    },
+    {
+      "type": "image",
+      "label": "widget.image",
+      "icon": "image",
+      "config": [
+        { "key": "url", "kind": "url", "label": "widget.field.url" },
+        { "key": "alt", "kind": "string", "label": "widget.field.alt", "max": 120 }
+      ],
+      "render": { "block": "image", "src": "{config.url}", "alt": "{config.alt}" }
+    },
+    {
+      "type": "spacer",
+      "label": "widget.spacer",
+      "icon": "space",
+      "config": [
+        {
+          "key": "size",
+          "kind": "select",
+          "label": "widget.field.size",
+          "options": [
+            { "value": "sm", "label": "widget.size.sm" },
+            { "value": "md", "label": "widget.size.md" },
+            { "value": "lg", "label": "widget.size.lg" }
+          ]
+        }
+      ],
+      "render": { "block": "spacer", "size": "{config.size}" }
+    },
+    {
+      "type": "divider",
+      "label": "widget.divider",
+      "icon": "minus",
+      "render": { "block": "divider" }
+    }
+  ]
+}

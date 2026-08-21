@@ -10,12 +10,13 @@ import {
   Pencil,
   Pin,
   PinOff,
+  Plus,
   Reply,
-  SmilePlus,
   Trash2,
   Volume2,
 } from "lucide-react";
 import type { Message } from "@orangchat/shared";
+import { cn } from "../../lib/cn";
 import {
   ContextMenuContent,
   ContextMenuItem,
@@ -28,8 +29,14 @@ import { usePluginMessageActions } from "../plugins/store";
 import type { PluginMessage } from "../plugins/types";
 import { unreadActions } from "../../stores/unread";
 import { markChannelUnread } from "../unread/api";
-import { QUICK_EMOJIS } from "./emoji-data";
-import { deleteMessage, toggleReaction } from "./socket-actions";
+import { useEmojiMap, withMessageEmojis } from "../emojis/queries";
+import {
+  ReactionEmoji,
+  reactionValue,
+  reactWith,
+  useReactionQuickPicks,
+} from "./Reactions";
+import { deleteMessage } from "./socket-actions";
 import { t } from "../../lib/i18n";
 
 const copyText = (text: string) => void navigator.clipboard?.writeText(text);
@@ -52,6 +59,8 @@ export interface MessageContextMenuProps {
   onForward: () => void;
   onTogglePin: () => void;
   onReport: () => void;
+
+  onOpenReactionPicker: () => void;
 }
 
 
@@ -64,15 +73,14 @@ export function MessageContextMenu({
   onForward,
   onTogglePin,
   onReport,
+  onOpenReactionPicker,
 }: MessageContextMenuProps) {
   const { pathname } = useLocation();
   const messageLink = `${window.location.origin}${pathname}?m=${message.id}`;
 
-  const react = (emoji: string) =>
-    toggleReaction(
-      { channelId: message.channelId, messageId: message.id, emoji },
-      message.reactions.some((r) => r.emoji === emoji && r.me),
-    );
+  const quickPicks = useReactionQuickPicks();
+  const usableEmojis = useEmojiMap();
+  const emojis = withMessageEmojis(usableEmojis, message.emojis);
 
   const canPin = isOwn || canManage;
 
@@ -90,37 +98,35 @@ export function MessageContextMenu({
 
   return (
     <ContextMenuContent className="w-60">
-      <div className="flex gap-0.5 pb-1">
-        {QUICK_EMOJIS.slice(0, 4).map((emoji) => (
-          <ContextMenuItem
-            key={emoji}
-            onSelect={() => react(emoji)}
-            className="flex-1 justify-center py-1.5 text-lg"
-          >
-            {emoji}
-          </ContextMenuItem>
-        ))}
+      {/* Tier one: what this viewer actually reacts with, one click away. The
+          `+` hands off to the full picker rather than nesting it in a submenu. */}
+      <div className="flex items-center gap-0.5 pb-1">
+        {quickPicks.map((pick) => {
+          const value = reactionValue(pick);
+          const mine = message.reactions.some((r) => r.emoji === value && r.me);
+          return (
+            <ContextMenuItem
+              key={value}
+              title={pick.custom ? `:${pick.custom.name}:` : pick.insert}
+              onSelect={() => reactWith(message, pick)}
+              className={cn(
+                "flex-1 justify-center py-1.5 text-lg",
+                mine && "bg-primary-soft",
+              )}
+            >
+              <ReactionEmoji emoji={value} emojis={emojis} />
+            </ContextMenuItem>
+          );
+        })}
+        <ContextMenuItem
+          aria-label={t("messageContextMenu.addReaction")}
+          title={t("messageContextMenu.addReaction")}
+          onSelect={onOpenReactionPicker}
+          className="justify-center px-2 py-1.5 text-ink-muted"
+        >
+          <Plus aria-hidden className="size-5" />
+        </ContextMenuItem>
       </div>
-
-      <ContextMenuSub>
-        <ContextMenuSubTrigger>
-          <SmilePlus aria-hidden className="size-4" />
-          {t("messageContextMenu.addReaction")}
-        </ContextMenuSubTrigger>
-        <ContextMenuSubContent className="min-w-0">
-          <div className="grid grid-cols-4 gap-0.5">
-            {QUICK_EMOJIS.map((emoji) => (
-              <ContextMenuItem
-                key={emoji}
-                onSelect={() => react(emoji)}
-                className="justify-center py-1.5 text-lg"
-              >
-                {emoji}
-              </ContextMenuItem>
-            ))}
-          </div>
-        </ContextMenuSubContent>
-      </ContextMenuSub>
 
       {isOwn && (
         <ContextMenuItem onSelect={onEdit}>

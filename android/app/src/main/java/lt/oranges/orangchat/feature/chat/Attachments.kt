@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -63,8 +62,8 @@ import java.time.Instant
 import java.time.format.DateTimeParseException
 
 
-private const val MIN_IMAGE_ASPECT = 0.6f
-private const val MAX_IMAGE_ASPECT = 2f
+private val MAX_IMAGE_WIDTH = 240.dp
+private val MAX_IMAGE_HEIGHT = 360.dp
 private const val DEFAULT_IMAGE_ASPECT = 4f / 3f
 
 fun formatBytes(bytes: Long): String {
@@ -350,28 +349,22 @@ private fun ImagePreview(attachment: Attachment, expiresAt: Instant?, now: Insta
     }
     val href = source.url
     val shape = RoundedCornerShape(OrangRadius.xl2)
-    // A box shaped to the image's own aspect (clamped, so a panorama or a strip
-    // of a GIF doesn't blow out the message column) never needs to letterbox -
-    // ContentScale.Fit only pads out mismatches between an arbitrary fixed box
-    // and the content, which a fixed 200dp height was doing for every image
-    // that wasn't ~1.4:1.
     val aspect = remember(attachment.width, attachment.height) {
         val w = attachment.width
         val h = attachment.height
-        if (w != null && h != null && w > 0 && h > 0) {
-            (w.toFloat() / h.toFloat()).coerceIn(MIN_IMAGE_ASPECT, MAX_IMAGE_ASPECT)
-        } else {
-            DEFAULT_IMAGE_ASPECT
-        }
+        if (w != null && h != null && w > 0 && h > 0) w.toFloat() / h.toFloat() else DEFAULT_IMAGE_ASPECT
+    }
+    val widthFromHeightCap = MAX_IMAGE_HEIGHT * aspect
+    val sizeModifier = if (widthFromHeightCap <= MAX_IMAGE_WIDTH) {
+        Modifier.width(widthFromHeightCap).height(MAX_IMAGE_HEIGHT)
+    } else {
+        Modifier.width(MAX_IMAGE_WIDTH).height(MAX_IMAGE_WIDTH / aspect)
     }
 
     Column {
         if (href == null) {
             Box(
-                modifier = Modifier
-                    .widthIn(max = 280.dp)
-                    .fillMaxWidth()
-                    .aspectRatio(aspect)
+                modifier = sizeModifier
                     .clip(shape)
                     .background(c.surface1),
                 contentAlignment = Alignment.Center,
@@ -394,12 +387,9 @@ private fun ImagePreview(attachment: Attachment, expiresAt: Instant?, now: Insta
             AsyncImage(
                 model = href,
                 contentDescription = attachment.filename,
-                contentScale = ContentScale.Crop,
+                contentScale = ContentScale.Fit,
                 onError = { broken = true },
-                modifier = Modifier
-                    .widthIn(max = 280.dp)
-                    .fillMaxWidth()
-                    .aspectRatio(aspect)
+                modifier = sizeModifier
                     .clip(shape)
                     .background(c.surface1)
                     .mediaOrigin(origin)

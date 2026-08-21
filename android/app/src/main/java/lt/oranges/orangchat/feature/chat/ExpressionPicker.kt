@@ -65,6 +65,7 @@ import coil.compose.AsyncImage
 import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.EmojiRef
 import lt.oranges.orangchat.util.EmojiSearch
+import lt.oranges.orangchat.util.EmojiTokens
 import lt.oranges.orangchat.util.absoluteUrl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -218,35 +219,6 @@ class KlipyGifViewModel @Inject constructor(
     }
 }
 
-@Composable
-fun EmojiGrid(columns: Int, modifier: Modifier = Modifier, onPick: (String) -> Unit) {
-    val c = OrangTheme.colors
-    LazyVerticalGrid(columns = GridCells.Fixed(columns), modifier = modifier) {
-        for (category in EMOJI_CATEGORIES) {
-            item(key = "header-${category.name}", span = { GridItemSpan(maxLineSpan) }) {
-                Text(
-                    category.name.uppercase(),
-                    color = c.inkMuted,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(c.surface3)
-                        .padding(horizontal = 4.dp, vertical = 6.dp),
-                )
-            }
-            items(category.emojis, key = { "${category.name}-$it" }) { emoji ->
-                Box(
-                    modifier = Modifier
-                        .aspectRatio(1f)
-                        .clickable { onPick(emoji) },
-                    contentAlignment = Alignment.Center,
-                ) { Text(emoji, fontSize = 22.sp) }
-            }
-        }
-    }
-}
-
 /** A server's own emoji, kept together so the picker can label them by server. */
 data class CustomEmojiGroup(
     val serverId: String,
@@ -330,10 +302,10 @@ fun ExpressionPickerSheet(
 
         when {
             tab == PickerTabId.EMOJI || !gifsEnabled -> {
-                EmojiPanel(
+                EmojiPickerPanel(
                     groups = customGroups,
                     recent = recentEmojis,
-                    onPick = { insert ->
+                    onPick = { insert, _ ->
                         viewModel.recordEmoji(insert)
                         onEmoji(insert)
                     },
@@ -440,8 +412,7 @@ private sealed interface EmojiSection {
     }
 }
 
-/** A remembered pick: `url` is set when it resolves to a custom emoji. */
-private data class RecentEntry(val insert: String, val url: String?)
+private data class RecentEntry(val insert: String, val custom: EmojiRef?)
 
 private val SHORTCODE = Regex("^:([^:\\s]+):$")
 
@@ -459,8 +430,38 @@ private fun recentEntries(
     groups.asSequence()
         .flatMap { it.emojis }
         .firstOrNull { it.name.equals(name, ignoreCase = true) }
-        ?.let { RecentEntry(insert, it.url) }
+        ?.let { RecentEntry(insert, it) }
 }
+
+data class ReactionPick(val insert: String, val custom: EmojiRef?)
+
+const val QUICK_PICK_COUNT = 6
+
+/**
+ * The emoji this viewer reaches for, newest first, topped up with the standard
+ * set so a fresh install still gets a full bar.
+ */
+fun reactionQuickPicks(
+    recent: List<String>,
+    groups: List<CustomEmojiGroup>,
+    limit: Int = QUICK_PICK_COUNT,
+): List<ReactionPick> {
+    val picks = recentEntries(recent, groups)
+        .map { ReactionPick(it.insert, it.custom) }
+        .take(limit)
+        .toMutableList()
+    val seen = picks.mapTo(mutableSetOf()) { it.insert }
+    for (emoji in QUICK_EMOJIS) {
+        if (picks.size >= limit) break
+        if (!seen.add(emoji)) continue
+        picks.add(ReactionPick(emoji, null))
+    }
+    return picks
+}
+
+fun reactionValue(pick: ReactionPick): String = pick.custom
+    ?.let { EmojiTokens.token(EmojiTokens.Ref(it.animated, it.name, it.id)) }
+    ?: pick.insert
 
 private fun emojiSections(
     groups: List<CustomEmojiGroup>,
@@ -490,18 +491,23 @@ private const val EMOJI_SEARCH_LIMIT = 64
 private const val SEARCH_SECTION = "search"
 private const val RECENT_SECTION = "recent"
 
+/**
+ * The full emoji picker - search, jump rail, recents, this viewer's custom
+ * emoji, then the standard set. [onPick] gets the composer form (`:name:` or
+ * the character) plus the emoji itself when the pick was a custom one, so a
+ * caller that needs a durable `<:name:id>` token can build one. Leave
+ * [onBackspace] null where there is no text field to delete from.
+ */
 @Composable
-private fun ColumnScope.EmojiPanel(
+fun ColumnScope.EmojiPickerPanel(
     groups: List<CustomEmojiGroup>,
     recent: List<String>,
-    onPick: (String) -> Unit,
-    onBackspace: () -> Unit,
+    onPick: (String, EmojiRef?) -> Unit,
+    onBackspace: (() -> Unit)? = null,
 ) {
     val c = OrangTheme.colors
     val context = LocalContext.current
     var query by remember { mutableStateOf("") }
-    // Recents are read once per opening: reshuffling the grid under the finger
-    // that just picked something is worse than showing it on the next visit.
     val openingRecent = remember(groups) { recent }
     val sections = remember(groups, openingRecent, query) {
         emojiSections(groups, openingRecent, query)
@@ -571,7 +577,7 @@ private fun ColumnScope.EmojiPanel(
                     Box(
                         modifier = Modifier
                             .aspectRatio(1f)
-                            .clickable { onPick(":${emoji.name}:") },
+                            .clickable { onPick(":${emoji.name}:", emoji) },
                         contentAlignment = Alignment.Center,
                     ) {
                         AsyncImage(
@@ -589,7 +595,7 @@ private fun ColumnScope.EmojiPanel(
                     Box(
                         modifier = Modifier
                             .aspectRatio(1f)
-                            .clickable { onPick(emoji) },
+                            .clickable { onPick(emoji, null) },
                         contentAlignment = Alignment.Center,
                     ) { Text(emoji, fontSize = 22.sp) }
                 }
@@ -601,12 +607,12 @@ private fun ColumnScope.EmojiPanel(
                     Box(
                         modifier = Modifier
                             .aspectRatio(1f)
-                            .clickable { onPick(entry.insert) },
+                            .clickable { onPick(entry.insert, entry.custom) },
                         contentAlignment = Alignment.Center,
                     ) {
-                        if (entry.url != null) {
+                        if (entry.custom != null) {
                             AsyncImage(
-                                model = absoluteUrl(entry.url),
+                                model = absoluteUrl(entry.custom.url),
                                 contentDescription = entry.insert,
                                 modifier = Modifier.size(26.dp),
                             )
@@ -667,16 +673,18 @@ private fun ColumnScope.EmojiPanel(
                 }
             }
         }
-        Icon(
-            Icons.AutoMirrored.Filled.Backspace,
-            contentDescription = AppStrings.get(context, R.string.catalog_backspace_88d130a6),
-            tint = c.inkMuted,
-            modifier = Modifier
-                .size(38.dp)
-                .clip(RoundedCornerShape(OrangRadius.md))
-                .clickable(onClick = onBackspace)
-                .padding(9.dp),
-        )
+        if (onBackspace != null) {
+            Icon(
+                Icons.AutoMirrored.Filled.Backspace,
+                contentDescription = AppStrings.get(context, R.string.catalog_backspace_88d130a6),
+                tint = c.inkMuted,
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(OrangRadius.md))
+                    .clickable(onClick = onBackspace)
+                    .padding(9.dp),
+            )
+        }
     }
 }
 

@@ -95,6 +95,12 @@ struct ReactionPayload {
     emoji: String,
 }
 
+const REACTION_MAX_CHARS: usize = 64;
+
+fn reaction_ok(emoji: &str) -> bool {
+    !emoji.is_empty() && emoji.chars().count() <= REACTION_MAX_CHARS
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct VoiceUpdatePayload {
@@ -826,6 +832,9 @@ fn register_handlers(
             let io = io.clone();
             let uid = uid.clone();
             async move {
+                if !reaction_ok(&p.emoji) {
+                    return;
+                }
                 if rate_limit::check(&state, "reaction", &uid, rate_limit::REACTION_PER_USER)
                     .await
                     .is_err()
@@ -867,6 +876,9 @@ fn register_handlers(
             let io = io.clone();
             let uid = uid.clone();
             async move {
+                if !reaction_ok(&p.emoji) {
+                    return;
+                }
                 if rate_limit::check(&state, "reaction", &uid, rate_limit::REACTION_PER_USER)
                     .await
                     .is_err()

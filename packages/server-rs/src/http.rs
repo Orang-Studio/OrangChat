@@ -10,6 +10,7 @@ pub mod emojis;
 pub mod events;
 pub mod friends;
 pub mod i18n;
+pub mod profile_widgets;
 pub mod link_previews;
 pub mod media_proxy;
 pub mod push;
@@ -266,6 +267,7 @@ pub fn router(state: AppState) -> Router {
         ))
         .merge(updates::routes())
         .merge(i18n::routes())
+        .merge(profile_widgets::routes())
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
             api_rate_limit,

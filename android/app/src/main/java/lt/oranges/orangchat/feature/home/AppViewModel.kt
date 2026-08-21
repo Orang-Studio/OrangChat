@@ -204,6 +204,9 @@ class AppViewModel @Inject constructor(
     private val _connected = MutableStateFlow(false)
     val connected: StateFlow<Boolean> = _connected.asStateFlow()
 
+    private val _online = MutableStateFlow(true)
+    val online: StateFlow<Boolean> = _online.asStateFlow()
+
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
@@ -222,9 +225,30 @@ class AppViewModel @Inject constructor(
 
     init {
         observeSocket()
+        observeNetwork()
         viewModelScope.launch {
             _currentChannelId.collect { AppForegroundState.setVisibleChannel(it) }
         }
+    }
+
+    private fun observeNetwork() {
+        val cm = appContext.getSystemService(android.content.Context.CONNECTIVITY_SERVICE)
+            as? android.net.ConnectivityManager ?: return
+        val active = cm.activeNetwork?.let(cm::getNetworkCapabilities)
+        _online.value = active?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        cm.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {
+            override fun onLost(network: android.net.Network) {
+                _online.value = false
+            }
+
+            override fun onCapabilitiesChanged(
+                network: android.net.Network,
+                capabilities: android.net.NetworkCapabilities,
+            ) {
+                _online.value = capabilities.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                    capabilities.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            }
+        })
     }
 
     fun bootstrap() {
@@ -517,17 +541,17 @@ class AppViewModel @Inject constructor(
         muteStore.indexChannels(detail.server.id, detail.channels.map { it.id })
         _presence.update { m ->
             m + detail.members.associate {
-                it.user.id to if (livePresence) it.user.status else PresenceStatus.OFFLINE
+                it.user.id to if (livePresence) it.user.status else (m[it.user.id] ?: PresenceStatus.OFFLINE)
             }
         }
         _presenceDevices.update { m ->
             m + detail.members.associate {
-                it.user.id to if (livePresence) it.user.devices.toSet() else emptySet()
+                it.user.id to if (livePresence) it.user.devices.toSet() else (m[it.user.id] ?: emptySet())
             }
         }
         _presenceActivities.update { m ->
             m + detail.members.associate {
-                it.user.id to if (livePresence) it.user.activities else emptyList()
+                it.user.id to if (livePresence) it.user.activities else (m[it.user.id] ?: emptyList())
             }
         }
         val current = _currentChannelId.value

@@ -7,6 +7,7 @@ import { authStoreActions, useAuthStore } from "../../stores/auth";
 import { updateProfile } from "../auth/api";
 import { getMyConnections } from "../connections/api";
 import { ProfileCard, type ProfileCardData } from "../profile/ProfileCard";
+import { useWidgetCatalogMap } from "../profile/widgetCatalog";
 import { t, tNodes } from "../../lib/i18n";
 
 function ProfileThemeCard({
@@ -82,6 +83,8 @@ export function ProfileThemesTab() {
     queryFn: getMyConnections,
   });
 
+  const widgetCatalog = useWidgetCatalogMap();
+
   const preview = useMemo<ProfileCardData>(
     () => ({
       displayName: user?.displayName ?? t("profileThemesTab.yourName"),
@@ -94,9 +97,12 @@ export function ProfileThemesTab() {
       status: user?.status,
       createdAt: user?.createdAt,
       badges: user?.badges,
+      profileWidgets: user?.profileWidgets,
+      profileFields: user?.profileFields,
+      widgetCatalog,
       connections: connections?.filter((c) => c.visible) ?? [],
     }),
-    [user, connections],
+    [user, connections, widgetCatalog],
   );
 
   return (

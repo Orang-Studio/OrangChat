@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import * as Popover from "@radix-ui/react-popover";
 import { Pencil, Pin, Reply, Trash2, TriangleAlert } from "lucide-react";
 import type { Message, User } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
@@ -12,7 +13,15 @@ import { useEmojiMap, withMessageEmojis } from "../emojis/queries";
 import { ProfileDialog } from "../profile/ProfileDialog";
 import { isDirectMediaMessage, LinkEmbeds } from "./LinkEmbeds";
 import { MessageAttachments } from "./MessageAttachments";
-import { ReactionPicker, ReactionStrip } from "./Reactions";
+import {
+  ReactionEmoji,
+  ReactionPicker,
+  ReactionPopoverContent,
+  ReactionStrip,
+  reactionValue,
+  reactWith,
+  useReactionQuickPicks,
+} from "./Reactions";
 import { deleteMessage, editMessage } from "./socket-actions";
 import { MessageContextMenu } from "./MessageContextMenu";
 import { ForwardDialog } from "./ForwardDialog";
@@ -168,6 +177,8 @@ export function MessageItem({
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [forwardOpen, setForwardOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const hoverPicks = useReactionQuickPicks(3);
   const usableEmojis = useEmojiMap();
   const emojis = useMemo(
     () => withMessageEmojis(usableEmojis, message.emojis),
@@ -184,8 +195,12 @@ export function MessageItem({
 
   return (
     <>
+      {/* The picker the context menu hands off to hangs off the message row
+          itself, so it lands where the right-click did. */}
+      <Popover.Root open={pickerOpen} onOpenChange={setPickerOpen}>
       <ContextMenu>
         <ContextMenuTrigger asChild disabled={pending || failed}>
+          <Popover.Anchor asChild>
           <div
             data-message-id={message.id}
             onClick={pending || failed ? undefined : onTap}
@@ -357,6 +372,22 @@ export function MessageItem({
                   touchActions && "flex",
                 )}
               >
+                {/* Pointer users get their top picks inline; touch reaches the
+                    same list by holding the message. */}
+                {hoverPicks.map((pick) => {
+                  const value = reactionValue(pick);
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      title={pick.custom ? `:${pick.custom.name}:` : pick.insert}
+                      onClick={() => reactWith(message, pick)}
+                      className="hidden rounded p-1 text-base leading-none transition-colors hover:bg-surface-3 md:block"
+                    >
+                      <ReactionEmoji emoji={value} emojis={emojis} />
+                    </button>
+                  );
+                })}
                 <ReactionPicker message={message} />
                 <button
                   type="button"
@@ -404,6 +435,7 @@ export function MessageItem({
               />
             )}
           </div>
+          </Popover.Anchor>
         </ContextMenuTrigger>
         {!pending && !failed && (
           <MessageContextMenu
@@ -417,9 +449,14 @@ export function MessageItem({
             onTogglePin={() =>
               void setMessagePinned(message.channelId, message.id, !message.pinned).catch(() => {})
             }
+            onOpenReactionPicker={() => window.setTimeout(() => setPickerOpen(true), 0)}
           />
         )}
       </ContextMenu>
+      {pickerOpen && (
+        <ReactionPopoverContent message={message} onDone={() => setPickerOpen(false)} />
+      )}
+      </Popover.Root>
 
       {forwardOpen && (
         <ForwardDialog message={message} open={forwardOpen} onOpenChange={setForwardOpen} />

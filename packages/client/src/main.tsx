@@ -5,7 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App } from "./app/App";
 import { registerRealtime } from "./features/chat/realtime";
 import { registerE2eeBootstrap } from "./features/e2ee/bootstrap";
-import { initLanguage, useLanguageKey } from "./lib/i18n";
+import { initLanguage, useCatalogReady, useLanguageKey } from "./lib/i18n";
+import { SplashScreen } from "./components/SplashScreen";
 import { initPrefs } from "./lib/prefs";
 import { initTheme } from "./lib/theme";
 import { initViewport } from "./lib/viewport";
@@ -46,7 +47,9 @@ registerE2eeBootstrap();
 
 
 function Localized() {
-  return <App key={useLanguageKey()} />;
+  const language = useLanguageKey();
+  if (!useCatalogReady(language)) return <SplashScreen />;
+  return <App key={language} />;
 }
 
 createRoot(document.getElementById("root")!).render(

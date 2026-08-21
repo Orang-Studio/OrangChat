@@ -19,6 +19,8 @@ model User {
   pronouns             String?
   customCss            String?
   profileCss           String?
+  profileWidgets       Json     @default("[]")
+  profileFields        Json     @default("{}")
   /// Replaces the OrangChat mark on this user's own clients (favicon, in-app
   /// branding, Electron window/tray icon). Self-only - never on the public DTO.
   appIconUrl           String?
@@ -93,6 +95,7 @@ model User {
   keyDeletionRequests    KeyDeletionRequest[]
   messageReports         MessageReport[]
   passkeys               Passkey[]
+  profileFieldTokens     ProfileFieldToken[]
 }
 
 model EmailVerification {
@@ -152,6 +155,18 @@ model BotToken {
   lastUsedAt DateTime?
   bot User @relation(fields: [botId], references: [id], onDelete: Cascade)
   @@index([botId])
+}
+
+model ProfileFieldToken {
+  id         String    @id @default(cuid())
+  userId     String
+  tokenHash  String    @unique
+  hint       String
+  label      String
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
 }
 
 model Connection {

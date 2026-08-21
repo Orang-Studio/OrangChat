@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import lt.oranges.orangchat.ui.components.Text
 import androidx.compose.runtime.Composable
@@ -38,8 +40,6 @@ import coil.compose.AsyncImage
 import lt.oranges.orangchat.data.model.PresenceStatus
 import lt.oranges.orangchat.data.model.User
 import lt.oranges.orangchat.ui.components.Avatar
-import lt.oranges.orangchat.ui.components.ActivityStatus
-import lt.oranges.orangchat.ui.components.ProfileBadges
 import lt.oranges.orangchat.ui.components.DeviceIndicators
 import lt.oranges.orangchat.ui.components.ButtonVariant
 import lt.oranges.orangchat.ui.components.OrangButton
@@ -47,9 +47,14 @@ import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.absoluteUrl
-import lt.oranges.orangchat.util.formatFullTime
 
 enum class ProfileRelation { SELF, FRIEND, PENDING, STRANGER }
+
+data class ProfileCardEdit(
+    val onPickAvatar: () -> Unit,
+    val onPickBanner: () -> Unit,
+    val busy: ImageKind? = null,
+)
 
 @Composable
 fun ProfileCard(
@@ -57,10 +62,12 @@ fun ProfileCard(
     modifier: Modifier = Modifier,
     presence: PresenceStatus? = null,
     actions: (@Composable RowScope.() -> Unit)? = null,
+    edit: ProfileCardEdit? = null,
 ) {
-    if (!user.profileCss.isNullOrBlank()) {
+    val definitions = LocalWidgetCatalog.current
+    if (!user.profileCss.isNullOrBlank() && edit == null) {
         Column(modifier = modifier) {
-            ProfileCardWebView(user = user, presence = presence)
+            ProfileCardWebView(user = user, presence = presence, definitions = definitions)
             actions?.let {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
@@ -69,7 +76,13 @@ fun ProfileCard(
             }
         }
     } else {
-        ProfileCardNative(user = user, modifier = modifier, presence = presence, actions = actions)
+        ProfileCardNative(
+            user = user,
+            modifier = modifier,
+            presence = presence,
+            actions = actions,
+            edit = edit,
+        )
     }
 }
 
@@ -79,9 +92,9 @@ private fun ProfileCardNative(
     modifier: Modifier = Modifier,
     presence: PresenceStatus? = null,
     actions: (@Composable RowScope.() -> Unit)? = null,
+    edit: ProfileCardEdit? = null,
 ) {
     val c = OrangTheme.colors
-    val context = LocalContext.current
     val outerShape = RoundedCornerShape(OrangRadius.xl)
     val avatarShape = CircleShape
     val accent = user.accentColor?.let { Color(it).copy(alpha = 1f) } ?: c.surface4
@@ -98,7 +111,11 @@ private fun ProfileCardNative(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(80.dp)
-                    .background(accent),
+                    .background(accent)
+                    .then(
+                        if (edit != null) Modifier.clickable(onClick = edit.onPickBanner)
+                        else Modifier,
+                    ),
             ) {
                 user.bannerUrl?.takeIf { it.isNotBlank() }?.let { url ->
                     AsyncImage(
@@ -107,6 +124,13 @@ private fun ProfileCardNative(
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxWidth().height(80.dp),
                     )
+                }
+                edit?.let {
+                    EditOverlay(
+                        busy = it.busy == ImageKind.BANNER,
+                        modifier = Modifier.fillMaxWidth().height(80.dp),
+                    )
+                    EditBadge(modifier = Modifier.align(Alignment.TopEnd).padding(6.dp))
                 }
             }
 
@@ -119,21 +143,14 @@ private fun ProfileCardNative(
                         .background(c.surface1, RoundedCornerShape(OrangRadius.xl))
                         .padding(12.dp),
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = user.displayName.ifBlank { "-" },
-                            color = c.ink,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                        user.pronouns?.takeIf { it.isNotBlank() }?.let { pronouns ->
-                            Spacer(Modifier.width(8.dp))
-                            Text(pronouns, color = c.inkMuted, fontSize = 12.sp, maxLines = 1)
-                        }
-                    }
+                    Text(
+                        text = user.displayName.ifBlank { "-" },
+                        color = c.ink,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "@${user.username.ifBlank { "username" }}",
@@ -149,25 +166,10 @@ private fun ProfileCardNative(
                             modifier = Modifier.height(14.dp),
                         )
                     }
-                    ActivityStatus(
-                        activities = user.activities,
-                        modifier = Modifier.padding(top = 6.dp),
-                        compact = false,
+                    ProfileWidgetsNative(
+                        user = user,
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     )
-
-                    ProfileBadges(badges = user.badges, modifier = Modifier.padding(top = 8.dp))
-
-                    user.bio?.takeIf { it.isNotBlank() }?.let { bio ->
-                        ProfileDivider()
-                        ProfileLabel(AppStrings.get(context, R.string.catalog_about_me_e3ba4ef3))
-                        Text(bio, color = c.ink, fontSize = 14.sp)
-                    }
-
-                    user.createdAt.takeIf { it.isNotBlank() }?.let { createdAt ->
-                        ProfileDivider()
-                        ProfileLabel(AppStrings.get(context, R.string.catalog_member_since_f425b08f))
-                        Text(formatFullTime(createdAt), color = c.ink, fontSize = 14.sp)
-                    }
 
                     actions?.let {
                         Spacer(Modifier.height(10.dp))
@@ -192,6 +194,52 @@ private fun ProfileCardNative(
                 size = 56.dp,
                 status = presence ?: user.status,
                 shape = avatarShape,
+            )
+            edit?.let {
+                EditOverlay(
+                    busy = it.busy == ImageKind.AVATAR,
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(avatarShape)
+                        .clickable(onClick = it.onPickAvatar),
+                )
+                EditBadge(modifier = Modifier.align(Alignment.TopEnd))
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditBadge(modifier: Modifier = Modifier) {
+    val c = OrangTheme.colors
+    Box(
+        modifier = modifier
+            .size(20.dp)
+            .clip(CircleShape)
+            .background(c.surface2)
+            .border(1.dp, c.border, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Edit,
+            contentDescription = null,
+            tint = c.ink,
+            modifier = Modifier.size(12.dp),
+        )
+    }
+}
+
+@Composable
+private fun EditOverlay(busy: Boolean, modifier: Modifier = Modifier) {
+    if (busy) {
+        Box(
+            modifier = modifier.background(Color.Black.copy(alpha = 0.35f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator(
+                color = Color.White,
+                strokeWidth = 2.dp,
+                modifier = Modifier.size(20.dp),
             )
         }
     }
@@ -265,21 +313,4 @@ fun ProfileDialog(
     }
 }
 
-@Composable
-private fun ProfileDivider() {
-    Spacer(Modifier.height(10.dp))
-    Box(Modifier.fillMaxWidth().height(1.dp).background(OrangTheme.colors.border))
-    Spacer(Modifier.height(10.dp))
-}
 
-@Composable
-private fun ProfileLabel(text: String) {
-    Text(
-        text = text.uppercase(),
-        color = OrangTheme.colors.inkMuted,
-        fontSize = 11.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = 0.4.sp,
-        modifier = Modifier.padding(bottom = 4.dp),
-    )
-}

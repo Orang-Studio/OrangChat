@@ -1,13 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { Smile, X } from "lucide-react";
-import type { Emoji } from "@orangchat/shared";
 import { cn } from "../../lib/cn";
-import { useUsableEmojis } from "../emojis/queries";
-import { useServers } from "../servers/queries";
-import { EMOJI_CATEGORIES } from "./emoji-data";
+import { EmojiPickerPanel } from "./EmojiPicker";
 import { useFavoriteGifs } from "./favoriteGifs";
-import { useRecentEmojis } from "./recentEmojis";
 import { t } from "../../lib/i18n";
 
 interface KlipyFile {
@@ -96,147 +92,6 @@ function recordShare(slug: string) {
     body: JSON.stringify({ customer_id: customerId() }),
     keepalive: true,
   }).catch(() => undefined);
-}
-
-/**
- * The viewer's custom emoji, grouped by the server they come from - without the
- * grouping, two servers with a `blob` each are indistinguishable in the grid.
- */
-function CustomEmojiSections({ onPick }: { onPick: (token: string) => void }) {
-  const { data: emojis } = useUsableEmojis();
-  const { data: servers } = useServers();
-
-  const groups = useMemo(() => {
-    const byServer = new Map<string, Emoji[]>();
-    for (const emoji of emojis ?? []) {
-      const list = byServer.get(emoji.serverId) ?? [];
-      list.push(emoji);
-      byServer.set(emoji.serverId, list);
-    }
-    return [...byServer.entries()].map(([serverId, list]) => ({
-      serverId,
-      name: servers?.find((s) => s.id === serverId)?.name ?? "Custom",
-      list,
-    }));
-  }, [emojis, servers]);
-
-  return (
-    <>
-      {groups.map((group) => (
-        <section key={group.serverId}>
-          <h3 className="sticky top-0 z-10 bg-surface-4 px-1 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
-            {group.name}
-          </h3>
-          <div className="grid grid-cols-8">
-            {group.list.map((emoji) => (
-              <button
-                key={emoji.id}
-                type="button"
-                title={`:${emoji.name}:`}
-                onClick={() => onPick(`:${emoji.name}:`)}
-                className="grid aspect-square place-items-center rounded-lg hover:bg-surface-2"
-              >
-                <img
-                  src={emoji.url}
-                  alt={`:${emoji.name}:`}
-                  loading="lazy"
-                  className="size-6 object-contain"
-                />
-              </button>
-            ))}
-          </div>
-        </section>
-      ))}
-    </>
-  );
-}
-
-/**
- * Recent picks paired back up with the emoji they name. A shortcode whose
- * custom emoji is gone - deleted, or on a server this user has left - has
- * nothing left to draw, so it drops out.
- */
-function RecentEmojiSection({ onPick }: { onPick: (emoji: string) => void }) {
-  const { data: emojis } = useUsableEmojis();
-  // Frozen at open: reshuffling the grid under the finger that just picked
-  // something is worse than showing it on the next visit.
-  const [recent] = useState(useRecentEmojis((s) => s.emojis));
-
-  const entries = useMemo<{ insert: string; url?: string }[]>(() => {
-    return recent.flatMap((insert) => {
-      const name = /^:([^:\s]+):$/.exec(insert)?.[1];
-      if (!name) return [{ insert }];
-      const match = (emojis ?? []).find(
-        (e) => e.name.toLowerCase() === name.toLowerCase(),
-      );
-      return match ? [{ insert, url: match.url }] : [];
-    });
-  }, [recent, emojis]);
-
-  if (entries.length === 0) return null;
-
-  return (
-    <section>
-      <h3 className="sticky top-0 z-10 bg-surface-4 px-1 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
-        {t("expressionPicker.recentlyUsed")}
-      </h3>
-      <div className="grid grid-cols-8">
-        {entries.map((entry) => (
-          <button
-            key={entry.insert}
-            type="button"
-            title={entry.insert}
-            onClick={() => onPick(entry.insert)}
-            className="grid aspect-square place-items-center rounded-lg text-xl hover:bg-surface-2"
-          >
-            {entry.url ? (
-              <img
-                src={entry.url}
-                alt={entry.insert}
-                loading="lazy"
-                className="size-6 object-contain"
-              />
-            ) : (
-              entry.insert
-            )}
-          </button>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function EmojiPanel({ onPick }: { onPick: (emoji: string) => void }) {
-  const record = useRecentEmojis((s) => s.record);
-  const pick = (emoji: string) => {
-    record(emoji);
-    onPick(emoji);
-  };
-  return (
-    <div className="min-h-0 flex-1 overflow-y-auto">
-      <RecentEmojiSection onPick={pick} />
-      <CustomEmojiSections onPick={pick} />
-      {EMOJI_CATEGORIES.map((category) => (
-        <section key={category.name}>
-          <h3 className="sticky top-0 z-10 bg-surface-4 px-1 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
-            {category.name}
-          </h3>
-          <div className="grid grid-cols-8">
-            {category.emojis.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                onClick={() => pick(emoji)}
-                className="grid aspect-square place-items-center rounded-lg text-xl hover:bg-surface-2"
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        </section>
-      ))}
-    </div>
-  );
 }
 
 function GifPanel({ onPick }: { onPick: (url: string) => void }) {
@@ -398,7 +253,12 @@ export function ExpressionPicker({
             ))}
           </div>
           {tab === "emoji" ? (
-            <EmojiPanel onPick={(emoji) => { onEmoji(emoji); setOpen(false); }} />
+            <EmojiPickerPanel
+              onPick={({ insert }) => {
+                onEmoji(insert);
+                setOpen(false);
+              }}
+            />
           ) : (
             <GifPanel onPick={(url) => { onGif(url); setOpen(false); }} />
           )}

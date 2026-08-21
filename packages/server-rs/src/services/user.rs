@@ -21,6 +21,7 @@ pub struct UserPatch {
     pub pronouns: Option<Option<String>>,
     pub custom_css: Option<Option<String>>,
     pub profile_css: Option<Option<String>>,
+    pub profile_widgets: Option<serde_json::Value>,
     pub app_icon_url: Option<Option<String>>,
     pub dm_privacy: Option<String>,
     pub friend_request_privacy: Option<String>,
@@ -144,6 +145,9 @@ pub async fn update_profile(
     }
     if let Some(css) = patch.profile_css {
         sep.push(r#""profileCss" = "#).push_bind_unseparated(css);
+    }
+    if let Some(widgets) = patch.profile_widgets {
+        sep.push(r#""profileWidgets" = "#).push_bind_unseparated(widgets);
     }
     if let Some(icon) = patch.app_icon_url.filter(|v| !is_wire_form(v.as_deref())) {
         sep.push(r#""appIconUrl" = "#).push_bind_unseparated(icon);

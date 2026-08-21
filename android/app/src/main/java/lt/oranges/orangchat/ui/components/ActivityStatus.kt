@@ -44,6 +44,7 @@ import lt.oranges.orangchat.ui.theme.OrangRadius
 import lt.oranges.orangchat.ui.theme.OrangTheme
 import lt.oranges.orangchat.util.AppStrings
 import lt.oranges.orangchat.util.absoluteUrl
+import lt.oranges.orangchat.util.isListeningKind
 
 private val activityClock = flow {
     while (currentCoroutineContext().isActive) {
@@ -79,8 +80,8 @@ fun ActivityStatus(
     compact: Boolean = true,
 ) {
         val context = LocalContext.current
-    val activity = activities.firstOrNull { it.kind == "spotify" } ?: activities.firstOrNull() ?: return
-    val spotify = activity.kind == "spotify"
+    val activity = activities.firstOrNull { isListeningKind(it.kind) } ?: activities.firstOrNull() ?: return
+    val listening = isListeningKind(activity.kind)
     val elapsed = elapsedTime(activity.startedAt)
     val shape = RoundedCornerShape(OrangRadius.xl)
     val artworkSize = if (compact) 20.dp else 48.dp
@@ -113,7 +114,7 @@ fun ActivityStatus(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = if (spotify) Icons.Default.MusicNote else Icons.Default.SportsEsports,
+                    imageVector = if (listening) Icons.Default.MusicNote else Icons.Default.SportsEsports,
                     contentDescription = null,
                     tint = OrangTheme.colors.inkMuted,
                     modifier = Modifier.size(if (compact) 12.dp else 28.dp),
@@ -124,7 +125,7 @@ fun ActivityStatus(
         if (compact) {
             Text(
                 text = buildString {
-                    append(if (spotify) AppStrings.get(context, R.string.catalog_listening_to_b35b0e8e) else "Playing ")
+                    append(if (listening) AppStrings.get(context, R.string.catalog_listening_to_b35b0e8e) else "Playing ")
                     append(activity.name)
                     activity.details?.let { append(" - "); append(it) }
                     elapsed?.let { append(" · for "); append(it) }
@@ -139,7 +140,7 @@ fun ActivityStatus(
         } else {
             Column(modifier = Modifier.weight(1f, fill = false)) {
                 Text(
-                    text = if (spotify) AppStrings.get(context, R.string.catalog_listening_to_aad82f87) else AppStrings.get(context, R.string.catalog_now_playing_586fa7a8),
+                    text = if (listening) AppStrings.get(context, R.string.catalog_listening_to_aad82f87) else AppStrings.get(context, R.string.catalog_now_playing_586fa7a8),
                     color = OrangTheme.colors.inkMuted,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 10.sp,

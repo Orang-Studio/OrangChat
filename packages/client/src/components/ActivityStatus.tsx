@@ -4,6 +4,10 @@ import { cn } from "../lib/cn";
 import { t } from "../lib/i18n";
 import { useNow } from "../lib/useNow";
 
+function isListening(kind: UserActivity["kind"]): boolean {
+  return kind === "listening" || kind === "spotify";
+}
+
 function formatElapsed(startedAt: string, now: number): string | null {
   const started = Date.parse(startedAt);
   if (!Number.isFinite(started)) return null;
@@ -43,10 +47,11 @@ export function ActivityStatus({
   /** Compact single-line row; the profile card variant is a card with artwork. */
   compact?: boolean;
 }) {
-  const activity = activities?.find((item) => item.kind === "spotify") ?? activities?.[0];
+  const activity = activities?.find((item) => isListening(item.kind)) ?? activities?.[0];
   if (!activity) return null;
-  const Icon = activity.kind === "spotify" ? Music2 : Gamepad2;
-  const label = t(activity.kind === "spotify" ? "common.listeningTo" : "common.playing");
+  const listening = isListening(activity.kind);
+  const Icon = listening ? Music2 : Gamepad2;
+  const label = t(listening ? "common.listeningTo" : "common.playing");
   const artwork = activity.imageUrl ? (
     <img
       src={activity.imageUrl}

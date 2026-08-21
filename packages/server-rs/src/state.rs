@@ -9,6 +9,7 @@ use crate::http::i18n::I18nStore;
 use crate::services::attachment_crypto::AttachmentCipher;
 use crate::services::cloudinary::Cloudinary;
 use crate::services::image_moderation::ImageModeration;
+use crate::services::profile_widget::WidgetCatalog;
 use crate::services::push::Push;
 
 #[derive(Clone)]
@@ -21,6 +22,7 @@ pub struct AppState {
     pub image_moderation: Option<Arc<ImageModeration>>,
     pub push: Option<Arc<Push>>,
     pub i18n: Arc<I18nStore>,
+    pub widgets: Arc<WidgetCatalog>,
     io: Arc<OnceLock<SocketIo>>,
 }
 
@@ -31,6 +33,7 @@ impl AppState {
         let image_moderation = ImageModeration::from_config(&config).map(Arc::new);
         let push = Push::from_config(&config).map(Arc::new);
         let i18n = Arc::new(I18nStore::load(&config.i18n_dir));
+        let widgets = Arc::new(WidgetCatalog::load(&config.widgets_file));
         AppState {
             pool,
             redis,
@@ -40,6 +43,7 @@ impl AppState {
             image_moderation,
             push,
             i18n,
+            widgets,
             io: Arc::new(OnceLock::new()),
         }
     }

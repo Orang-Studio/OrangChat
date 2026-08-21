@@ -358,9 +358,6 @@ export function Composer({
         signal: controller.signal,
         onProgress: (fraction: number) => patch(key, { progress: fraction }),
       };
-      // In an encrypted conversation the bytes, the name and the type are sealed
-      // before anything leaves the machine, so the upload the server sees is an
-      // opaque blob and a length (§7).
       const upload: Promise<UploadResult> = isEncrypted(channelId)
         ? uploadSealedAttachment(file, handle).then(({ attachment, supportingAttachments, ref }) => ({
             attachment,
@@ -375,8 +372,6 @@ export function Composer({
           return result;
         })
         .catch((err: unknown) => {
-          // Cancelling is the user's own doing - drop(key) already removed the
-          // entry, so there's nothing to report.
           if (err instanceof DOMException && err.name === 'AbortError') return null;
           patch(key, { error: err instanceof Error ? err.message : 'Upload failed' });
           return null;
@@ -549,8 +544,6 @@ export function Composer({
                 return result ? { result, spoiler: u.spoiler } : null;
               }),
             );
-            // One failed upload fails the whole message: it lands red, like any
-            // other send failure, so the user can retry or discard it.
             const kept = landed.filter((l): l is LandedUpload => l !== null);
             if (kept.length < landed.length) throw new Error(t('composer.attachmentsDropped'));
             return attachmentPatch(kept);

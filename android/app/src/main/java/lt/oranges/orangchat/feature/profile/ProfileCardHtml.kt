@@ -3,13 +3,25 @@ package lt.oranges.orangchat.feature.profile
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import lt.oranges.orangchat.data.model.PresenceStatus
+import lt.oranges.orangchat.data.model.ProfileWidgetBlock
+import lt.oranges.orangchat.data.model.ProfileWidgetDefinition
 import lt.oranges.orangchat.data.model.User
 import lt.oranges.orangchat.ui.components.Badge
 import lt.oranges.orangchat.ui.theme.OrangColors
 import lt.oranges.orangchat.util.BACKEND_ORIGIN
+import lt.oranges.orangchat.util.MdBlock
+import lt.oranges.orangchat.util.MdNode
+import lt.oranges.orangchat.util.PlaceholderSource
 import lt.oranges.orangchat.util.absoluteUrl
+import lt.oranges.orangchat.util.fallbackWidgetDefinition
 import lt.oranges.orangchat.util.formatFullTime
+import lt.oranges.orangchat.util.isListeningKind
+import lt.oranges.orangchat.util.parseMarkdown
+import lt.oranges.orangchat.util.resolveWidgetLayout
 import lt.oranges.orangchat.util.sanitizeProfileCss
+import lt.oranges.orangchat.util.substituteWidgetText
+import lt.oranges.orangchat.util.widgetItemText
+import lt.oranges.orangchat.util.widgetListFrom
 import java.time.Instant
 import java.util.Locale
 import java.util.UUID
@@ -82,6 +94,7 @@ fun buildProfileCardHtml(
     aboutMeLabel: String,
     memberSinceLabel: String,
     presence: PresenceStatus? = null,
+    definitions: Map<String, ProfileWidgetDefinition> = emptyMap(),
 ): ProfileCardHtml {
     val badgeScriptNonce = UUID.randomUUID().toString()
     val avatar = absoluteUrl(user.avatarUrl)
@@ -103,11 +116,12 @@ fun buildProfileCardHtml(
         }
         """<span class="oc-pf-devices">$icons</span>"""
     }
-    val activity = user.activities.firstOrNull { it.kind == "spotify" } ?: user.activities.firstOrNull()
+    val activity = user.activities.firstOrNull { isListeningKind(it.kind) } ?: user.activities.firstOrNull()
     val activityArtwork = activity?.imageUrl?.takeIf { it.isNotBlank() }?.let(::absoluteUrl)
     val activityCard = activity?.let {
-        val label = if (it.kind == "spotify") "LISTENING TO" else "NOW PLAYING"
-        val icon = if (it.kind == "spotify") "&#127925;" else "&#127918;"
+        val listening = isListeningKind(it.kind)
+        val label = if (listening) "LISTENING TO" else "NOW PLAYING"
+        val icon = if (listening) "&#127925;" else "&#127918;"
         val artwork = if (activityArtwork != null) {
             """<img class="oc-pf-activity-artwork" src="${activityArtwork.escapeAttr()}" alt="">"""
         } else {
@@ -140,14 +154,26 @@ fun buildProfileCardHtml(
         }
         """<div class="oc-pf-badges">$imgs<span class="oc-pf-badge-label" role="tooltip" hidden></span></div>"""
     } ?: ""
-    val bio = user.bio?.takeIf { it.isNotBlank() }?.let {
-        """<div class="oc-pf-bio oc-pf-section"><h3 class="oc-pf-heading">${aboutMeLabel.escapeHtml()}</h3><p class="oc-pf-bio-text">${it.escapeHtml()}</p></div>"""
-    } ?: ""
-    val member = user.createdAt.takeIf { it.isNotBlank() }?.let {
-        """<div class="oc-pf-member oc-pf-section"><h3 class="oc-pf-heading">${memberSinceLabel.escapeHtml()}</h3><p class="oc-pf-member-text">${formatFullTime(it).escapeHtml()}</p></div>"""
-    } ?: ""
+    val bio = user.bio?.takeIf { it.isNotBlank() }
+        ?.let { """<div class="oc-pf-bio">${renderBioMarkdown(it)}</div>""" } ?: ""
+    val member = user.createdAt.takeIf { it.isNotBlank() }
+        ?.let { """<p class="oc-pf-member-text">${formatFullTime(it).escapeHtml()}</p>""" } ?: ""
 
-    val imageAllowlist = setOfNotNull(avatar, banner, activityArtwork) + badgeUrls
+    val renderer = WidgetHtmlRenderer(
+        user = user,
+        headingFallbacks = mapOf("bio" to aboutMeLabel, "member-since" to memberSinceLabel),
+        natives = mapOf(
+            "bio" to bio,
+            "pronouns" to pronouns,
+            "badges" to badges,
+            "activity" to activityCard,
+            "member-since" to member,
+        ),
+    )
+    val widgets = renderer.render(definitions)
+
+    val imageAllowlist =
+        setOfNotNull(avatar, banner, activityArtwork) + badgeUrls + renderer.imageUrls
     val imgSrc = (listOf(BACKEND_ORIGIN) + imageAllowlist.mapNotNull(::originOf))
         .distinct()
         .joinToString(" ")
@@ -168,12 +194,9 @@ fun buildProfileCardHtml(
   <div class="oc-pf-inner">
     <div class="oc-pf-avatar"><span class="oc-pf-avatar-frame">$avatarInner$statusBadge</span></div>
     <div class="oc-pf-body">
-      <div class="oc-pf-head"><h2 class="oc-pf-name">${displayName.ifBlank { "-" }.escapeHtml()}</h2>$pronouns</div>
+      <div class="oc-pf-head"><h2 class="oc-pf-name">${displayName.ifBlank { "-" }.escapeHtml()}</h2></div>
       <div class="oc-pf-identity"><p class="oc-pf-username">@${username.ifBlank { "username" }.escapeHtml()}</p>$devices</div>
-      $activityCard
-      $badges
-      $bio
-      $member
+      $widgets
     </div>
   </div>
 </div>
@@ -184,6 +207,124 @@ fun buildProfileCardHtml(
 
     return ProfileCardHtml(html, imageAllowlist)
 }
+
+/**
+ * Walks a widget's render tree into HTML. Native components are pre-built by
+ * the caller, so the loop only decides order and which ones have content.
+ */
+private class WidgetHtmlRenderer(
+    private val user: User,
+    private val headingFallbacks: Map<String, String>,
+    private val natives: Map<String, String>,
+) {
+    val imageUrls = mutableSetOf<String>()
+
+    fun render(definitions: Map<String, ProfileWidgetDefinition>): String {
+        val parts = resolveWidgetLayout(user.profileWidgets).mapNotNull { widget ->
+            if (widget.hidden) return@mapNotNull null
+            val definition = definitions[widget.type]
+                ?: fallbackWidgetDefinition(widget.type)
+                ?: return@mapNotNull null
+            val render = definition.render ?: return@mapNotNull null
+            val source = PlaceholderSource(
+                username = user.username,
+                displayName = user.displayName,
+                pronouns = user.pronouns,
+                createdAt = user.createdAt.takeIf { it.isNotBlank() },
+                fields = user.profileFields,
+                config = widget.config,
+            )
+            val body = block(render, source, widget.type).takeIf { it.isNotBlank() }
+                ?: return@mapNotNull null
+            """<div class="oc-pf-widget" data-widget="${widget.type.escapeAttr()}">$body</div>"""
+        }
+        return if (parts.isEmpty()) "" else """<div class="oc-pf-widgets">${parts.joinToString("")}</div>"""
+    }
+
+    private fun block(node: ProfileWidgetBlock, source: PlaceholderSource, type: String): String =
+        when (node.block) {
+            "native" -> natives[node.component].orEmpty()
+
+            "section" -> {
+                val body = node.body?.let { block(it, source, type) }.orEmpty()
+                if (body.isBlank()) "" else {
+                    val title = heading(node.heading, source, type)
+                    val head = title?.let { """<h3 class="oc-pf-heading">${it.escapeHtml()}</h3>""" }.orEmpty()
+                    """<div class="oc-pf-section">$head$body</div>"""
+                }
+            }
+
+            "text" -> {
+                val value = node.value?.let { substituteWidgetText(it, source) }.orEmpty()
+                if (value.isBlank()) "" else {
+                    val inner =
+                        if (node.markdown) renderBioMarkdown(value)
+                        else """<p class="oc-pf-bio-text">${value.escapeHtml()}</p>"""
+                    """<div class="oc-pf-text">$inner</div>"""
+                }
+            }
+
+            "rows" -> {
+                val items = node.from?.let { widgetListFrom(source, it) }.orEmpty()
+                if (items.isEmpty()) "" else {
+                    val rows = items.joinToString("") { item ->
+                        val label = substituteWidgetText(widgetItemText(item, "label"), source)
+                        val value = substituteWidgetText(widgetItemText(item, "value"), source)
+                        """<div class="oc-pf-row"><span class="oc-pf-row-label">${label.escapeHtml()}</span><span class="oc-pf-row-value">${value.escapeHtml()}</span></div>"""
+                    }
+                    """<div class="oc-pf-rows">$rows</div>"""
+                }
+            }
+
+            "links" -> {
+                val items = node.from?.let { widgetListFrom(source, it) }.orEmpty()
+                    .map { item ->
+                        substituteWidgetText(widgetItemText(item, "url"), source) to
+                            substituteWidgetText(widgetItemText(item, "label"), source)
+                    }
+                    .filter { (url, _) -> isExternalUrl(url) }
+                if (items.isEmpty()) "" else {
+                    val links = items.joinToString("") { (url, label) ->
+                        val text = label.ifBlank { url }
+                        """<li class="oc-pf-link-item"><a class="oc-pf-link" href="${url.escapeAttr()}" target="_blank" rel="noopener noreferrer nofollow">${text.escapeHtml()}</a></li>"""
+                    }
+                    """<ul class="oc-pf-links">$links</ul>"""
+                }
+            }
+
+            "image" -> {
+                val src = node.src?.let { substituteWidgetText(it, source) }.orEmpty()
+                if (!isExternalUrl(src)) "" else {
+                    imageUrls += src
+                    val alt = node.alt?.let { substituteWidgetText(it, source) }.orEmpty()
+                    """<img class="oc-pf-image" src="${src.escapeAttr()}" alt="${alt.escapeAttr()}">"""
+                }
+            }
+
+            "spacer" -> {
+                val size = node.size?.let { substituteWidgetText(it, source) } ?: "md"
+                val height = SPACER_HEIGHTS[size] ?: SPACER_HEIGHTS.getValue("md")
+                """<div class="oc-pf-spacer" style="height:$height"></div>"""
+            }
+
+            "divider" -> """<hr class="oc-pf-divider">"""
+
+            else -> ""
+        }
+
+    private fun heading(raw: String?, source: PlaceholderSource, type: String): String? {
+        if (raw != null) {
+            val filled = substituteWidgetText(raw, source)
+            if (!filled.contains('{')) return filled.takeIf { it.isNotBlank() }
+        }
+        return headingFallbacks[type]
+    }
+
+    private fun isExternalUrl(url: String): Boolean =
+        (url.startsWith("https://") || url.startsWith("http://")) && !url.contains('{')
+}
+
+private val SPACER_HEIGHTS = mapOf("none" to "0", "sm" to "8px", "md" to "16px", "lg" to "32px")
 
 internal fun originOf(url: String): String? = try {
     val uri = java.net.URI(url)
@@ -297,10 +438,17 @@ body {
   font-size: 14px; color: ${c.inkSecondary.css()};
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.oc-pf-bio, .oc-pf-member {
-  margin-top: 10px; padding-top: 10px;
-  border-top: 1px solid ${c.border.css()};
-}
+.oc-pf-widgets { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.oc-pf-widget { min-width: 0; }
+.oc-pf-text { font-size: 14px; }
+.oc-pf-rows { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 14px; }
+.oc-pf-row { display: contents; }
+.oc-pf-row-label { color: ${c.inkMuted.css()}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oc-pf-row-value { min-width: 0; overflow-wrap: break-word; }
+.oc-pf-links { list-style: none; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.oc-pf-link { color: ${c.primary.css()}; }
+.oc-pf-image { width: 100%; max-height: 192px; border-radius: 6px; object-fit: cover; display: block; }
+.oc-pf-divider { border: 0; border-top: 1px solid ${c.border.css()}; }
 .oc-pf-heading {
   margin-bottom: 4px;
   font-size: 11px; font-weight: 600;
@@ -308,6 +456,20 @@ body {
   color: ${c.inkMuted.css()};
 }
 .oc-pf-bio-text { font-size: 14px; white-space: pre-wrap; overflow-wrap: break-word; }
+.oc-pf-bio-text + .oc-pf-bio-text, .oc-pf-bio-quote + .oc-pf-bio-text { margin-top: 6px; }
+.oc-pf-bio-text a, .oc-pf-mention { color: ${c.primary.css()}; }
+.oc-pf-bio-quote {
+  margin-top: 6px; padding-left: 8px;
+  border-left: 2px solid ${c.border.css()};
+  font-size: 14px; color: ${c.inkSecondary.css()};
+}
+.oc-pf-bio-code {
+  margin-top: 6px; padding: 8px; border-radius: 6px;
+  background: ${c.surface3.css()};
+  font-size: 12px; overflow-x: auto; white-space: pre;
+}
+.oc-pf-mention { padding: 0 2px; border-radius: 3px; background: ${c.primarySoft.css()}; font-weight: 500; }
+.oc-pf-emoji { width: 20px; height: 20px; vertical-align: text-bottom; object-fit: contain; }
 .oc-pf-member-text { font-size: 14px; }
 """.trimIndent()
 
@@ -351,6 +513,29 @@ private fun Color.css(): String {
     val b = argb and 0xFF
     return if (alpha >= 1f) String.format(Locale.US, "#%02X%02X%02X", r, g, b)
     else "rgba($r, $g, $b, ${String.format(Locale.US, "%.3f", alpha)})"
+}
+
+private fun renderBioMarkdown(source: String): String = parseMarkdown(source).joinToString("") { block ->
+    when (block) {
+        is MdBlock.Paragraph -> """<p class="oc-pf-bio-text">${renderBioInline(block.children)}</p>"""
+        is MdBlock.Quote -> """<blockquote class="oc-pf-bio-quote">${renderBioInline(block.children)}</blockquote>"""
+        is MdBlock.CodeBlock -> """<pre class="oc-pf-bio-code"><code>${block.body.escapeHtml()}</code></pre>"""
+    }
+}
+
+private fun renderBioInline(nodes: List<MdNode>): String = nodes.joinToString("") { node ->
+    when (node) {
+        is MdNode.Text -> node.text.escapeHtml()
+        is MdNode.Bold -> "<strong>${renderBioInline(node.children)}</strong>"
+        is MdNode.Italic -> "<em>${renderBioInline(node.children)}</em>"
+        is MdNode.Underline -> "<u>${renderBioInline(node.children)}</u>"
+        is MdNode.Strike -> "<s>${renderBioInline(node.children)}</s>"
+        is MdNode.Code -> "<code>${node.text.escapeHtml()}</code>"
+        is MdNode.Link -> """<a href="${node.url.escapeAttr()}" target="_blank" rel="noopener noreferrer nofollow">${renderBioInline(node.label)}</a>"""
+        is MdNode.Mention -> """<span class="oc-pf-mention">@${node.name.escapeHtml()}</span>"""
+        is MdNode.Everyone -> """<span class="oc-pf-mention">@${node.keyword.escapeHtml()}</span>"""
+        is MdNode.CustomEmoji -> """<img class="oc-pf-emoji" src="${node.url.escapeAttr()}" alt=":${node.name.escapeAttr()}:">"""
+    }
 }
 
 private fun String.escapeHtml(): String = buildString(length) {

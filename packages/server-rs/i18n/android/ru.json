@@ -1,7 +1,7 @@
 {
   "code": "ru",
   "endonym": "Русский",
-  "rev": "6db1d8aa6459a62577c3af1b26f38d9b622e606a",
+  "rev": "d36c09e80fc1c46bb4624d4ec4fcfa146d26813b",
   "strings": {
     "app_name": "OrangChat",
     "catalog_1_add_this_key_to_your_app_c5c6bb28": "1. Добавьте этот ключ в приложение",

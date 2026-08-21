@@ -22,7 +22,7 @@ import {
   Video,
   X,
 } from "lucide-react";
-import { type PresenceStatus } from "@orangchat/shared";
+import { type PresenceStatus, type ProfileWidget } from "@orangchat/shared";
 import { statusLabel } from "../../components/Avatar";
 import { StatusIcon } from "../../components/StatusIcon";
 import { Button } from "../../components/ui/Button";
@@ -30,13 +30,20 @@ import { ImageField } from "../../components/ImageField";
 import { Dialog, DialogClose, DialogFullScreenContent } from "../../components/ui/Dialog";
 import { TextField } from "../../components/ui/TextField";
 import { cn } from "../../lib/cn";
+import { errorMessage } from "../../lib/errors";
 import { LANGUAGES, endonymOf, setLanguage, t, useLanguage } from "../../lib/i18n";
 import { getTheme, setTheme, type Theme } from "../../lib/theme";
 import { useInstalledTheme } from "../plugins/themes";
 import { socket } from "../../lib/socket";
 import defaultCss from "../../styles/index.css?raw";
+import { toast } from "../../stores/toasts";
+import { uploadImage, type UploadKind } from "../uploads/api";
 import { getMyConnections } from "../connections/api";
 import { ProfileCard } from "../profile/ProfileCard";
+import { FieldTokensSection } from "../profile/FieldTokensSection";
+import { WidgetEditor } from "../profile/WidgetEditor";
+import { useWidgetCatalogMap } from "../profile/widgetCatalog";
+import { resolveLayout } from "../profile/widgets";
 import { useAuthStore, authStoreActions } from "../../stores/auth";
 import { updateProfile } from "../auth/api";
 import { logout } from "../auth/session";
@@ -86,8 +93,9 @@ const PROFILE_CSS_TEMPLATE = `/* OrangChat profile theme - this CSS is sandboxed
  *   .oc-pf-avatar-img       your avatar image
  *   .oc-pf-avatar-fallback  the initial shown when you have no avatar
  *   .oc-pf-body             the info panel
- *   .oc-pf-section          every divided block (bio / connections / member)
- *   .oc-pf-heading          the small uppercase heading in those blocks
+ *   .oc-pf-widgets          the widget stack
+ *   .oc-pf-widget           one widget ([data-widget="bio"|"links"|…])
+ *   .oc-pf-heading          the small uppercase heading inside a widget
  *
  * IDENTITY
  *   .oc-pf-head             the name + pronouns row
@@ -98,8 +106,8 @@ const PROFILE_CSS_TEMPLATE = `/* OrangChat profile theme - this CSS is sandboxed
  *   .oc-pf-devices          the device-icon group
  *   .oc-pf-device           one device icon ([data-device="mobile|browser|desktop"])
  *
- * ACTIVITY (Spotify / games)
- *   .oc-pf-activity         the whole line ([data-kind="spotify"|…])
+ * ACTIVITY (what you are listening to / playing)
+ *   .oc-pf-activity         the whole line ([data-kind="listening"|"game"])
  *   .oc-pf-activity-artwork its artwork (or icon container when none is set)
  *   .oc-pf-activity-icon    its icon
  *   .oc-pf-activity-text    "Listening to <name> - <details>"
@@ -118,6 +126,17 @@ const PROFILE_CSS_TEMPLATE = `/* OrangChat profile theme - this CSS is sandboxed
  *   .oc-pf-bio-text         its text
  *   .oc-pf-member           the Member-since block
  *   .oc-pf-member-text      the date
+ *
+ * FREE TEXT, LISTS, LINKS, IMAGES
+ *   .oc-pf-text             a free-text widget's body
+ *   .oc-pf-rows             a details widget's grid
+ *   .oc-pf-row-label        one row's label
+ *   .oc-pf-row-value        one row's value
+ *   .oc-pf-links            a links widget's list
+ *   .oc-pf-link             one link
+ *   .oc-pf-image            an image widget
+ *   .oc-pf-spacer           a space widget
+ *   .oc-pf-divider          a divider widget
  *
  * CONNECTIONS
  *   .oc-pf-connections      the whole block
@@ -182,6 +201,13 @@ function downloadText(filename: string, text: string) {
   URL.revokeObjectURL(url);
 }
 
+const ACCENT_PRESETS = [
+  0xff6a1a, 0xf43f5e, 0xec4899, 0xa855f7, 0x6366f1, 0x3b82f6, 0x06b6d4, 0x10b981, 0x84cc16,
+  0xeab308, 0xf97316, 0x64748b,
+];
+
+type ProfilePane = "identity" | "widgets" | "theme";
+
 /**
  * Pick an image file → server compresses & stores it → returns its URL, plus a
  * `blob:` url of the bytes just picked. The stored url may point at Cloudinary,
@@ -189,13 +215,66 @@ function downloadText(filename: string, text: string) {
  * and served back through /api/media/asset, so the local blob is what the
  * preview can actually render in between.
  */
-/** Everything about you: identity, status, info - with a live preview. */
+function useImagePicker(kind: UploadKind, onPicked: (url: string, preview: string) => void) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  const element = (
+    <input
+      ref={ref}
+      type="file"
+      accept="image/png,image/jpeg,image/gif,image/webp"
+      className="hidden"
+      onChange={(e) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file) return;
+        setBusy(true);
+        void uploadImage(file, kind)
+          .then((url) => onPicked(url, URL.createObjectURL(file)))
+          .catch((error: unknown) => toast.error(errorMessage(error, t("common.error"))))
+          .finally(() => setBusy(false));
+      }}
+    />
+  );
+
+  return { element, busy, open: () => ref.current?.click() };
+}
+
+function PaneTabs({ value, onChange }: { value: ProfilePane; onChange: (next: ProfilePane) => void }) {
+  const panes: { id: ProfilePane; label: string }[] = [
+    { id: "identity", label: t("userSettingsDialog.identity") },
+    { id: "widgets", label: t("userSettingsDialog.widgets") },
+    { id: "theme", label: t("userSettingsDialog.theme") },
+  ];
+  return (
+    <div className="flex gap-1 rounded-xl border border-border bg-surface-2 p-1">
+      {panes.map((pane) => (
+        <button
+          key={pane.id}
+          type="button"
+          aria-pressed={value === pane.id}
+          onClick={() => onChange(pane.id)}
+          className={cn(
+            "flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+            value === pane.id
+              ? "bg-surface-4 text-ink shadow-sm"
+              : "text-ink-secondary hover:text-ink",
+          )}
+        >
+          {pane.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function ProfileTab() {
   const user = useAuthStore((s) => s.user);
+  const [pane, setPane] = useState<ProfilePane>("identity");
   const [displayName, setDisplayName] = useState(user?.displayName ?? "");
   const [username, setUsername] = useState(user?.username ?? "");
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl ?? "");
-  // Blob previews of just-uploaded images; see ImageUploadButton.
   const [avatarPreview, setAvatarPreview] = useState("");
   const [bannerPreview, setBannerPreview] = useState("");
   const [pronouns, setPronouns] = useState(user?.pronouns ?? "");
@@ -203,6 +282,9 @@ function ProfileTab() {
   const [bannerUrl, setBannerUrl] = useState(user?.bannerUrl ?? "");
   const [accentColor, setAccentColor] = useState<number | null>(user?.accentColor ?? null);
   const [profileCss, setProfileCss] = useState(user?.profileCss ?? "");
+  const [widgets, setWidgets] = useState<ProfileWidget[]>(() =>
+    resolveLayout(user?.profileWidgets),
+  );
   const [status, setStatus] = useState<PresenceStatus>(
     user?.status && user.status !== "offline" ? user.status : "online",
   );
@@ -217,6 +299,16 @@ function ProfileTab() {
     () => connections?.filter((c) => c.visible) ?? [],
     [connections],
   );
+  const widgetCatalog = useWidgetCatalogMap();
+
+  const avatarPicker = useImagePicker("avatar", (url, preview) => {
+    setAvatarUrl(url);
+    setAvatarPreview(preview);
+  });
+  const bannerPicker = useImagePicker("banner", (url, preview) => {
+    setBannerUrl(url);
+    setBannerPreview(preview);
+  });
 
   // For an image stored off-origin the api hands back its own `/api/media/asset`
   // route, and that is what seeds these fields. Sending an untouched one back
@@ -236,12 +328,14 @@ function ProfileTab() {
         bannerUrl: ifEdited(bannerUrl, user?.bannerUrl ?? null),
         accentColor,
         profileCss: profileCss.length ? profileCss : null,
+        profileWidgets: widgets,
       }),
     onSuccess: (updated) => {
       authStoreActions.setUser(updated);
       // Saved: the server now serves these same-origin, so drop the blobs.
       setAvatarPreview("");
       setBannerPreview("");
+      setWidgets(resolveLayout(updated.profileWidgets));
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     },
@@ -252,17 +346,49 @@ function ProfileTab() {
     socket.emit("presence:update", next);
   };
 
+  const revert = () => {
+    if (!user) return;
+    setDisplayName(user.displayName);
+    setUsername(user.username);
+    setAvatarUrl(user.avatarUrl ?? "");
+    setBannerUrl(user.bannerUrl ?? "");
+    setAvatarPreview("");
+    setBannerPreview("");
+    setPronouns(user.pronouns ?? "");
+    setBio(user.bio ?? "");
+    setAccentColor(user.accentColor);
+    setProfileCss(user.profileCss ?? "");
+    setWidgets(resolveLayout(user.profileWidgets));
+  };
+
   if (!user) return null;
 
-  const dirty =
-    displayName.trim() !== user.displayName ||
-    username.trim() !== user.username ||
-    (avatarUrl.trim() || null) !== user.avatarUrl ||
-    (pronouns.trim() || null) !== user.pronouns ||
-    (bio.trim() || null) !== user.bio ||
-    (bannerUrl.trim() || null) !== user.bannerUrl ||
-    accentColor !== user.accentColor ||
-    (profileCss.length ? profileCss : null) !== user.profileCss;
+  const draft = {
+    displayName: displayName.trim(),
+    username: username.trim(),
+    avatarUrl: avatarUrl.trim() || null,
+    bannerUrl: bannerUrl.trim() || null,
+    pronouns: pronouns.trim() || null,
+    bio: bio.trim() || null,
+    accentColor,
+    profileCss: profileCss.length ? profileCss : null,
+    widgets,
+  };
+  const baseline = {
+    displayName: user.displayName,
+    username: user.username,
+    avatarUrl: user.avatarUrl,
+    bannerUrl: user.bannerUrl,
+    pronouns: user.pronouns,
+    bio: user.bio,
+    accentColor: user.accentColor,
+    profileCss: user.profileCss,
+    widgets: resolveLayout(user.profileWidgets),
+  };
+  const dirty = JSON.stringify(draft) !== JSON.stringify(baseline);
+
+  const fieldClass =
+    "w-full rounded-lg border border-border bg-surface-1 px-3 py-2 text-sm placeholder:text-ink-muted hover:border-border-strong";
 
   return (
     <form
@@ -270,192 +396,279 @@ function ProfileTab() {
         e.preventDefault();
         if (dirty) mutation.mutate();
       }}
-      className="space-y-5"
+      className="space-y-4"
     >
-      <div>
-        <SectionTitle>{t("userSettingsDialog.preview")}</SectionTitle>
-        <ProfileCard
-          data={{
-            displayName: displayName || user.displayName,
-            username,
-            avatarUrl: avatarPreview || avatarUrl.trim() || null,
-            bannerUrl: bannerPreview || bannerUrl.trim() || null,
-            accentColor,
-            pronouns: pronouns.trim() || null,
-            bio: bio.trim() || null,
-            status,
-            createdAt: user.createdAt,
-            badges: user.badges,
-            profileCss: profileCss.length ? profileCss : null,
-            connections: visibleConnections,
-          }}
-        />
-      </div>
+      {avatarPicker.element}
+      {bannerPicker.element}
 
-      <div>
-        <SectionTitle>{t("userSettingsDialog.status")}</SectionTitle>
-        <div className="flex gap-2">
-          {STATUS_OPTIONS.map((option) => (
-            <button
-              key={option}
-              type="button"
-              aria-pressed={status === option}
-              onClick={() => pickStatus(option)}
-              className={cn(
-                "flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
-                status === option
-                  ? "border-primary bg-primary-soft"
-                  : "border-border hover:border-border-strong",
-              )}
-            >
-              <StatusIcon status={option} label={null} className="size-3.5" />
-              {statusLabel(option)}
-            </button>
-          ))}
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+        <div className="order-2 space-y-4 lg:order-1">
+          <PaneTabs value={pane} onChange={setPane} />
+
+          {pane === "identity" && (
+            <div className="space-y-4">
+              <TextField
+                label={t("userSettingsDialog.displayName")}
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                maxLength={64}
+              />
+              <TextField
+                label={t("userSettingsDialog.username")}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                maxLength={32}
+                hint={t("userSettingsDialog.lowercaseLettersNumbersUnderscoresAndDots")}
+              />
+              <TextField
+                label={t("userSettingsDialog.pronouns")}
+                value={pronouns}
+                onChange={(e) => setPronouns(e.target.value)}
+                maxLength={40}
+                placeholder={t("userSettingsDialog.theyThem")}
+              />
+              <div className="space-y-1.5">
+                <div className="flex items-baseline justify-between">
+                  <label
+                    htmlFor="oc-bio"
+                    className="block text-sm font-medium text-ink-secondary"
+                  >
+                    {t("userSettingsDialog.aboutMe")}
+                  </label>
+                  <span className="text-xs tabular-nums text-ink-muted">{bio.length}/4000</span>
+                </div>
+                <textarea
+                  id="oc-bio"
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  maxLength={4000}
+                  rows={5}
+                  placeholder={t("userSettingsDialog.tellPeopleAboutYourself")}
+                  className={cn(fieldClass, "resize-y")}
+                />
+                <p className="text-xs text-ink-muted">
+                  {t("userSettingsDialog.markdownAndLinksWork")}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-ink-secondary">
+                  {t("userSettingsDialog.accentColor")}
+                </label>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {ACCENT_PRESETS.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setAccentColor(preset)}
+                      aria-label={intToHex(preset)}
+                      aria-pressed={accentColor === preset}
+                      style={{ background: intToHex(preset) }}
+                      className={cn(
+                        "size-7 rounded-full border-2 transition-transform hover:scale-110",
+                        accentColor === preset ? "border-ink" : "border-transparent",
+                      )}
+                    />
+                  ))}
+                  <label
+                    className="relative size-7 cursor-pointer overflow-hidden rounded-full border border-dashed border-border-strong"
+                    title={t("userSettingsDialog.customColor")}
+                  >
+                    <input
+                      type="color"
+                      aria-label={t("userSettingsDialog.customColor")}
+                      value={intToHex(accentColor)}
+                      onChange={(e) => setAccentColor(hexToInt(e.target.value))}
+                      className="absolute -inset-2 cursor-pointer opacity-0"
+                    />
+                    <Palette
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 m-auto size-3.5 text-ink-muted"
+                    />
+                  </label>
+                  {accentColor != null && (
+                    <button
+                      type="button"
+                      onClick={() => setAccentColor(null)}
+                      className="text-sm text-ink-muted transition-colors hover:text-ink"
+                    >
+                      {t("userSettingsDialog.clear")}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {pane === "widgets" && (
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <p className="text-xs text-ink-muted">{t("userSettingsDialog.widgetsIntro")}</p>
+                <WidgetEditor value={widgets} onChange={setWidgets} />
+              </div>
+              <div className="space-y-2 border-t border-border pt-4">
+                <SectionTitle>{t("userSettingsDialog.pushedFields")}</SectionTitle>
+                <FieldTokensSection fields={user.profileFields} />
+              </div>
+            </div>
+          )}
+
+          {pane === "theme" && (
+            <div className="space-y-2">
+              <p className="text-xs text-ink-muted">
+                {t("userSettingsDialog.styleYourProfileCardHoweverYou")}
+              </p>
+              <textarea
+                value={profileCss}
+                onChange={(e) => setProfileCss(e.target.value)}
+                maxLength={100_000}
+                rows={14}
+                spellCheck={false}
+                placeholder={t("userSettingsDialog.ocPfBodyBackground1a1030")}
+                className={cn(fieldClass, "resize-y font-mono text-xs")}
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setProfileCss(PROFILE_CSS_TEMPLATE)}
+                >
+                  {t("userSettingsDialog.loadStarter")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() =>
+                    downloadText("orangchat-profile-template.css", PROFILE_CSS_TEMPLATE)
+                  }
+                >
+                  <Download aria-hidden className="size-4" />
+                  {t("userSettingsDialog.downloadTemplate")}
+                </Button>
+                {profileCss.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-danger hover:text-danger"
+                    onClick={() => setProfileCss("")}
+                  >
+                    {t("userSettingsDialog.clear")}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
 
-      <div className="space-y-4">
-        <SectionTitle>{t("userSettingsDialog.identity")}</SectionTitle>
-        <TextField
-          label={t("userSettingsDialog.displayName")}
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          maxLength={64}
-        />
-        <TextField
-          label={t("userSettingsDialog.username")}
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          maxLength={32}
-          hint={t("userSettingsDialog.lowercaseLettersNumbersUnderscoresAndDots")}
-        />
-        <ImageField
-          label={t("userSettingsDialog.avatar")}
-          kind="avatar"
-          value={avatarUrl}
-          preview={avatarPreview}
-          onChange={(url, preview) => {
-            setAvatarUrl(url);
-            setAvatarPreview(preview);
-          }}
-          hint={t("userSettingsDialog.pngJpegWebpOrAnimatedGif")}
-        />
-      </div>
-
-      <div className="space-y-4">
-        <SectionTitle>{t("userSettingsDialog.about")}</SectionTitle>
-        <TextField
-          label={t("userSettingsDialog.pronouns")}
-          value={pronouns}
-          onChange={(e) => setPronouns(e.target.value)}
-          maxLength={40}
-          placeholder={t("userSettingsDialog.theyThem")}
-        />
-        <div>
-          <label className="mb-1 block text-sm font-medium text-ink-secondary">{t("userSettingsDialog.aboutMe")}</label>
-          <textarea
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            maxLength={4000}
-            rows={4}
-            placeholder={t("userSettingsDialog.tellPeopleAboutYourself")}
-            className="w-full resize-none rounded-lg border border-border bg-surface-1 px-3 py-2 text-sm"
+        <div className="order-1 space-y-3 lg:sticky lg:top-0 lg:order-2">
+          <ProfileCard
+            data={{
+              displayName: displayName || user.displayName,
+              username,
+              avatarUrl: avatarPreview || avatarUrl.trim() || null,
+              bannerUrl: bannerPreview || bannerUrl.trim() || null,
+              accentColor,
+              pronouns: pronouns.trim() || null,
+              bio: bio.trim() || null,
+              status,
+              createdAt: user.createdAt,
+              badges: user.badges,
+              profileCss: profileCss.length ? profileCss : null,
+              profileWidgets: widgets,
+              profileFields: user.profileFields,
+              widgetCatalog,
+              connections: visibleConnections,
+            }}
+            edit={{
+              onPickAvatar: avatarPicker.open,
+              onPickBanner: bannerPicker.open,
+              busy: avatarPicker.busy ? "avatar" : bannerPicker.busy ? "banner" : null,
+            }}
           />
-        </div>
-        <ImageField
-          label={t("userSettingsDialog.banner")}
-          kind="banner"
-          value={bannerUrl}
-          preview={bannerPreview}
-          onChange={(url, preview) => {
-            setBannerUrl(url);
-            setBannerPreview(preview);
-          }}
-          rounded="md"
-          hint={t("userSettingsDialog.leaveEmptyToUseYourAccent")}
-        />
-        <div>
-          <label className="mb-1 block text-sm font-medium text-ink-secondary">{t("userSettingsDialog.accentColor")}</label>
-          <div className="flex items-center gap-3">
-            <input
-              type="color"
-              aria-label={t("userSettingsDialog.accentColor")}
-              value={intToHex(accentColor)}
-              onChange={(e) => setAccentColor(hexToInt(e.target.value))}
-              className="h-9 w-14 cursor-pointer rounded-md border border-border bg-surface-1"
-            />
-            {accentColor != null && (
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
+            <span className="flex items-center gap-1">
+              <Upload aria-hidden className="size-3.5" />
+              {t("userSettingsDialog.clickThePictureToChangeIt")}
+            </span>
+            {(avatarPreview || avatarUrl) && (
               <button
                 type="button"
-                onClick={() => setAccentColor(null)}
-                className="text-sm text-ink-muted transition-colors hover:text-ink"
+                onClick={() => {
+                  setAvatarUrl("");
+                  setAvatarPreview("");
+                }}
+                className="transition-colors hover:text-danger"
               >
-                {t("userSettingsDialog.clear")}
+                {t("userSettingsDialog.removeAvatar")}
+              </button>
+            )}
+            {(bannerPreview || bannerUrl) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setBannerUrl("");
+                  setBannerPreview("");
+                }}
+                className="transition-colors hover:text-danger"
+              >
+                {t("userSettingsDialog.removeBanner")}
               </button>
             )}
           </div>
+
+          <div>
+            <SectionTitle>{t("userSettingsDialog.status")}</SectionTitle>
+            <div className="flex gap-1.5">
+              {STATUS_OPTIONS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={status === option}
+                  onClick={() => pickStatus(option)}
+                  className={cn(
+                    "flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs transition-colors",
+                    status === option
+                      ? "border-primary bg-primary-soft"
+                      : "border-border hover:border-border-strong",
+                  )}
+                >
+                  <StatusIcon status={option} label={null} className="size-3" />
+                  {statusLabel(option)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <p className="text-xs text-ink-muted">
+            {t("userSettingsDialog.signedInAs")}{" "}
+            <span className="text-ink-secondary">{user.email}</span>
+          </p>
         </div>
       </div>
-
-      <div className="space-y-2">
-        <SectionTitle>{t("userSettingsDialog.profileThemeCss")}</SectionTitle>
-        <p className="text-xs text-ink-muted">
-          {t("userSettingsDialog.styleYourProfileCardHoweverYou")}
-        </p>
-        <textarea
-          value={profileCss}
-          onChange={(e) => setProfileCss(e.target.value)}
-          maxLength={100_000}
-          rows={6}
-          spellCheck={false}
-          placeholder={t("userSettingsDialog.ocPfBodyBackground1a1030")}
-          className="w-full resize-y rounded-lg border border-border bg-surface-1 px-3 py-2 font-mono text-xs"
-        />
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => setProfileCss(PROFILE_CSS_TEMPLATE)}
-          >
-            {t("userSettingsDialog.loadStarter")}
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => downloadText("orangchat-profile-template.css", PROFILE_CSS_TEMPLATE)}
-          >
-            <Download aria-hidden className="size-4" />
-            {t("userSettingsDialog.downloadTemplate")}
-          </Button>
-          {profileCss.length > 0 && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="text-danger hover:text-danger"
-              onClick={() => setProfileCss("")}
-            >
-              {t("userSettingsDialog.clear")}
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <p className="text-xs text-ink-muted">
-        {t("userSettingsDialog.signedInAs")} <span className="text-ink-secondary">{user.email}</span>
-      </p>
 
       {mutation.isError && (
         <p role="alert" className="rounded-lg bg-primary-soft px-3 py-2 text-sm text-danger">
           {mutation.error.message}
         </p>
       )}
-      <Button type="submit" loading={mutation.isPending} disabled={!dirty} className="w-full">
-        {saved ? t("userSettingsDialog.savedExclamation") : t("userSettingsDialog.saveProfile")}
-      </Button>
+
+      <div className="sticky bottom-0 -mx-1 flex items-center gap-2 border-t border-border bg-surface-2/95 px-1 py-2.5 backdrop-blur">
+        <span className="min-w-0 flex-1 truncate text-xs text-ink-muted">
+          {dirty ? t("userSettingsDialog.unsavedChanges") : saved ? t("userSettingsDialog.savedExclamation") : ""}
+        </span>
+        {dirty && (
+          <Button type="button" variant="ghost" size="sm" onClick={revert}>
+            {t("common.reset")}
+          </Button>
+        )}
+        <Button type="submit" loading={mutation.isPending} disabled={!dirty} size="sm">
+          {t("userSettingsDialog.saveProfile")}
+        </Button>
+      </div>
     </form>
   );
 }

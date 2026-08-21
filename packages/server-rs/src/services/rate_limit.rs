@@ -39,6 +39,9 @@ pub const E2EE_EPOCH_PER_USER: Quota = Quota::new(120, 10 * MINUTE);
 pub const E2EE_TRANSFER_MUTATION_PER_USER: Quota = Quota::new(20, 10 * MINUTE);
 pub const E2EE_TRANSFER_POLL_PER_USER: Quota = Quota::new(240, 10 * MINUTE);
 
+pub const PROFILE_FIELD_PUSH_PER_USER: Quota = Quota::new(60, MINUTE);
+pub const PROFILE_TOKEN_MINT_PER_USER: Quota = Quota::new(10, HOUR);
+
 pub const UPLOAD_IMAGE_PER_USER: Quota = Quota::new(30, 10 * MINUTE);
 pub const UPLOAD_ATTACHMENT_PER_USER: Quota = Quota::new(60, 10 * MINUTE);
 pub const LINK_PREVIEW_PER_USER: Quota = Quota::new(30, MINUTE);

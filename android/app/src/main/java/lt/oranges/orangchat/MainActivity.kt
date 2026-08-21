@@ -29,6 +29,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import lt.oranges.orangchat.feature.home.PendingConversationStore
 import lt.oranges.orangchat.feature.invite.PendingInviteStore
+import lt.oranges.orangchat.feature.profile.LocalWidgetCatalog
+import lt.oranges.orangchat.feature.profile.WidgetCatalogViewModel
 import lt.oranges.orangchat.feature.qrlogin.PendingQrLoginStore
 import lt.oranges.orangchat.feature.verify.PendingVerifyStore
 import lt.oranges.orangchat.feature.transfer.PendingTransferStore
@@ -80,10 +82,13 @@ class MainActivity : LocalizedActivity() {
             LaunchedEffect(Unit) { updateVm.check() }
             val pref by themeVm.preference.collectAsStateWithLifecycle()
             val devicePrefs by settingsVm.prefs.collectAsStateWithLifecycle()
+            val widgetCatalogVm: WidgetCatalogViewModel = hiltViewModel()
+            val widgetCatalog by widgetCatalogVm.state.collectAsStateWithLifecycle()
             OrangChatTheme(preference = pref) {
                 val base = LocalDensity.current
                 CompositionLocalProvider(
                     LocalDensity provides Density(base.density, base.fontScale * devicePrefs.fontScale),
+                    LocalWidgetCatalog provides widgetCatalog.definitions,
                 ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),

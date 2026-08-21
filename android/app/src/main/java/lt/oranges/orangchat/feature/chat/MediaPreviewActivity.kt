@@ -37,6 +37,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddReaction
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Close
@@ -270,10 +271,38 @@ private fun FullscreenMediaPreview(attachment: Attachment, onClose: () -> Unit) 
 }
 
 @Composable
-private fun PreviewSenderBar(message: Message, modifier: Modifier = Modifier) {
+private fun PreviewSenderBar(
+    message: Message,
+    modifier: Modifier = Modifier,
+    recentEmoji: RecentEmojiViewModel = hiltViewModel(),
+) {
         val context = LocalContext.current
+    var barOpen by remember(message.id) { mutableStateOf(false) }
     var pickerOpen by remember(message.id) { mutableStateOf(false) }
     val chipShape = RoundedCornerShape(50)
+    val emojis by MediaPreviewHost.emojis.collectAsState()
+    val emojiGroups by MediaPreviewHost.emojiGroups.collectAsState()
+    val recent by recentEmoji.recent.collectAsState()
+    val quick = remember(recent, emojiGroups) { reactionQuickPicks(recent, emojiGroups) }
+
+    val react: (ReactionPick) -> Unit = { pick ->
+        recentEmoji.record(pick.insert)
+        MediaPreviewHost.react(message, reactionValue(pick))
+        barOpen = false
+        pickerOpen = false
+    }
+
+    if (pickerOpen) {
+        MessageActionsSheet(
+            groups = emojiGroups,
+            recent = recent,
+            reacted = message.reactions.filter { it.me }.map { it.emoji }.toSet(),
+            actions = emptyList(),
+            startInPicker = true,
+            onPick = react,
+            onDismiss = { pickerOpen = false },
+        )
+    }
 
     Column(
         modifier = modifier
@@ -283,29 +312,50 @@ private fun PreviewSenderBar(message: Message, modifier: Modifier = Modifier) {
             .navigationBarsPadding()
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
-        if (pickerOpen) {
+        if (barOpen) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .horizontalScroll(rememberScrollState())
                     .padding(bottom = 8.dp),
             ) {
-                QUICK_EMOJIS.forEach { emoji ->
-                    val mine = message.reactions.any { it.emoji == emoji && it.me }
+                quick.forEach { pick ->
+                    val value = reactionValue(pick)
+                    val mine = message.reactions.any { it.emoji == value && it.me }
                     Box(
                         modifier = Modifier
                             .clip(chipShape)
                             .background(
                                 if (mine) Color.White.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.1f),
                             )
-                            .clickable {
-                                MediaPreviewHost.react(message, emoji)
-                                pickerOpen = false
-                            }
+                            .clickable { react(pick) }
                             .padding(horizontal = 10.dp, vertical = 6.dp),
                     ) {
-                        Text(emoji, fontSize = 18.sp)
+                        if (pick.custom != null) {
+                            AsyncImage(
+                                model = absoluteUrl(pick.custom.url),
+                                contentDescription = pick.insert,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        } else {
+                            Text(pick.insert, fontSize = 18.sp)
+                        }
                     }
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(chipShape)
+                        .background(Color.White.copy(alpha = 0.1f))
+                        .clickable { pickerOpen = true }
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = AppStrings.get(context, R.string.catalog_add_reaction_cf05eca8),
+                        tint = Color.White.copy(alpha = 0.85f),
+                        modifier = Modifier.size(20.dp),
+                    )
                 }
             }
         }
@@ -363,7 +413,7 @@ private fun PreviewSenderBar(message: Message, modifier: Modifier = Modifier) {
                                 .padding(horizontal = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(reaction.emoji, fontSize = 13.sp)
+                            ReactionEmoji(reaction.emoji, emojis)
                             Spacer(Modifier.width(4.dp))
                             Text(
                                 "${reaction.count}",
@@ -377,7 +427,7 @@ private fun PreviewSenderBar(message: Message, modifier: Modifier = Modifier) {
                             .height(28.dp)
                             .clip(chipShape)
                             .background(Color.White.copy(alpha = 0.1f))
-                            .clickable { pickerOpen = !pickerOpen }
+                            .clickable { barOpen = !barOpen }
                             .padding(horizontal = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {

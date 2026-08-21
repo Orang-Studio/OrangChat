@@ -1,0 +1,7 @@
+OrangChat 1.0.5.1
+
+Fixed
+- A crash that could kill the app when a profile card rendered widget text:
+  placeholders like {field.name} were matched with a malformed pattern that
+  Android's regex engine rejected. Widget tokens now substitute cleanly and
+  profiles with widgets open without quitting.

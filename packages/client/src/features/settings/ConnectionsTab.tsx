@@ -13,7 +13,7 @@ import {
   setConnectionVisible,
   startConnectionLink,
 } from "../connections/api";
-import { PROVIDER_LABEL, ProviderIcon } from "../connections/icons";
+import { providerLabel, ProviderIcon } from "../connections/icons";
 import { SectionTitle } from "./controls";
 import { t } from "../../lib/i18n";
 
@@ -70,7 +70,7 @@ function ConnectionRow({ connection }: { connection: Connection }) {
         <p className="truncate text-xs text-ink-muted">
           {connection.provider === "custom"
             ? (connection.profileUrl ?? "Custom link")
-            : PROVIDER_LABEL[connection.provider]}
+            : providerLabel(connection.provider)}
           {!connection.visible && " · hidden from your profile"}
         </p>
       </div>

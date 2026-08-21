@@ -23,6 +23,7 @@ pub mod membership;
 pub mod message;
 pub mod moderation;
 pub mod presence;
+pub mod profile_widget;
 pub mod push;
 pub mod qr;
 pub mod rate_limit;

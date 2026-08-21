@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
+import lt.oranges.orangchat.data.model.ProfileWidget
 
 @Serializable
 data class DraftBody(val content: String)
@@ -52,6 +53,7 @@ data class UpdateMeRequest(
     val pronouns: String? = null,
     val customCss: String? = null,
     val profileCss: String? = null,
+    val profileWidgets: List<ProfileWidget>? = null,
     val appIconUrl: String? = null,
     val dmPrivacy: String? = null,
     val friendRequestPrivacy: String? = null,
@@ -379,3 +381,6 @@ data class PushSubscriptionRequest(
     val endpoint: String,
     val label: String,
 )
+
+@Serializable
+data class FieldTokenRequest(val label: String)

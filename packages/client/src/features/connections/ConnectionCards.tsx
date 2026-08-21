@@ -1,6 +1,6 @@
 import { BadgeCheck } from "lucide-react";
 import type { Connection } from "@orangchat/shared";
-import { PROVIDER_LABEL, ProviderIcon } from "./icons";
+import { providerLabel, ProviderIcon } from "./icons";
 import { t } from "../../lib/i18n";
 
 
@@ -15,7 +15,7 @@ function hostOf(url: string | null) {
 
 function ConnectionCard({ connection }: { connection: Connection }) {
   const { provider, name, profileUrl, verified } = connection;
-  const subtitle = provider === "custom" ? hostOf(profileUrl) : PROVIDER_LABEL[provider];
+  const subtitle = provider === "custom" ? hostOf(profileUrl) : providerLabel(provider);
 
   const body = (
     <>

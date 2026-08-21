@@ -40,6 +40,17 @@ export const updateProfileSchema = z
     customCss: z.string().max(100_000).nullable().optional(),
     appIconUrl: z.string().nullable().optional(),
     profileCss: z.string().max(100_000).nullable().optional(),
+    profileWidgets: z
+      .array(
+        z.object({
+          id: z.string().max(64).optional(),
+          type: z.string().min(1).max(64),
+          hidden: z.boolean().optional(),
+          config: z.record(z.string(), z.unknown()).optional(),
+        }),
+      )
+      .max(24)
+      .optional(),
     dmPrivacy: dmPrivacySchema.optional(),
     friendRequestPrivacy: friendRequestPrivacySchema.optional(),
     typingIndicators: z.boolean().optional(),

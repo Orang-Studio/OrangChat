@@ -31,7 +31,10 @@ import lt.oranges.orangchat.data.model.Invite
 import lt.oranges.orangchat.data.model.InvitePreview
 import lt.oranges.orangchat.data.model.LoginChallenge
 import lt.oranges.orangchat.data.model.Message
+import lt.oranges.orangchat.data.model.MintedFieldToken
 import lt.oranges.orangchat.data.model.Page
+import lt.oranges.orangchat.data.model.ProfileFieldTokenInfo
+import lt.oranges.orangchat.data.model.ProfileWidgetCatalog
 import lt.oranges.orangchat.data.model.Role
 import lt.oranges.orangchat.data.model.SelfUser
 import lt.oranges.orangchat.data.model.Server
@@ -111,6 +114,18 @@ interface ApiService {
 
     @PATCH("auth/me")
     suspend fun patchMe(@Body body: UpdateMeRequest): SelfUser
+
+    @GET("profile/widgets/catalog")
+    suspend fun getWidgetCatalog(@Query("rev") rev: String? = null): Response<ProfileWidgetCatalog>
+
+    @GET("me/field-tokens")
+    suspend fun getFieldTokens(): List<ProfileFieldTokenInfo>
+
+    @POST("me/field-tokens")
+    suspend fun mintFieldToken(@Body body: FieldTokenRequest): MintedFieldToken
+
+    @DELETE("me/field-tokens/{id}")
+    suspend fun revokeFieldToken(@Path("id") id: String): Response<Unit>
 
     @GET("security/2fa")
     suspend fun getTwoFactorStatus(): TwoFactorStatus

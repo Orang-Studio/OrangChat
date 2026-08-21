@@ -25,6 +25,10 @@ pub struct UserRow {
     pub custom_css: Option<String>,
     #[sqlx(rename = "profileCss")]
     pub profile_css: Option<String>,
+    #[sqlx(rename = "profileWidgets")]
+    pub profile_widgets: Json,
+    #[sqlx(rename = "profileFields")]
+    pub profile_fields: Json,
     #[sqlx(rename = "appIconUrl")]
     pub app_icon_url: Option<String>,
     #[sqlx(rename = "dmPrivacy")]

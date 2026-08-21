@@ -27,17 +27,24 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import android.content.Intent
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import lt.oranges.orangchat.data.model.Channel
 import lt.oranges.orangchat.data.model.ChannelType
+import lt.oranges.orangchat.data.model.Hierarchy
+import lt.oranges.orangchat.data.model.Permissions
+import lt.oranges.orangchat.data.model.PresenceStatus
+import lt.oranges.orangchat.data.model.hasPermission
 import lt.oranges.orangchat.data.remote.UpdateServerRequest
 import lt.oranges.orangchat.data.model.SelfUser
 import lt.oranges.orangchat.data.model.ServerMember
 import lt.oranges.orangchat.data.model.User
+import lt.oranges.orangchat.feature.chat.ChannelDetailsScreen
 import lt.oranges.orangchat.feature.dms.HomePane
 import lt.oranges.orangchat.feature.dms.NewGroupScreen
 import lt.oranges.orangchat.feature.friends.FriendsScreen
@@ -63,9 +70,11 @@ import lt.oranges.orangchat.feature.voice.SessionKind
 import lt.oranges.orangchat.feature.voice.CallViewModel
 import lt.oranges.orangchat.feature.voice.rememberCallPermissionGate
 import lt.oranges.orangchat.notifications.hasNotificationPermission
+import lt.oranges.orangchat.notifications.isActiveMute
+import lt.oranges.orangchat.util.InviteLink
 import lt.oranges.orangchat.ui.theme.OrangTheme
 
-private enum class Overlay { NONE, FRIENDS, NEW_GROUP, SETTINGS, SEARCH, SERVER_SETTINGS, ROLES, MEMBERS, AUDIT_LOG }
+private enum class Overlay { NONE, FRIENDS, NEW_GROUP, SETTINGS, SEARCH, SERVER_SETTINGS, ROLES, MEMBERS, AUDIT_LOG, CHANNEL_DETAILS }
 
 @Composable
 fun HomeScreen(
@@ -93,6 +102,7 @@ fun HomeScreen(
     val themePref by themeViewModel.preference.collectAsStateWithLifecycle()
     val devicePrefs by settingsViewModel.prefs.collectAsStateWithLifecycle()
     val connected by appViewModel.connected.collectAsStateWithLifecycle()
+    val online by appViewModel.online.collectAsStateWithLifecycle()
     val pendingConversation by appViewModel.pendingConversation.collectAsStateWithLifecycle()
     val pendingInvite by appViewModel.pendingInvite.collectAsStateWithLifecycle()
     val pendingQrLogin by appViewModel.pendingQrLogin.collectAsStateWithLifecycle()
@@ -219,6 +229,10 @@ fun HomeScreen(
     var callExpanded by remember { mutableStateOf(false) }
     var soundboardOpen by remember { mutableStateOf(false) }
     var profileUser by remember { mutableStateOf<User?>(null) }
+    var editChannelTarget by remember { mutableStateOf<Channel?>(null) }
+    val myPerms = detail?.let { Hierarchy.effectivePermissions(it, self.id) } ?: 0L
+    val canManageChannels = myPerms.hasPermission(Permissions.MANAGE_CHANNELS)
+    val canInvite = myPerms.hasPermission(Permissions.MANAGE_INVITES)
     var groupAddTargetId by remember { mutableStateOf<String?>(null) }
     var pendingJumpMessageId by remember { mutableStateOf<String?>(null) }
 
@@ -306,8 +320,10 @@ fun HomeScreen(
         when {
             homeSelected -> HomePane(
                 self = liveSelf,
+                online = online,
                 conversations = dms,
                 presence = presence,
+                presenceDevices = presenceDevices,
                 presenceActivities = presenceActivities,
                 friendIds = friendIds,
                 activeConversationId = currentChannelId,
@@ -340,6 +356,7 @@ fun HomeScreen(
             detail != null -> ChannelListPane(
                 detail = detail!!,
                 self = liveSelf,
+                online = online,
                 currentChannelId = currentChannelId,
                 unreads = unreads,
                 voiceParticipants = voiceParticipants,
@@ -370,6 +387,14 @@ fun HomeScreen(
                 },
                 onServerSettings = { overlay = Overlay.SERVER_SETTINGS; closeDrawer() },
                 onOpenUserSettings = { overlay = Overlay.SETTINGS; closeDrawer() },
+                mutes = mutes,
+                onMute = appViewModel::mute,
+                onUnmute = appViewModel::unmute,
+                onEditChannel = if (canManageChannels) {
+                    { channel -> editChannelTarget = channel; closeDrawer() }
+                } else {
+                    null
+                },
             )
         }
     }
@@ -642,6 +667,7 @@ fun HomeScreen(
                                 NewGroupScreen(
                                     friends = friends,
                                     presence = presence,
+                                    presenceDevices = presenceDevices,
                                     addMode = addTarget != null,
                                     excludeUserIds = addTarget?.participants?.map { it.id }?.toSet() ?: emptySet(),
                                     maxSelection = addTarget?.let {
@@ -662,6 +688,98 @@ fun HomeScreen(
                                                 openChat = true
                                             }
                                         }
+                                    },
+                                )
+                            }
+
+                            overlay == Overlay.CHANNEL_DETAILS && currentChannelId != null -> {
+                                val channelId = currentChannelId!!
+                                val chan = detail?.channels?.firstOrNull { it.id == channelId }
+                                val convo = dms.firstOrNull { it.id == channelId }
+                                val voice = chan?.type == ChannelType.VOICE
+                                ChannelDetailsScreen(
+                                    title = chan?.name
+                                        ?: convo?.let { cv ->
+                                            cv.name ?: cv.participants
+                                                .filter { it.id != self.id }
+                                                .joinToString(", ") { it.displayName }
+                                        }
+                                        ?: "Chat",
+                                    kindLabel = when {
+                                        convo?.type == ChannelType.GROUP_DM -> "Group"
+                                        convo != null -> "Direct Message"
+                                        voice -> "Voice Channel"
+                                        else -> "Text Channel"
+                                    },
+                                    topic = chan?.topic,
+                                    messages = messages[channelId].orEmpty(),
+                                    members = convo?.participants?.map { u ->
+                                        ServerMember(id = u.id, serverId = "", userId = u.id, user = u)
+                                    } ?: detail?.members.orEmpty(),
+                                    onBack = { overlay = Overlay.NONE },
+                                    onSearch = {
+                                        searchChannelId = channelId
+                                        overlay = Overlay.SEARCH
+                                    },
+                                    iconUrl = convo?.iconUrl,
+                                    headerUser = convo
+                                        ?.takeIf { it.type == ChannelType.DM }
+                                        ?.participants
+                                        ?.firstOrNull { it.id != self.id },
+                                    voice = voice,
+                                    roles = detail?.roles.orEmpty(),
+                                    presence = presence,
+                                    presenceDevices = presenceDevices,
+                                    presenceActivities = presenceActivities,
+                                    muted = mutes[channelId].isActiveMute(),
+                                    onMute = { duration -> appViewModel.mute(channelId, duration) },
+                                    onUnmute = { appViewModel.unmute(channelId) },
+                                    onOpenSettings = if (chan != null && canManageChannels) {
+                                        { editChannelTarget = chan }
+                                    } else {
+                                        null
+                                    },
+                                    onInvite = if (chan != null && canInvite && detail != null) {
+                                        {
+                                            appViewModel.createInvite(detail!!.server.id) { code ->
+                                                val send = Intent(Intent.ACTION_SEND).apply {
+                                                    type = "text/plain"
+                                                    putExtra(Intent.EXTRA_TEXT, InviteLink.urlFor(code))
+                                                }
+                                                context.startActivity(
+                                                    Intent.createChooser(send, "Share invite"),
+                                                )
+                                            }
+                                        }
+                                    } else {
+                                        null
+                                    },
+                                    onOpenProfile = { profileUser = it },
+                                    backgroundUrl = convo?.backgroundUrl,
+                                    onSetBackground = if (convo != null) {
+                                        { uri -> appViewModel.setDmBackground(channelId, uri) }
+                                    } else {
+                                        null
+                                    },
+                                    onRemoveBackground = if (convo != null) {
+                                        { appViewModel.clearDmBackground(channelId) }
+                                    } else {
+                                        null
+                                    },
+                                    onSetIcon = if (convo?.type == ChannelType.GROUP_DM) {
+                                        { uri -> appViewModel.setDmIcon(channelId, uri) }
+                                    } else {
+                                        null
+                                    },
+                                    onRemoveIcon = if (convo?.type == ChannelType.GROUP_DM) {
+                                        { appViewModel.clearDmIcon(channelId) }
+                                    } else {
+                                        null
+                                    },
+                                    onAddPeople = if (convo?.type == ChannelType.GROUP_DM) {
+                                        { groupAddTargetId = channelId; overlay = Overlay.NEW_GROUP }
+                                    } else {
+                                        null
                                     },
                                 )
                             }
@@ -701,9 +819,9 @@ fun HomeScreen(
                                         )
                                     } ?: detail?.members.orEmpty(),
                                     presence = presence,
+                                    presenceDevices = presenceDevices,
                                     typingUserIds = (typing[channelId].orEmpty() - self.id),
                                     onBack = { openChat = false; appViewModel.clearActiveChannel() },
-                                    connected = connected,
                                     missedCount = unreads.unreadCountExcluding(channelId),
                                     onSend = { content, replyTo, attachmentIds, sealedAttachments, awaitUploads ->
                                         appViewModel.sendMessage(
@@ -728,6 +846,16 @@ fun HomeScreen(
                                         searchChannelId = channelId
                                         overlay = Overlay.SEARCH
                                     },
+                                    onOpenDetails = { overlay = Overlay.CHANNEL_DETAILS },
+                                    onlineCount = when {
+                                        convo != null -> convo.participants.count {
+                                            (presence[it.id] ?: PresenceStatus.OFFLINE) != PresenceStatus.OFFLINE
+                                        }
+                                        chan != null -> detail?.members?.count {
+                                            (presence[it.userId] ?: PresenceStatus.OFFLINE) != PresenceStatus.OFFLINE
+                                        }
+                                        else -> null
+                                    },
                                     onLoadOlder = { appViewModel.loadOlderMessages(channelId) },
                                     loadingOlder = channelId in loadingOlder,
                                     hasOlder = channelId !in channelsAtStart,
@@ -737,11 +865,6 @@ fun HomeScreen(
                                     reducedMotion = devicePrefs.reducedMotion,
                                     onStartCall = if (convo != null) {
                                         { video -> requestAndStartCall(channelId, video) }
-                                    } else {
-                                        null
-                                    },
-                                    onAddPeople = if (convo?.type == ChannelType.GROUP_DM) {
-                                        { groupAddTargetId = channelId; overlay = Overlay.NEW_GROUP }
                                     } else {
                                         null
                                     },
@@ -766,27 +889,8 @@ fun HomeScreen(
                                         null
                                     },
                                     backgroundUrl = convo?.backgroundUrl,
-                                    onSetBackground = if (convo != null) {
-                                        { uri -> appViewModel.setDmBackground(channelId, uri) }
-                                    } else {
-                                        null
-                                    },
-                                    onRemoveBackground = if (convo != null) {
-                                        { appViewModel.clearDmBackground(channelId) }
-                                    } else {
-                                        null
-                                    },
                                     iconUrl = convo?.iconUrl,
-                                    onSetIcon = if (convo?.type == ChannelType.GROUP_DM) {
-                                        { uri -> appViewModel.setDmIcon(channelId, uri) }
-                                    } else {
-                                        null
-                                    },
-                                    onRemoveIcon = if (convo?.type == ChannelType.GROUP_DM) {
-                                        { appViewModel.clearDmIcon(channelId) }
-                                    } else {
-                                        null
-                                    },
+                                    isGroup = convo?.type == ChannelType.GROUP_DM,
                                     onCompareSafetyNumber = if (convo != null) {
                                         { typed, done ->
                                             appViewModel.compareSafetyNumber(
@@ -847,6 +951,16 @@ fun HomeScreen(
                 contentColor = OrangTheme.colors.ink,
             )
         }
+    }
+
+    editChannelTarget?.let { channel ->
+        ChannelSettingsSheet(
+            channel = channel,
+            onDismiss = { editChannelTarget = null },
+            onSave = { patch ->
+                detail?.let { d -> appViewModel.updateChannelSettings(d.server.id, channel.id, patch) }
+            },
+        )
     }
 
     profileUser?.let { target ->

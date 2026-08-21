@@ -67,7 +67,7 @@ private const val MIN_INLINE_ASPECT = 0.6f
 private const val MAX_INLINE_ASPECT = 2.0f
 private const val DEFAULT_ASPECT = 16f / 9f
 
-private val INLINE_VIDEO_WIDTH = 150.dp
+private val INLINE_VIDEO_WIDTH = 130.dp
 
 @Composable
 private fun rememberSealedPoster(
