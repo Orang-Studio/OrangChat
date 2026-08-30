@@ -823,7 +823,7 @@ export function Composer({
           <input
             ref={cameraInput}
             type="file"
-            accept="image/*"
+            accept="image/png,image/jpeg,image/gif,image/webp"
             capture="environment"
             className="hidden"
             onChange={(e) => {
