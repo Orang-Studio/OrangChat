@@ -118,4 +118,5 @@ OrangChat is not affiliated with, endorsed by, or associated with Discord, Meta,
 ## Info
 - Platforms: Linux/GNU; Windows; Android
 - Official Source Stores: Github; chat.oranges.lt; Gplay
+- Translate to other languages with [Weeblate](https://oranges.lt/translate/)
 - Made by human bugfixed by AI 🧡
