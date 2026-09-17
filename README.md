@@ -33,7 +33,7 @@ A real-time chat platform with end-to-end encrypted DMs, voice, and media - Andr
 ## Usage
 
 1. Open the web client at [chat.oranges.lt](https://chat.oranges.lt), or install the Android APK from [chat.oranges.lt/download/android](https://chat.oranges.lt/download/android).
-2. Create an account - or sign in on another device by scanning the QR under **Settings → Encryption → Add another device**.
+2. Create an account - or sign in on another device by scanning the QR under **Settings > Encryption > Add another device**.
 3. Create or join a server and start a DM. DMs and group DMs are end-to-end encrypted; every device pair shows a safety code you can verify out of band.
 
 <details>
@@ -52,18 +52,18 @@ A real-time chat platform with end-to-end encrypted DMs, voice, and media - Andr
 
 <br>
 
-| Path | What it is |
-| --- | --- |
-| `android/` | Native Android client |
-| `packages/client` | React web client |
-| `packages/desktop` | Windows desktop shell |
-| `packages/server-rs` | Rust backend (axum + Socket.IO) |
-| `packages/bot`, `packages/bot-python` | Bot SDKs |
-| `packages/marketplace` | Plugin and theme marketplace (submodule) |
-| `packages/shared` | Shared client code and scripts |
-| `prisma/` | Postgres schema and migrations |
-| `deploy/` | docker-compose, nginx, LiveKit, and systemd units |
-| `docs/` | E2EE design, bots, and passkey notes |
+| Path                                  | What it is                                        |
+| ------------------------------------- | ------------------------------------------------- |
+| `android/`                            | Native Android client                             |
+| `packages/client`                     | React web client                                  |
+| `packages/desktop`                    | Windows desktop shell                             |
+| `packages/server-rs`                  | Rust backend (axum + Socket.IO)                   |
+| `packages/bot`, `packages/bot-python` | Bot SDKs                                          |
+| `packages/marketplace`                | Plugin and theme marketplace (submodule)          |
+| `packages/shared`                     | Shared client code and scripts                    |
+| `prisma/`                             | Postgres schema and migrations                    |
+| `deploy/`                             | docker-compose, nginx, LiveKit, and systemd units |
+| `docs/`                               | E2EE design, bots, and passkey notes              |
 
 </details>
 
@@ -76,8 +76,6 @@ OrangChat does not include:
 - User tracking
 - Paid features
 - A third-party cloud
-
-The content of DMs and group DMs is end-to-end encrypted: the server only ever handles ciphertext, and device keys never leave your devices. Everything else - media, calls, translations - is served by the server you choose, so self-hosting puts every byte under your control.
 
 ## Disclaimer
 
@@ -117,6 +115,7 @@ OrangChat is not affiliated with, endorsed by, or associated with Discord, Meta,
   </a>
 </p>
 
-## License
-
-OrangChat is available under the [GPLv3 License](LICENSE). The marketplace submodule is licensed separately in its own repository.
+## Info
+- Platforms: Linux/GNU; Windows; Android
+- Official Source Stores: Github; chat.oranges.lt; Gplay
+- Made by human bugfixed by AI 🧡
